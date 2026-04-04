@@ -60,10 +60,10 @@ export function ChurnOutRisk() {
     );
   }
 
-  const activeNodes = nodes.filter(n => n.status === 'Active');
+  const activeNodes = nodes.filter(n => n.status === 'Active' && n.total_bond);
   const sortedNodes = [...activeNodes].sort((a, b) => {
-    const bondA = BigInt(a.total_bond);
-    const bondB = BigInt(b.total_bond);
+    const bondA = BigInt(a.total_bond || '0');
+    const bondB = BigInt(b.total_bond || '0');
     return bondA > bondB ? -1 : bondA < bondB ? 1 : 0;
   });
 
