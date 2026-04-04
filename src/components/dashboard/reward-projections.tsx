@@ -120,10 +120,18 @@ export function RewardProjections({
                     <div>
                       <div className="text-xs text-zinc-500">Bond After</div>
                       <div className="text-xs font-mono text-zinc-700 dark:text-zinc-300">
-                        {formatRuneAmount(
-                          String(BigInt(Math.round(Math.max(0, proj.bondAfter || 0) * 1e8))),
-                          2
-                        )}{' '}
+                        {(() => {
+                          try {
+                            const val = proj.bondAfter;
+                            if (typeof val !== 'number' || !isFinite(val)) return '0.00';
+                            return formatRuneAmount(
+                              String(BigInt(Math.round(Math.max(0, val) * 1e8))),
+                              2
+                            );
+                          } catch {
+                            return '0.00';
+                          }
+                        })()}{' '}
                         RUNE
                       </div>
                     </div>

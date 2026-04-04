@@ -108,7 +108,7 @@ export default function RewardsPage() {
                       {formatRuneAmount(interval.earnings, 2)} RUNE
                     </td>
                     <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
-                      ${Number(interval.runePriceUSD).toFixed(4)}
+                      ${Number(interval.runePriceUSD || 0).toFixed(4)}
                     </td>
                     <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
                       {interval.avgNodeCount}
