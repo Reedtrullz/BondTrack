@@ -1,15 +1,19 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Shield, Activity, BarChart3, AlertTriangle, ArrowRightLeft, Menu, X } from 'lucide-react';
 import { ThemeToggle } from './theme-toggle';
 
-const navItems = [
-  { href: '/dashboard/overview', label: 'Overview', icon: <Activity className="w-4 h-4" /> },
-  { href: '/dashboard/nodes', label: 'Nodes', icon: <Shield className="w-4 h-4" /> },
-  { href: '/dashboard/rewards', label: 'Rewards', icon: <BarChart3 className="w-4 h-4" /> },
-  { href: '/dashboard/risk', label: 'Risk', icon: <AlertTriangle className="w-4 h-4" /> },
-  { href: '/dashboard/transactions', label: 'Transactions', icon: <ArrowRightLeft className="w-4 h-4" /> },
+const basePath = '/dashboard';
+
+const navItems = (addr: string | null) => [
+  { href: `${basePath}/overview?address=${addr}`, label: 'Overview', icon: <Activity className="w-4 h-4" /> },
+  { href: `${basePath}/nodes?address=${addr}`, label: 'Nodes', icon: <Shield className="w-4 h-4" /> },
+  { href: `${basePath}/rewards?address=${addr}`, label: 'Rewards', icon: <BarChart3 className="w-4 h-4" /> },
+  { href: `${basePath}/risk?address=${addr}`, label: 'Risk', icon: <AlertTriangle className="w-4 h-4" /> },
+  { href: `${basePath}/transactions?address=${addr}`, label: 'Transactions', icon: <ArrowRightLeft className="w-4 h-4" /> },
 ];
 
 interface SidebarProps {
@@ -18,6 +22,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
+  const searchParams = useSearchParams();
+  const address = searchParams.get('address');
   return (
     <>
       {isOpen && (
@@ -53,7 +59,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           <ThemeToggle />
         </div>
         
-        {navItems.map((item) => (
+        {navItems(address).map((item) => (
           <Link
             key={item.href}
             href={item.href}
