@@ -7,6 +7,9 @@ const RUNE_DIVISOR = BigInt(10 ** NETWORK.RUNE_DECIMALS);
  * All THORChain API amounts are strings representing integer satoshis (1e8).
  */
 export function formatRuneAmount(raw: string, decimals = 2): string {
+  if (!raw || typeof raw !== 'string') {
+    return '0'.repeat(decimals + 1).replace('.', '').slice(0, decimals) || '0';
+  }
   const bigIntAmount = BigInt(raw);
   const whole = bigIntAmount / RUNE_DIVISOR;
   const fraction = bigIntAmount % RUNE_DIVISOR;
@@ -24,6 +27,7 @@ export function formatRuneAmount(raw: string, decimals = 2): string {
  * Use with caution for large values — prefer BigInt math.
  */
 export function runeToNumber(raw: string): number {
+  if (!raw || typeof raw !== 'string') return 0;
   return Number(BigInt(raw)) / Number(RUNE_DIVISOR);
 }
 
@@ -31,6 +35,7 @@ export function runeToNumber(raw: string): number {
  * Convert a RUNE number to raw API format (1e8 units as string).
  */
 export function numberToRune(num: number): string {
+  if (typeof num !== 'number' || isNaN(num)) return '0';
   return String(BigInt(Math.round(num * Number(RUNE_DIVISOR))));
 }
 

@@ -5,8 +5,8 @@ import { runeToNumber } from './formatters';
  * Calculate a bond provider's share of a node's total bond.
  */
 export function calculateBondShare(providerBond: string, totalBond: string): number {
-  const provider = BigInt(providerBond);
-  const total = BigInt(totalBond);
+  const provider = BigInt(providerBond || '0');
+  const total = BigInt(totalBond || '0');
   if (total === 0n) return 0;
   return Number((provider * 10000n) / total) / 100; // 2 decimal precision
 }
