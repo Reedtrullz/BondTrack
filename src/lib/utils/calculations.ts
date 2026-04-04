@@ -81,8 +81,8 @@ export function calculateBondRank(
   allActiveNodes: { node_address: string; total_bond: string }[]
 ): { rank: number; total: number; percentile: number } {
   const sorted = [...allActiveNodes].sort((a, b) => {
-    const bondA = BigInt(a.total_bond);
-    const bondB = BigInt(b.total_bond);
+    const bondA = BigInt(a.total_bond || '0');
+    const bondB = BigInt(b.total_bond || '0');
     return bondA > bondB ? -1 : bondA < bondB ? 1 : 0;
   });
 
