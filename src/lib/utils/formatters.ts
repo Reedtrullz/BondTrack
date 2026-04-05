@@ -6,11 +6,18 @@ const RUNE_DIVISOR = BigInt(10 ** NETWORK.RUNE_DECIMALS);
  * Convert a raw API amount string (1e8 units) to a human-readable RUNE number.
  * All THORChain API amounts are strings representing integer satoshis (1e8).
  */
-export function formatRuneAmount(raw: string, decimals = 2): string {
-  if (!raw || typeof raw !== 'string') {
+export function formatRuneAmount(raw: string | number | undefined, decimals = 2): string {
+  if (!raw) {
     return '0'.repeat(decimals + 1).replace('.', '').slice(0, decimals) || '0';
   }
-  const bigIntAmount = BigInt(raw);
+  let bigIntAmount: bigint;
+  if (typeof raw === 'string') {
+    bigIntAmount = BigInt(raw);
+  } else if (typeof raw === 'number' && isFinite(raw)) {
+    bigIntAmount = BigInt(Math.round(raw));
+  } else {
+    return '0'.repeat(decimals + 1).replace('.', '').slice(0, decimals) || '0';
+  }
   const whole = bigIntAmount / RUNE_DIVISOR;
   const fraction = bigIntAmount % RUNE_DIVISOR;
 
@@ -26,9 +33,15 @@ export function formatRuneAmount(raw: string, decimals = 2): string {
  * Convert raw API amount to a number (for calculations).
  * Use with caution for large values — prefer BigInt math.
  */
-export function runeToNumber(raw: string): number {
-  if (!raw || typeof raw !== 'string') return 0;
-  return Number(BigInt(raw)) / Number(RUNE_DIVISOR);
+export function runeToNumber(raw: string | number | undefined): number {
+  if (!raw) return 0;
+  if (typeof raw === 'string') {
+    return Number(BigInt(raw)) / Number(RUNE_DIVISOR);
+  }
+  if (typeof raw === 'number' && isFinite(raw)) {
+    return raw / Number(RUNE_DIVISOR);
+  }
+  return 0;
 }
 
 /**
