@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { useRunePrice } from '@/lib/hooks/use-rune-price';
 import { useEarningsHistory } from '@/lib/hooks/use-earnings';
+import { useBondHistory } from '@/lib/hooks/use-bond-history';
 import { calculatePerChurnReward, calculateOperatorFeePaid } from '@/lib/utils/calculations';
 import { formatRuneAmount, runeToNumber } from '@/lib/utils/formatters';
 import { PnLDashboard } from '@/components/dashboard/pnl-dashboard';
@@ -16,8 +17,9 @@ export default function RewardsPage() {
   const { positions, isLoading: isLoadingPositions } = useBondPositions(address);
   const { price } = useRunePrice();
   const { earnings, isLoading: isLoadingEarnings } = useEarningsHistory('day', 30);
+  const { history, isLoading: isLoadingHistory } = useBondHistory(address);
 
-  const isLoading = isLoadingPositions || isLoadingEarnings;
+  const isLoading = isLoadingPositions || isLoadingEarnings || isLoadingHistory;
 
   if (isLoading) {
     return <div className="animate-pulse h-64 rounded-lg bg-zinc-200 dark:bg-zinc-800" />;
@@ -126,6 +128,7 @@ export default function RewardsPage() {
           positions={positions}
           currentRunePrice={price}
           earningsHistory={earnings}
+          bondHistory={history}
         />
 
         <FeeImpactTracker

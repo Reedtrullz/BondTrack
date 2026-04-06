@@ -17,6 +17,11 @@ interface PnLDashboardProps {
       earnings?: string;
     }[];
   };
+  bondHistory?: {
+    initialBond: number;
+    currentBond: number;
+    bondGrowth: number;
+  } | null;
 }
 
 export function PnLDashboard({
@@ -24,39 +29,24 @@ export function PnLDashboard({
   currentRunePrice,
   entryRunePrice,
   earningsHistory,
+  bondHistory,
 }: PnLDashboardProps) {
-  // Calculate total initial bond from positions
-  const totalBond = useMemo(() => 
-    positions.reduce((sum, pos) => sum + pos.bondAmount, 0),
-    [positions]
-  );
+  const totalBond = bondHistory?.initialBond ?? positions.reduce((sum, pos) => sum + pos.bondAmount, 0);
+  const totalBondingEarnings = bondHistory?.bondGrowth ?? 0;
+  const currentBond = bondHistory?.currentBond ?? totalBond + totalBondingEarnings;
   
-  // Calculate bond growth from earnings history (bonding earnings = auto-compounded)
-  const totalBondingEarnings = useMemo(() => 
-    earningsHistory?.intervals.reduce((sum, interval) => {
-      return sum + runeToNumber(interval.bondingEarnings);
-    }, 0) || 0,
-    [earningsHistory]
-  );
-  
-  // Current bond = initial bond + accumulated bonding earnings
-  const currentBond = useMemo(() => totalBond + totalBondingEarnings, [totalBond, totalBondingEarnings]);
-  
-  // Use entry price if provided, otherwise use first available price from history
   const effectiveEntryPrice = useMemo(() => 
     entryRunePrice || 
     (earningsHistory?.intervals[0] ? Number(earningsHistory.intervals[0].runePriceUSD) : currentRunePrice),
     [entryRunePrice, earningsHistory, currentRunePrice]
   );
   
-  // Calculate metrics
   const initialBondValueUSD = useMemo(() => totalBond * effectiveEntryPrice, [totalBond, effectiveEntryPrice]);
   const currentBondValueUSD = useMemo(() => currentBond * currentRunePrice, [currentBond, currentRunePrice]);
   const pricePnL = useMemo(() => calculatePricePnL(totalBond, effectiveEntryPrice, currentRunePrice), [totalBond, effectiveEntryPrice, currentRunePrice]);
   const totalReturn = useMemo(() => calculateTotalReturn(totalBond, currentBond, effectiveEntryPrice, currentRunePrice), [totalBond, currentBond, effectiveEntryPrice, currentRunePrice]);
   const totalReturnPercent = useMemo(() => totalBond > 0 ? (totalReturn / initialBondValueUSD) * 100 : 0, [totalBond, totalReturn, initialBondValueUSD]);
 
-  // Calculate operator fees paid from total earnings
   const totalEarnings = useMemo(() => 
     earningsHistory?.intervals.reduce((sum, interval) => {
       return sum + runeToNumber(interval.earnings || interval.bondingEarnings);
@@ -64,7 +54,6 @@ export function PnLDashboard({
     [earningsHistory]
   );
   
-  // Assume average operator fee of 1000 bps (10%) if not available per position
   const avgOperatorFeeBps = useMemo(() => 
     positions.length > 0 
       ? positions.reduce((sum, pos) => sum + (pos.operatorFee || 1000), 0) / positions.length
