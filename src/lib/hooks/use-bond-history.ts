@@ -45,7 +45,7 @@ export function useBondHistory(address: string | null) {
 
   const history: BondHistory | null = address
     ? (() => {
-        const initialBond = bondActions.length > 0 ? bondActions[0].amount : 0;
+        const initialBond = bondActions.reduce((sum, a) => sum + a.amount, 0);
         const currentBond = bondDetails ? runeToNumber(bondDetails.totalBonded) : 0;
         const bondGrowth = currentBond - initialBond;
 
