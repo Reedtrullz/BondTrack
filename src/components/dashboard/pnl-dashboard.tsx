@@ -45,7 +45,7 @@ export function PnLDashboard({
   // Use entry price if provided, otherwise use first available price from history
   const effectiveEntryPrice = useMemo(() => 
     entryRunePrice || 
-    (earningsHistory?.intervals[0] ? runeToNumber(earningsHistory.intervals[0].runePriceUSD) : currentRunePrice),
+    (earningsHistory?.intervals[0] ? Number(earningsHistory.intervals[0].runePriceUSD) : currentRunePrice),
     [entryRunePrice, earningsHistory, currentRunePrice]
   );
   
