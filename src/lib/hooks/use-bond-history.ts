@@ -38,7 +38,7 @@ export function useBondHistory(address: string | null) {
     })
     .map((action) => {
       const runeCoin = action.tx?.coins?.find((c) => c.asset === 'THOR.RUNE');
-      const amount = runeCoin ? parseFloat(runeCoin.amount) / 1e8 : 0;
+      const amount = runeCoin ? parseFloat(runeCoin.amount) : 0;
       return {
         type: 'BOND' as const,
         amount,
