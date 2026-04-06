@@ -1,11 +1,12 @@
 # SWR Hooks — Data Fetching Layer
 
-**6 hooks**: `use-bond-positions`, `use-earnings`, `use-network-constants`, `use-rune-price`, `use-watchlist`, `use-wallet`
+**7 hooks**: `use-bond-positions`, `use-bond-history`, `use-earnings`, `use-network-constants`, `use-rune-price`, `use-watchlist`, `use-wallet`
 
 ## WHERE TO LOOK
 | Need | File |
 |------|------|
-| Bond position data | `use-bond-positions.ts` — returns `BondPosition[]` from THORNode nodes |
+| Bond position data | `use-bond-positions.ts` — returns `BondPosition[]` with `yieldGuardFlags` |
+| Bond history | `use-bond-history.ts` — returns `history` and `bondActions` from Midgard |
 | Earnings/rewards data | `use-earnings.ts` — returns `EarningsHistoryRaw` from Midgard |
 | RUNE price | `use-rune-price.ts` — returns current USD price |
 | Network params | `use-network-constants.ts` — returns `int_64_values` from `/constants` |
@@ -24,7 +25,9 @@
 
 **Return shape**: Always `{ data, isLoading, error }` plus any derived values.
 
-**useBondPositions**: Special — fetches ALL nodes then filters by address via `extractBondPositions()`. Returns derived `BondPosition[]` objects, not raw API data.
+**useBondPositions**: Fetches ALL nodes then filters by address via `extractBondPositions()`. Returns derived `BondPosition[]` with `yieldGuardFlags: YieldGuardFlag[]` property. Fetches network constants (OptimalBondD) for Yield Guard calculation — skips when address is null.
+
+**useBondHistory**: Fetches bond details via Midgard `/v2/bonds/{address}` and actions via `/v2/actions?type=bond`. Returns `history: BondHistory` (initialBond, currentBond, bondGrowth, dates) and `bondActions: BondAction[]` (type, amount, date).
 
 **useWatchlist**: Client-only (`'use client'`). Uses localStorage. Returns `addAddress`, `removeAddress`, `getAddresses`, `isAddressSaved`, plus `isLoaded` flag for hydration safety.
 

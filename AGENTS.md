@@ -8,6 +8,22 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 **Stack**: Next.js 16.2.2 (App Router, Turbopack) · TypeScript · Tailwind v4 · SWR · Recharts · lucide-react
 **Purpose**: Dashboard for THORChain bond providers to monitor bonded RUNE, node health, rewards, and risk.
+**Note**: Renamed to "BondTrack" but directory remains `thornode-watcher/`
+
+## DEPLOYMENT
+
+**Vercel Project**: reedtrullzs-projects/bond-track
+**Project ID**: prj_8u5egmdS0r5dm5Ssz07QE8qgbqnU
+**Production URL**: https://thorchain.no
+**Preview URL**: https://bond-track-*.vercel.app
+
+**Domains configured**:
+- thorchain.no (custom, verified)
+- bond-track-pi.vercel.app (auto-created)
+
+**Observability**: No drains (Hobby plan), no analytics/speed insights installed
+
+**Deployment method**: GitHub integration (auto-deploy on push to master)
 
 ## STRUCTURE
 ```
@@ -40,6 +56,29 @@ thornode-watcher/
 ├── src/lib/config.ts           # ENDPOINTS (env-overridable), NETWORK constants
 └── src/lib/utils.ts            # cn() utility (clsx + tailwind-merge)
 ```
+
+## KEY FEATURES (Bond Provider Focus)
+
+**Portfolio Tracking**:
+- Total bonded, weighted APY, position count
+- Per-node bond amount and share percentage
+- Manual initial bond input with localStorage persistence (`pnl-dashboard.tsx`)
+
+**Yield Guard System**:
+- Auto-flags nodes at risk: overbonded, highest slash, lowest bond, oldest, leaving
+- Risk badges on position table (`position-table.tsx`)
+- "Your Nodes at Risk" summary on Risk page
+
+**Bond History**:
+- Address-specific BOND/UNBOND transactions from Midgard `/v2/actions?type=bond`
+- Cumulative bond tracking over time
+- Date parsing: nanoseconds → divide by 1e9
+
+**Risk Monitoring**:
+- Your positions at risk summary
+- Slash point monitoring (per your nodes)
+- Churn-out risk (your ranking vs all active)
+- Unbond window tracker
 
 ## WHERE TO LOOK
 | Task | Location |
@@ -94,6 +133,17 @@ thornode-watcher/
 - Never use `@ts-ignore` or `as any`
 - Never modify API client files when adding UI components
 - Never hardcode wallet names in UI — use WalletType enum
+
+## RECENT CHANGES
+- `use-bond-positions.ts`: Added Yield Guard flag calculation, skip constants fetch when address is null
+- `position-table.tsx`: Added YieldGuardBadge component with risk flags
+- `risk/page.tsx`: Added YourNodesAtRisk card, improved Your All Positions section
+- `rewards/page.tsx`: Fixed bond history empty states, timestamps divide by 1e9
+- `pnl-dashboard.tsx`: Manual initial bond input with localStorage
+
+## KNOWN ISSUES
+- Bond history may show empty for addresses that should have transactions — check `getActions()` type=bond filter
+- 6 pre-existing test failures in `use-watchlist.test.ts` and `use-bond-positions.test.ts`
 
 ## COMMANDS
 ```bash
