@@ -49,8 +49,12 @@ export function SlashMonitor() {
           getNetworkConstants({ signal: abortController.signal })
         ]);
         setNodes(nodesData);
-        const blockHeight = constantsData?.int_64_values?.last_observed_height || constantsData?.int_64_values?.block_height || 0;
-        setCurrentBlockHeight(blockHeight);
+        // Get current block height from the node with the highest active_block_height
+        const maxBlockHeight = nodesData.reduce((max, node) => {
+          const nodeBlock = node.active_block_height || 0;
+          return nodeBlock > max ? nodeBlock : max;
+        }, 0);
+        setCurrentBlockHeight(maxBlockHeight);
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return;
         setError(err instanceof Error ? err.message : 'Failed to fetch node data');
