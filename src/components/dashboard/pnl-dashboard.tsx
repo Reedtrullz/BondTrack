@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { BondPosition } from '@/lib/types/node';
 import { calculatePricePnL, calculateTotalReturn, calculateOperatorFeePaid } from '@/lib/utils/calculations';
 import { formatRuneAmount, runeToNumber } from '@/lib/utils/formatters';
-import { TrendingUp, DollarSign, Percent, Wallet } from 'lucide-react';
+import { TrendingUp, DollarSign, Percent, Wallet, Edit3, Check, X } from 'lucide-react';
 
 interface PnLDashboardProps {
   positions: BondPosition[];
@@ -24,6 +25,11 @@ interface PnLDashboardProps {
   } | null;
 }
 
+function getStorageKey(address: string | null): string | null {
+  if (!address) return null;
+  return `bondtrack-initial-bond-${address}`;
+}
+
 export function PnLDashboard({
   positions,
   currentRunePrice,
@@ -31,9 +37,55 @@ export function PnLDashboard({
   earningsHistory,
   bondHistory,
 }: PnLDashboardProps) {
-  const totalBond = bondHistory?.initialBond ?? positions.reduce((sum, pos) => sum + pos.bondAmount, 0);
-  const totalBondingEarnings = bondHistory?.bondGrowth ?? 0;
-  const currentBond = bondHistory?.currentBond ?? totalBond + totalBondingEarnings;
+  const searchParams = useSearchParams();
+  const address = searchParams.get('address');
+  const storageKey = getStorageKey(address);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const [manualInitialBond, setManualInitialBond] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (storageKey) {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = parseFloat(saved);
+        if (!isNaN(parsed) && parsed > 0) {
+          setManualInitialBond(parsed);
+        }
+      }
+    }
+  }, [storageKey]);
+
+  const startEditing = () => {
+    setInputValue(manualInitialBond?.toString() ?? '');
+    setIsEditing(true);
+  };
+
+  const saveValue = () => {
+    const parsed = parseFloat(inputValue);
+    if (!isNaN(parsed) && parsed > 0 && storageKey) {
+      setManualInitialBond(parsed);
+      localStorage.setItem(storageKey, parsed.toString());
+    }
+    setIsEditing(false);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+  };
+
+  const clearValue = () => {
+    if (storageKey) {
+      localStorage.removeItem(storageKey);
+    }
+    setManualInitialBond(null);
+    setIsEditing(false);
+  };
+
+  const effectiveInitialBond = manualInitialBond ?? (bondHistory?.initialBond ?? positions.reduce((sum, pos) => sum + pos.bondAmount, 0));
+  const totalBondingEarnings = bondHistory?.currentBond ?? (positions.reduce((sum, pos) => sum + pos.bondAmount, 0) + (bondHistory?.bondGrowth ?? 0));
+  const currentBond = bondHistory?.currentBond ?? (effectiveInitialBond + totalBondingEarnings - effectiveInitialBond);
   
   const effectiveEntryPrice = useMemo(() => 
     entryRunePrice || 
@@ -41,11 +93,11 @@ export function PnLDashboard({
     [entryRunePrice, earningsHistory, currentRunePrice]
   );
   
-  const initialBondValueUSD = useMemo(() => totalBond * effectiveEntryPrice, [totalBond, effectiveEntryPrice]);
+  const initialBondValueUSD = useMemo(() => effectiveInitialBond * effectiveEntryPrice, [effectiveInitialBond, effectiveEntryPrice]);
   const currentBondValueUSD = useMemo(() => currentBond * currentRunePrice, [currentBond, currentRunePrice]);
-  const pricePnL = useMemo(() => calculatePricePnL(totalBond, effectiveEntryPrice, currentRunePrice), [totalBond, effectiveEntryPrice, currentRunePrice]);
-  const totalReturn = useMemo(() => calculateTotalReturn(totalBond, currentBond, effectiveEntryPrice, currentRunePrice), [totalBond, currentBond, effectiveEntryPrice, currentRunePrice]);
-  const totalReturnPercent = useMemo(() => totalBond > 0 ? (totalReturn / initialBondValueUSD) * 100 : 0, [totalBond, totalReturn, initialBondValueUSD]);
+  const pricePnL = useMemo(() => calculatePricePnL(effectiveInitialBond, effectiveEntryPrice, currentRunePrice), [effectiveInitialBond, effectiveEntryPrice, currentRunePrice]);
+  const totalReturn = useMemo(() => calculateTotalReturn(effectiveInitialBond, currentBond, effectiveEntryPrice, currentRunePrice), [effectiveInitialBond, currentBond, effectiveEntryPrice, currentRunePrice]);
+  const totalReturnPercent = useMemo(() => effectiveInitialBond > 0 ? (totalReturn / initialBondValueUSD) * 100 : 0, [effectiveInitialBond, totalReturn, initialBondValueUSD]);
 
   const totalEarnings = useMemo(() => 
     earningsHistory?.intervals.reduce((sum, interval) => {
@@ -62,6 +114,9 @@ export function PnLDashboard({
   );
   const operatorFeePaid = useMemo(() => calculateOperatorFeePaid(totalEarnings, avgOperatorFeeBps), [totalEarnings, avgOperatorFeeBps]);
 
+  const bondGrowth = currentBond - effectiveInitialBond;
+  const bondGrowthPercent = effectiveInitialBond > 0 ? (bondGrowth / effectiveInitialBond) * 100 : 0;
+
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-medium text-zinc-500">Profit & Loss</h3>
@@ -69,9 +124,69 @@ export function PnLDashboard({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <PnLCard
           icon={<Wallet className="w-4 h-4" />}
-          label="Initial Bond"
-          value={formatRuneAmount(String(Math.round(totalBond * 1e8)), 2)}
-          subValue={`$${initialBondValueUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          label={
+            <span className="flex items-center gap-1">
+              Initial Bond
+              {isEditing ? (
+                <span className="flex items-center gap-0.5 ml-1">
+                  <button
+                    onClick={saveValue}
+                    className="p-0.5 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                    title="Save"
+                  >
+                    <Check className="w-3 h-3 text-emerald-500" />
+                  </button>
+                  <button
+                    onClick={cancelEditing}
+                    className="p-0.5 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                    title="Cancel"
+                  >
+                    <X className="w-3 h-3 text-zinc-400" />
+                  </button>
+                </span>
+              ) : (
+                <span className="flex items-center gap-0.5 ml-1">
+                  <button
+                    onClick={startEditing}
+                    className="p-0.5 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                    title="Edit initial bond"
+                  >
+                    <Edit3 className="w-3 h-3 text-zinc-400" />
+                  </button>
+                  {manualInitialBond !== null && (
+                    <button
+                      onClick={clearValue}
+                      className="p-0.5 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                      title="Clear manual value (use auto)"
+                    >
+                      <X className="w-3 h-3 text-zinc-400" />
+                    </button>
+                  )}
+                </span>
+              )}
+            </span>
+          }
+          value={
+            isEditing ? (
+              <input
+                type="number"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveValue();
+                  if (e.key === 'Escape') cancelEditing();
+                }}
+                className="w-full bg-transparent text-lg font-semibold font-mono text-zinc-900 dark:text-zinc-100 outline-none border-b border-zinc-400 dark:border-zinc-600 focus:border-emerald-500 dark:focus:border-emerald-400"
+                placeholder="Enter RUNE amount"
+                autoFocus
+                min="0"
+                step="0.01"
+              />
+            ) : (
+              formatRuneAmount(String(Math.round(effectiveInitialBond * 1e8)), 2)
+            )
+          }
+          subValue={`$${initialBondValueUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${manualInitialBond !== null ? ' (manual)' : ''}`}
         />
         <PnLCard
           icon={<TrendingUp className="w-4 h-4" />}
@@ -82,8 +197,8 @@ export function PnLDashboard({
         <PnLCard
           icon={<DollarSign className="w-4 h-4" />}
           label="Bond Growth"
-          value={formatRuneAmount(String(Math.round(totalBondingEarnings * 1e8)), 2)}
-          subValue={`+${((totalBondingEarnings / totalBond) * 100 || 0).toFixed(1)}%`}
+          value={formatRuneAmount(String(Math.round(bondGrowth * 1e8)), 2)}
+          subValue={`+${bondGrowthPercent.toFixed(1)}%`}
           positive
         />
         <PnLCard
@@ -113,8 +228,8 @@ function PnLCard({
   positive,
 }: {
   icon: React.ReactNode;
-  label: string;
-  value: string;
+  label: React.ReactNode;
+  value: React.ReactNode;
   subValue?: string;
   positive?: boolean;
 }) {
