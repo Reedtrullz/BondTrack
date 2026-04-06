@@ -112,6 +112,18 @@ export default function RewardsPage() {
                     </tr>
                   );
                 })
+              ) : !address ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-zinc-500">
+                    No address provided — bond history requires an address
+                  </td>
+                </tr>
+              ) : isLoadingHistory ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-zinc-400">
+                    Loading bond transactions...
+                  </td>
+                </tr>
               ) : (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-zinc-500">
