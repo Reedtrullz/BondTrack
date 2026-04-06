@@ -2,6 +2,8 @@ import { NodeRaw } from '@/lib/api/thornode';
 import { runeToNumber, formatRuneAmount, formatBasisPoints } from '@/lib/utils/formatters';
 import { calculateBondShare, calculateAPY } from '@/lib/utils/calculations';
 
+export type YieldGuardFlag = 'overbonded' | 'highest_slash' | 'lowest_bond' | 'oldest' | 'leaving';
+
 export interface BondPosition {
   nodeAddress: string;
   nodeOperatorAddress: string;
@@ -17,6 +19,7 @@ export interface BondPosition {
   jailReason?: string;
   version: string;
   requestedToLeave: boolean;
+  yieldGuardFlags?: YieldGuardFlag[];
 }
 
 export function extractBondPositions(

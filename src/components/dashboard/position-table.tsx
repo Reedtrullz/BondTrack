@@ -1,11 +1,67 @@
 import { useMemo } from 'react';
-import type { BondPosition } from '@/lib/types/node';
+import type { BondPosition, YieldGuardFlag } from '@/lib/types/node';
 import { ExportButton } from '@/components/shared/export-button';
 import { formatRuneAmount, formatRuneWithUnit } from '@/lib/utils/formatters';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { AlertTriangle, TrendingDown, Clock, UserMinus, Gauge } from 'lucide-react';
 
 interface PositionTableProps {
   positions: BondPosition[];
+}
+
+const YIELD_GUARD_LABELS: Record<YieldGuardFlag, { label: string; icon: React.ReactNode; color: string; tooltip: string }> = {
+  overbonded: {
+    label: 'Overbonded',
+    icon: <Gauge className="w-3 h-3" />,
+    color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+    tooltip: 'Node is at or above optimal bond - no additional yield',
+  },
+  highest_slash: {
+    label: 'High Slash',
+    icon: <AlertTriangle className="w-3 h-3" />,
+    color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    tooltip: 'Highest slash points in network - may churn soon',
+  },
+  lowest_bond: {
+    label: 'Lowest Bond',
+    icon: <TrendingDown className="w-3 h-3" />,
+    color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+    tooltip: 'Lowest bond in active set - likely next to churn',
+  },
+  oldest: {
+    label: 'Oldest',
+    icon: <Clock className="w-3 h-3" />,
+    color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+    tooltip: 'Longest time in active set - expected to rotate out',
+  },
+  leaving: {
+    label: 'Leaving',
+    icon: <UserMinus className="w-3 h-3" />,
+    color: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400',
+    tooltip: 'Node operator requested to leave network',
+  },
+};
+
+function YieldGuardBadge({ flags }: { flags: YieldGuardFlag[] }) {
+  if (flags.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-1 mt-1">
+      {flags.map((flag) => {
+        const config = YIELD_GUARD_LABELS[flag];
+        return (
+          <span
+            key={flag}
+            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${config.color}`}
+            title={config.tooltip}
+          >
+            {config.icon}
+            {config.label}
+          </span>
+        );
+      })}
+    </div>
+  );
 }
 
 export function PositionTable({ positions }: PositionTableProps) {
@@ -58,6 +114,9 @@ export function PositionTable({ positions }: PositionTableProps) {
                     {pos.nodeAddress.slice(0, 12)}...{pos.nodeAddress.slice(-8)}
                   </div>
                   <div className="text-xs text-zinc-400">v{pos.version}</div>
+                  {pos.yieldGuardFlags && pos.yieldGuardFlags.length > 0 && (
+                    <YieldGuardBadge flags={pos.yieldGuardFlags} />
+                  )}
                 </td>
                 <td className="px-3 py-3 whitespace-nowrap">
                   <StatusBadge status={pos.status} isJailed={pos.isJailed} />

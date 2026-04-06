@@ -17,7 +17,7 @@ export default function RewardsPage() {
   const { positions, isLoading: isLoadingPositions } = useBondPositions(address);
   const { price } = useRunePrice();
   const { earnings, isLoading: isLoadingEarnings } = useEarningsHistory('day', 30);
-  const { history, isLoading: isLoadingHistory } = useBondHistory(address);
+  const { history, bondActions, isLoading: isLoadingHistory } = useBondHistory(address);
 
   const isLoading = isLoadingPositions || isLoadingEarnings || isLoadingHistory;
 
@@ -77,47 +77,48 @@ export default function RewardsPage() {
 
       <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
         <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
-          <h3 className="font-medium text-zinc-900 dark:text-zinc-100">Earnings History</h3>
+          <h3 className="font-medium text-zinc-900 dark:text-zinc-100">Your Bond History</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-zinc-50 dark:bg-zinc-800/50">
               <tr>
                 <th className="px-4 py-2 text-left text-zinc-500 font-medium">Date</th>
-                <th className="px-4 py-2 text-right text-zinc-500 font-medium">Bonding Earnings</th>
-                <th className="px-4 py-2 text-right text-zinc-500 font-medium">Block Rewards</th>
-                <th className="px-4 py-2 text-right text-zinc-500 font-medium">Total Earnings</th>
-                <th className="px-4 py-2 text-right text-zinc-500 font-medium">RUNE Price</th>
-                <th className="px-4 py-2 text-right text-zinc-500 font-medium">Avg Nodes</th>
+                <th className="px-4 py-2 text-left text-zinc-500 font-medium">Type</th>
+                <th className="px-4 py-2 text-right text-zinc-500 font-medium">Amount</th>
+                <th className="px-4 py-2 text-right text-zinc-500 font-medium">Cumulative</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {earnings?.intervals?.slice(0, 15).map((interval, idx) => {
-                const startDate = new Date(Number(interval.startTime)).toLocaleDateString();
-                const endDate = new Date(Number(interval.endTime)).toLocaleDateString();
-                return (
-                  <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                    <td className="px-4 py-2 text-zinc-900 dark:text-zinc-100">
-                      {startDate} - {endDate}
-                    </td>
-                    <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
-                      {formatRuneAmount(interval.bondingEarnings, 2)} RUNE
-                    </td>
-                    <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
-                      {formatRuneAmount(interval.blockRewards, 2)} RUNE
-                    </td>
-                    <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
-                      {formatRuneAmount(interval.earnings, 2)} RUNE
-                    </td>
-                    <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
-                      ${Number(interval.runePriceUSD || 0).toFixed(4)}
-                    </td>
-                    <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
-                      {interval.avgNodeCount}
-                    </td>
-                  </tr>
-                );
-              })}
+              {bondActions.length > 0 ? (
+                bondActions.map((action, idx) => {
+                  const cumulative = bondActions.slice(0, idx + 1).reduce((sum, a) => sum + a.amount, 0);
+                  return (
+                    <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                      <td className="px-4 py-2 text-zinc-900 dark:text-zinc-100">
+                        {action.date.toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-2">
+                        <span className={action.type === 'BOND' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
+                          {action.type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
+                        {action.type === 'BOND' ? '+' : '-'}{formatRuneAmount(String(Math.round(action.amount * 1e8)), 2)}
+                      </td>
+                      <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
+                        {formatRuneAmount(String(Math.round(cumulative * 1e8)), 2)}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-zinc-500">
+                    No bond transactions found for this address
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
