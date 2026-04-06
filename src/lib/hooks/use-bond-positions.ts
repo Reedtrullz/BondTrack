@@ -61,7 +61,7 @@ export function useBondPositions(address: string | null) {
   );
 
   const { data: constants } = useSWR(
-    'network-constants',
+    address ? 'network-constants' : null,
     () => getNetworkConstants(),
     { revalidateOnFocus: false, refreshInterval: 300_000 }
   );
