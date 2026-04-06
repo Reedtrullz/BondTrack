@@ -49,8 +49,8 @@ export function SlashMonitor() {
           getNetworkConstants({ signal: abortController.signal })
         ]);
         setNodes(nodesData);
-        // Get current block height from the node with the highest active_block_height
-        const maxBlockHeight = nodesData.reduce((max, node) => {
+        const activeNodes = nodesData.filter(n => n.status === 'Active');
+        const maxBlockHeight = activeNodes.reduce((max, node) => {
           const nodeBlock = node.active_block_height || 0;
           return nodeBlock > max ? nodeBlock : max;
         }, 0);
