@@ -24,25 +24,21 @@ export function useBondHistory(address: string | null) {
   );
 
   const { data: actions, isLoading: isLoadingActions } = useSWR<ActionsResponseRaw>(
-    address ? ['actions', address] : null,
-    () => getActions(address!, 100),
+    address ? ['actions-bond', address] : null,
+    () => getActions(address!, 100, 'bond'),
     { refreshInterval: 60_000 }
   );
 
   const isLoading = isLoadingDetails || isLoadingActions;
 
   const bondActions: BondAction[] = actions?.actions
-    ?.filter((action) => {
-      const memo = action.memo?.toUpperCase() || '';
-      return memo.startsWith('BOND:');
-    })
-    .map((action) => {
-      const runeCoin = action.tx?.coins?.find((c) => c.asset === 'THOR.RUNE');
-      const amount = runeCoin ? parseFloat(runeCoin.amount) : 0;
+    ?.map((action) => {
+      const inCoin = action.in?.[0]?.coins?.find((c) => c.asset === 'THOR.RUNE');
+      const amount = inCoin ? parseFloat(inCoin.amount) / 1e8 : 0;
       return {
         type: 'BOND' as const,
         amount,
-        date: new Date(action.date),
+        date: new Date(Number(action.date) / 1e6),
       };
     })
     .sort((a, b) => a.date.getTime() - b.date.getTime()) || [];

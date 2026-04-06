@@ -102,6 +102,25 @@ export interface ActionRaw {
     fromAddress: string;
   };
   status: string;
+  in?: {
+    address: string;
+    coins: { asset: string; amount: string }[];
+    txID: string;
+  }[];
+  out?: {
+    address: string;
+    coins: { asset: string; amount: string }[];
+    txID: string;
+  }[];
+  metadata?: {
+    bond?: {
+      memo: string;
+      nodeAddress: string;
+    };
+    send?: {
+      memo: string;
+    };
+  };
 }
 
 export interface ActionsResponseRaw {
@@ -133,8 +152,13 @@ export async function getNetwork(): Promise<NetworkRaw> {
   return fetchMidgard<NetworkRaw>('/v2/network');
 }
 
-export async function getActions(address: string, count = 50): Promise<ActionsResponseRaw> {
-  return fetchMidgard<ActionsResponseRaw>(`/v2/actions?address=${address}&count=${count}`);
+export async function getActions(address: string, count = 50, type?: string): Promise<ActionsResponseRaw> {
+  const params = new URLSearchParams();
+  params.set('address', address);
+  params.set('count', String(count));
+  if (type) params.set('type', type);
+  const qs = params.toString();
+  return fetchMidgard<ActionsResponseRaw>(`/v2/actions${qs ? `?${qs}` : ''}`);
 }
 
 export interface THORNameAliasRaw {
