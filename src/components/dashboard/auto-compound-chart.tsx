@@ -17,7 +17,7 @@ interface AutoCompoundChartProps {
 export function AutoCompoundChart({ earningsHistory, initialBond = 0 }: AutoCompoundChartProps) {
   const chartData = earningsHistory?.intervals.slice().reverse().map((interval) => {
     const bondingEarnings = Number(interval.bondingEarnings) / 1e8;
-    const date = new Date(Number(interval.endTime) / 1e9);
+    const date = new Date(Number(interval.endTime) * 1000);
     
     return {
       date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
