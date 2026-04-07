@@ -1,13 +1,16 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { useRunePrice } from '@/lib/hooks/use-rune-price';
 import { PortfolioSummary } from '@/components/dashboard/portfolio-summary';
 import { PositionTable } from '@/components/dashboard/position-table';
 import { NodeStatusCard } from '@/components/dashboard/node-status-card';
+import { RewardProjections } from '@/components/dashboard/reward-projections';
 
 import { ExportButton } from '@/components/shared/export-button'
+import { Plus, Minus, Download } from 'lucide-react';
 
 export default function OverviewPage() {
   const searchParams = useSearchParams();
@@ -35,12 +38,37 @@ export default function OverviewPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition"
+        >
+          <Plus className="w-4 h-4" />
+          Bond More
+        </Link>
+        <Link
+          href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition"
+        >
+          <Minus className="w-4 h-4" />
+          Unbond
+        </Link>
+      </div>
+
       <PortfolioSummary
         totalBonded={totalBonded}
         runePrice={price}
         weightedAPY={weightedAPY}
         positionCount={positions.length}
       />
+
+      {totalBonded > 0 && weightedAPY > 0 && (
+        <RewardProjections
+          totalBonded={totalBonded}
+          weightedAPY={weightedAPY}
+          runePrice={price}
+        />
+      )}
 
        <PositionTable positions={positions} />
        

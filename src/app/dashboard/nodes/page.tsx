@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { NodeStatusCard } from '@/components/dashboard/node-status-card';
+import { NetworkComparisonTable } from '@/components/dashboard/network-comparison-table';
 
 export default function NodesPage() {
   const searchParams = useSearchParams();
@@ -18,13 +19,17 @@ export default function NodesPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Node Health</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {positions.map((pos) => (
-          <NodeStatusCard key={pos.nodeAddress} position={pos} />
-        ))}
+    <div className="space-y-8">
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Node Health</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {positions.map((pos) => (
+            <NodeStatusCard key={pos.nodeAddress} position={pos} />
+          ))}
+        </div>
       </div>
+
+      <NetworkComparisonTable address={address} />
     </div>
   );
 }

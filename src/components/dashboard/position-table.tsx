@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, Fragment } from 'react';
 import type { BondPosition, YieldGuardFlag } from '@/lib/types/node';
 import { ExportButton } from '@/components/shared/export-button';
 import { formatRuneAmount, formatRuneWithUnit } from '@/lib/utils/formatters';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { PooledNodeDetails } from './pooled-node-details';
 import { AlertTriangle, TrendingDown, Clock, UserMinus, Gauge } from 'lucide-react';
 
 interface PositionTableProps {
@@ -94,12 +95,64 @@ export function PositionTable({ positions }: PositionTableProps) {
       </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+      <div className="block md:hidden space-y-3">
+        {positions.map((pos) => (
+          <div key={pos.nodeAddress} className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-3">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                  {pos.nodeAddress.slice(0, 12)}...{pos.nodeAddress.slice(-8)}
+                </div>
+                <div className="text-xs text-zinc-400">v{pos.version}</div>
+                {pos.yieldGuardFlags && pos.yieldGuardFlags.length > 0 && (
+                  <YieldGuardBadge flags={pos.yieldGuardFlags} />
+                )}
+              </div>
+              <StatusBadge status={pos.status} isJailed={pos.isJailed} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="text-xs text-zinc-500">Bond</div>
+                <div className="font-mono text-sm text-zinc-900 dark:text-zinc-100">
+                  {pos.bondAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-zinc-500">Share</div>
+                <div className="font-mono text-sm text-zinc-600 dark:text-zinc-400">
+                  {pos.bondSharePercent.toFixed(2)}%
+                </div>
+                <div className="mt-1 w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(pos.bondSharePercent, 100)}%` }}
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-zinc-500">Fee</div>
+                <div className="font-mono text-sm text-zinc-600 dark:text-zinc-400">
+                  {pos.operatorFeeFormatted}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-zinc-500">Est. APY</div>
+                <div className="font-mono text-sm font-medium text-emerald-600">
+                  {pos.netAPY.toFixed(2)}%
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden md:block overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
         <table className="w-full text-sm min-w-[640px]">
           <thead className="bg-zinc-50 dark:bg-zinc-900">
             <tr>
               <th className="px-3 py-3 text-left font-medium text-zinc-500 whitespace-nowrap">Node</th>
               <th className="px-3 py-3 text-left font-medium text-zinc-500 whitespace-nowrap">Status</th>
+              <th className="px-3 py-3 text-left font-medium text-zinc-500 whitespace-nowrap">Pooled</th>
               <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap">Bond</th>
               <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap">Share</th>
               <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap">Fee</th>
@@ -121,11 +174,28 @@ export function PositionTable({ positions }: PositionTableProps) {
                 <td className="px-3 py-3 whitespace-nowrap">
                   <StatusBadge status={pos.status} isJailed={pos.isJailed} />
                 </td>
+                <td className="px-3 py-3 whitespace-nowrap">
+                  {pos.pooledNodeData?.isPooled && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                      Pooled
+                    </span>
+                  )}
+                </td>
                 <td className="px-3 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
                   {pos.bondAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </td>
-                <td className="px-3 py-3 text-right text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
-                  {pos.bondSharePercent.toFixed(2)}%
+                <td className="px-3 py-3 text-right whitespace-nowrap">
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="font-mono text-sm text-zinc-600 dark:text-zinc-400">
+                      {pos.bondSharePercent.toFixed(2)}%
+                    </span>
+                    <div className="w-16 h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(pos.bondSharePercent, 100)}%` }}
+                      />
+                    </div>
+                  </div>
                 </td>
                 <td className="px-3 py-3 text-right text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
                   {pos.operatorFeeFormatted}

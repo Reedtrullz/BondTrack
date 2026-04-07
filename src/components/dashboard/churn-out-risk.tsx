@@ -1,11 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { getAllNodes } from '@/lib/api/thornode';
-import { calculateBondRank } from '@/lib/utils/calculations';
+import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { formatRuneAmount } from '@/lib/utils/formatters';
 import { AlertTriangle, TrendingDown } from 'lucide-react';
-import type { NodeRaw } from '@/lib/api/thornode';
 
 interface NodeWithRank {
   nodeAddress: string;
@@ -18,31 +15,7 @@ interface NodeWithRank {
 }
 
 export function ChurnOutRisk() {
-  const [nodes, setNodes] = useState<NodeRaw[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const abortController = new AbortController();
-
-    async function fetchData() {
-      try {
-        const nodesData = await getAllNodes({ signal: abortController.signal });
-        setNodes(nodesData);
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') return;
-        setError(err instanceof Error ? err.message : 'Failed to fetch node data');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => {
-      abortController.abort();
-      clearInterval(interval);
-    };
-  }, []);
+  const { data: nodes, error, isLoading } = useAllNodes();
 
   if (isLoading) {
     return (
@@ -55,7 +28,15 @@ export function ChurnOutRisk() {
   if (error) {
     return (
       <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="text-red-500 text-sm">Error: {error}</div>
+        <div className="text-red-500 text-sm">Error: {error.message}</div>
+      </div>
+    );
+  }
+
+  if (!nodes) {
+    return (
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+        <div className="animate-pulse h-48 bg-zinc-200 dark:bg-zinc-800 rounded" />
       </div>
     );
   }

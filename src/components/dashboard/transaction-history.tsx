@@ -101,7 +101,65 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
           No BOND/UNBOND transactions found for this address
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <>
+          <div className="block md:hidden space-y-3">
+          {transactions.map((tx) => (
+            <div key={tx.txHash} className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-2">
+              <div className="flex items-center justify-between">
+                <span
+                  className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                    tx.type === 'BOND'
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                  }`}
+                >
+                  {tx.type}
+                </span>
+                <span
+                  className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                    tx.status === 'success'
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                      : tx.status === 'failed'
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400'
+                  }`}
+                >
+                  {tx.status}
+                </span>
+              </div>
+              <div>
+                <div className="text-xs text-zinc-500">Amount</div>
+                <div className="font-mono text-sm text-zinc-900 dark:text-zinc-100">
+                  {formatRuneAmount(String(Math.floor(tx.amount)))}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-zinc-500">Node</div>
+                <div className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                  {tx.nodeAddress.length > 20
+                    ? `${tx.nodeAddress.slice(0, 12)}...${tx.nodeAddress.slice(-8)}`
+                    : tx.nodeAddress}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-zinc-500">Date</div>
+                <div className="text-xs text-zinc-600 dark:text-zinc-400">
+                  {tx.timestamp.toLocaleDateString()} {tx.timestamp.toLocaleTimeString()}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-zinc-500">Tx Hash</div>
+                <div className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                  {tx.txHash.length > 20
+                    ? `${tx.txHash.slice(0, 12)}...${tx.txHash.slice(-8)}`
+                    : tx.txHash}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden md:block overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-sm min-w-[720px]">
             <thead className="bg-zinc-50 dark:bg-zinc-900">
               <tr>
@@ -160,7 +218,8 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

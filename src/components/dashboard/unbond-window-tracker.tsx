@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { getAllNodes } from '@/lib/api/thornode';
+import { useAllNodes } from '@/lib/hooks/use-all-nodes';
+import { useNetworkConstants } from '@/lib/hooks/use-network-constants';
 import { estimateNextChurn } from '@/lib/utils/calculations';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Clock, Unlock, Lock, AlertCircle } from 'lucide-react';
-import type { NodeRaw } from '@/lib/api/thornode';
 
 interface NodeUnbondStatus {
   nodeAddress: string;
@@ -27,31 +26,11 @@ function formatTimeRemaining(blocks: number): string {
 }
 
 export function UnbondWindowTracker() {
-  const [nodes, setNodes] = useState<NodeRaw[]>([]);
-  const [currentBlockHeight, setCurrentBlockHeight] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: nodes, error: nodesError, isLoading: nodesLoading } = useAllNodes();
+  const { constants, isLoading: constantsLoading, error: constantsError } = useNetworkConstants();
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [nodesData, constantsData] = await Promise.all([
-          getAllNodes(),
-          fetch('https://gateway.liquify.com/chain/thorchain_api/thorchain/constants').then(r => r.json())
-        ]);
-        setNodes(nodesData);
-        const blockHeight = constantsData?.int_64_values?.last_observed_height || constantsData?.int_64_values?.block_height || 0;
-        setCurrentBlockHeight(blockHeight);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch node data');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  const isLoading = nodesLoading || constantsLoading;
+  const error = nodesError?.message || constantsError?.message || null;
 
   if (isLoading) {
     return (
@@ -68,6 +47,16 @@ export function UnbondWindowTracker() {
       </div>
     );
   }
+
+  if (!nodes) {
+    return (
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+        <div className="animate-pulse h-48 bg-zinc-200 dark:bg-zinc-800 rounded" />
+      </div>
+    );
+  }
+
+  const currentBlockHeight = constants?.last_observed_height || constants?.block_height || 0;
 
   const bondedNodes = nodes.filter(n => n.status === 'Active' || n.status === 'Standby');
   

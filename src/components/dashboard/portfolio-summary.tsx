@@ -1,5 +1,5 @@
 import { formatRuneWithUnit } from '@/lib/utils/formatters';
-import { TrendingUp, DollarSign, Activity } from 'lucide-react';
+import { TrendingUp, DollarSign, Activity, Coins } from 'lucide-react';
 
 interface PortfolioSummaryProps {
   totalBonded: number;
@@ -10,14 +10,22 @@ interface PortfolioSummaryProps {
 
 export function PortfolioSummary({ totalBonded, runePrice, weightedAPY, positionCount }: PortfolioSummaryProps) {
   const usdValue = totalBonded * runePrice;
+  const annualEarnings = totalBonded * (weightedAPY / 100);
+  const annualEarningsUSD = annualEarnings * runePrice;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
       <SummaryCard
         icon={<TrendingUp className="w-5 h-5" />}
         label="Total Bonded"
         value={`${totalBonded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RUNE`}
         subValue={runePrice > 0 ? `$${usdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : undefined}
+      />
+      <SummaryCard
+        icon={<Coins className="w-5 h-5" />}
+        label="Annual Earnings"
+        value={weightedAPY > 0 ? `${annualEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RUNE` : 'N/A'}
+        subValue={weightedAPY > 0 ? `$${annualEarningsUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : undefined}
       />
       <SummaryCard
         icon={<DollarSign className="w-5 h-5" />}

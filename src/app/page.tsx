@@ -1,14 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AddressInput } from '@/components/shared/address-input';
+import { RecentAddresses } from '@/components/shared/recent-addresses';
 import { Shield, Activity, BarChart3 } from 'lucide-react';
+
+const LAST_ADDRESS_KEY = 'thornode-watcher-last-address';
 
 export default function Home() {
   const router = useRouter();
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const lastAddress = localStorage.getItem(LAST_ADDRESS_KEY);
+      if (lastAddress && lastAddress.startsWith('thor1')) {
+        router.replace(`/dashboard?address=${encodeURIComponent(lastAddress)}`);
+      }
+    }
+  }, [router]);
+
   const handleAddressSubmit = (address: string) => {
+    localStorage.setItem(LAST_ADDRESS_KEY, address);
     router.push(`/dashboard?address=${encodeURIComponent(address)}`);
   };
 
@@ -20,30 +33,34 @@ export default function Home() {
             <Shield className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">
-            THORNode Watcher
+            BondTrack
           </h1>
           <p className="text-zinc-500 max-w-md">
-            Monitor your bond provider positions, track rewards, and stay informed about node health across the THORChain network.
+            Track your bonded RUNE, rewards, and node health from your pooled nodes.
           </p>
         </div>
 
         <AddressInput onAddressSubmit={handleAddressSubmit} />
 
+        <div className="mt-6 w-full max-w-md">
+          <RecentAddresses />
+        </div>
+
         <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl w-full">
           <FeatureCard
             icon={<Activity className="w-5 h-5" />}
-            title="Real-time Monitoring"
-            description="Track node status, slash points, and jail events"
+            title="Node Health"
+            description="Monitor your nodes' status, slash points, and jail events in real-time"
           />
           <FeatureCard
             icon={<BarChart3 className="w-5 h-5" />}
-            title="Rewards Tracking"
-            description="View earnings history, APY, and PnL breakdown"
+            title="Earnings"
+            description="Track your rewards, view APY projections, and analyze yield performance"
           />
           <FeatureCard
             icon={<Shield className="w-5 h-5" />}
             title="Risk Alerts"
-            description="Get notified about churn-out risk and unbond windows"
+            description="Get notified about churn-out risk, unbond windows, and position alerts"
           />
         </div>
       </main>

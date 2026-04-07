@@ -1,11 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { getAllNodes, getNetworkConstants } from '@/lib/api/thornode';
+import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { calculateJailBlocksRemaining, estimateNextChurn } from '@/lib/utils/calculations';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { AlertTriangle, Clock } from 'lucide-react';
-import type { NodeRaw } from '@/lib/api/thornode';
 
 interface SlashNodeData {
   nodeAddress: string;
@@ -34,41 +32,16 @@ function formatTimeRemaining(blocks: number): string {
 }
 
 export function SlashMonitor() {
-  const [nodes, setNodes] = useState<NodeRaw[]>([]);
-  const [currentBlockHeight, setCurrentBlockHeight] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: nodes, isLoading, error } = useAllNodes();
 
-  useEffect(() => {
-    const abortController = new AbortController();
-
-    async function fetchData() {
-      try {
-        const [nodesData, constantsData] = await Promise.all([
-          getAllNodes({ signal: abortController.signal }),
-          getNetworkConstants({ signal: abortController.signal })
-        ]);
-        setNodes(nodesData);
-        const activeNodes = nodesData.filter(n => n.status === 'Active');
-        const maxBlockHeight = activeNodes.reduce((max, node) => {
+  const currentBlockHeight = nodes
+    ? nodes
+        .filter((n) => n.status === 'Active')
+        .reduce((max, node) => {
           const nodeBlock = node.active_block_height || 0;
           return nodeBlock > max ? nodeBlock : max;
-        }, 0);
-        setCurrentBlockHeight(maxBlockHeight);
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') return;
-        setError(err instanceof Error ? err.message : 'Failed to fetch node data');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => {
-      abortController.abort();
-      clearInterval(interval);
-    };
-  }, []);
+        }, 0)
+    : 0;
 
   if (isLoading) {
     return (
@@ -81,7 +54,15 @@ export function SlashMonitor() {
   if (error) {
     return (
       <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="text-red-500 text-sm">Error: {error}</div>
+        <div className="text-red-500 text-sm">Error: {error.message}</div>
+      </div>
+    );
+  }
+
+  if (!nodes) {
+    return (
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+        <div className="animate-pulse h-48 bg-zinc-200 dark:bg-zinc-800 rounded" />
       </div>
     );
   }

@@ -181,3 +181,7 @@ export interface THORNameLookupRaw {
 export async function getTHORNameLookup(name: string): Promise<THORNameLookupRaw> {
   return fetchMidgard<THORNameLookupRaw>(`/v2/thorname/lookup/${name}`);
 }
+
+export async function getTHORNameReverseLookup(address: string): Promise<THORNameLookupRaw> {
+  return fetchMidgard<THORNameLookupRaw>(`/v2/thorname/rlookup/${address}`);
+}

@@ -65,6 +65,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             href={item.href}
             onClick={onClose}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100 transition"
+            aria-label={`Navigate to ${item.label} page`}
           >
             {item.icon}
             {item.label}

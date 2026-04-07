@@ -1,17 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { getNetwork } from '@/lib/api/midgard';
+import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
 import { runeToNumber, formatCompactNumber } from '@/lib/utils/formatters';
 import { Shield, Lock, Activity } from 'lucide-react';
-import type { NetworkRaw } from '@/lib/api/midgard';
-
-interface NetworkMetrics {
-  totalBonds: number;
-  totalLiquidity: number;
-  bondToPoolRatio: number;
-  healthStatus: 'healthy' | 'warning' | 'critical';
-}
 
 function calculateNetworkHealth(bondToPoolRatio: number): 'healthy' | 'warning' | 'critical' {
   if (bondToPoolRatio >= 1.5 && bondToPoolRatio <= 3) return 'healthy';
@@ -36,25 +27,7 @@ function getHealthBgColor(status: 'healthy' | 'warning' | 'critical'): string {
 }
 
 export function NetworkSecurityMetrics() {
-  const [network, setNetwork] = useState<NetworkRaw | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const networkData = await getNetwork();
-        setNetwork(networkData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch network data');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchData();
-    const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
-  }, []);
+  const { data: network, error, isLoading } = useNetworkMetrics();
 
   if (isLoading) {
     return (
@@ -67,7 +40,7 @@ export function NetworkSecurityMetrics() {
   if (error || !network) {
     return (
       <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="text-red-500 text-sm">Error: {error || 'No network data'}</div>
+        <div className="text-red-500 text-sm">Error: {error?.message || 'No network data'}</div>
       </div>
     );
   }

@@ -4,6 +4,13 @@ import { calculateBondShare, calculateAPY } from '@/lib/utils/calculations';
 
 export type YieldGuardFlag = 'overbonded' | 'highest_slash' | 'lowest_bond' | 'oldest' | 'leaving';
 
+export interface PooledNodeData {
+  isPooled: boolean;
+  totalProviders: number;
+  otherProviders: { address: string; bond: number; sharePercent: number }[];
+  yourSharePercent: number;
+}
+
 export interface BondPosition {
   nodeAddress: string;
   nodeOperatorAddress: string;
@@ -20,6 +27,7 @@ export interface BondPosition {
   version: string;
   requestedToLeave: boolean;
   yieldGuardFlags?: YieldGuardFlag[];
+  pooledNodeData?: PooledNodeData;
 }
 
 export function extractBondPositions(
@@ -39,6 +47,31 @@ export function extractBondPositions(
       const operatorFee = Number(node.bond_providers.node_operator_fee);
       const netAPY = calculateAPY(bondSharePercent, node.current_award, operatorFee, provider.bond);
       const isJailed = Object.keys(node.jail).length > 0;
+      const providers = node.bond_providers?.providers ?? [];
+      const isPooled = providers.length > 1;
+
+      let pooledNodeData: PooledNodeData | undefined;
+      if (isPooled) {
+        const totalBond = runeToNumber(node.total_bond);
+        const otherProviders = providers
+          .filter((p) => p.bond_address !== address)
+          .map((p) => {
+            const bond = runeToNumber(p.bond);
+            const sharePercent = calculateBondShare(p.bond, node.total_bond);
+            const addr = p.bond_address;
+            const anonymized = addr.length > 12
+              ? `${addr.slice(0, 8)}...${addr.slice(-4)}`
+              : addr;
+            return { address: anonymized, bond, sharePercent };
+          });
+
+        pooledNodeData = {
+          isPooled: true,
+          totalProviders: providers.length,
+          otherProviders,
+          yourSharePercent: bondSharePercent,
+        };
+      }
 
       return {
         nodeAddress: node.node_address,
@@ -55,6 +88,7 @@ export function extractBondPositions(
         jailReason: isJailed ? (node.jail as { reason?: string }).reason : undefined,
         version: node.version,
         requestedToLeave: node.requested_to_leave,
+        pooledNodeData,
       };
     })
     .filter((p): p is NonNullable<typeof p> => p !== null);
