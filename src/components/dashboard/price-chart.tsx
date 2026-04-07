@@ -33,7 +33,7 @@ function formatPrice(value: number): string {
 
 function parsePriceData(raw: RunePriceHistoryRaw): PriceDataPoint[] {
   return raw.intervals.map((interval) => {
-    const date = new Date(Number(interval.startTime) / 1e9);
+    const date = new Date(Number(interval.startTime) * 1000);
     return {
       date: date.toLocaleDateString(undefined, {
         month: 'short',

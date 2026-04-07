@@ -38,7 +38,7 @@ async function calculateAPYHistory(earningsRaw: EarningsHistoryRaw, networkRaw: 
     const bondingEarnings = Number(interval.bondingEarnings);
     const annualizedAPY = (bondingEarnings / totalBondsRune) * 100 * 365;
     
-    const date = new Date(Number(interval.startTime) / 1e9);
+    const date = new Date(Number(interval.startTime) * 1000);
     return {
       date: date.toLocaleDateString(undefined, {
         month: 'short',
