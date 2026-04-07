@@ -39,13 +39,13 @@ thornode-watcher/
 │   │       ├── nodes/          # Node health detail
 │   │       ├── rewards/        # Earnings, APY, PnL, fee impact, auto-compound
 │   │       ├── risk/           # Slash monitor, churn-out risk, unbond tracker
-│   │       └── transactions/   # BOND/UNBOND composer, tx history, watchlist
+│   │       └── transactions/   # BOND/UNBOND composer, tx history, watchlist, recent addresses
 │   ├── components/
-│   │   ├── dashboard/          # 14 domain components (charts, tables, monitors)
+│   │   ├── dashboard/          # 18 domain components (charts, tables, monitors, network comparison)
 │   │   ├── layout/             # sidebar, dashboard-shell, theme-toggle
 │   │   ├── wallet/             # wallet-connect, transaction-preview
 │   │   ├── alerts/             # alert-toast, alert hooks
-│   │   ├── shared/             # address-input, status-badge, export-button, loading-skeleton
+│   │   ├── shared/             # address-input, status-badge, export-button, loading-skeleton, recent-addresses
 │   │   └── ui/                 # shadcn-style primitives (button.tsx)
 │   └── lib/
 │       ├── api/                # THORNode + Midgard API clients (see lib/api/AGENTS.md)
@@ -135,6 +135,12 @@ thornode-watcher/
 - Never hardcode wallet names in UI — use WalletType enum
 
 ## RECENT CHANGES
+- Complete UI/UX overhaul with Network Comparison and Pooled Node details
+- Add NetworkComparisonTable component to compare bond positions vs network averages
+- Add PooledNodeDetails component showing accumulated rewards from all nodes
+- Add useAllNodes, useChurnCountdown, useNetworkMetrics hooks
+- Add RecentAddresses component for quick address switching
+- Add thorchain.no as custom domain, deploy to Vercel
 - `use-bond-positions.ts`: Added Yield Guard flag calculation, skip constants fetch when address is null
 - `position-table.tsx`: Added YieldGuardBadge component with risk flags
 - `risk/page.tsx`: Added YourNodesAtRisk card, improved Your All Positions section

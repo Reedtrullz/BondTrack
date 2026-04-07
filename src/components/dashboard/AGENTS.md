@@ -1,14 +1,15 @@
 # Dashboard Components
 
-**14 components** across 4 categories: data display, charts, risk monitors, transaction tools.
+**18 components** across 5 categories: data display, charts, risk monitors, transaction tools, network comparison.
 
-## DATA DISPLAY (4)
+## DATA DISPLAY (5)
 | Component | Purpose | Key Props |
 |-----------|---------|-----------|
 | `portfolio-summary.tsx` | 4-card grid: total bonded, RUNE price, weighted APY, position count | `totalBonded`, `runePrice`, `weightedAPY`, `positionCount` |
 | `position-table.tsx` | Table of bond positions with share%, fee, APY columns | `positions: BondPosition[]` |
 | `node-status-card.tsx` | Single node detail card with status, bond, slash points, warnings | `position: BondPosition`, `currentBlockHeight?` |
 | `status-badge.tsx` | Color-coded status pill (Active/Standby/Ready/Disabled/Jailed) | `status`, `isJailed?` |
+| `pooled-node-details.tsx` | Shows accumulated rewards from all bonded nodes | `positions: BondPosition[]` |
 
 ## CHARTS (4) — All use Recharts ResponsiveContainer
 | Component | Data Source | Chart Type |
@@ -18,13 +19,19 @@
 | `fee-impact-tracker.tsx` | Earnings + operator fee calc | BarChart |
 | `auto-compound-chart.tsx` | Earnings intervals → cumulative bond | AreaChart |
 
-## RISK MONITORS (4)
+## RISK MONITORS (5)
 | Component | Purpose |
 |-----------|---------|
 | `slash-monitor.tsx` | Per-node slash points (OK/Warning/Critical), jail countdown |
 | `churn-out-risk.tsx` | Bond rank among all active nodes, bottom 33% flagged |
 | `network-security-metrics.tsx` | TVL, bond-to-pool ratio, network health |
 | `unbond-window-tracker.tsx` | Detects when node churns out and unbond is possible |
+| `network-comparison-table.tsx` | Compare your bond positions vs network averages |
+
+## NETWORK COMPARISON (1)
+| Component | Purpose |
+|-----------|---------|
+| `network-comparison-table.tsx` | Compare bond/slash/fee vs network averages for each node |
 
 ## TRANSACTION TOOLS (2)
 | Component | Purpose |

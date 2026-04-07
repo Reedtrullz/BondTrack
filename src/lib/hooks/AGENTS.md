@@ -1,6 +1,6 @@
 # SWR Hooks — Data Fetching Layer
 
-**7 hooks**: `use-bond-positions`, `use-bond-history`, `use-earnings`, `use-network-constants`, `use-rune-price`, `use-watchlist`, `use-wallet`
+**10 hooks**: `use-bond-positions`, `use-bond-history`, `use-earnings`, `use-network-constants`, `use-rune-price`, `use-watchlist`, `use-wallet`, `use-all-nodes`, `use-churn-countdown`, `use-network-metrics`
 
 ## WHERE TO LOOK
 | Need | File |
@@ -12,6 +12,9 @@
 | Network params | `use-network-constants.ts` — returns `int_64_values` from `/constants` |
 | Saved addresses | `use-watchlist.ts` — localStorage persistence |
 | Wallet connection | `use-wallet.ts` — Keplr/XDEFI/Vultisig support |
+| All network nodes | `use-all-nodes.ts` — returns all nodes from THORNode |
+| Churn countdown | `use-churn-countdown.ts` — returns time to next churn |
+| Network metrics | `use-network-metrics.ts` — returns TVL, bond-to-pool ratio, total bond |
 
 ## CONVENTIONS
 
