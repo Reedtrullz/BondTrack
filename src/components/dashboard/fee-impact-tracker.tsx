@@ -27,7 +27,7 @@ export function FeeImpactTracker({ earningsHistory, positions = [] }: FeeImpactT
   const chartData = earningsHistory?.intervals.slice().reverse().map((interval, index) => {
     const earnings = Number(interval.earnings || interval.bondingEarnings) / 1e8;
     const feePaid = calculateOperatorFeePaid(earnings, avgOperatorFeeBps);
-    const date = new Date(Number(interval.endTime));
+    const date = new Date(Number(interval.endTime) / 1e9);
     
     return {
       date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
