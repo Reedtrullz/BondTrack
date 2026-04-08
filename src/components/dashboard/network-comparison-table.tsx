@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { runeToNumber } from '@/lib/utils/formatters';
-import { ArrowUp, ArrowDown, Minus } from 'lucide-react';
+import { ArrowUp, ArrowDown, Minus, Award } from 'lucide-react';
 
 interface NetworkAverages {
   avgBond: number;
@@ -49,6 +49,13 @@ function ComparisonIndicator({ userValue, avgValue, format }: { userValue: numbe
       {format(userValue)} ({isAbove ? '+' : ''}{percentDiff.toFixed(1)}%)
     </span>
   );
+}
+
+function getInfluenceRank(sharePercent: number) {
+  if (sharePercent >= 0.1) return { label: 'Whale', color: 'text-purple-600 dark:text-purple-400', icon: '🐋' };
+  if (sharePercent >= 0.01) return { label: 'Significant', color: 'text-emerald-600 dark:text-emerald-400', icon: '💎' };
+  if (sharePercent >= 0.001) return { label: 'Moderate', color: 'text-blue-600 dark:text-blue-400', icon: '🛡️' };
+  return { label: 'Retail', color: 'text-zinc-500 dark:text-zinc-400', icon: '👤' };
 }
 
 export function NetworkComparisonTable({ address }: { address: string | null }) {
@@ -101,51 +108,62 @@ export function NetworkComparisonTable({ address }: { address: string | null }) 
       </div>
 
       <div className="block md:hidden space-y-3">
-        {positions.map((pos) => (
-          <div key={pos.nodeAddress} className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-3">
-            <div className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
-              {pos.nodeAddress.slice(0, 12)}...{pos.nodeAddress.slice(-8)}
+        {positions.map((pos) => {
+          const node = allNodes?.find(n => n.node_address === pos.nodeAddress);
+          const sharePercent = node ? (pos.bondAmount / runeToNumber(node.total_bond)) * 100 : 0;
+          const rank = getInfluenceRank(sharePercent / 100);
+
+          return (
+            <div key={pos.nodeAddress} className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                  {pos.nodeAddress.slice(0, 12)}...{pos.nodeAddress.slice(-8)}
+                </div>
+                <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${rank.color} bg-zinc-100 dark:bg-zinc-800")}>
+                  <span>{rank.icon} {rank.label}</span>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <MetricRowMobile
+                  label="Bond Amount"
+                  yourValue={`${formatRune(pos.bondAmount)} RUNE`}
+                  avgValue={`${formatRune(networkAverages.avgBond)} RUNE`}
+                  indicator={
+                    <ComparisonIndicator
+                      userValue={pos.bondAmount}
+                      avgValue={networkAverages.avgBond}
+                      format={(v) => `${formatRune(v)} RUNE`}
+                    />
+                  }
+                />
+                <MetricRowMobile
+                  label="Slash Points"
+                  yourValue={String(pos.slashPoints)}
+                  avgValue={formatSlash(networkAverages.avgSlashPoints)}
+                  indicator={
+                    <ComparisonIndicator
+                      userValue={pos.slashPoints}
+                      avgValue={networkAverages.avgSlashPoints}
+                      format={formatSlash}
+                    />
+                  }
+                />
+                <MetricRowMobile
+                  label="Operator Fee"
+                  yourValue={pos.operatorFeeFormatted}
+                  avgValue={formatFee(networkAverages.avgOperatorFee)}
+                  indicator={
+                    <ComparisonIndicator
+                      userValue={pos.operatorFee}
+                      avgValue={networkAverages.avgOperatorFee}
+                      format={formatFee}
+                    />
+                  }
+                />
+              </div>
             </div>
-            <div className="space-y-3">
-              <MetricRowMobile
-                label="Bond Amount"
-                yourValue={`${formatRune(pos.bondAmount)} RUNE`}
-                avgValue={`${formatRune(networkAverages.avgBond)} RUNE`}
-                indicator={
-                  <ComparisonIndicator
-                    userValue={pos.bondAmount}
-                    avgValue={networkAverages.avgBond}
-                    format={(v) => `${formatRune(v)} RUNE`}
-                  />
-                }
-              />
-              <MetricRowMobile
-                label="Slash Points"
-                yourValue={String(pos.slashPoints)}
-                avgValue={formatSlash(networkAverages.avgSlashPoints)}
-                indicator={
-                  <ComparisonIndicator
-                    userValue={pos.slashPoints}
-                    avgValue={networkAverages.avgSlashPoints}
-                    format={formatSlash}
-                  />
-                }
-              />
-              <MetricRowMobile
-                label="Operator Fee"
-                yourValue={pos.operatorFeeFormatted}
-                avgValue={formatFee(networkAverages.avgOperatorFee)}
-                indicator={
-                  <ComparisonIndicator
-                    userValue={pos.operatorFee}
-                    avgValue={networkAverages.avgOperatorFee}
-                    format={formatFee}
-                  />
-                }
-              />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="hidden md:block overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
@@ -156,70 +174,88 @@ export function NetworkComparisonTable({ address }: { address: string | null }) 
               <th className="px-4 py-3 text-right font-medium text-zinc-500">Your Node</th>
               <th className="px-4 py-3 text-right font-medium text-zinc-500">Network Avg</th>
               <th className="px-4 py-3 text-right font-medium text-zinc-500">Difference</th>
+              <th className="px-4 py-3 text-right font-medium text-zinc-500">Influence</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-            {positions.map((pos) => (
-              <tbody key={pos.nodeAddress} className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                <tr className="bg-zinc-50/50 dark:bg-zinc-900/50">
-                  <td
-                    colSpan={4}
-                    className="px-4 py-2 font-mono text-xs text-zinc-600 dark:text-zinc-400"
-                  >
-                    {pos.nodeAddress.slice(0, 12)}...{pos.nodeAddress.slice(-8)}
-                  </td>
-                </tr>
-                <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
-                  <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">Bond Amount</td>
-                  <td className="px-4 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100">
-                    {formatRune(pos.bondAmount)} RUNE
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-zinc-500">
-                    {formatRune(networkAverages.avgBond)} RUNE
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <ComparisonIndicator
+            {positions.map((pos) => {
+              const node = allNodes?.find(n => n.node_address === pos.nodeAddress);
+              const sharePercent = node ? (pos.bondAmount / runeToNumber(node.total_bond)) * 100 : 0;
+              const rank = getInfluenceRank(sharePercent / 100);
+
+              return (
+                <React.Fragment key={pos.nodeAddress}>
+                  <tr className="bg-zinc-50/50 dark:bg-zinc-900/50">
+                    <td
+                      colSpan={5}
+                      className="px-4 py-2 font-mono text-xs text-zinc-600 dark:text-zinc-400"
+                    >
+                      {pos.nodeAddress.slice(0, 12)}...{pos.nodeAddress.slice(-8)}
+                    </td>
+                  </tr>
+                  <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
+                    <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">Bond Amount</td>
+                    <td className="px-4 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100">
+                      {formatRune(pos.bondAmount)} RUNE
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-zinc-500">
+                      {formatRune(networkAverages.avgBond)} RUNE
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <ComparisonIndicator
                       userValue={pos.bondAmount}
                       avgValue={networkAverages.avgBond}
                       format={(v) => `${formatRune(v)} RUNE`}
                     />
-                  </td>
-                </tr>
-                <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
-                  <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">Slash Points</td>
-                  <td className="px-4 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100">
-                    {pos.slashPoints}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-zinc-500">
-                    {formatSlash(networkAverages.avgSlashPoints)}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <ComparisonIndicator
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${rank.color} bg-zinc-100 dark:bg-zinc-800")}>
+                        <span>{rank.icon} {rank.label}</span>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
+                    <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">Slash Points</td>
+                    <td className="px-4 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100">
+                      {pos.slashPoints}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-zinc-500">
+                      {formatSlash(networkAverages.avgSlashPoints)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <ComparisonIndicator
                       userValue={pos.slashPoints}
                       avgValue={networkAverages.avgSlashPoints}
                       format={formatSlash}
                     />
-                  </td>
-                </tr>
-                <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
-                  <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">Operator Fee</td>
-                  <td className="px-4 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100">
-                    {pos.operatorFeeFormatted}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-zinc-500">
-                    {formatFee(networkAverages.avgOperatorFee)}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <ComparisonIndicator
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-zinc-300">-</span>
+                    </td>
+                  </tr>
+                  <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
+                    <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">Operator Fee</td>
+                    <td className="px-4 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100">
+                      {pos.operatorFeeFormatted}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-zinc-500">
+                      {formatFee(networkAverages.avgOperatorFee)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <ComparisonIndicator
                       userValue={pos.operatorFee}
                       avgValue={networkAverages.avgOperatorFee}
                       format={formatFee}
                     />
-                  </td>
-                </tr>
-              </tbody>
-            ))}
-          </tbody>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-zinc-300">-</span>
+                    </td>
+                  </tr>
+                </React.Fragment>
+              );
+            }
+          ))}
         </table>
       </div>
     </div>
