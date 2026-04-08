@@ -5,6 +5,7 @@ import type { BondPosition, YieldGuardFlag } from '@/lib/types/node';
 import { ExportButton } from '@/components/shared/export-button';
 import { formatRuneAmount, formatRuneWithUnit } from '@/lib/utils/formatters';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { Badge } from '@/components/shared/badge';
 import { PooledNodeDetails } from './pooled-node-details';
 import { AlertTriangle, TrendingDown, Clock, UserMinus, Gauge } from 'lucide-react';
 
@@ -48,16 +49,16 @@ const YIELD_GUARD_LABELS: Record<YieldGuardFlag, { label: string; icon: React.Re
 function YieldGuardBadge({ flags }: { flags: YieldGuardFlag[] }) {
   if (flags.length === 0) return null;
 
-  return (
-    <div className="flex flex-wrap gap-1 mt-1">
-      {flags.map((flag) => {
-        const config = YIELD_GUARD_LABELS[flag];
         return (
-          <span\n            key={flag}\n            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${config.color}`}\n            title={config.tooltip}\n          >\n            {config.icon}\n            {config.label}\n          </span>
+          <Badge
+            key={flag}
+            className={config.color}
+            icon={config.icon}
+            title={config.tooltip}
+          >
+            {config.label}
+          </Badge>
         );
-      })}
-    </div>
-  );
 }
 
 export function PositionTable({ positions }: PositionTableProps) {
@@ -169,9 +170,9 @@ export function PositionTable({ positions }: PositionTableProps) {
                 </td>
                 <td className="px-3 py-3 whitespace-nowrap">
                   {pos.pooledNodeData?.isPooled && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                    <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
                       Pooled
-                    </span>
+                    </Badge>
                   )}
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
