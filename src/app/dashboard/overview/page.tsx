@@ -43,28 +43,36 @@ export default function OverviewPage() {
     : 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
-        <Link
-          href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition"
-        >
-          <Plus className="w-4 h-4" />
-          Bond More
-        </Link>
-        <Link
-          href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition"
-        >
-          <Minus className="w-4 h-4" />
-          Unbond
-        </Link>
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex gap-2">
+          <Link
+            href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Bond More
+          </Link>
+          <Link
+            href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition-colors"
+          >
+            <Minus className="w-4 h-4" />
+            Unbond
+          </Link>
+        </div>
+        {positions.length > 0 && (
+          <div className="hidden sm:block">
+            <ExportButton bondPositions={positions} />
+          </div>
+        )}
       </div>
 
       <ActionableAlerts positions={positions} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Main Content Area */}
+        <div className="lg:col-span-8 space-y-6">
           <PortfolioSummary
             totalBonded={totalBonded}
             runePrice={price}
@@ -73,6 +81,7 @@ export default function OverviewPage() {
             positions={positions}
             benchmarks={benchmarks}
           />
+          
           <div className="space-y-6">
             {totalBonded > 0 && weightedAPY > 0 && (
               <RewardProjections
@@ -84,26 +93,28 @@ export default function OverviewPage() {
             <PositionTable positions={positions} />
           </div>
         </div>
-        <div className="space-y-6">
+
+        {/* Side Actions Panel */}
+        <div className="lg:col-span-4 space-y-6">
           <BondOptimizer 
             positions={positions} 
             benchmarks={benchmarks} 
             allNodes={allNodes || []} 
           />
-          {positions.length > 0 && (
-            <div className="flex justify-end">
-              <ExportButton bondPositions={positions} />
-            </div>
-          )}
+          
+          {/* Mobile Only Export */}
+          <div className="sm:hidden flex justify-end">
+            <ExportButton bondPositions={positions} />
+          </div>
         </div>
       </div>
 
       {positions.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-3">
+        <div className="space-y-3 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
             Node Details
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {positions.map((pos) => (
               <NodeStatusCard key={pos.nodeAddress} position={pos} />
             ))}
