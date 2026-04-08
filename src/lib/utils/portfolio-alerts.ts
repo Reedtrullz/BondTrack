@@ -8,7 +8,7 @@ export interface PortfolioAlert {
   severity: AlertSeverity;
   message: string;
   actionLabel?: string;
-  actionLink?: string;
+  actionLink?: string; // This should now be a relative path, handled by the component
 }
 
 /**

@@ -1,9 +1,10 @@
 import { formatRuneWithUnit } from '@/lib/utils/formatters';
-import { TrendingUp, DollarSign, Activity, Coins, ShieldCheck } from 'lucide-react';
+import { TrendingUp, DollarSign, Activity, Coins, ShieldCheck, Info } from 'lucide-react';
 import { calculatePortfolioHealth, getGradeColor } from '@/lib/utils/health-score';
 import { getYieldPerformanceColor } from '@/lib/utils/yield-benchmarks';
 import type { BondPosition } from '@/lib/types/node';
 import { YieldBenchmarks } from '@/lib/utils/yield-benchmarks';
+import { useState } from 'react';
 
 interface PortfolioSummaryProps {
   totalBonded: number;
@@ -52,9 +53,30 @@ export function PortfolioSummary({ totalBonded, runePrice, weightedAPY, position
       <SummaryCard
         icon={<ShieldCheck className="w-5 h-5" />}
         label="Portfolio Health"
-        value={<span className={`font-bold ${getGradeColor(health.grade)}`}>{health.grade}</span>}
-        subValue={health.reason}
+        value={<HealthGrade grade={health.grade} reason={health.reason} />}
       />
+    </div>
+  );
+}
+
+function HealthGrade({ grade, reason }: { grade: string; reason: string }) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <div className="relative group inline-block cursor-help">
+      <span className={`font-bold ${getGradeColor(grade)}`}>{grade}</span>
+      
+      {/* Tooltip for Health Grade */}
+      <div 
+        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-900 text-white text-[10px] rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50"
+      >
+        <div className="flex items-center gap-1 mb-1 text-zinc-400 font-bold uppercase tracking-tighter">
+          <Info className="w-3 h-3" />
+          Health Breakdown
+        </div>
+        <p className="leading-relaxed text-zinc-300">{reason}</p>
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-900 rotate-45" />
+      </div>
     </div>
   );
 }
