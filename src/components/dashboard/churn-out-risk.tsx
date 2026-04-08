@@ -60,16 +60,20 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
 
   if (nodesWithRank.length === 0) {
     return (
-      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Churn-Out Risk</h3>
-          <TrendingDown className="w-4 h-4 text-zinc-400" />
-        </div>
-        <div className="py-8 text-center text-zinc-500 text-sm">
-          No active nodes in your positions
-        </div>
-      </div>
-    );
+      <div className=\"p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900\">\
+        <div className=\"flex items-center justify-between mb-4\">\
+          <h3 className=\"font-semibold text-zinc-900 dark:text-zinc-100\">Churn-Out Risk</h3>\
+          <TrendingDown className=\"w-4 h-4 text-zinc-400\" />\
+        </div>\
+        <div className=\"flex flex-col items-center justify-center py-12 text-center\">\
+          <TrendingDown className=\"w-8 h-8 text-zinc-300 dark:text-zinc-600 mb-3\" />\
+          <p className=\"text-zinc-600 dark:text-zinc-400 text-sm font-medium\">No active nodes found</p>\
+          <p className=\"text-zinc-500 dark:text-zinc-500 text-xs max-w-[200px] mt-1\">\
+            Active nodes are ranked by bond amount. Only bonded positions with 'Active' status are monitored for churn risk.\
+          </p>\
+        </div>\
+      </div>\
+    );\
   }
 
   return (
@@ -85,8 +89,7 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
           <div className="text-xs text-red-600 dark:text-red-400">At Risk (Bottom 33%)</div>
         </div>
         <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-900/20 text-center">
-          <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{safeNodes.length}</div>
-          <div className="text-xs text-emerald-600 dark:text-emerald-400">Safe</div>
+      <div className=\"grid grid-cols-3 gap-2 mb-4\">\n        <div className=\"p-2 rounded bg-red-50 dark:bg-red-900/20 text-center\">\n          <div className=\"text-lg font-bold text-red-600 dark:text-red-400\">{atRiskNodes.length}</div>\n          <div className=\"text-xs text-red-600 dark:text-red-400\">At Risk</div>\n        </div>\n        <div className=\"p-2 rounded bg-emerald-50 dark:bg-emerald-900/20 text-center\">\n          <div className=\"text-lg font-bold text-emerald-600 dark:text-emerald-400\">{safeNodes.length}</div>\n          <div className=\"text-xs text-emerald-600 dark:text-emerald-400\">Safe</div>\n        </div>\n        <div className=\"p-2 rounded bg-zinc-100 dark:bg-zinc-800 text-center\">\n          <div className=\"text-lg font-bold text-zinc-600 dark:text-zinc-400\">{nodesWithRank.length}</div>\n          <div className=\"text-xs text-zinc-600 dark:text-zinc-400\">Total</div>\n        </div>\n      </div>
         </div>
       </div>
 

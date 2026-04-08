@@ -52,19 +52,23 @@ export function UnbondWindowTracker({ positions }: { positions: BondPosition[] }
   // Show empty state when no bonded positions
   if (!positions || positions.length === 0) {
     return (
-      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Unbond Window</h3>
-          <div className="flex items-center gap-1 text-xs text-zinc-500">
-            <Clock className="w-3.5 h-3.5" />
-            <span>--</span>
-          </div>
-        </div>
-        <div className="text-center text-zinc-500 py-8">
-          No bonded positions found
-        </div>
-      </div>
-    );
+      <div className=\"p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900\">\
+        <div className=\"flex items-center justify-between mb-4\">\
+          <h3 className=\"font-semibold text-zinc-900 dark:text-zinc-100\">Unbond Window</h3>\
+          <div className=\"flex items-center gap-1 text-xs text-zinc-500\">\
+            <Clock className=\"w-3.5 h-3.5\" />\
+            <span>--</span>\
+          </div>\
+        </div>\
+        <div className=\"flex flex-col items-center justify-center py-12 text-center\">\
+          <Lock className=\"w-8 h-8 text-zinc-300 dark:text-zinc-600 mb-3\" />\
+          <p className=\"text-zinc-600 dark:text-zinc-400 text-sm font-medium\">No active bond positions</p>\
+          <p className=\"text-zinc-500 dark:text-zinc-500 text-xs max-w-[200px] mt-1\">\
+            Bond RUNE to a Node Operator to start earning rewards and track your unbond window.\
+          </p>\
+        </div>\
+      </div>\
+    );\
   }
 
   if (!nodes) {
