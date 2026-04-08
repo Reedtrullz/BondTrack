@@ -1,21 +1,54 @@
 'use client';
 
-import { useAllNodes } from '@/lib/hooks/use-all-nodes';
+import { useMemo } from 'react';
+import { type BondPosition } from '@/lib/types/node';
+import { useNodeRankings, type NodeRanking } from '@/lib/hooks/use-node-rankings';
 import { formatRuneAmount } from '@/lib/utils/formatters';
 import { AlertTriangle, TrendingDown } from 'lucide-react';
 
-interface NodeWithRank {
-  nodeAddress: string;
-  totalBond: string;
+interface NodeWithRank extends NodeRanking {
+  totalBond: number;
   status: string;
-  rank: number;
-  total: number;
-  percentile: number;
-  isAtRisk: boolean;
 }
 
-export function ChurnOutRisk() {
-  const { data: nodes, error, isLoading } = useAllNodes();
+interface ChurnOutRiskProps {
+  positions: BondPosition[];
+}
+
+export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
+  const rankings = useNodeRankings(positions);
+
+  // Merge rankings with position data
+  const nodesWithRank: NodeWithRank[] = useMemo(() => {
+    if (rankings.length === 0) {
+      return [];
+    }
+
+    return positions
+      .filter((pos) => pos.status === 'Active')
+      .map((position) => {
+        const ranking = rankings.find((r) => r.nodeAddress === position.nodeAddress);
+        if (!ranking) {
+          return null;
+        }
+        return {
+          ...ranking,
+          totalBond: position.bondAmount,
+          status: position.status,
+        };
+      })
+      .filter((n): n is NodeWithRank => n !== null)
+      .sort((a, b) => {
+        // Sort by bond amount (highest first)
+        const bondA = a.totalBond;
+        const bondB = b.totalBond;
+        return bondB - bondA;
+      });
+  }, [positions, rankings]);
+
+  const atRiskNodes = nodesWithRank.filter((n) => n.isAtRisk);
+  const safeNodes = nodesWithRank.filter((n) => !n.isAtRisk);
+  const isLoading = rankings.length === 0 && positions.length > 0;
 
   if (isLoading) {
     return (
@@ -25,47 +58,19 @@ export function ChurnOutRisk() {
     );
   }
 
-  if (error) {
+  if (nodesWithRank.length === 0) {
     return (
       <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="text-red-500 text-sm">Error: {error.message}</div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Churn-Out Risk</h3>
+          <TrendingDown className="w-4 h-4 text-zinc-400" />
+        </div>
+        <div className="py-8 text-center text-zinc-500 text-sm">
+          No active nodes in your positions
+        </div>
       </div>
     );
   }
-
-  if (!nodes) {
-    return (
-      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="animate-pulse h-48 bg-zinc-200 dark:bg-zinc-800 rounded" />
-      </div>
-    );
-  }
-
-  const activeNodes = nodes.filter(n => n.status === 'Active' && n.total_bond);
-  const sortedNodes = [...activeNodes].sort((a, b) => {
-    const bondA = BigInt(a.total_bond || '0');
-    const bondB = BigInt(b.total_bond || '0');
-    return bondA > bondB ? -1 : bondA < bondB ? 1 : 0;
-  });
-
-  const nodesWithRank: NodeWithRank[] = sortedNodes.map((node, index) => {
-    const rank = index + 1;
-    const total = sortedNodes.length;
-    const percentile = total > 0 ? ((total - rank + 1) / total) * 100 : 0;
-    const atRisk = rank > Math.floor(total * 0.67);
-    return {
-      nodeAddress: node.node_address,
-      totalBond: node.total_bond,
-      status: node.status,
-      rank,
-      total,
-      percentile,
-      isAtRisk: atRisk,
-    };
-  });
-
-  const atRiskNodes = nodesWithRank.filter(n => n.isAtRisk);
-  const safeNodes = nodesWithRank.filter(n => !n.isAtRisk);
 
   return (
     <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
@@ -86,11 +91,11 @@ export function ChurnOutRisk() {
       </div>
 
       <div className="text-xs text-zinc-500 mb-3">
-        Active nodes sorted by bond • Bottom 33% flagged as at risk for churn-out
+        Your active nodes sorted by bond • Bottom 33% flagged as at risk for churn-out
       </div>
 
       <div className="space-y-2 max-h-64 overflow-y-auto">
-        {nodesWithRank.slice(0, 10).map((node) => (
+        {nodesWithRank.map((node) => (
           <div key={node.nodeAddress} className="flex items-center justify-between p-2 rounded bg-zinc-50 dark:bg-zinc-800/50 text-sm">
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
@@ -103,16 +108,18 @@ export function ChurnOutRisk() {
             <div className="flex items-center gap-3 text-xs">
               <span className="text-zinc-500">{formatRuneAmount(node.totalBond)} RUNE</span>
               <span className={node.isAtRisk ? 'text-red-600 dark:text-red-400 font-medium' : 'text-emerald-600 dark:text-emerald-400'}>
-                #{node.rank}/{node.total}
+                #{node.rank}/{node.totalNodes}
               </span>
-              <span className="text-zinc-400">{node.percentile.toFixed(0)}%</span>
+              <span className="text-zinc-400">{node.percentile}%</span>
             </div>
           </div>
         ))}
       </div>
 
       <div className="mt-3 text-xs text-zinc-500">
-        Showing top 10 nodes by bond • {atRiskNodes.length} at risk of churn-out
+        {atRiskNodes.length > 0
+          ? `${atRiskNodes.length} of your nodes at risk of churn-out`
+          : `All your active nodes are safe`}
       </div>
     </div>
   );

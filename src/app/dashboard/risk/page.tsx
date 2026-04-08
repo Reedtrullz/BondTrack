@@ -2,12 +2,63 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
-import { AlertTriangle, Shield, Gauge, Clock, UserMinus, TrendingDown } from 'lucide-react';
+import { AlertTriangle, Shield, Gauge, Clock, UserMinus, TrendingDown, DollarSign, Hourglass } from 'lucide-react';
 import { SlashMonitor } from '@/components/dashboard/slash-monitor';
 import { ChurnOutRisk } from '@/components/dashboard/churn-out-risk';
 import { NetworkSecurityMetrics } from '@/components/dashboard/network-security-metrics';
 import { UnbondWindowTracker } from '@/components/dashboard/unbond-window-tracker';
 import type { YieldGuardFlag } from '@/lib/types/node';
+
+function EarningStatusSummary({ positions }: { positions: ReturnType<typeof useBondPositions>['positions'] }) {
+  const activeCount = positions.filter(p => p.status === 'Active').length;
+  const standbyCount = positions.filter(p => p.status === 'Standby').length;
+  const jailedCount = positions.filter(p => p.isJailed).length;
+  const totalBonded = positions.reduce((sum, p) => sum + p.bondAmount, 0);
+
+  if (positions.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="p-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20">
+        <div className="flex items-center gap-2 mb-1">
+          <DollarSign className="w-4 h-4 text-emerald-600" />
+          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Earning</span>
+        </div>
+        <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{activeCount}</div>
+        <div className="text-xs text-emerald-600/70">Active nodes</div>
+      </div>
+
+      <div className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+        <div className="flex items-center gap-2 mb-1">
+          <Hourglass className="w-4 h-4 text-amber-600" />
+          <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Not Earning</span>
+        </div>
+        <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{standbyCount}</div>
+        <div className="text-xs text-amber-600/70">Standby nodes</div>
+      </div>
+
+      <div className="p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+        <div className="flex items-center gap-2 mb-1">
+          <AlertTriangle className="w-4 h-4 text-red-600" />
+          <span className="text-xs font-medium text-red-700 dark:text-red-400">Jailed</span>
+        </div>
+        <div className="text-2xl font-bold text-red-600 dark:text-red-400">{jailedCount}</div>
+        <div className="text-xs text-red-600/70">Cannot earn</div>
+      </div>
+
+      <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50">
+        <div className="flex items-center gap-2 mb-1">
+          <Shield className="w-4 h-4 text-zinc-600" />
+          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-400">Total Bonded</span>
+        </div>
+        <div className="text-2xl font-bold text-zinc-700 dark:text-zinc-300">{totalBonded.toLocaleString()}</div>
+        <div className="text-xs text-zinc-500">RUNE</div>
+      </div>
+    </div>
+  );
+}
 
 const YIELD_GUARD_CONFIG: Record<YieldGuardFlag, { icon: React.ReactNode; color: string; label: string }> = {
   overbonded: { icon: <Gauge className="w-4 h-4" />, color: 'text-orange-500', label: 'Overbonded' },
@@ -116,11 +167,13 @@ export default function RiskPage() {
 
       <YourNodesAtRisk positions={positions} />
 
+      <EarningStatusSummary positions={positions} />
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <SlashMonitor />
-        <ChurnOutRisk />
-        <NetworkSecurityMetrics />
-        <UnbondWindowTracker />
+        <SlashMonitor positions={positions} />
+        <ChurnOutRisk positions={positions} />
+        <NetworkSecurityMetrics positions={positions} />
+        <UnbondWindowTracker positions={positions} />
       </div>
 
       {address && (

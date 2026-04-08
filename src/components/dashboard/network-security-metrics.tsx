@@ -2,7 +2,8 @@
 
 import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
 import { runeToNumber, formatCompactNumber } from '@/lib/utils/formatters';
-import { Shield, Lock, Activity } from 'lucide-react';
+import type { BondPosition } from '@/lib/types/node';
+import { Shield, Lock, Activity, User } from 'lucide-react';
 
 function calculateNetworkHealth(bondToPoolRatio: number): 'healthy' | 'warning' | 'critical' {
   if (bondToPoolRatio >= 1.5 && bondToPoolRatio <= 3) return 'healthy';
@@ -26,7 +27,7 @@ function getHealthBgColor(status: 'healthy' | 'warning' | 'critical'): string {
   }
 }
 
-export function NetworkSecurityMetrics() {
+export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition[] }) {
   const { data: network, error, isLoading } = useNetworkMetrics();
 
   if (isLoading) {
@@ -49,6 +50,10 @@ export function NetworkSecurityMetrics() {
   const totalLiquidity = runeToNumber(network.totalLiquidityRune);
   const bondToPoolRatio = totalLiquidity > 0 ? totalBonds / totalLiquidity : 0;
   const healthStatus = calculateNetworkHealth(bondToPoolRatio);
+
+  // Calculate user's share of network bonds if positions provided
+  const userTotalBond = positions?.reduce((sum, pos) => sum + pos.bondAmount, 0) ?? 0;
+  const userSharePercent = totalBonds > 0 ? (userTotalBond / totalBonds) * 100 : 0;
 
   return (
     <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
@@ -108,6 +113,23 @@ export function NetworkSecurityMetrics() {
             <span>Current: {bondToPoolRatio.toFixed(2)}x</span>
           </div>
         </div>
+
+        {userSharePercent > 0 && (
+          <div className="border-t border-zinc-200 dark:border-zinc-700 pt-3 mt-3">
+            <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 mb-2">
+              <User className="w-4 h-4" />
+              <span>Your Share of Network Bonds</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                {userSharePercent.toFixed(3)}%
+              </span>
+              <span className="text-xs text-zinc-500">
+                of {formatCompactNumber(totalBonds)} RUNE
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-3 text-xs text-zinc-500">

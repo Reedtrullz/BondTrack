@@ -1,18 +1,13 @@
 'use client';
 
-import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { useCurrentBlockHeight } from '@/lib/hooks/use-current-block-height';
 import { calculateJailBlocksRemaining, estimateNextChurn } from '@/lib/utils/calculations';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { AlertTriangle, Clock } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle } from 'lucide-react';
+import { BondPosition } from '@/lib/types/node';
 
-interface SlashNodeData {
-  nodeAddress: string;
-  status: string;
-  slashPoints: number;
-  isJailed: boolean;
-  jailReleaseHeight: number;
-  jailReason: string;
+interface SlashMonitorProps {
+  positions: BondPosition[];
 }
 
 function getSlashSeverity(slashPoints: number): { level: 'ok' | 'warning' | 'critical'; label: string; color: string } {
@@ -32,65 +27,29 @@ function formatTimeRemaining(blocks: number): string {
   return `${minutes}m`;
 }
 
-export function SlashMonitor() {
-  const { data: nodes, isLoading, error } = useAllNodes();
+export function SlashMonitor({ positions }: SlashMonitorProps) {
   const { currentBlockHeight: liveBlockHeight } = useCurrentBlockHeight();
+  const currentBlockHeight = liveBlockHeight || 0;
 
-  const currentBlockHeight = liveBlockHeight || (nodes
-    ? nodes
-        .filter((n) => n.status === 'Active')
-        .reduce((max, node) => {
-          const nodeBlock = node.active_block_height || 0;
-          return nodeBlock > max ? nodeBlock : max;
-        }, 0)
-    : 0);
+  const slashNodes = positions
+    .filter(position => position.slashPoints > 0)
+    .map(position => ({
+      nodeAddress: position.nodeAddress,
+      status: position.status,
+      slashPoints: position.slashPoints,
+      isJailed: position.isJailed,
+      jailReleaseHeight: position.jailReleaseHeight,
+      jailReason: position.jailReason || '',
+    }))
+    .sort((a, b) => b.slashPoints - a.slashPoints);
 
-  if (isLoading) {
-    return (
-      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="animate-pulse h-48 bg-zinc-200 dark:bg-zinc-800 rounded" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="text-red-500 text-sm">Error: {error.message}</div>
-      </div>
-    );
-  }
-
-  if (!nodes) {
-    return (
-      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="animate-pulse h-48 bg-zinc-200 dark:bg-zinc-800 rounded" />
-      </div>
-    );
-  }
-
-  const slashNodes: SlashNodeData[] = nodes.map((node) => {
-    const jail = node.jail as { release_height?: number; reason?: string } | Record<string, never>;
-    const releaseHeight = typeof jail?.release_height === 'number' ? jail.release_height : 0;
-    const hasJailReason = typeof jail?.reason === 'string';
-    const isJailed = releaseHeight > currentBlockHeight;
-    return {
-      nodeAddress: node.node_address,
-      status: node.status,
-      slashPoints: node.slash_points,
-      isJailed,
-      jailReleaseHeight: releaseHeight,
-      jailReason: hasJailReason ? jail.reason ?? '' : '',
-    };
-  });
-
-  const sortedNodes = [...slashNodes].sort((a, b) => b.slashPoints - a.slashPoints);
-  
-  const criticalNodes = sortedNodes.filter(n => n.slashPoints >= 200);
-  const warningNodes = sortedNodes.filter(n => n.slashPoints >= 50 && n.slashPoints < 200);
-  const jailedNodes = sortedNodes.filter(n => n.isJailed);
+  const criticalNodes = slashNodes.filter(n => n.slashPoints >= 200);
+  const warningNodes = slashNodes.filter(n => n.slashPoints >= 50 && n.slashPoints < 200);
+  const jailedNodes = slashNodes.filter(n => n.isJailed);
 
   const nextChurn = estimateNextChurn(currentBlockHeight);
+
+  const hasSlashPoints = slashNodes.length > 0;
 
   return (
     <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
@@ -102,23 +61,30 @@ export function SlashMonitor() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 mb-4">
-        <div className="p-2 rounded bg-red-50 dark:bg-red-900/20 text-center">
-          <div className="text-lg font-bold text-red-600 dark:text-red-400">{criticalNodes.length}</div>
-          <div className="text-xs text-red-600 dark:text-red-400">Critical</div>
+      {!hasSlashPoints ? (
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <CheckCircle className="w-8 h-8 text-emerald-500 mb-2" />
+          <p className="text-zinc-600 dark:text-zinc-400 text-sm">No slash points on your nodes</p>
         </div>
-        <div className="p-2 rounded bg-orange-50 dark:bg-orange-900/20 text-center">
-          <div className="text-lg font-bold text-orange-600 dark:text-orange-400">{warningNodes.length}</div>
-          <div className="text-xs text-orange-600 dark:text-orange-400">Warning</div>
-        </div>
-        <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-900/20 text-center">
-          <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{jailedNodes.length}</div>
-          <div className="text-xs text-emerald-600 dark:text-emerald-400">Jailed</div>
-        </div>
-      </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 mb-4">
+            <div className="p-2 rounded bg-red-50 dark:bg-red-900/20 text-center">
+              <div className="text-lg font-bold text-red-600 dark:text-red-400">{criticalNodes.length}</div>
+              <div className="text-xs text-red-600 dark:text-red-400">Critical</div>
+            </div>
+            <div className="p-2 rounded bg-orange-50 dark:bg-orange-900/20 text-center">
+              <div className="text-lg font-bold text-orange-600 dark:text-orange-400">{warningNodes.length}</div>
+              <div className="text-xs text-orange-600 dark:text-orange-400">Warning</div>
+            </div>
+            <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-900/20 text-center">
+              <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{jailedNodes.length}</div>
+              <div className="text-xs text-emerald-600 dark:text-emerald-400">Jailed</div>
+            </div>
+          </div>
 
-      <div className="space-y-2 max-h-64 overflow-y-auto">
-        {sortedNodes.slice(0, 10).map((node) => {
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {slashNodes.map((node) => {
           const severity = getSlashSeverity(node.slashPoints);
           const jailBlocksRemaining = node.isJailed 
             ? calculateJailBlocksRemaining(node.jailReleaseHeight, currentBlockHeight)
@@ -150,8 +116,10 @@ export function SlashMonitor() {
       </div>
 
       <div className="mt-3 text-xs text-zinc-500">
-        Showing top 10 nodes by slash points • Severity: OK (0-49), Warning (50-199), Critical (200+)
+        Severity: OK (0-49), Warning (50-199), Critical (200+)
       </div>
+        </>
+      )}
     </div>
   );
 }

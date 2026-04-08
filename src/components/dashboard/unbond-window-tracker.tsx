@@ -4,6 +4,7 @@ import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { useNetworkConstants } from '@/lib/hooks/use-network-constants';
 import { estimateNextChurn } from '@/lib/utils/calculations';
 import { StatusBadge } from '@/components/shared/status-badge';
+import type { BondPosition } from '@/lib/types/node';
 import { Clock, Unlock, Lock, AlertCircle } from 'lucide-react';
 
 interface NodeUnbondStatus {
@@ -25,7 +26,7 @@ function formatTimeRemaining(blocks: number): string {
   return `${minutes}m`;
 }
 
-export function UnbondWindowTracker() {
+export function UnbondWindowTracker({ positions }: { positions: BondPosition[] }) {
   const { data: nodes, error: nodesError, isLoading: nodesLoading } = useAllNodes();
   const { constants, isLoading: constantsLoading, error: constantsError } = useNetworkConstants();
 
@@ -48,6 +49,24 @@ export function UnbondWindowTracker() {
     );
   }
 
+  // Show empty state when no bonded positions
+  if (!positions || positions.length === 0) {
+    return (
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Unbond Window</h3>
+          <div className="flex items-center gap-1 text-xs text-zinc-500">
+            <Clock className="w-3.5 h-3.5" />
+            <span>--</span>
+          </div>
+        </div>
+        <div className="text-center text-zinc-500 py-8">
+          No bonded positions found
+        </div>
+      </div>
+    );
+  }
+
   if (!nodes) {
     return (
       <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
@@ -58,15 +77,23 @@ export function UnbondWindowTracker() {
 
   const currentBlockHeight = constants?.last_observed_height || constants?.block_height || 0;
 
-  const bondedNodes = nodes.filter(n => n.status === 'Active' || n.status === 'Standby');
+  // Create a map of node address to signer membership from all nodes
+  const nodeSignerMap = new Map<string, string[] | null>();
+  nodes.forEach(node => {
+    nodeSignerMap.set(node.node_address, node.signer_membership);
+  });
+
+  // Filter to only user's nodes from positions and map with signer membership
+  const bondedPositions = positions.filter(p => p.status === 'Active' || p.status === 'Standby');
   
-  const nodesWithUnbondStatus: NodeUnbondStatus[] = bondedNodes.map(node => {
-    const isSigning = !!(node.signer_membership && node.signer_membership.length > 0);
-    const canUnbond = node.status === 'Standby' && isSigning;
+  const nodesWithUnbondStatus: NodeUnbondStatus[] = bondedPositions.map(pos => {
+    const signerMembership = nodeSignerMap.get(pos.nodeAddress) ?? null;
+    const isSigning = !!(signerMembership && signerMembership.length > 0);
+    const canUnbond = pos.status === 'Standby' && isSigning;
     return {
-      nodeAddress: node.node_address,
-      status: node.status,
-      signerMembership: node.signer_membership,
+      nodeAddress: pos.nodeAddress,
+      status: pos.status,
+      signerMembership,
       isSigning,
       canUnbond,
     };
