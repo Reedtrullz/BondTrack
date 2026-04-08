@@ -35,7 +35,7 @@ async function calculateAPYHistory(earningsRaw: EarningsHistoryRaw, networkRaw: 
   }
 
   const apyData: APYDataPoint[] = intervals.map((interval) => {
-    const bondingEarnings = Number(interval.bondingEarnings);
+    const bondingEarnings = Number(interval.bondingEarnings) / 1e8;
     const annualizedAPY = (bondingEarnings / totalBondsRune) * 100 * 365;
     
     const date = new Date(Number(interval.startTime) * 1000);
@@ -80,8 +80,10 @@ export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
       setLoading(true);
       setError(null);
       try {
+        const apiInterval = interval === 'day' ? 'hour' : 'day';
+        const apiCount = interval === 'day' ? 24 : interval === 'week' ? 7 : 30;
         const [earningsRaw, networkRaw] = await Promise.all([
-          getEarningsHistory(interval, count),
+          getEarningsHistory(apiInterval, apiCount),
           getNetwork(),
         ]);
         const apyData = await calculateAPYHistory(earningsRaw, networkRaw);
@@ -94,7 +96,7 @@ export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
       }
     }
     fetchData();
-  }, [interval, count]);
+  }, [interval]);
 
   return (
     <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
