@@ -25,7 +25,6 @@ interface CustomTooltipProps {
 }
 
 function formatAPY(value: number): string {
-  // Use more decimals if the value is very small to avoid "0.00%"
   if (value > 0 && value < 1) {
     return `${value.toFixed(4)}%`;
   }
@@ -40,20 +39,29 @@ async function calculateAPYHistory(earningsRaw: EarningsHistoryRaw, networkRaw: 
     return [];
   }
 
-  const apyData: APYDataPoint[] = intervals.map((interval) => {
-    const bondingEarnings = Number(interval.bondingEarnings) / 1e8;
-    // Annualize based on the interval duration (assume 'day' for this history)
-    const annualizedAPY = (bondingEarnings / totalBondsRune) * 100 * 365;
+  // We calculate a rolling average to smooth out the volatile daily earnings
+  // and avoid the "0.00%" problem caused by single-day dips.
+  const windowSize = 7;
+  const apyData: APYDataPoint[] = [];
+
+  for (let i = 0; i < intervals.length; i++) {
+    const start = Math.max(0, i - windowSize + 1);
+    const subset = intervals.slice(start, i + 1);
     
-    const date = new Date(Number(interval.startTime) * 1000);
-    return {
+    const sumEarnings = subset.reduce((acc, curr) => acc + Number(curr.bondingEarnings), 0);
+    const avgDailyEarnings = (sumEarnings / subset.length) / 1e8;
+    
+    const annualizedAPY = (avgDailyEarnings / totalBondsRune) * 100 * 365;
+    
+    const date = new Date(Number(intervals[i].startTime) * 1000);
+    apyData.push({
       date: date.toLocaleDateString(undefined, {
         month: 'short',
         day: 'numeric',
       }),
       apy: Math.max(0, annualizedAPY),
-    };
-  });
+    });
+  }
 
   return apyData.reverse();
 }
@@ -95,7 +103,6 @@ export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
           getNetwork(),
         ]);
 
-        // Use the ground-truth bondingAPY from the network API for the badge
         const networkApy = parseFloat(networkRaw.bondingAPY || '0');
         setCurrentApy(networkApy);
 
@@ -118,7 +125,7 @@ export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
           <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
             Estimated Network APY
           </h3>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Network-wide Yield</p>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Rolling 7-Day Trend</p>
         </div>
         
         {currentApy !== null && (
