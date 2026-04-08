@@ -2,7 +2,6 @@
 
 import { useMemo, Fragment } from 'react';
 import type { BondPosition, YieldGuardFlag } from '@/lib/types/node';
-import { ExportButton } from '@/components/shared/export-button';
 import { formatRuneAmount, formatRuneWithUnit } from '@/lib/utils/formatters';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Badge } from '@/components/shared/badge';
@@ -92,8 +91,7 @@ export function PositionTable({ positions }: PositionTableProps) {
           <span className="text-sm text-zinc-500">
             {positions.length} node{positions.length !== 1 ? 's' : ''} · {totalBonded.toFixed(2)} RUNE total
           </span>
-          <ExportButton bondPositions={positions} />
-        </div>
+        </div}
       </div>
 
       <div className="block md:hidden space-y-3">

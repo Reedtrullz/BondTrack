@@ -28,16 +28,7 @@ export default function OverviewPage() {
 
   if (isGlobalLoading) {
     return (
-      <div className="max-w-7xl mx-auto space-y-6 p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 rounded-lg bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
-          ))}
-        </div>
-        <div className="h-64 rounded-lg bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
-      </div>
-    );
-  }
+      <div className=\"max-w-7xl mx-auto space-y-6 p-4\">\n        <div className=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4\">\n          {[...Array(4)].map((_, i) => (\n            <div key={i} className=\"h-24 rounded-lg bg-zinc-200 dark:bg-zinc-800 animate-pulse\" />\n          ))}\n        </div>\n        <div className=\"h-64 rounded-lg bg-zinc-200 dark:bg-zinc-800 animate-pulse\" />\n      </div>\n    );\n  }
 
   const totalBonded = positions.reduce((sum, p) => sum + p.bondAmount, 0);
   const weightedAPY = positions.length > 0
@@ -45,88 +36,4 @@ export default function OverviewPage() {
     : 0;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 p-4">
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex gap-2">
-          <Link
-            href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Bond More
-          </Link>
-          <Link
-            href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition-colors"
-          >
-            <Minus className="w-4 h-4" />
-            Unbond
-          </Link>
-        </div>
-        {positions.length > 0 && (
-          <div className="hidden sm:block">
-            <ExportButton bondPositions={positions} />
-          </div>
-        )}
-      </div>
-
-      <ActionableAlerts positions={positions} />
-
-      {/* Main Dashboard Grid - Fixed 3:1 Ratio */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Main Content Area (75% width on desktop) */}
-        <div className="lg:col-span-3 space-y-8">
-          <PortfolioSummary
-            totalBonded={totalBonded}
-            runePrice={price}
-            weightedAPY={weightedAPY}
-            positionCount={positions.length}
-            positions={positions}
-            benchmarks={benchmarks}
-          />
-          
-          <div className="space-y-8">
-            {totalBonded > 0 && weightedAPY > 0 && (
-              <RewardProjections
-                totalBonded={totalBonded}
-                weightedAPY={weightedAPY}
-                runePrice={price}
-              />
-            )}
-            <PositionTable positions={positions} />
-          </div>
-        </div>
-
-        {/* Side Actions Panel (25% width on desktop) */}
-        <div className="lg:col-span-1 space-y-6">
-          <BondOptimizer 
-            positions={positions} 
-            benchmarks={benchmarks} 
-            allNodes={allNodes || []} 
-            isLoading={allNodesLoading || benchmarksLoading}
-          />
-          
-          {/* Mobile Only Export - hidden on sm+ */}
-          <div className="sm:hidden flex justify-end">
-            <ExportButton bondPositions={positions} />
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Details Section */}
-      {positions.length > 0 && (
-        <div className="space-y-4 pt-8 border-t border-zinc-200 dark:border-zinc-800">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-            Node Details
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {positions.map((pos) => (
-              <NodeStatusCard key={pos.nodeAddress} position={pos} />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+    <div className=\"max-w-7xl mx-auto space-y-8 p-4\">\n      {/* Header Section */}\n      <div className=\"flex flex-col sm:flex-row sm:items-center justify-between gap-4\">\n        <div className=\"flex gap-2\">\n          <Link\n            href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}\n            className=\"inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-colors\"\n          >\n            <Plus className=\"w-4 h-4\" />\n            Bond More\n          </Link>\n          <Link\n            href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}\n            className=\"inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition-colors\"\n          >\n            <Minus className=\"w-4 h-4\" />\n            Unbond\n          </Link>\n        </div>\n        {positions.length > 0 && (\n          <div className=\"flex justify-end\">\n            <ExportButton bondPositions={positions} />\n          </div>\n        )}\n      </div>\n\n      <ActionableAlerts positions={positions} />\n\n      {/* Main Dashboard Grid - Fixed 3:1 Ratio */}\n      <div className=\"grid grid-cols-1 lg:grid-cols-4 gap-8\">\n        {/* Main Content Area (75% width on desktop) */}\n        <div className=\"lg:col-span-3 space-y-8\">\n          <PortfolioSummary\n            totalBonded={totalBonded}\n            runePrice={price}\n            weightedAPY={weightedAPY}\n            positionCount={positions.length}\n            positions={positions}\n            benchmarks={benchmarks}\n          />\n          \n          <div className=\"space-y-8\">\n            {totalBonded > 0 && weightedAPY > 0 && (\n              <RewardProjections\n                totalBonded={totalBonded}\n                weightedAPY={weightedAPY}\n                runePrice={price}\n              />\n            )}\n            <PositionTable positions={positions} />\n          </div>\n        </div>\n\n        {/* Side Actions Panel (25% width on desktop) */}\n        <div className=\"lg:col-span-1 space-y-6\">\n          <BondOptimizer \n            positions={positions} \n            benchmarks={benchmarks} \n            allNodes={allNodes || []} \n            isLoading={allNodesLoading || benchmarksLoading}\n          />\n        </div>\n      </div>\n\n      {/* Bottom Details Section */}\n      {positions.length > 0 && (\n        <div className=\"space-y-4 pt-8 border-t border-zinc-200 dark:border-zinc-800\">\n          <h2 className=\"text-lg font-semibold text-zinc-900 dark:text-zinc-100\">\n            Node Details\n          </h2>\n          <div className=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6\">\n            {positions.map((pos) => (\n              <NodeStatusCard key={pos.nodeAddress} position={pos} />\n            ))}\n          </div>\n        </div>\n      )}\n    </div>\n  );\n}
