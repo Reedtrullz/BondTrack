@@ -67,14 +67,17 @@ export function SlashMonitor() {
     );
   }
 
-  const slashNodes: SlashNodeData[] = nodes.map((node) => ({
-    nodeAddress: node.node_address,
-    status: node.status,
-    slashPoints: node.slash_points,
-    isJailed: node.preflight_status?.status !== 'Ready',
-    jailReleaseHeight: 'release_height' in node.jail ? node.jail.release_height : 0,
-    jailReason: 'reason' in node.jail ? node.jail.reason : '',
-  }));
+  const slashNodes: SlashNodeData[] = nodes.map((node) => {
+    const hasJailKeys = 'release_height' in node.jail && 'reason' in node.jail;
+    return {
+      nodeAddress: node.node_address,
+      status: node.status,
+      slashPoints: node.slash_points,
+      isJailed: hasJailKeys,
+      jailReleaseHeight: hasJailKeys ? node.jail.release_height : 0,
+      jailReason: hasJailKeys ? node.jail.reason : '',
+    };
+  });
 
   const sortedNodes = [...slashNodes].sort((a, b) => b.slashPoints - a.slashPoints);
   
