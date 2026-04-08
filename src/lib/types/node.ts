@@ -23,6 +23,7 @@ export interface BondPosition {
   totalBond: number;
   slashPoints: number;
   isJailed: boolean;
+  jailReleaseHeight: number;
   jailReason?: string;
   version: string;
   requestedToLeave: boolean;
@@ -32,7 +33,8 @@ export interface BondPosition {
 
 export function extractBondPositions(
   nodes: NodeRaw[],
-  address: string
+  address: string,
+  currentBlockHeight: number
 ): BondPosition[] {
   return nodes
     .map((node) => {
@@ -42,11 +44,14 @@ export function extractBondPositions(
 
       if (!provider) return null;
 
+      const jailObj = node.jail as { release_height?: number; reason?: string } | Record<string, never>;
+      const jailReleaseHeight = typeof jailObj?.release_height === 'number' ? jailObj.release_height : 0;
+      const isJailed = Object.keys(node.jail).length > 0 && jailReleaseHeight > currentBlockHeight;
+
       const bondAmount = runeToNumber(provider.bond);
       const bondSharePercent = calculateBondShare(provider.bond, node.total_bond);
       const operatorFee = Number(node.bond_providers.node_operator_fee);
       const netAPY = calculateAPY(bondSharePercent, node.current_award, operatorFee, provider.bond);
-      const isJailed = Object.keys(node.jail).length > 0;
       const providers = node.bond_providers?.providers ?? [];
       const isPooled = providers.length > 1;
 
@@ -85,7 +90,8 @@ export function extractBondPositions(
         totalBond: runeToNumber(node.total_bond),
         slashPoints: node.slash_points,
         isJailed,
-        jailReason: isJailed ? (node.jail as { reason?: string }).reason : undefined,
+        jailReleaseHeight,
+        jailReason: isJailed ? jailObj?.reason : undefined,
         version: node.version,
         requestedToLeave: node.requested_to_leave,
         pooledNodeData,

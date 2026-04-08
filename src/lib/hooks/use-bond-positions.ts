@@ -67,7 +67,7 @@ export function useBondPositions(address: string | null) {
   );
 
   const positions: BondPosition[] = nodes && address
-    ? extractBondPositions(nodes, address)
+    ? extractBondPositions(nodes, address, nodes[0]?.active_block_height || 0)
     : [];
 
   const optimalBond = constants?.int_64_values?.OptimalBondD
