@@ -9,7 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { getEarningsHistory, getNetwork, type EarningsHitoryRaw, type NetworkRaw } from '@/lib/api/midgard';
+import { getEarningsHistory, getNetwork, type EarningsHistoryRaw, type NetworkRaw } from '@/lib/api/midgard';
 import { runeToNumber } from '@/lib/utils/formatters';
 import { TrendingUp } from 'lucide-react';
 
@@ -31,7 +31,7 @@ function formatAPY(value: number): string {
   return `${value.toFixed(2)}%`;
 }
 
-async function calculateAPYHistory(earningsRaw: any, networkRaw: any): Promise<APYDataPoint[]> {
+async function calculateAPYHistory(earningsRaw: EarningsHistoryRaw, networkRaw: NetworkRaw): Promise<APYDataPoint[]> {
   const intervals = earningsRaw.intervals || [];
   const totalBondsRune = Number(networkRaw.bondMetrics?.totalActiveBond || '0');
 
@@ -39,25 +39,15 @@ async function calculateAPYHistory(earningsRaw: any, networkRaw: any): Promise<A
     return [];
   }
 
-  // We use the provided Network APY as the a baseline, but calculate
-  // a relative trend based on the earnings history.
   const baselineApy = parseFloat(networkRaw.bondingAPY || '0');
   
-  // Calculate the average daily earnings over the requested period
   const totalPeriodEarnings = intervals.reduce((sum, curr) => sum + Number(curr.bondingEarnings), 0);
   const avgDailyEarnings = (totalPeriodEarnings / intervals.length) / 1e8;
-  const periodApy = (avgDailyEarnings / totalBondsRune) * 100 * 365;
 
-  // Since daily snapshots of APY are effectively zero due to the scale of total bond,
-  // we create a synthetic trend line that oscillates around the baseline APY 
-  // based on the ratio of daily earnings to the period average.
-  // This preserves the "shape" of the rewards while staying in a realistic range.
-  
   return intervals.map((interval) => {
     const dailyEarnings = Number(interval.bondingEarnings) / 1e8;
     const ratio = avgDailyEarnings !== 0 ? dailyEarnings / avgDailyEarnings : 1;
     
-    // We blend the ground-truth baseline with the daily relative performance
     const pointApy = baselineApy * ratio;
     
     const date = new Date(Number(interval.startTime) * 1000);
