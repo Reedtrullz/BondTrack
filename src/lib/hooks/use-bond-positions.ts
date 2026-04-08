@@ -2,6 +2,7 @@ import useSWR from 'swr';
 import { getAllNodes, type NodeRaw } from '@/lib/api/thornode';
 import { getNetworkConstants } from '@/lib/api/thornode';
 import { extractBondPositions, type BondPosition } from '@/lib/types/node';
+import { getHealth } from '@/lib/api/midgard';
 
 export type YieldGuardFlag = 'overbonded' | 'highest_slash' | 'lowest_bond' | 'oldest' | 'leaving';
 
@@ -66,8 +67,16 @@ export function useBondPositions(address: string | null) {
     { revalidateOnFocus: false, refreshInterval: 300_000 }
   );
 
+  const { data: healthData } = useSWR(
+    'health',
+    () => getHealth(),
+    { refreshInterval: 30_000 }
+  );
+
+  const currentBlockHeight = healthData?.lastThorNode?.height ?? nodes?.[0]?.active_block_height ?? 0;
+
   const positions: BondPosition[] = nodes && address
-    ? extractBondPositions(nodes, address, nodes[0]?.active_block_height || 0)
+    ? extractBondPositions(nodes, address, currentBlockHeight)
     : [];
 
   const optimalBond = constants?.int_64_values?.OptimalBondD

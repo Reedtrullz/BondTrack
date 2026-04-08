@@ -185,3 +185,11 @@ export async function getTHORNameLookup(name: string): Promise<THORNameLookupRaw
 export async function getTHORNameReverseLookup(address: string): Promise<THORNameLookupRaw> {
   return fetchMidgard<THORNameLookupRaw>(`/v2/thorname/rlookup/${address}`);
 }
+
+export interface HealthRaw {
+  lastThorNode: { height: number };
+}
+
+export async function getHealth(): Promise<HealthRaw> {
+  return fetchMidgard<HealthRaw>('/v2/health');
+}

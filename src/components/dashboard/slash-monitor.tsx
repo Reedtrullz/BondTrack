@@ -1,6 +1,7 @@
 'use client';
 
 import { useAllNodes } from '@/lib/hooks/use-all-nodes';
+import { useCurrentBlockHeight } from '@/lib/hooks/use-current-block-height';
 import { calculateJailBlocksRemaining, estimateNextChurn } from '@/lib/utils/calculations';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { AlertTriangle, Clock } from 'lucide-react';
@@ -33,15 +34,16 @@ function formatTimeRemaining(blocks: number): string {
 
 export function SlashMonitor() {
   const { data: nodes, isLoading, error } = useAllNodes();
+  const { currentBlockHeight: liveBlockHeight } = useCurrentBlockHeight();
 
-  const currentBlockHeight = nodes
+  const currentBlockHeight = liveBlockHeight || (nodes
     ? nodes
         .filter((n) => n.status === 'Active')
         .reduce((max, node) => {
           const nodeBlock = node.active_block_height || 0;
           return nodeBlock > max ? nodeBlock : max;
         }, 0)
-    : 0;
+    : 0);
 
   if (isLoading) {
     return (
