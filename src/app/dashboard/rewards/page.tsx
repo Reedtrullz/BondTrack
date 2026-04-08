@@ -11,6 +11,7 @@ import { FeeImpactTracker } from '@/components/dashboard/fee-impact-tracker';
 import { AutoCompoundChart } from '@/components/dashboard/auto-compound-chart';
 import { APYChart } from '@/components/dashboard/apy-chart';
 import { PriceChart } from '@/components/dashboard/price-chart';
+import { RewardVelocity } from '@/components/dashboard/reward-velocity';
 
 export default function RewardsPage() {
   const searchParams = useSearchParams();
@@ -45,38 +46,19 @@ export default function RewardsPage() {
   const totalOperatorFee = positionsWithRewards.reduce((sum, pos) => sum + pos.operatorFeePaid, 0);
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Rewards & PnL</h2>
-
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-          <div className="text-sm text-zinc-500">Per-Churn Reward (est.)</div>
-          <div className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mt-1 font-mono">
-            {totalPerChurnReward.toFixed(4)} RUNE
-          </div>
-        </div>
-        <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-          <div className="text-sm text-zinc-500">Operator Fees (per churn)</div>
-          <div className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mt-1 font-mono">
-            {totalOperatorFee.toFixed(4)} RUNE
-          </div>
-        </div>
-        <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-          <div className="text-sm text-zinc-500">RUNE Price</div>
-          <div className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mt-1 font-mono">
-            ${price.toFixed(4)}
-          </div>
-        </div>
-        <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-          <div className="text-sm text-zinc-500">USD Value Per Churn</div>
-          <div className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mt-1 font-mono">
-            ${(totalPerChurnReward * price).toFixed(2)}
-          </div>
-        </div>
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Rewards & PnL</h2>
       </div>
 
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <RewardVelocity 
+        totalPerChurnReward={totalPerChurnReward} 
+        totalOperatorFee={totalOperatorFee} 
+        price={price} 
+      />
+
+      <div className="space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <APYChart />
           <PriceChart />
         </div>
@@ -100,7 +82,7 @@ export default function RewardsPage() {
 
       {positionsWithRewards.length > 0 && (
         <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
-          <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
+          <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
             <h3 className="font-medium text-zinc-900 dark:text-zinc-100">Per-Churn Reward Breakdown</h3>
           </div>
 
