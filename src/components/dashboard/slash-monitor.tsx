@@ -68,14 +68,15 @@ export function SlashMonitor() {
   }
 
   const slashNodes: SlashNodeData[] = nodes.map((node) => {
-    const hasJailKeys = 'release_height' in node.jail && 'reason' in node.jail;
+    const jail = node.jail as { release_height?: number; reason?: string } | Record<string, never>;
+    const isJailed = typeof jail?.release_height === 'number' && typeof jail?.reason === 'string';
     return {
       nodeAddress: node.node_address,
       status: node.status,
       slashPoints: node.slash_points,
-      isJailed: hasJailKeys,
-      jailReleaseHeight: hasJailKeys ? node.jail.release_height : 0,
-      jailReason: hasJailKeys ? node.jail.reason : '',
+      isJailed,
+      jailReleaseHeight: isJailed ? jail.release_height ?? 0 : 0,
+      jailReason: isJailed ? jail.reason ?? '' : '',
     };
   });
 
