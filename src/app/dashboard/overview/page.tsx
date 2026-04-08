@@ -14,19 +14,17 @@ import { ActionableAlerts } from '@/components/dashboard/actionable-alerts';
 import { BondOptimizer } from '@/components/dashboard/bond-optimizer';
 
 import { ExportButton } from '@/components/shared/export-button';
-import { Plus, Minus } from 'lucide-react';
+import { Plus, Minus, Sparkles } from 'lucide-react';
 
 export default function OverviewPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
-  const { positions, isLoading: positionsLoading } = useBondPositions(address);
+  const { positions, isLoading } = useBondPositions(address);
   const { price, isLoading: priceLoading } = useRunePrice();
   const { benchmarks, isLoading: benchmarksLoading } = useYieldBenchmarks();
   const { data: allNodes, isLoading: allNodesLoading } = useAllNodes();
 
-  const isGlobalLoading = positionsLoading || priceLoading || benchmarksLoading || allNodesLoading;
-
-  if (isGlobalLoading) {
+  if (isLoading || priceLoading || benchmarksLoading || allNodesLoading) {
     return (
       <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 py-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -48,21 +46,27 @@ export default function OverviewPage() {
     <div className="max-w-7xl mx-auto space-y-8 px-4 sm:px-6 py-4">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex gap-2">
-          <Link
-            href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Bond More
-          </Link>
-          <Link
-            href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition-colors"
-          >
-            <Minus className="w-4 h-4" />
-            Unbond
-          </Link>
+        <div className="flex items-center gap-3">
+          <div className="flex gap-2">
+            <Link
+              href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Bond More
+            </Link>
+            <Link
+              href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition-colors"
+            >
+              <Minus className="w-4 h-4" />
+              Unbond
+            </Link>
+          </div>
+          <div className="flex items-center gap-1 px-2 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded text-[10px] font-bold uppercase tracking-wider border border-emerald-100 dark:border-emerald-800">
+            <Sparkles className="w-3 h-3" />
+            Live Update
+          </div>
         </div>
         {positions.length > 0 && (
           <div className="flex justify-end">
@@ -106,6 +110,11 @@ export default function OverviewPage() {
             allNodes={allNodes || []} 
             isLoading={allNodesLoading || benchmarksLoading}
           />
+          
+          {/* Mobile Only Export - hidden on sm+ */}
+          <div className="sm:hidden flex justify-end">
+            <ExportButton bondPositions={positions} />
+          </div>
         </div>
       </div>
 
