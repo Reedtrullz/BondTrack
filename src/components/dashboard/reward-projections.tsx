@@ -136,14 +136,16 @@ export function RewardProjections({
                     </div>
                   </div>
                 </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
 
-      <div className="text-xs text-zinc-400 pt-1">
-        Projections assume constant APY of {weightedAPY.toFixed(2)}% with
-        auto-compounding. Calculated as Net rewards after operator fees.
-      </div>
+          <div className="text-xs text-zinc-400 pt-1">
+            Projections assume constant APY of {weightedAPY.toFixed(2)}% with
+            auto-compounding. Calculated as Net rewards after operator fees.
+          </div>
+        </div>
+      )}
     </div>
   );
 }

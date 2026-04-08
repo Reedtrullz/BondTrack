@@ -30,10 +30,10 @@ export function UnbondWindowTracker({ positions }: { positions: BondPosition[] }
   const { data: nodes, error: nodesError, isLoading: nodesLoading } = useAllNodes();
   const { constants, isLoading: constantsLoading, error: constantsError } = useNetworkConstants();
 
-  const isLoading = nodesLoading || constantsLoading;
+  const isLoadingFull = nodesLoading || constantsLoading;
   const error = nodesError?.message || constantsError?.message || null;
 
-  if (isLoading) {
+  if (isLoadingFull) {
     return (
       <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <div className="animate-pulse h-48 bg-zinc-200 dark:bg-zinc-800 rounded" />
@@ -49,26 +49,25 @@ export function UnbondWindowTracker({ positions }: { positions: BondPosition[] }
     );
   }
 
-  // Show empty state when no bonded positions
   if (!positions || positions.length === 0) {
     return (
-      <div className=\"p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900\">\
-        <div className=\"flex items-center justify-between mb-4\">\
-          <h3 className=\"font-semibold text-zinc-900 dark:text-zinc-100\">Unbond Window</h3>\
-          <div className=\"flex items-center gap-1 text-xs text-zinc-500\">\
-            <Clock className=\"w-3.5 h-3.5\" />\
-            <span>--</span>\
-          </div>\
-        </div>\
-        <div className=\"flex flex-col items-center justify-center py-12 text-center\">\
-          <Lock className=\"w-8 h-8 text-zinc-300 dark:text-zinc-600 mb-3\" />\
-          <p className=\"text-zinc-600 dark:text-zinc-400 text-sm font-medium\">No active bond positions</p>\
-          <p className=\"text-zinc-500 dark:text-zinc-500 text-xs max-w-[200px] mt-1\">\
-            Bond RUNE to a Node Operator to start earning rewards and track your unbond window.\
-          </p>\
-        </div>\
-      </div>\
-    );\
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Unbond Window</h3>
+          <div className="flex items-center gap-1 text-xs text-zinc-500">
+            <Clock className="w-3.5 h-3.5" />
+            <span>--</span>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <Lock className="w-8 h-8 text-zinc-300 dark:text-zinc-600 mb-3" />
+          <p className="text-zinc-600 dark:text-zinc-400 text-sm font-medium">No active bond positions</p>
+          <p className="text-zinc-500 dark:text-zinc-500 text-xs max-w-[200px] mt-1">
+            Bond RUNE to a Node Operator to start earning rewards and track your unbond window.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (!nodes) {
@@ -81,13 +80,11 @@ export function UnbondWindowTracker({ positions }: { positions: BondPosition[] }
 
   const currentBlockHeight = constants?.last_observed_height || constants?.block_height || 0;
 
-  // Create a map of node address to signer membership from all nodes
   const nodeSignerMap = new Map<string, string[] | null>();
   nodes.forEach(node => {
     nodeSignerMap.set(node.node_address, node.signer_membership);
   });
 
-  // Filter to only user's nodes from positions and map with signer membership
   const bondedPositions = positions.filter(p => p.status === 'Active' || p.status === 'Standby');
   
   const nodesWithUnbondStatus: NodeUnbondStatus[] = bondedPositions.map(pos => {

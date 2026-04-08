@@ -1,3 +1,5 @@
+'use client';
+
 import { useMemo, Fragment } from 'react';
 import type { BondPosition, YieldGuardFlag } from '@/lib/types/node';
 import { ExportButton } from '@/components/shared/export-button';
@@ -80,19 +82,17 @@ export function PositionTable({ positions }: PositionTableProps) {
   }
 
   return (
-    <div className=\"space-y-4\">\
-      <div className=\"flex items-center justify-between\">\
-        <h2 className=\"text-lg font-semibold text-zinc-900 dark:text-zinc-100\">\
-          Bonded Positions\
-        </h2>\
-        <div className=\"flex items-center gap-4\">\
-          <span className=\"text-sm text-zinc-500\">\
-            {positions.length} node{positions.length !== 1 ? 's' : ''} · {totalBonded.toFixed(2)} RUNE total\
-          </span>\
-          <ExportButton bondPositions={positions} />\
-        </div>\
-      </div>\
-    </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+          Bonded Positions
+        </h2>
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-zinc-500">
+            {positions.length} node{positions.length !== 1 ? 's' : ''} · {totalBonded.toFixed(2)} RUNE total
+          </span>
+          <ExportButton bondPositions={positions} />
+        </div>
       </div>
 
       <div className="block md:hidden space-y-3">

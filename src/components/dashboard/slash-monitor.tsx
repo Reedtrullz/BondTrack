@@ -103,7 +103,7 @@ export function SlashMonitor({ positions }: SlashMonitorProps) {
                   <div className="flex items-center gap-3 sm:gap-3 ml-0 sm:ml-auto">
                     {node.isJailed && jailBlocksRemaining > 0 && (
                       <div className="flex items-center gap-1 text-xs text-red-500">
-                        <AlertTriangle className=\"w-3 h-3\" />
+                        <AlertTriangle className="w-3 h-3" />
                         <span>{formatTimeRemaining(jailBlocksRemaining)}</span>
                       </div>
                     )}
