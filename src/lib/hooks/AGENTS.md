@@ -1,6 +1,6 @@
 # SWR Hooks — Data Fetching Layer
 
-**11 hooks**: `use-bond-positions`, `use-bond-history`, `use-earnings`, `use-network-constants`, `use-rune-price`, `use-watchlist`, `use-wallet`, `use-all-nodes`, `use-churn-countdown`, `use-network-metrics`, `use-current-block-height`
+**12 hooks**: `use-bond-positions`, `use-bond-history`, `use-earnings`, `use-network-constants`, `use-rune-price`, `use-watchlist`, `use-wallet`, `use-all-nodes`, `use-churn-countdown`, `use-network-metrics`, `use-current-block-height`, `use-node-rankings`
 
 ## WHERE TO LOOK
 | Need | File |
@@ -16,6 +16,7 @@
 | Churn countdown | `use-churn-countdown.ts` — returns time to next churn |
 | Network metrics | `use-network-metrics.ts` — returns TVL, bond-to-pool ratio, total bond |
 | Current block height | `use-current-block-height.ts` — returns real-time block height from Midgard `/v2/health` |
+| Node rankings | `use-node-rankings.ts` — computes user's node rank in active set, percentile, at-risk status |
 
 ## CONVENTIONS
 

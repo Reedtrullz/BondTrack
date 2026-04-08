@@ -79,6 +79,7 @@ thornode-watcher/
 - Slash point monitoring (per your nodes)
 - Churn-out risk (your ranking vs all active)
 - Unbond window tracker
+- **Incentive Pendulum** - shows Node/LP reward split, effective security, bond-to-pool ratio
 
 ## WHERE TO LOOK
 | Task | Location |
@@ -148,6 +149,10 @@ thornode-watcher/
 - `risk/page.tsx`: Added YourNodesAtRisk card, improved Your All Positions section
 - `rewards/page.tsx`: Fixed bond history empty states, timestamps divide by 1e9
 - `pnl-dashboard.tsx`: Manual initial bond input with localStorage
+- **Risk dashboard overhaul**: Refactor all components to show user's nodes only (not network-wide)
+- **useNodeRankings hook**: Computes user's node rank in active set, percentile, at-risk status
+- **Incentive Pendulum card**: Shows Node/LP reward split, effective security, pendulum status
+- **EarningStatusSummary**: Quick view of Active (earning) vs Standby (not earning) vs Jailed
 
 ## KNOWN ISSUES
 - Bond history may show empty for addresses that should have transactions — check `getActions()` type=bond filter

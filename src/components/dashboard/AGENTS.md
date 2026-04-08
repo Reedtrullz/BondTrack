@@ -22,10 +22,10 @@
 ## RISK MONITORS (5)
 | Component | Purpose |
 |-----------|---------|
-| `slash-monitor.tsx` | Per-node slash points (OK/Warning/Critical), jail status with live countdown using real block height from Midgard |
-| `churn-out-risk.tsx` | Bond rank among all active nodes, bottom 33% flagged |
-| `network-security-metrics.tsx` | TVL, bond-to-pool ratio, network health |
-| `unbond-window-tracker.tsx` | Detects when node churns out and unbond is possible |
+| `slash-monitor.tsx` | Your nodes' slash points (OK/Warning/Critical), jail countdown. Shows only your bonded nodes. |
+| `churn-out-risk.tsx` | Your nodes' rank in active set, bottom 33% flagged as at-risk. Shows only your nodes with ranking. |
+| `network-security-metrics.tsx` | **Incentive Pendulum** - pendulum status (Node/LP Favored), estimated reward split, effective security (bottom 2/3 nodes), bond-to-pool ratio. |
+| `unbond-window-tracker.tsx` | Your nodes' unbond eligibility (can unbond vs locked), next churn countdown. Shows only your nodes. |
 | `network-comparison-table.tsx` | Compare your bond positions vs network averages |
 
 ## NETWORK COMPARISON (1)
