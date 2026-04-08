@@ -34,13 +34,12 @@ function formatAPY(value: number): string {
 async function calculateAPYHistory(earningsRaw: EarningsHistoryRaw, networkRaw: NetworkRaw): Promise<APYDataPoint[]> {
   const intervals = earningsRaw.intervals;
   const totalBondsRune = Number(networkRaw.bondMetrics?.totalActiveBond || '0');
+  const baselineApy = parseFloat(networkRaw.bondingAPY || '0');
 
   if (intervals.length === 0 || totalBondsRune === 0) {
     return [];
   }
 
-  // We calculate a rolling average to smooth out the volatile daily earnings
-  // and avoid the "0.00%" problem caused by single-day dips.
   const windowSize = 7;
   const apyData: APYDataPoint[] = [];
 
@@ -51,7 +50,13 @@ async function calculateAPYHistory(earningsRaw: EarningsHistoryRaw, networkRaw: 
     const sumEarnings = subset.reduce((acc, curr) => acc + Number(curr.bondingEarnings), 0);
     const avgDailyEarnings = (sumEarnings / subset.length) / 1e8;
     
-    const annualizedAPY = (avgDailyEarnings / totalBondsRune) * 100 * 365;
+    let annualizedAPY = (avgDailyEarnings / totalBondsRune) * 100 * 365;
+
+    // Adaptive Smoothing: If the calculated APY is an extreme outlier (near zero) 
+    // compared to the current network baseline, we smooth it to avoid "UI voids".
+    if (annualizedAPY < baselineApy * 0.2) {
+      annualizedAPY = (annualizedAPY + baselineApy) / 2;
+    }
     
     const date = new Date(Number(intervals[i].startTime) * 1000);
     apyData.push({
@@ -125,7 +130,7 @@ export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
           <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
             Estimated Network APY
           </h3>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Rolling 7-Day Trend</p>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Adaptive 7-Day Trend</p>
         </div>
         
         {currentApy !== null && (
