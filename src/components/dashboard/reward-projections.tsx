@@ -1,6 +1,3 @@
-'use client';
-
-import { NETWORK } from '@/lib/config';
 import { formatRuneAmount } from '@/lib/utils/formatters';
 import { TrendingUp, Calendar, Clock } from 'lucide-react';
 
@@ -77,14 +74,9 @@ function calculateProjections(
   });
 }
 
-// Helper to format small projection numbers without rounding to 0.00
 function formatProjectionAmount(amount: number, timeframe: string): string {
   if (amount === 0) return '0.00';
-  
-  // Use more decimals for shorter timeframes to avoid 0.00
   const decimals = timeframe === 'Daily' ? 8 : timeframe === 'Weekly' ? 6 : 4;
-  
-  // Use toFixed but remove trailing zeros for a cleaner look
   return parseFloat(amount.toFixed(decimals)).toString();
 }
 
@@ -132,14 +124,14 @@ export function RewardProjections({
                     <div className="flex justify-between items-center">
                       <div className="text-xs text-zinc-500">Net Reward</div>
                       <div className="text-sm font-semibold font-mono text-emerald-600 dark:text-emerald-400">
-                        +{formatProjectionAmount(proj.netRuneReward, proj.timeframe)}
+                        +ᚱ {formatProjectionAmount(proj.netRuneReward, proj.timeframe)}
                       </div>
                     </div>
 
                     <div className="flex justify-between items-center">
                       <div className="text-xs text-zinc-400">Fee Leakage</div>
                       <div className="text-xs font-mono text-zinc-500">
-                        -{formatProjectionAmount(proj.feeLeakage, proj.timeframe)}
+                        -ᚱ {formatProjectionAmount(proj.feeLeakage, proj.timeframe)}
                       </div>
                     </div>
 
