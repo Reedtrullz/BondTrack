@@ -42,6 +42,11 @@ export default function OverviewPage() {
     ? positions.reduce((sum, p) => sum + p.netAPY * p.bondAmount, 0) / totalBonded
     : 0;
 
+  // Calculate average portfolio fee for realistic projections
+  const averageFeeBps = positions.length > 0
+    ? positions.reduce((sum, p) => sum + (p.operatorFeeBps || 0) * p.bondAmount, 0) / totalBonded
+    : 0;
+
   return (
     <div className="max-w-7xl mx-auto space-y-8 px-4 sm:px-6 py-4">
       {/* Header Section */}
@@ -96,6 +101,7 @@ export default function OverviewPage() {
                 totalBonded={totalBonded}
                 weightedAPY={weightedAPY}
                 runePrice={price}
+                averageFeeBps={averageFeeBps}
               />
             )}
             <PositionTable positions={positions} />
