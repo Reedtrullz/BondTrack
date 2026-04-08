@@ -10,6 +10,8 @@ import { UnbondWindowTracker } from '@/components/dashboard/unbond-window-tracke
 import { RiskHeatmap } from '@/components/dashboard/risk-heatmap';
 import type { YieldGuardFlag } from '@/lib/types/node';
 import { useState } from 'react';
+import { generatePortfolioAlerts } from '@/lib/utils/portfolio-alerts';
+import { cn } from '@/lib/utils';
 
 function EarningStatusSummary({ positions }: { positions: ReturnType<typeof useBondPositions>['positions'] }) {
   const activeCount = positions.filter(p => p.status === 'Active').length;
@@ -71,6 +73,7 @@ const YIELD_GUARD_CONFIG: Record<YieldGuardFlag, { icon: React.ReactNode; color:
 };
 
 function YourNodesAtRisk({ positions }: { positions: ReturnType<typeof useBondPositions>['positions'] }) {
+  const alerts = generatePortfolioAlerts(positions);
   const atRiskPositions = positions.filter(p => p.yieldGuardFlags && p.yieldGuardFlags.length > 0);
   
   if (positions.length === 0) {
@@ -117,35 +120,58 @@ function YourNodesAtRisk({ positions }: { positions: ReturnType<typeof useBondPo
         </div>
       ) : (
         <div className="space-y-2">
-          {atRiskPositions.map(pos => (
-            <div 
-              key={pos.nodeAddress} 
-              className="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="font-mono text-sm text-zinc-700 dark:text-zinc-300 truncate">
-                  {pos.nodeAddress.slice(0, 14)}...{pos.nodeAddress.slice(-6)}
+          {atRiskPositions.map(pos => {
+            // Find the specific alert for this node's primary risk
+            const primaryFlag = pos.yieldGuardFlags?.[0];
+            const alert = alerts.find(a => {
+              if (primaryFlag === 'highest_slash' && a.type === 'SLASH') return true;
+              if (primaryFlag === 'lowest_bond' && a.type === 'CHURN') return true;
+              if (pos.isJailed && a.type === 'JAIL') return true;
+              return false;
+            });
+
+            return (
+              <div 
+                key={pos.nodeAddress} 
+                className="flex flex-col p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 transition-all"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="font-mono text-sm text-zinc-700 dark:text-zinc-300 truncate">
+                      {pos.nodeAddress.slice(0, 14)}...{pos.nodeAddress.slice(-6)}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      {pos.yieldGuardFlags?.map(flag => {
+                        const config = YIELD_GUARD_CONFIG[flag];
+                        return (
+                          <span 
+                            key={flag}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${config.color} bg-zinc-100 dark:bg-zinc-700`}
+                            title={config.label}
+                          >
+                            {config.icon}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="text-sm text-zinc-500 shrink-0 ml-2">
+                    {pos.bondAmount.toLocaleString()} RUNE
+                  </div>
                 </div>
-                <div className="flex gap-1 shrink-0">
-                  {pos.yieldGuardFlags?.map(flag => {
-                    const config = YIELD_GUARD_CONFIG[flag];
-                    return (
-                      <span 
-                        key={flag}
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${config.color} bg-zinc-100 dark:bg-zinc-700`}
-                        title={config.label}
-                      >
-                        {config.icon}
-                      </span>
-                    );
-                  })}
-                </div>
+                {alert && (
+                  <div className="flex items-start gap-2 px-2 py-1.5 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                    <div className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight">
+                      Action
+                    </div>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 italic">
+                      {alert.suggestion}
+                    </p>
+                  </div>
+                )}
               </div>
-              <div className="text-sm text-zinc-500 shrink-0 ml-2">
-                {pos.bondAmount.toLocaleString()} RUNE
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -204,7 +230,7 @@ export default function RiskPage() {
               <Shield className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
               <p>No bond positions found for this address</p>
             </div>
-          ) : (
+            ) : (
             <div className="space-y-3">
               {positions.map((pos) => (
                 <div 

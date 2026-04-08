@@ -7,8 +7,9 @@ export interface PortfolioAlert {
   type: 'SLASH' | 'JAIL' | 'CHURN' | 'SATELLITE';
   severity: AlertSeverity;
   message: string;
+  suggestion: string; // Prescriptive action
   actionLabel?: string;
-  actionLink?: string; // This should now be a relative path, handled by the component
+  actionLink?: string;
 }
 
 /**
@@ -27,6 +28,7 @@ export function generatePortfolioAlerts(positions: BondPosition[]): PortfolioAle
       type: 'JAIL',
       severity: 'critical',
       message: `${jailedNodes.length} of your nodes are currently JAILED. Your bond is not earning rewards.`,
+      suggestion: 'Wait for jail release or investigate node operator status.',
       actionLabel: 'View Risk Details',
       actionLink: '/dashboard/risk'
     });
@@ -40,6 +42,7 @@ export function generatePortfolioAlerts(positions: BondPosition[]): PortfolioAle
       type: 'SLASH',
       severity: 'warning',
       message: `High slash points detected on ${highSlashNodes.length} node(s). Risk of jail is elevated.`,
+      suggestion: 'Consider reducing bond on these nodes to mitigate potential loss.',
       actionLabel: 'Check Slash Monitor',
       actionLink: '/dashboard/risk'
     });
@@ -53,6 +56,7 @@ export function generatePortfolioAlerts(positions: BondPosition[]): PortfolioAle
       type: 'CHURN',
       severity: 'warning',
       message: `${churnRiskNodes.length} node(s) are at high risk of churning out of the active set.`,
+      suggestion: 'Increase bond amount to maintain active earning status.',
       actionLabel: 'Optimize Bond',
       actionLink: '/dashboard/transactions'
     });
