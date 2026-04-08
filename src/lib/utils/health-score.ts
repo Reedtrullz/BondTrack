@@ -2,7 +2,7 @@ import { BondPosition } from '@/lib/types/node';
 
 export type HealthGrade = 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
 
-interface HealthScoreResult {
+export interface HealthScoreResult {
   grade: HealthGrade;
   score: number; // 0-100
   reason: string;

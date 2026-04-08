@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { BondPosition } from '@/lib/types/node';
 import { YieldBenchmarks } from '@/lib/utils/yield-benchmarks';
 import { analyzeBondOptimization, type OptimizationSuggestion } from '@/lib/utils/bond-optimizer';
-import { TrendingUp, ArrowRight, AlertCircle } from 'lucide-react';
+import { TrendingUp, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface BondOptimizerProps {
@@ -20,7 +20,6 @@ export function BondOptimizer({ positions, benchmarks, allNodes, isLoading }: Bo
     return analyzeBondOptimization(positions, benchmarks, allNodes);
   }, [positions, benchmarks, allNodes]);
 
-  // Professional Loading State (Prevents Layout Shift)
   if (isLoading) {
     return (
       <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-4">
@@ -35,21 +34,30 @@ export function BondOptimizer({ positions, benchmarks, allNodes, isLoading }: Bo
     );
   }
 
-  // Contextual Empty State (Prevents Layout Void)
+  // "Certified Optimal" State
   if (suggestions.length === 0) {
     return (
-      <div className="p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-center">
-        <div className="flex justify-center mb-3">
-          <div className="p-3 rounded-full bg-emerald-50 dark:bg-emerald-900/20">
-            <TrendingUp className="w-6 h-6 text-emerald-500" />
+      <div className="relative p-6 rounded-lg border-2 border-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-900/10 text-center group overflow-hidden">
+        {/* Background Glow Effect */}
+        <div className="absolute -inset-px bg-gradient-to-br from-emerald-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        
+        <div className="relative z-10">
+          <div className="flex justify-center mb-3">
+            <div className="p-3 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 shadow-sm">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+          </div>
+          <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-400 mb-1 uppercase tracking-wider">
+            Portfolio Optimized
+          </h3>
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+            Your current bond distribution is optimal based on network APY benchmarks.
+          </p>
+          <div className="mt-4 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold uppercase">
+            <TrendingUp className="w-3 h-3" />
+            Certified Optimal
           </div>
         </div>
-        <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-1">
-          Portfolio Optimized
-        </h3>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-          Your current bond distribution is optimal based on network APY benchmarks. No moves suggested.
-        </p>
       </div>
     );
   }
@@ -59,7 +67,7 @@ export function BondOptimizer({ positions, benchmarks, allNodes, isLoading }: Bo
       <div className="flex items-center gap-2 mb-4">
         <TrendingUp className="w-4 h-4 text-emerald-500" />
         <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-          Bond Optimization Suggestions
+          Optimization Opportunities
         </h3>
       </div>
 

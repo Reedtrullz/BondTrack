@@ -53,29 +53,36 @@ export function PortfolioSummary({ totalBonded, runePrice, weightedAPY, position
       <SummaryCard
         icon={<ShieldCheck className="w-5 h-5" />}
         label="Portfolio Health"
-        value={<HealthGrade grade={health.grade} reason={health.reason} />}
+        value={<HealthScoreDisplay health={health} />}
       />
     </div>
   );
 }
 
-function HealthGrade({ grade, reason }: { grade: HealthGrade; reason: string }) {
-  const [isHovered, setIsHovered] = useState(false);
-
+function HealthScoreDisplay({ health }: { health: { grade: HealthGrade; score: number; reason: string } }) {
   return (
-    <div className="relative group inline-block cursor-help">
-      <span className={`font-bold ${getGradeColor(grade)}`}>{grade}</span>
+    <div className="flex items-baseline gap-1.5">
+      <span className={`text-2xl font-bold ${getGradeColor(health.grade)}`}>{health.grade}</span>
+      <span className="text-xs font-mono text-zinc-400 dark:text-zinc-500">
+        {health.score}/100
+      </span>
       
-      {/* Tooltip for Health Grade */}
-      <div 
-        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-900 text-white text-[10px] rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50"
-      >
-        <div className="flex items-center gap-1 mb-1 text-zinc-400 font-bold uppercase tracking-tighter">
-          <Info className="w-3 h-3" />
-          Health Breakdown
+      {/* Tooltip */}
+      <div className="relative group">
+        <Info className="w-3 h-3 text-zinc-400 cursor-help" />
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-zinc-900 text-white text-[11px] rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 border border-zinc-800">
+          <div className="flex items-center gap-1 mb-1 text-zinc-400 font-bold uppercase tracking-tighter">
+            <ShieldCheck className="w-3 h-3" />
+            Health Calculation
+          </div>
+          <p className="leading-relaxed text-zinc-300">
+            {health.reason}
+          </p>
+          <div className="mt-2 pt-2 border-t border-zinc-800 text-[9px] text-zinc-500 italic">
+            Score based on slash points, jail status, and churn risk.
+          </div>
+          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-900 rotate-45" />
         </div>
-        <p className="leading-relaxed text-zinc-300">{reason}</p>
-        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-900 rotate-45" />
       </div>
     </div>
   );

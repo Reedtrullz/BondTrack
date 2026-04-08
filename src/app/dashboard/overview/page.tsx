@@ -14,7 +14,7 @@ import { ActionableAlerts } from '@/components/dashboard/actionable-alerts';
 import { BondOptimizer } from '@/components/dashboard/bond-optimizer';
 
 import { ExportButton } from '@/components/shared/export-button';
-import { Plus, Minus, Sparkles } from 'lucide-react';
+import { Plus, Minus, Sparkles, BrainCircuit } from 'lucide-react';
 
 export default function OverviewPage() {
   const searchParams = useSearchParams();
@@ -42,8 +42,6 @@ export default function OverviewPage() {
     ? positions.reduce((sum, p) => sum + p.netAPY * p.bondAmount, 0) / totalBonded
     : 0;
 
-  // Calculate average portfolio fee for realistic projections
-  // Using operatorFee which is the numerical value of the fee
   const averageFeeBps = positions.length > 0
     ? positions.reduce((sum, p) => sum + (p.operatorFee || 0) * p.bondAmount, 0) / totalBonded
     : 0;
@@ -109,8 +107,13 @@ export default function OverviewPage() {
           </div>
         </div>
 
-        {/* Side Actions Panel (25% width on desktop) */}
+        {/* Intelligence Hub Column (25% width on desktop) */}
         <div className="lg:col-span-1 space-y-6">
+          <div className="flex items-center gap-2 mb-2 text-zinc-500 dark:text-zinc-400">
+            <BrainCircuit className="w-4 h-4" />
+            <span className="text-xs font-bold uppercase tracking-widest">Portfolio Intelligence</span>
+          </div>
+          
           <BondOptimizer 
             positions={positions} 
             benchmarks={benchmarks} 
