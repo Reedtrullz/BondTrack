@@ -25,7 +25,7 @@ export function PortfolioSummary({ totalBonded, runePrice, weightedAPY, position
     : 'text-zinc-900 dark:text-zinc-100';
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-stretch">
       <SummaryCard
         icon={<TrendingUp className="w-5 h-5" />}
         label="Total Bonded"
@@ -66,13 +66,13 @@ function SummaryCard({ icon, label, value, subValue }: {
   subValue?: string;
 }) {
   return (
-    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 h-full flex flex-col">
       <div className="flex items-center gap-2 text-zinc-500 mb-1">
         {icon}
         <span className="text-sm">{label}</span>
       </div>
       <div className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{value}</div>
-      {subValue && <div className="text-xs text-zinc-500 mt-0.5 truncate" title={subValue}>{subValue}</div>}
+      {subValue && <div className="text-xs text-zinc-500 mt-auto pt-2 truncate" title={subValue}>{subValue}</div>}
     </div>
   );
 }
