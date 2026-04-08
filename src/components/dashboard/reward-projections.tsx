@@ -18,7 +18,9 @@ const TIMEFRAMES: ProjectionTimeframe[] = [
 
 interface RewardProjection {
   timeframe: string;
-  runeReward: number;
+  grossRuneReward: number;
+  netRuneReward: number;
+  feeLeakage: number;
   usdValue: number;
   bondAfter: number;
   growthPercent: number;
@@ -28,17 +30,21 @@ interface RewardProjectionsProps {
   totalBonded: number;
   weightedAPY: number;
   runePrice: number;
+  averageFeeBps?: number;
 }
 
 function calculateProjections(
   totalBonded: number,
   weightedAPY: number,
-  runePrice: number
+  runePrice: number,
+  averageFeeBps: number = 0
 ): RewardProjection[] {
   if (totalBonded <= 0 || weightedAPY <= 0) {
     return TIMEFRAMES.map((tf) => ({
       timeframe: tf.label,
-      runeReward: 0,
+      grossRuneReward: 0,
+      netRuneReward: 0,
+      feeLeakage: 0,
       usdValue: 0,
       bondAfter: totalBonded,
       growthPercent: 0,
@@ -46,17 +52,25 @@ function calculateProjections(
   }
 
   const dailyRate = weightedAPY / 365 / 100;
+  const feeMultiplier = averageFeeBps / 10000;
 
   return TIMEFRAMES.map((tf) => {
     const compoundFactor = Math.pow(1 + dailyRate, tf.days);
     const bondAfter = totalBonded * compoundFactor;
-    const runeReward = bondAfter - totalBonded;
-    const usdValue = runeReward * runePrice;
-    const growthPercent = totalBonded > 0 ? (runeReward / totalBonded) * 100 : 0;
+    
+    // Gross Reward is the total earnings before operator fees
+    const grossRuneReward = bondAfter - totalBonded;
+    const feeLeakage = grossRuneReward * feeMultiplier;
+    const netRuneReward = grossRuneReward - feeLeakage;
+    
+    const usdValue = netRuneReward * runePrice;
+    const growthPercent = totalBonded > 0 ? (netRuneReward / totalBonded) * 100 : 0;
 
     return {
       timeframe: tf.label,
-      runeReward,
+      grossRuneReward,
+      netRuneReward,
+      feeLeakage,
       usdValue,
       bondAfter,
       growthPercent,
@@ -68,8 +82,9 @@ export function RewardProjections({
   totalBonded,
   weightedAPY,
   runePrice,
+  averageFeeBps = 0,
 }: RewardProjectionsProps) {
-  const projections = calculateProjections(totalBonded, weightedAPY, runePrice);
+  const projections = calculateProjections(totalBonded, weightedAPY, runePrice, averageFeeBps);
   const hasData = totalBonded > 0 && weightedAPY > 0;
 
   return (
@@ -92,9 +107,6 @@ export function RewardProjections({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {projections.map((proj, idx) => {
               const tf = TIMEFRAMES[idx];
-              const simulatedFeeBps = 500;
-              const grossRuneReward = proj.runeReward / (1 - simulatedFeeBps / 10000);
-              const feeLeakage = grossRuneReward - proj.runeReward;
 
               return (
                 <div
@@ -110,21 +122,21 @@ export function RewardProjections({
                     <div className="flex justify-between items-center">
                       <div className="text-xs text-zinc-500">Net Reward</div>
                       <div className="text-sm font-semibold font-mono text-emerald-600 dark:text-emerald-400">
-                        +{proj.runeReward.toFixed(4)}
+                        +{formatRuneAmount(proj.netRuneReward)}
                       </div>
                     </div>
 
                     <div className="flex justify-between items-center">
                       <div className="text-xs text-zinc-400">Fee Leakage</div>
                       <div className="text-xs font-mono text-zinc-500">
-                        -{feeLeakage.toFixed(4)}
+                        -{formatRuneAmount(proj.feeLeakage)}
                       </div>
                     </div>
 
                     <div className="pt-3 border-t border-zinc-200 dark:border-zinc-700 mt-2">
                       <div className="text-xs text-zinc-500">USD Value</div>
                       <div className="text-sm font-semibold font-mono text-zinc-900 dark:text-zinc-100">
-                        ${proj.usdValue.toFixed(2)}
+                        ${proj.usdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     </div>
 
