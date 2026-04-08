@@ -25,3 +25,4 @@ export function StatusBadge({ status, isJailed, className }: StatusBadgeProps) {
       {isJailed ? 'Jailed' : status}
     </Badge>
   );
+}
