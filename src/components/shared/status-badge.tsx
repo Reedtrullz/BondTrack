@@ -20,8 +20,6 @@ export function StatusBadge({ status, isJailed, className }: StatusBadgeProps) {
     : statusColors[status] || 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400';
 
   return (
-    <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', colorClass, className)}>
-      {isJailed ? 'Jailed' : status}
-    </span>
+    <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', colorClass, className)}>\n      {isJailed ? 'Jailed' : status}\n    </span>
   );
 }

@@ -53,14 +53,7 @@ function YieldGuardBadge({ flags }: { flags: YieldGuardFlag[] }) {
       {flags.map((flag) => {
         const config = YIELD_GUARD_LABELS[flag];
         return (
-          <span
-            key={flag}
-            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${config.color}`}
-            title={config.tooltip}
-          >
-            {config.icon}
-            {config.label}
-          </span>
+          <span\n            key={flag}\n            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${config.color}`}\n            title={config.tooltip}\n          >\n            {config.icon}\n            {config.label}\n          </span>
         );
       })}
     </div>
