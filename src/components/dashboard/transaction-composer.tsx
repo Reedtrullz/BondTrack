@@ -112,7 +112,7 @@ export function TransactionComposer({ positions }: TransactionComposerProps) {
 
   const canSubmit = useMemo(() => {
     if (!isConnected || isNetworkMismatch) return false;
-    if (mode === 'BOND') return validateBondAmount(bondProviderHAddress || '0').valid;
+    if (mode === 'BOND') return validateBondAmount(bondProviderAddress || '0').valid;
     if (mode === 'UNBOND') return unbondValidation.canUnbond;
     return false;
   }, [isConnected, isNetworkMismatch, mode, bondProviderAddress, unbondValidation]);
