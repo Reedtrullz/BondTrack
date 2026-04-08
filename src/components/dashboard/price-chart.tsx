@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import { getRunePriceHistory, type RunePriceHistoryRaw } from '@/lib/api/midgard';
 
-type IntervalOption = 'day' | 'week' | 'month';
+type IntervalOption = 'day' | 'week' | 'month' | 'year';
 
 interface PriceDataPoint {
   date: string;
@@ -73,8 +73,8 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
       setLoading(true);
       setError(null);
       try {
-        const apiInterval = interval === 'day' ? 'hour' : (interval === 'week' ? 'day' : 'day');
-        const count = interval === 'day' ? 24 : interval === 'week' ? 7 : 30;
+        const apiInterval = interval === 'day' ? 'hour' : (interval === 'week' ? 'day' : (interval === 'month' ? 'day' : 'day'));
+        const count = interval === 'day' ? 24 : interval === 'week' ? 7 : interval === 'month' ? 30 : 365;
         const raw = await getRunePriceHistory(apiInterval, count);
         setData(parsePriceData(raw));
       } catch (err) {
@@ -87,7 +87,7 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
     fetchData();
   }, [interval]);
 
-  const setInterval = (value: IntervalOption) => {
+  const setIntervalValue = (value: IntervalOption) => {
     setIntervalState(value);
   };
 
@@ -95,6 +95,7 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
     { value: 'day', label: '24H' },
     { value: 'week', label: '7D' },
     { value: 'month', label: '30D' },
+    { value: 'year', label: '1Y' },
   ];
 
   return (
@@ -107,7 +108,7 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
           {intervals.map((item) => (
             <button
               key={item.value}
-              onClick={() => setInterval(item.value)}
+              onClick={() => setIntervalValue(item.value)}
               className={`px-3 py-1 text-xs rounded-md transition-colors ${
                 interval === item.value
                   ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'

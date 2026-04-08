@@ -34,13 +34,13 @@ function formatAPY(value: number): string {
 async function calculateAPYHistory(earningsRaw: EarningsHistoryRaw, networkRaw: NetworkRaw): Promise<APYDataPoint[]> {
   const intervals = earningsRaw.intervals;
   const totalBondsRune = Number(networkRaw.bondMetrics?.totalActiveBond || '0');
-  const baselineApy = parseFloat(networkRaw.bondingAPY || '0');
 
   if (intervals.length === 0 || totalBondsRune === 0) {
     return [];
   }
 
-  const windowSize = 7;
+  // Using a 30-day rolling average for a 1-year view to provide professional stability
+  const windowSize = 30;
   const apyData: APYDataPoint[] = [];
 
   for (let i = 0; i < intervals.length; i++) {
@@ -52,8 +52,8 @@ async function calculateAPYHistory(earningsRaw: EarningsHistoryRaw, networkRaw: 
     
     let annualizedAPY = (avgDailyEarnings / totalBondsRune) * 100 * 365;
 
-    // Adaptive Smoothing: If the calculated APY is an extreme outlier (near zero) 
-    // compared to the current network baseline, we smooth it to avoid "UI voids".
+    // Adaptive Smoothing against current network baseline
+    const baselineApy = parseFloat(networkRaw.bondingAPY || '0');
     if (annualizedAPY < baselineApy * 0.2) {
       annualizedAPY = (annualizedAPY + baselineApy) / 2;
     }
@@ -90,7 +90,7 @@ interface APYChartProps {
   count?: number;
 }
 
-export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
+export function APYChart({ interval = 'year', count = 365 }: APYChartProps) {
   const [data, setData] = useState<APYDataPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,8 +101,9 @@ export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
       setLoading(true);
       setError(null);
       try {
-        const apiInterval = interval === 'day' ? 'hour' : 'day';
-        const apiCount = interval === 'day' ? 24 : interval === 'week' ? 7 : 30;
+        // For a 1-year view, we request daily intervals for the past year
+        const apiInterval = 'day';
+        const apiCount = count || 365;
         const [earningsRaw, networkRaw] = await Promise.all([
           getEarningsHistory(apiInterval, apiCount),
           getNetwork(),
@@ -121,7 +122,7 @@ export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
       }
     }
     fetchData();
-  }, [interval]);
+  }, [interval, count]);
 
   return (
     <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
@@ -130,7 +131,7 @@ export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
           <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
             Estimated Network APY
           </h3>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Adaptive 7-Day Trend</p>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Annualized 1Y Trend</p>
         </div>
         
         {currentApy !== null && (
