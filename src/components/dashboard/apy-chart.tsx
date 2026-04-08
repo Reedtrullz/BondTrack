@@ -10,6 +10,8 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { getEarningsHistory, getNetwork, type EarningsHistoryRaw, type NetworkRaw } from '@/lib/api/midgard';
+import { runeToNumber } from '@/lib/utils/formatters';
+import { TrendingUp } from 'lucide-react';
 
 interface APYDataPoint {
   date: string;
@@ -74,6 +76,7 @@ export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
   const [data, setData] = useState<APYDataPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentApy, setCurrentApy] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -88,6 +91,10 @@ export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
         ]);
         const apyData = await calculateAPYHistory(earningsRaw, networkRaw);
         setData(apyData);
+        
+        if (apyData.length > 0) {
+          setCurrentApy(apyData[apyData.length - 1].apy);
+        }
       } catch (err) {
         setError('Failed to load APY data');
         console.error(err);
@@ -101,9 +108,21 @@ export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
   return (
     <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-          Estimated APY
-        </h3>
+        <div>
+          <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            Estimated Network APY
+          </h3>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-wider">30-Day Annualized Trend</p>
+        </div>
+        
+        {currentApy !== null && (
+          <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+            <TrendingUp className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400 font-mono">
+              {formatAPY(currentApy)}
+            </span>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -115,8 +134,11 @@ export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
           {error}
         </div>
       ) : data.length === 0 ? (
-        <div className="h-[160px] sm:h-[200px] flex items-center justify-center text-zinc-400 text-sm">
-          No data available
+        <div className="h-[160px] sm:h-[200px] flex flex-col items-center justify-center text-center p-4">
+          <div className="text-zinc-400 text-sm mb-1">No APY data available</div>
+          <div className="text-[10px] text-zinc-500 max-w-[200px]">
+            Unable to calculate annualized yield based on current network earnings.
+          </div>
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={160}>
