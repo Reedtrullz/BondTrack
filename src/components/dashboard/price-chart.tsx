@@ -74,7 +74,7 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
       setError(null);
       try {
         const count = interval === 'day' ? 24 : interval === 'week' ? 7 : 30;
-        const raw = await getRunePriceHistory(interval, count);
+        const raw = await getRunePriceHistory(interval === 'week' ? 'day' : interval, count);
         setData(parsePriceData(raw));
       } catch (err) {
         setError('Failed to load price data');
