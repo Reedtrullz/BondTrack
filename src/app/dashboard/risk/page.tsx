@@ -7,7 +7,9 @@ import { SlashMonitor } from '@/components/dashboard/slash-monitor';
 import { ChurnOutRisk } from '@/components/dashboard/churn-out-risk';
 import { NetworkSecurityMetrics } from '@/components/dashboard/network-security-metrics';
 import { UnbondWindowTracker } from '@/components/dashboard/unbond-window-tracker';
+import { RiskHeatmap } from '@/components/dashboard/risk-heatmap';
 import type { YieldGuardFlag } from '@/lib/types/node';
+import { useState } from 'react';
 
 function EarningStatusSummary({ positions }: { positions: ReturnType<typeof useBondPositions>['positions'] }) {
   const activeCount = positions.filter(p => p.status === 'Active').length;
@@ -160,14 +162,30 @@ export default function RiskPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
   const { positions, isLoading } = useBondPositions(address);
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Risk Monitor</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Risk Monitor</h2>
+        <div className="flex items-center gap-2 text-xs text-zinc-500">
+          <Shield className="w-3 h-3" />
+          <span>Security-first view</span>
+        </div>
+      </div>
 
-      <YourNodesAtRisk positions={positions} />
-
-      <EarningStatusSummary positions={positions} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1">
+          <RiskHeatmap 
+            positions={positions} 
+            onNodeSelect={(addr) => setSelectedNode(addr)} 
+          />
+        </div>
+        <div className="lg:col-span-2 space-y-6">
+          <YourNodesAtRisk positions={positions} />
+          <EarningStatusSummary positions={positions} />
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <SlashMonitor positions={positions} />
@@ -184,12 +202,18 @@ export default function RiskPage() {
           ) : positions.length === 0 ? (
             <div className="p-8 text-center text-zinc-500 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
               <Shield className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
-              <p>No bond positions found for this address.</p>
+              <p>No bond positions found for this address</p>
             </div>
           ) : (
             <div className="space-y-3">
               {positions.map((pos) => (
-                <div key={pos.nodeAddress} className="flex items-center gap-3 p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                <div 
+                  key={pos.nodeAddress} 
+                  className={cn(
+                    "flex items-center gap-3 p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 transition-all",
+                    selectedNode === pos.nodeAddress ? "ring-2 ring-emerald-500 border-emerald-500" : ""
+                  )}
+                >
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-zinc-700 dark:text-zinc-300 truncate">
                       {pos.nodeAddress.slice(0, 16)}...{pos.nodeAddress.slice(-6)}
