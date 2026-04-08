@@ -5,6 +5,8 @@ import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { runeToNumber } from '@/lib/utils/formatters';
 import { ArrowUp, ArrowDown, Minus, Award } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import React from 'react';
 
 interface NetworkAverages {
   avgBond: number;

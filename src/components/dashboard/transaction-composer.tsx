@@ -299,7 +299,7 @@ export function TransactionComposer({ positions }: TransactionComposerProps) {
             <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 flex items-center gap-3">
               <ArrowDownRight className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
               <p className="text-xs text-amber-700 dark:text-amber-400">
-              <strong>Warning:</strong> Unbonding only works when the node is not Active.
+                <strong>Warning:</strong> Unbonding only works when the node is not Active.
               </p>
             </div>
           </>
@@ -355,7 +355,7 @@ export function TransactionComposer({ positions }: TransactionComposerProps) {
             <Button disabled className="flex-1">
               <Wallet className="mr-2 h-4 w-4" />
               Connect Wallet
-            </HButton>
+            </Button>
           )}
         </div>
       </div>
