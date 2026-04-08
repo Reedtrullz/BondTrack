@@ -26,13 +26,13 @@ export default function OverviewPage() {
 
   if (isLoading || priceLoading || benchmarksLoading || allNodesLoading) {
     return (
-      <div className=\"space-y-6\">
-        <div className=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4\">
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className=\"h-24 rounded-lg bg-zinc-200 dark:bg-zinc-800 animate-pulse\" />
+            <div key={i} className="h-24 rounded-lg bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
           ))}
         </div>
-        <div className=\"h-64 rounded-lg bg-zinc-200 dark:bg-zinc-800 animate-pulse\" />
+        <div className="h-64 rounded-lg bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
       </div>
     );
   }
@@ -43,28 +43,28 @@ export default function OverviewPage() {
     : 0;
 
   return (
-    <div className=\"space-y-6\">
-      <div className=\"flex flex-wrap gap-2\">
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-2">
         <Link
-          href={\`/dashboard/transactions?address=\${encodeURIComponent(address || '')}\`}
-          className=\"inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition\"
+          href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition"
         >
-          <Plus className=\"w-4 h-4\" />
+          <Plus className="w-4 h-4" />
           Bond More
         </Link>
         <Link
-          href={\`/dashboard/transactions?address=\${encodeURIComponent(address || '')}\`}
-          className=\"inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition\"
+          href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition"
         >
-          <Minus className=\"w-4 h-4\" />
+          <Minus className="w-4 h-4" />
           Unbond
         </Link>
       </div>
 
       <ActionableAlerts positions={positions} />
 
-      <div className=\"grid grid-cols-1 lg:grid-cols-3 gap-6\">\
-        <div className=\"lg:col-span-2 space-y-6\">\
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
           <PortfolioSummary
             totalBonded={totalBonded}
             runePrice={price}
@@ -73,39 +73,43 @@ export default function OverviewPage() {
             positions={positions}
             benchmarks={benchmarks}
           />
-          <div className=\"space-y-6\">\
-            {totalBonded > 0 && weightedAPY > 0 && (\
-              <RewardProjections\n                totalBonded={totalBonded}\n                weightedAPY={weightedAPY}\n                runePrice={price}\n              />\
-            )}\
-            <PositionTable positions={positions} />\
-          </div>\
-        </div>\
-        <div className=\"space-y-6\">\
-          <BondOptimizer \
-            positions={positions} \
-            benchmarks={benchmarks} \
-            allNodes={allNodes || []} \
-          />\
-          {positions.length > 0 && (\
-            <div className=\"flex justify-end\">\
-              <ExportButton bondPositions={positions} />\
-            </div>\
-          )}\
-        </div>\
-      </div>\
+          <div className="space-y-6">
+            {totalBonded > 0 && weightedAPY > 0 && (
+              <RewardProjections
+                totalBonded={totalBonded}
+                weightedAPY={weightedAPY}
+                runePrice={price}
+              />
+            )}
+            <PositionTable positions={positions} />
+          </div>
+        </div>
+        <div className="space-y-6">
+          <BondOptimizer 
+            positions={positions} 
+            benchmarks={benchmarks} 
+            allNodes={allNodes || []} 
+          />
+          {positions.length > 0 && (
+            <div className="flex justify-end">
+              <ExportButton bondPositions={positions} />
+            </div>
+          )}
+        </div>
+      </div>
 
       {positions.length > 0 && (
-        <div className=\"space-y-3\">\
-          <h2 className=\"text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-3\">\
-            Node Details\
-          </h2>\
-          <div className=\"grid grid-cols-1 md:grid-cols-2 gap-4\">\
-            {positions.map((pos) => (\
-              <NodeStatusCard key={pos.nodeAddress} position={pos} />\
-            ))}\
-          </div>\
-        </div>\
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-3">
+            Node Details
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {positions.map((pos) => (
+              <NodeStatusCard key={pos.nodeAddress} position={pos} />
+            ))}
+          </div>
+        </div>
       )}
-    </div>\
+    </div>
   );
 }
