@@ -43,8 +43,9 @@ export default function OverviewPage() {
     : 0;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="max-w-7xl mx-auto space-y-8">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex gap-2">
           <Link
             href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
@@ -70,9 +71,10 @@ export default function OverviewPage() {
 
       <ActionableAlerts positions={positions} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Main Content Area */}
-        <div className="lg:col-span-8 space-y-6">
+      {/* Main Dashboard Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* Main Content Area (75% width on desktop) */}
+        <div className="lg:col-span-3 space-y-8">
           <PortfolioSummary
             totalBonded={totalBonded}
             runePrice={price}
@@ -82,7 +84,7 @@ export default function OverviewPage() {
             benchmarks={benchmarks}
           />
           
-          <div className="space-y-6">
+          <div className="space-y-8">
             {totalBonded > 0 && weightedAPY > 0 && (
               <RewardProjections
                 totalBonded={totalBonded}
@@ -94,27 +96,28 @@ export default function OverviewPage() {
           </div>
         </div>
 
-        {/* Side Actions Panel */}
-        <div className="lg:col-span-4 space-y-6">
+        {/* Side Actions Panel (25% width on desktop) */}
+        <div className="lg:col-span-1 space-y-6">
           <BondOptimizer 
             positions={positions} 
             benchmarks={benchmarks} 
             allNodes={allNodes || []} 
           />
           
-          {/* Mobile Only Export */}
+          {/* Mobile Only Export - hidden on sm+ */}
           <div className="sm:hidden flex justify-end">
             <ExportButton bondPositions={positions} />
           </div>
         </div>
       </div>
 
+      {/* Bottom Details Section */}
       {positions.length > 0 && (
-        <div className="space-y-3 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+        <div className="space-y-4 pt-8 border-t border-zinc-200 dark:border-zinc-800">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
             Node Details
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {positions.map((pos) => (
               <NodeStatusCard key={pos.nodeAddress} position={pos} />
             ))}
