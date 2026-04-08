@@ -1,6 +1,6 @@
 import { formatRuneWithUnit } from '@/lib/utils/formatters';
 import { TrendingUp, DollarSign, Activity, Coins, ShieldCheck, Info } from 'lucide-react';
-import { calculatePortfolioHealth, getGradeColor } from '@/lib/utils/health-score';
+import { calculatePortfolioHealth, getGradeColor, type HealthGrade } from '@/lib/utils/health-score';
 import { getYieldPerformanceColor } from '@/lib/utils/yield-benchmarks';
 import type { BondPosition } from '@/lib/types/node';
 import { YieldBenchmarks } from '@/lib/utils/yield-benchmarks';
@@ -59,7 +59,7 @@ export function PortfolioSummary({ totalBonded, runePrice, weightedAPY, position
   );
 }
 
-function HealthGrade({ grade, reason }: { grade: string; reason: string }) {
+function HealthGrade({ grade, reason }: { grade: HealthGrade; reason: string }) {
   const [isHovered, setIsHovered] = useState(false);
 
   return (

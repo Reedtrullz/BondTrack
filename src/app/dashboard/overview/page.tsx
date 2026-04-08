@@ -43,8 +43,9 @@ export default function OverviewPage() {
     : 0;
 
   // Calculate average portfolio fee for realistic projections
+  // Using operatorFee which is the numerical value of the fee
   const averageFeeBps = positions.length > 0
-    ? positions.reduce((sum, p) => sum + (p.operatorFeeBps || 0) * p.bondAmount, 0) / totalBonded
+    ? positions.reduce((sum, p) => sum + (p.operatorFee || 0) * p.bondAmount, 0) / totalBonded
     : 0;
 
   return (
