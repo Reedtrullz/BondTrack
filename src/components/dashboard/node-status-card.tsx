@@ -1,6 +1,8 @@
 import type { BondPosition } from '@/lib/types/node';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { AlertTriangle, Shield, Server } from 'lucide-react';
+import { AlertTriangle, Shield, Server, Info } from 'lucide-react';
+import { calculatePortfolioHealth, getGradeColor } from '@/lib/utils/health-score';
+import { useState } from 'react';
 
 interface NodeStatusCardProps {
   position: BondPosition;
@@ -8,13 +10,37 @@ interface NodeStatusCardProps {
 }
 
 export function NodeStatusCard({ position, currentBlockHeight }: NodeStatusCardProps) {
+  const health = calculatePortfolioHealth([position]);
+  const [isHovered, setIsHovered] = useState(false);
+
   return (
-    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-3">
+    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-3 relative group">
       <div className="flex items-center justify-between">
         <div className="font-mono text-sm text-zinc-600 dark:text-zinc-400">
           {position.nodeAddress.slice(0, 16)}...{position.nodeAddress.slice(-6)}
         </div>
-        <StatusBadge status={position.status} isJailed={position.isJailed} />
+        <div className="flex items-center gap-2">
+          <div 
+            className="relative cursor-help"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+          >
+            <span className={`text-xs font-bold px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 ${getGradeColor(health.grade)}`}>
+              {health.grade}
+            </span>
+            {isHovered && (
+              <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-zinc-900 text-white text-[10px] rounded shadow-xl z-50 border border-zinc-800">
+                <div className="flex items-center gap-1 mb-1 text-zinc-400 font-bold uppercase tracking-tighter">
+                  <Info className="w-3 h-3" />
+                  Node Health
+                </div>
+                <p className="leading-relaxed text-zinc-300">{health.reason}</p>
+                <div className="absolute -bottom-1 right-1/2 translate-x-1/2 w-2 h-2 bg-zinc-900 rotate-45" />
+              </div>
+            )}
+          </div>
+          <StatusBadge status={position.status} isJailed={position.isJailed} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-sm">
