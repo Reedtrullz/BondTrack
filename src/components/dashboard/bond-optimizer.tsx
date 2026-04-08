@@ -11,15 +11,48 @@ interface BondOptimizerProps {
   positions: BondPosition[];
   benchmarks: YieldBenchmarks | undefined;
   allNodes: any[];
+  isLoading?: boolean;
 }
 
-export function BondOptimizer({ positions, benchmarks, allNodes }: BondOptimizerProps) {
+export function BondOptimizer({ positions, benchmarks, allNodes, isLoading }: BondOptimizerProps) {
   const suggestions = useMemo(() => {
     if (!benchmarks || !allNodes) return [];
     return analyzeBondOptimization(positions, benchmarks, allNodes);
   }, [positions, benchmarks, allNodes]);
 
-  if (suggestions.length === 0) return null;
+  // Professional Loading State (Prevents Layout Shift)
+  if (isLoading) {
+    return (
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-4">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-4 h-4 rounded-full bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
+          <div className="h-4 w-32 bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded" />
+        </div>
+        {[1, 2].map((i) => (
+          <div key={i} className="h-24 rounded-lg bg-zinc-100 dark:bg-zinc-800/50 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  // Contextual Empty State (Prevents Layout Void)
+  if (suggestions.length === 0) {
+    return (
+      <div className="p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-center">
+        <div className="flex justify-center mb-3">
+          <div className="p-3 rounded-full bg-emerald-50 dark:bg-emerald-900/20">
+            <TrendingUp className="w-6 h-6 text-emerald-500" />
+          </div>
+        </div>
+        <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-1">
+          Portfolio Optimized
+        </h3>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+          Your current bond distribution is optimal based on network APY benchmarks. No moves suggested.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">

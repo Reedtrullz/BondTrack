@@ -19,14 +19,16 @@ import { Plus, Minus } from 'lucide-react';
 export default function OverviewPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
-  const { positions, isLoading } = useBondPositions(address);
+  const { positions, isLoading: positionsLoading } = useBondPositions(address);
   const { price, isLoading: priceLoading } = useRunePrice();
   const { benchmarks, isLoading: benchmarksLoading } = useYieldBenchmarks();
   const { data: allNodes, isLoading: allNodesLoading } = useAllNodes();
 
-  if (isLoading || priceLoading || benchmarksLoading || allNodesLoading) {
+  const isGlobalLoading = positionsLoading || priceLoading || benchmarksLoading || allNodesLoading;
+
+  if (isGlobalLoading) {
     return (
-      <div className="space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6 p-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-24 rounded-lg bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
@@ -43,7 +45,7 @@ export default function OverviewPage() {
     : 0;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="max-w-7xl mx-auto space-y-8 p-4">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex gap-2">
@@ -71,7 +73,7 @@ export default function OverviewPage() {
 
       <ActionableAlerts positions={positions} />
 
-      {/* Main Dashboard Grid */}
+      {/* Main Dashboard Grid - Fixed 3:1 Ratio */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Main Content Area (75% width on desktop) */}
         <div className="lg:col-span-3 space-y-8">
@@ -102,6 +104,7 @@ export default function OverviewPage() {
             positions={positions} 
             benchmarks={benchmarks} 
             allNodes={allNodes || []} 
+            isLoading={allNodesLoading || benchmarksLoading}
           />
           
           {/* Mobile Only Export - hidden on sm+ */}
