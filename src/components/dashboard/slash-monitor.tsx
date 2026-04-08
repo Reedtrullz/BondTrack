@@ -71,7 +71,7 @@ export function SlashMonitor() {
     nodeAddress: node.node_address,
     status: node.status,
     slashPoints: node.slash_points,
-    isJailed: 'release_height' in node.jail && node.jail.release_height > currentBlockHeight,
+    isJailed: node.preflight_status?.status !== 'Ready',
     jailReleaseHeight: 'release_height' in node.jail ? node.jail.release_height : 0,
     jailReason: 'reason' in node.jail ? node.jail.reason : '',
   }));
