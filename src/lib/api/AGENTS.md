@@ -16,7 +16,9 @@
 
 **THORNode amounts**: All numeric amounts are strings in 1e8 units (e.g. `"2507476277808"`). Never parse as `Number()` directly — use `runeToNumber()` from formatters.
 
-**Jail field**: `NodeRaw.jail` is `{ release_height: number; reason: string }` when jailed, or `Record<string, never>` (empty object) when not. Check with `Object.keys(node.jail).length > 0`.
+**Jail field**: `NodeRaw.jail` is `{ release_height: number; reason: string }` when jailed, or `Record<string, never>` (empty object) when not. A node is ONLY jailed when `jail.release_height > current_block_height`. Use `getHealth()` to get current block height from Midgard.
+
+**Current block height**: Always fetch from Midgard `/v2/health` (returns `lastThorNode.height`), NOT from node `active_block_height` which can be stale by thousands of blocks.
 
 **Midgard timestamps**: All timestamps are nanosecond strings. Divide by `1e9` for seconds.
 
@@ -29,6 +31,7 @@
 - `getSupply()` → `/thorchain/supply`
 
 **Midgard** (base: `gateway.liquify.com/chain/thorchain_midgard`):
+- `getHealth()` → `/v2/health` — returns `lastThorNode.height` for current block (use for jail detection)
 - `getBondDetails(address)` → `/v2/bonds/{address}`
 - `getChurns()` → `/v2/churns`
 - `getEarningsHistory(interval?, count?)` → `/v2/history/earnings`

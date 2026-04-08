@@ -22,7 +22,7 @@
 ## RISK MONITORS (5)
 | Component | Purpose |
 |-----------|---------|
-| `slash-monitor.tsx` | Per-node slash points (OK/Warning/Critical), jail countdown |
+| `slash-monitor.tsx` | Per-node slash points (OK/Warning/Critical), jail status with live countdown using real block height from Midgard |
 | `churn-out-risk.tsx` | Bond rank among all active nodes, bottom 33% flagged |
 | `network-security-metrics.tsx` | TVL, bond-to-pool ratio, network health |
 | `unbond-window-tracker.tsx` | Detects when node churns out and unbond is possible |

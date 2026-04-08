@@ -135,6 +135,8 @@ thornode-watcher/
 - Never hardcode wallet names in UI — use WalletType enum
 
 ## RECENT CHANGES
+- Fix jail detection: use Midgard `/v2/health` for current block height instead of stale node `active_block_height`
+- Add `useCurrentBlockHeight` hook for real-time block height from Midgard
 - Complete UI/UX overhaul with Network Comparison and Pooled Node details
 - Add NetworkComparisonTable component to compare bond positions vs network averages
 - Add PooledNodeDetails component showing accumulated rewards from all nodes
