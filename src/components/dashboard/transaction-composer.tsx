@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import type { BondPosition } from '@/lib/types/node';
 import { useWallet } from '@/lib/hooks/use-wallet';
 import { Button } from '@/components/ui/button';
-import { Wallet, Copy, CheckCircle, AlertCircle, Sparkles, Target, ShieldAlert } from 'lucide-react';
+import { Wallet, Copy, CheckCircle, AlertCircle, Sparkles, Target, MinusCircle } from 'lucide-react';
 import { TransactionPreview, type TransactionPreviewData } from '@/components/wallet/transaction-preview';
 import { 
   executeBondTransaction, 
@@ -46,7 +46,6 @@ export function TransactionComposer({ positions }: TransactionComposerProps) {
     return positions.find(p => p.nodeAddress === nodeAddress);
   }, [positions, nodeAddress]);
 
-  // Handle URL parameters for Quick Actions
   useEffect(() => {
     if (paramAction) setMode(paramAction);
     if (paramNode) setNodeAddress(paramNode);
@@ -248,7 +247,7 @@ export function TransactionComposer({ positions }: TransactionComposerProps) {
                   value={bondProviderAddress}
                   onChange={(e) => setBondProviderAddress(e.target.value)}
                   placeholder="0.00"
-                  className="w-full pl-3 pr-10 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  className="w-full pl-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400">
                   <Coins className="w-4 h-4" />
@@ -300,7 +299,7 @@ export function TransactionComposer({ positions }: TransactionComposerProps) {
             <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 flex items-center gap-3">
               <ArrowDownRight className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
               <p className="text-xs text-amber-700 dark:text-amber-400">
-                <strong>Warning:</strong> Unbonding only works when the node is not Active.
+              <strong>Warning:</strong> Unbonding only works when the node is not Active.
               </p>
             </div>
           </>
@@ -328,7 +327,7 @@ export function TransactionComposer({ positions }: TransactionComposerProps) {
                 : 'bg-zinc-700 hover:bg-zinc-600 text-zinc-200'
               )}
             >
-              {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
