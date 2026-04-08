@@ -34,14 +34,16 @@ function formatAPY(value: number): string {
 async function calculateAPYHistory(earningsRaw: EarningsHistoryRaw, networkRaw: NetworkRaw): Promise<APYDataPoint[]> {
   const intervals = earningsRaw.intervals;
   const totalBondsRune = Number(networkRaw.bondMetrics?.totalActiveBond || '0');
-  const baselineApy = parseFloat(networkRaw.bondingAPY || '0');
 
   if (intervals.length === 0 || totalBondsRune === 0) {
     return [];
   }
 
-  // 30-day rolling average for professional stability on 1Y view
-  const windowSize = 30;
+  // To solve the "flat line" issue, we must ensure we are using the a specific point's
+  // earnings rather than a rolling average that is too large for the current data density.
+  // We'll use a much smaller window (3 days) for smoothing, or no smoothing at all
+  // if we want to see the raw volatility.
+  const windowSize = 3; 
   const apyData: APYDataPoint[] = [];
 
   for (let i = 0; i < intervals.length; i++) {
@@ -51,17 +53,8 @@ async function calculateAPYHistory(earningsRaw: EarningsHistoryRaw, networkRaw: 
     const sumEarnings = subset.reduce((acc, curr) => acc + Number(curr.bondingEarnings), 0);
     const avgDailyEarnings = (sumEarnings / subset.length) / 1e8;
     
-    let annualizedAPY = (avgDailyEarnings / totalBondsRune) * 100 * 365;
-
-    // Refined Adaptive Smoothing:
-    // Only apply smoothing if the calculated APY is practically zero.
-    // If there is any measurable yield, we show it.
-    if (annualizedAPY < 0.0001) {
-      // Instead of (val + baseline)/2 which creates a flat line, 
-      // we anchor it to a small fraction of the baseline to show "existence" 
-      // without inventing too much yield.
-      annualizedAPY = baselineApy * 0.1;
-    }
+    // APY = (Daily Earnings / Total Bond) * 100 * 365
+    const annualizedAPY = (avgDailyEarnings / totalBondsRune) * 100 * 365;
     
     const date = new Date(Number(intervals[i].startTime) * 1000);
     apyData.push({
