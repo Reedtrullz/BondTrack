@@ -49,6 +49,10 @@ const YIELD_GUARD_LABELS: Record<YieldGuardFlag, { label: string; icon: React.Re
 function YieldGuardBadge({ flags }: { flags: YieldGuardFlag[] }) {
   if (flags.length === 0) return null;
 
+  return (
+    <div className="flex flex-wrap gap-1 mt-1">
+      {flags.map((flag) => {
+        const config = YIELD_GUARD_LABELS[flag];
         return (
           <Badge
             key={flag}
@@ -59,6 +63,9 @@ function YieldGuardBadge({ flags }: { flags: YieldGuardFlag[] }) {
             {config.label}
           </Badge>
         );
+      })}
+    </div>
+  );
 }
 
 export function PositionTable({ positions }: PositionTableProps) {
