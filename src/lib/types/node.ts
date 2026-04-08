@@ -46,7 +46,7 @@ export function extractBondPositions(
 
       const jail = node.jail as { release_height?: number; reason?: string } | Record<string, never>;
       const isJailed = typeof jail?.release_height === 'number' && typeof jail?.reason === 'string';
-      const jailReleaseHeight = isJailed ? jail.release_height : 0;
+      const jailReleaseHeight = isJailed ? (jail.release_height ?? 0) : 0;
 
       const bondAmount = runeToNumber(provider.bond);
       const bondSharePercent = calculateBondShare(provider.bond, node.total_bond);
