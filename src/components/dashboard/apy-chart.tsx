@@ -25,6 +25,10 @@ interface CustomTooltipProps {
 }
 
 function formatAPY(value: number): string {
+  // Use more decimals if the value is very small to avoid "0.00%"
+  if (value > 0 && value < 1) {
+    return `${value.toFixed(4)}%`;
+  }
   return `${value.toFixed(2)}%`;
 }
 
@@ -38,6 +42,7 @@ async function calculateAPYHistory(earningsRaw: EarningsHistoryRaw, networkRaw: 
 
   const apyData: APYDataPoint[] = intervals.map((interval) => {
     const bondingEarnings = Number(interval.bondingEarnings) / 1e8;
+    // Annualize based on the interval duration (assume 'day' for this history)
     const annualizedAPY = (bondingEarnings / totalBondsRune) * 100 * 365;
     
     const date = new Date(Number(interval.startTime) * 1000);
@@ -89,12 +94,13 @@ export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
           getEarningsHistory(apiInterval, apiCount),
           getNetwork(),
         ]);
+
+        // Use the ground-truth bondingAPY from the network API for the badge
+        const networkApy = parseFloat(networkRaw.bondingAPY || '0');
+        setCurrentApy(networkApy);
+
         const apyData = await calculateAPYHistory(earningsRaw, networkRaw);
         setData(apyData);
-        
-        if (apyData.length > 0) {
-          setCurrentApy(apyData[apyData.length - 1].apy);
-        }
       } catch (err) {
         setError('Failed to load APY data');
         console.error(err);
@@ -112,7 +118,7 @@ export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
           <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
             Estimated Network APY
           </h3>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wider">30-Day Annualized Trend</p>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Network-wide Yield</p>
         </div>
         
         {currentApy !== null && (
@@ -135,9 +141,9 @@ export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
         </div>
       ) : data.length === 0 ? (
         <div className="h-[160px] sm:h-[200px] flex flex-col items-center justify-center text-center p-4">
-          <div className="text-zinc-400 text-sm mb-1">No APY data available</div>
+          <div className="text-zinc-400 text-sm mb-1">No historical data available</div>
           <div className="text-[10px] text-zinc-500 max-w-[200px]">
-            Unable to calculate annualized yield based on current network earnings.
+            Current network APY is provided above, but historical trends are unavailable.
           </div>
         </div>
       ) : (
@@ -161,10 +167,10 @@ export function APYChart({ interval = 'week', count = 12 }: APYChartProps) {
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#71717a', fontSize: 10 }}
-              tickFormatter={(value) => `${value.toFixed(0)}%`}
+              tickFormatter={(value) => `${value.toFixed(1)}%`}
               dx={-5}
               width={40}
-              domain={[0, 'dataMax + 5']}
+              domain={[0, 'dataMax + 1']}
             />
             <Tooltip content={<CustomTooltip />} />
             <Area
