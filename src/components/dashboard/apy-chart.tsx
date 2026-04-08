@@ -28,7 +28,7 @@ function formatAPY(value: number): string {
 
 async function calculateAPYHistory(earningsRaw: EarningsHistoryRaw, networkRaw: NetworkRaw): Promise<APYDataPoint[]> {
   const intervals = earningsRaw.intervals;
-  const totalBondsRune = Number(networkRaw.totalBondsRune);
+  const totalBondsRune = Number(networkRaw.bondMetrics?.totalActiveBond || '0');
 
   if (intervals.length === 0 || totalBondsRune === 0) {
     return [];

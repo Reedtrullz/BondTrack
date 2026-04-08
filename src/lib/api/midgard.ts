@@ -79,12 +79,30 @@ export interface RunePriceHistoryRaw {
 }
 
 export interface NetworkRaw {
-  totalPools: string;
-  totalLiquidityRune: string;
-  totalBondsRune: string;
+  activeBonds: string[];
+  activeNodeCount: string;
+  standbyBonds: string[];
+  standbyNodeCount: string;
+  totalPooledRune: string;
   totalReserve: string;
-  runePriceUSD: string;
-  runePriceBTC: string;
+  bondMetrics: {
+    totalActiveBond: string;
+    totalStandbyBond: string;
+    averageActiveBond: string;
+    averageStandbyBond: string;
+    medianActiveBond: string;
+    minimumActiveBond: string;
+    maximumActiveBond: string;
+    bondHardCap: string;
+  };
+  bondingAPY: string;
+  liquidityAPY: string;
+  blockRewards: {
+    blockReward: string;
+    bondReward: string;
+    poolReward: string;
+  };
+  nextChurnHeight: string;
 }
 
 export interface ActionRaw {

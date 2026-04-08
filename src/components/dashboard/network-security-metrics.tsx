@@ -66,8 +66,8 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
     );
   }
 
-  const totalBonds = runeToNumber(network.totalBondsRune);
-  const totalLiquidity = runeToNumber(network.totalLiquidityRune);
+  const totalBonds = runeToNumber(network.bondMetrics?.totalActiveBond || '0');
+  const totalLiquidity = runeToNumber(network.totalPooledRune || '0');
   const bondToPoolRatio = totalLiquidity > 0 ? totalBonds / totalLiquidity : 0;
   const healthStatus = calculateNetworkHealth(bondToPoolRatio);
   const pendulum = getPendulumStatus(bondToPoolRatio);
