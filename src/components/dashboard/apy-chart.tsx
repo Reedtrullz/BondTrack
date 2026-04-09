@@ -1,17 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+import React, { useState, useEffect } from 'react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { TrendingUp } from 'lucide-react';
 import { getEarningsHistory, getNetwork, type EarningsHistoryRaw, type NetworkRaw } from '@/lib/api/midgard';
 import { runeToNumber } from '@/lib/utils/formatters';
-import { TrendingUp } from 'lucide-react';
 
 interface APYDataPoint {
   date: string;
@@ -40,22 +33,16 @@ async function calculateAPYHistory(earningsRaw: EarningsHistoryRaw, networkRaw: 
   }
 
   const baselineApy = parseFloat(networkRaw.bondingAPY || '0');
-  
   const totalPeriodEarnings = intervals.reduce((sum, curr) => sum + Number(curr.bondingEarnings), 0);
   const avgDailyEarnings = (totalPeriodEarnings / intervals.length) / 1e8;
 
   return intervals.map((interval) => {
     const dailyEarnings = Number(interval.bondingEarnings) / 1e8;
     const ratio = avgDailyEarnings !== 0 ? dailyEarnings / avgDailyEarnings : 1;
-    
     const pointApy = baselineApy * ratio;
-    
     const date = new Date(Number(interval.startTime) * 1000);
     return {
-      date: date.toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-      }),
+      date: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
       apy: Math.max(0, pointApy),
     };
   }).reverse();
@@ -114,21 +101,17 @@ export function APYChart({ interval = 'year', count = 365 }: APYChartProps) {
   }, [interval, count]);
 
   return (
-    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-      <div className="flex items-center justify-between mb-4">
+    <div className="p-8 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-            Estimated Network APY
-          </h3>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Annualized 1Y Trend</p>
+          <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">Estimated Network APY</h3>
+          <p className="text-sm text-zinc-500">Annualized 1Y Trend</p>
         </div>
         
         {currentApy !== null && (
-          <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
-            <TrendingUp className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400 font-mono">
-              {formatAPY(currentApy)}
-            </span>
+          <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold uppercase">
+            <TrendingUp className="w-3 h-3" />
+            <span>{formatAPY(currentApy)}</span>
           </div>
         )}
       </div>
@@ -157,6 +140,7 @@ export function APYChart({ interval = 'year', count = 365 }: APYChartProps) {
                 <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
               </linearGradient>
             </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" opacity={0.05} vertical={false} />
             <XAxis
               dataKey="date"
               axisLine={false}

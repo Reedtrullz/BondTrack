@@ -99,19 +99,20 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
   ];
 
   return (
-    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-          RUNE Price
-        </h3>
+    <div className="p-8 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">RUNE Price</h3>
+          <p className="text-sm text-zinc-500">Current market valuation</p>
+        </div>
         <div className="flex gap-1">
           {intervals.map((item) => (
             <button
               key={item.value}
               onClick={() => setIntervalValue(item.value)}
-              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+              className={`px-3 py-1 text-[10px] rounded-full transition-colors ${
                 interval === item.value
-                  ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                  ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold'
                   : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
               }`}
             >
