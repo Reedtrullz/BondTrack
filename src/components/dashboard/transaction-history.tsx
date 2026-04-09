@@ -52,7 +52,11 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
     }
   );
 
-  const transactions = data?.actions ? parseActions(data.actions) : [];
+  const transactions = data?.actions ? (() => {
+    const parsed = parseActions(data.actions);
+    console.log('Parsed transactions:', parsed.length, parsed);
+    return parsed;
+  })() : [];
 
   const handleSearch = () => {
     if (inputAddress.trim()) {
