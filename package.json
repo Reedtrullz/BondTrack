@@ -6,8 +6,9 @@
     "node": ">=20.9.0"
   },
   "scripts": {
+    "prebuild": "node -e \"if (process.version.split('.')[0] !== '20') { console.error('ERROR: Node 20 is required for this build. Current version: ' + process.version); process.exit(1); }\"",
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run prebuild && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
