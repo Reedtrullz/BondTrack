@@ -52,10 +52,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
     }
   );
 
-  const transactions = data?.actions ? (() => {
-    console.log('Raw actions:', JSON.stringify(data.actions.slice(0, 3), null, 2));
-    return parseActions(data.actions);
-  })() : [];
+  const transactions = data?.actions ? parseActions(data.actions) : [];
 
   const handleSearch = () => {
     if (inputAddress.trim()) {
