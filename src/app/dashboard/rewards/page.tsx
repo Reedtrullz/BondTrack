@@ -1,7 +1,5 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
 import { useSearchParams } from 'next/navigation';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { useRunePrice } from '@/lib/hooks/use-rune-price';
@@ -11,7 +9,7 @@ import { PersonalFeeAudit } from '@/components/dashboard/fee-impact-tracker';
 import { AutoCompoundChart } from '@/components/dashboard/auto-compound-chart';
 import { APYChart } from '@/components/dashboard/apy-chart';
 import { PriceChart } from '@/components/dashboard/price-chart';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { TrendingUp, Zap } from 'lucide-react';
 
 export default function RewardsPage() {
@@ -19,6 +17,11 @@ export default function RewardsPage() {
   const address = searchParams.get('address');
   const { positions, isLoading } = useBondPositions(address);
   const { price: runePrice } = useRunePrice();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (isLoading) {
     return (
@@ -32,7 +35,7 @@ export default function RewardsPage() {
     return (
       <div className="p-8 text-center bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 max-w-2xl mx-auto mt-12">
         <h2 className="text-xl font-semibold mb-2">No Bond Positions Found</h2>
-        <p className="text-zinc-500">Please enter a valid THORChain address to view reward metrics.</p>
+        <p className, "text-zinc-500">Please enter a valid THORChain address to view reward metrics.</p>
       </div>
     );
   }
@@ -43,7 +46,10 @@ export default function RewardsPage() {
     return 0.12; 
   }, [positions]);
 
-  const totalBonded = positions.reduce((sum, p) => sum + p.bondAmount, 0);
+  // Prevent hydration mismatch by only rendering client-specific content after mount
+  if (!mounted) {
+    return <div className="p-8 flex items-center justify-center min-h-[400px]" />;
+  }
 
   return (
     <div className="space-y-12 pb-20">
