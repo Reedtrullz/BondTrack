@@ -170,10 +170,10 @@ export async function getNetwork(): Promise<NetworkRaw> {
   return fetchMidgard<NetworkRaw>('/v2/network');
 }
 
-export async function getActions(address: string, count = 50, type?: string): Promise<ActionsResponseRaw> {
+export async function getActions(address: string, limit = 50, type?: string): Promise<ActionsResponseRaw> {
   const params = new URLSearchParams();
   params.set('address', address);
-  params.set('count', String(count));
+  params.set('limit', String(limit));
   if (type) params.set('type', type);
   const qs = params.toString();
   return fetchMidgard<ActionsResponseRaw>(`/v2/actions${qs ? `?${qs}` : ''}`);
