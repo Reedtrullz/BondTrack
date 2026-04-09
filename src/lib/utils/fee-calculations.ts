@@ -9,6 +9,10 @@ export interface FeeAuditResult {
   period: 'daily' | 'monthly';
 }
 
+/**
+ * Calculates the estimated fee leakage based on current bond positions.
+ * Handles zero-reward cases to prevent division-by-zero glitches.
+ */
 export function calculatePersonalFeeLeakage(positions: BondPosition[], period: 'daily' | 'monthly' = 'monthly'): FeeAuditResult {
   const ESTIMATED_DAILY_RATE = 0.000001; 
   const daysInPeriod = period === 'daily' ? 1 : 30;
@@ -42,4 +46,23 @@ export function calculatePersonalFeeLeakage(positions: BondPosition[], period: '
     leakagePercent: Math.min(100, (totalFees / totalGross) * 100),
     period,
   };
+}
+
+/**
+ * Calculates the weighted average APY of the portfolio.
+ * Weighted APY = Sum(Bond * APY) / Total Bond
+ */
+export function calculateWeightedApy(positions: BondPosition[]): number {
+  let totalBond = 0;
+  let weightedSum = 0;
+
+  positions.forEach(pos => {
+    const bond = runeToNumber(pos.bondAmount);
+    const apy = pos.netAPY || 0;
+    totalBond += bond;
+    weightedSum += bond * apy;
+  });
+
+  if (totalBond === 0) return 0;
+  return weightedSum / totalBond;
 }

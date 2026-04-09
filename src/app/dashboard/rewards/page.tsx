@@ -13,6 +13,7 @@ import { APYChart } from '@/components/dashboard/apy-chart';
 import { PriceChart } from '@/components/dashboard/price-chart';
 import { useMemo, useState, useEffect } from 'react';
 import { TrendingUp, Zap } from 'lucide-react';
+import { calculateWeightedApy } from '@/lib/utils/fee-calculations';
 
 export default function RewardsPage() {
   const searchParams = useSearchParams();
@@ -43,9 +44,7 @@ export default function RewardsPage() {
   }
 
   const weightedApy = useMemo(() => {
-    const totalBond = positions.reduce((sum, p) => sum + p.bondAmount, 0);
-    if (totalBond === 0) return 0;
-    return 0.12; 
+    return calculateWeightedApy(positions);
   }, [positions]);
 
   if (!mounted) {
