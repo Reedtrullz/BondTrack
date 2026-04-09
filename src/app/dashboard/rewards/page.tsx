@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useSearchParams } from 'next/navigation';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { useRunePrice } from '@/lib/hooks/use-rune-price';
