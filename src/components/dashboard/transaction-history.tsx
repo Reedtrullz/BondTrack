@@ -51,8 +51,14 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
 
   const { data, error, isLoading } = useSWR(
     selectedAddress ? ['actions', selectedAddress] : null,
-    () => getActions(selectedAddress, 50),
-    { refreshInterval: 60_000 }
+    async () => {
+      const result = await getActions(selectedAddress, 50);
+      return result;
+    },
+    { 
+      refreshInterval: 60_000,
+      onError: (err) => console.error('Actions API error:', err),
+    }
   );
 
   const transactions = data?.actions ? parseActions(data.actions) : [];
@@ -95,7 +101,10 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
       ) : isLoading ? (
         <div className="text-center py-8 text-zinc-500">Loading transactions...</div>
       ) : error ? (
-        <div className="text-center py-8 text-red-500">Failed to load transactions</div>
+        <div className="text-center py-8">
+          <div className="text-red-500 mb-2">Failed to load transactions</div>
+          <div className="text-xs text-zinc-500 font-mono">{String(error)}</div>
+        </div>
       ) : transactions.length === 0 ? (
         <div className="text-center py-8 text-zinc-500">
           No BOND/UNBOND transactions found for this address
