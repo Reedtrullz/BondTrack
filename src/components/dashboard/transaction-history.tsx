@@ -43,7 +43,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
   const { data, error, isLoading } = useSWR(
     selectedAddress ? ['actions', selectedAddress] : null,
     async () => {
-      const result = await getActions(selectedAddress, 50);
+      const result = await getActions(selectedAddress, 50, 'bond');
       return result;
     },
     { 
