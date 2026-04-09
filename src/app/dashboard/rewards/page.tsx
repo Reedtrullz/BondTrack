@@ -47,7 +47,6 @@ export default function RewardsPage() {
   }
 
   const networkApy = networkData?.bondingAPY ? parseFloat(networkData.bondingAPY) : undefined;
-  console.log('[REWARDS] networkApy:', networkApy, 'bondingAPY:', networkData?.bondingAPY);
   
   const weightedApy = useMemo(() => {
     if (!networkApy) return 0;

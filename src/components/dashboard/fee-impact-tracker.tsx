@@ -13,16 +13,17 @@ interface PersonalFeeAuditProps {
 
 export function PersonalFeeAudit({ positions, networkApy }: PersonalFeeAuditProps) {
   const safePositions = positions ?? [];
-  const audit = useMemo(() => calculatePersonalFeeLeakage(safePositions, 'monthly', networkApy), [safePositions, networkApy]);
-
-  if (safePositions.length === 0) {
+  
+  if (!networkApy || safePositions.length === 0) {
     return (
       <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col items-center justify-center text-center h-full min-h-[200px]">
         <ShieldAlert className="w-8 h-8 text-zinc-300 mb-2" />
-        <p className="text-sm text-zinc-500">No positions found to audit</p>
+        <p className="text-sm text-zinc-500">Loading fee data...</p>
       </div>
     );
   }
+  
+  const audit = useMemo(() => calculatePersonalFeeLeakage(safePositions, 'monthly', networkApy), [safePositions, networkApy]);
 
   const hasRewards = audit.grossReward > 0;
 
@@ -42,7 +43,7 @@ export function PersonalFeeAudit({ positions, networkApy }: PersonalFeeAuditProp
         <div className="flex-1 w-full text-center md:text-left">
           <div className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Gross Rewards</div>
           <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 font-mono">
-            {audit.grossReward.toLocaleString(undefined, { minimumFractionDigits: 4 })}
+            {audit.grossReward.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="text-xs text-zinc-500">RUNE / mo</div>
         </div>
@@ -64,7 +65,7 @@ export function PersonalFeeAudit({ positions, networkApy }: PersonalFeeAuditProp
         <div className="flex-1 w-full text-center md:text-right">
           <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-1">Net Take-home</div>
           <div className="text-3xl font-bold text-emerald-700 dark:text-emerald-300 font-mono">
-            {audit.netTakeHome.toLocaleString(undefined, { minimumFractionDigits: 4 })}
+            {audit.netTakeHome.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="text-xs text-emerald-600/70">RUNE / mo</div>
         </div>
@@ -75,7 +76,7 @@ export function PersonalFeeAudit({ positions, networkApy }: PersonalFeeAuditProp
           <span className="text-zinc-500">Monthly Leakage</span>
           <div className="flex items-center gap-2">
             <span className="font-mono text-red-600 dark:text-red-400">
-              -{audit.feeLeakage.toLocaleString(undefined, { minimumFractionDigits: 4 })} RUNE
+              -{audit.feeLeakage.toLocaleString(undefined, { minimumFractionDigits: 2 })} RUNE
             </span>
             <span className="text-zinc-400">|</span>
             <span className="font-mono text-zinc-600 dark:text-zinc-400">

@@ -28,7 +28,6 @@ export function calculatePersonalFeeLeakage(
 
   const totalBond = safePositions.reduce((sum, p) => sum + p.bondAmount, 0);
   const apy = networkApy ?? 0.20; 
-  console.log('[FEE] totalBond:', totalBond, 'apy:', apy, 'monthlyRate:', apy/12, 'gross:', totalBond * (apy/12)); 
   
   const monthlyRate = apy / 12;
   const grossReward = totalBond * monthlyRate;
