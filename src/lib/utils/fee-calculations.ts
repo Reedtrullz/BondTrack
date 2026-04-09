@@ -24,8 +24,9 @@ export function calculatePersonalFeeLeakage(
   earningsHistory?: EarningsData[]
 ): FeeAuditResult {
   const daysInPeriod = period === 'daily' ? 1 : 30;
+  const safePositions = positions ?? [];
 
-  if (positions.length === 0) {
+  if (safePositions.length === 0) {
     return {
       grossReward: 0,
       feeLeakage: 0,
@@ -38,22 +39,23 @@ export function calculatePersonalFeeLeakage(
   let totalGross = 0;
   let totalFees = 0;
 
-  if (earningsHistory && earningsHistory.length > 0) {
-    const totalBond = positions.reduce((sum, p) => sum + runeToNumber(p.bondAmount), 0);
-    const networkTotalBond = 26300000000; // Approximate - from network metrics
+  const safeEarnings = earningsHistory ?? [];
+  if (safeEarnings.length > 0) {
+    const totalBond = safePositions.reduce((sum, p) => sum + runeToNumber(p.bondAmount), 0);
+    const networkTotalBond = 26300000000;
     
-    earningsHistory.forEach(interval => {
+    safeEarnings.forEach(interval => {
       const bondEarnings = runeToNumber(interval.bondingEarnings);
       const bondShare = totalBond / networkTotalBond;
       const userEarnings = bondEarnings * bondShare;
       totalGross += userEarnings;
       
-      const feeRate = positions[0]?.operatorFee || 0.05;
+      const feeRate = safePositions[0]?.operatorFee || 0.05;
       totalFees += userEarnings * feeRate;
     });
   } else {
     const ESTIMATED_DAILY_RATE = 0.000001;
-    positions.forEach(pos => {
+    safePositions.forEach(pos => {
       const bond = runeToNumber(pos.bondAmount);
       const dailyGross = bond * ESTIMATED_DAILY_RATE * daysInPeriod;
       const feeRate = pos.operatorFee || 0.05;

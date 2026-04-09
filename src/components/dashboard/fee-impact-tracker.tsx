@@ -13,9 +13,10 @@ interface PersonalFeeAuditProps {
 }
 
 export function PersonalFeeAudit({ positions, earningsHistory }: PersonalFeeAuditProps) {
-  const audit = useMemo(() => calculatePersonalFeeLeakage(positions, 'monthly', earningsHistory), [positions, earningsHistory]);
+  const safePositions = positions ?? [];
+  const audit = useMemo(() => calculatePersonalFeeLeakage(safePositions, 'monthly', earningsHistory), [safePositions, earningsHistory]);
 
-  if (positions.length === 0) {
+  if (safePositions.length === 0) {
     return (
       <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col items-center justify-center text-center h-full min-h-[200px]">
         <ShieldAlert className="w-8 h-8 text-zinc-300 mb-2" />
