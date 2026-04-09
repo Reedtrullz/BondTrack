@@ -50,15 +50,16 @@ export function calculatePersonalFeeLeakage(positions: BondPosition[], period: '
 
 /**
  * Calculates the weighted average APY of the portfolio.
- * Weighted APY = Sum(Bond * APY) / Total Bond
+ * If a position has no APY, it falls back to the provided network baseline.
+ * Weighted APY = Sum(Bond * (Position APY || Baseline)) / Total Bond
  */
-export function calculateWeightedApy(positions: BondPosition[]): number {
+export function calculateWeightedApy(positions: BondPosition[], networkBaselineApy: number = 0): number {
   let totalBond = 0;
   let weightedSum = 0;
 
   positions.forEach(pos => {
     const bond = runeToNumber(pos.bondAmount);
-    const apy = pos.netAPY || 0;
+    const apy = pos.netAPY || networkBaselineApy;
     totalBond += bond;
     weightedSum += bond * apy;
   });

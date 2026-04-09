@@ -14,12 +14,14 @@ import { PriceChart } from '@/components/dashboard/price-chart';
 import { useMemo, useState, useEffect } from 'react';
 import { TrendingUp, Zap } from 'lucide-react';
 import { calculateWeightedApy } from '@/lib/utils/fee-calculations';
+import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
 
 export default function RewardsPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
   const { positions, isLoading } = useBondPositions(address);
   const { price: runePrice } = useRunePrice();
+  const { networkApy } = useNetworkMetrics(); // Get real-time network APY
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -44,8 +46,9 @@ export default function RewardsPage() {
   }
 
   const weightedApy = useMemo(() => {
-    return calculateWeightedApy(positions);
-  }, [positions]);
+    // Use networkApy as the fallback baseline to ensure the forecast is always realistic
+    return calculateWeightedApy(positions, networkApy || 0);
+  }, [positions, networkApy]);
 
   if (!mounted) {
     return <div className="p-8 flex items-center justify-center min-h-[400px]" />;
@@ -119,7 +122,7 @@ export default function RewardsPage() {
       <section className="space-y-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
-            <TrendingUp className="w-4 h-4" />
+            <TrendingPUp className="w-4 h-4" />
           </div>
           <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-widest">
             Market Context
