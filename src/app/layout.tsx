@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "THORNode Watcher",
+  title: "BondTrack",
   description: "Monitor your THORChain bond provider positions",
 };
 

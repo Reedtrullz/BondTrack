@@ -15,13 +15,15 @@ import { useMemo, useState, useEffect } from 'react';
 import { TrendingUp, Zap } from 'lucide-react';
 import { calculateWeightedApy } from '@/lib/utils/fee-calculations';
 import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
+import { useEarningsHistory } from '@/lib/hooks/use-earnings';
 
 export default function RewardsPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
   const { positions, isLoading } = useBondPositions(address);
   const { price: runePrice } = useRunePrice();
-  const { data: networkData } = useNetworkMetrics(); // Correct SWR destructuring
+  const { data: networkData } = useNetworkMetrics();
+  const { earnings } = useEarningsHistory('day', 30);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -46,8 +48,8 @@ export default function RewardsPage() {
   }
 
   const weightedApy = useMemo(() => {
-    // Parse the network APY string to a number (e.g. "0.27" -> 0.0027)
-    const baseline = networkData?.bondingAPY ? parseFloat(networkData.bondingAPY) / 100 : 0;
+    if (!networkData?.bondingAPY) return 0;
+    const baseline = parseFloat(networkData.bondingAPY) / 100;
     return calculateWeightedApy(positions, baseline);
   }, [positions, networkData]);
 
@@ -67,7 +69,8 @@ export default function RewardsPage() {
         </div>
         <PnLDashboard 
           positions={positions} 
-          currentRunePrice={runePrice || 0} 
+          currentRunePrice={runePrice || 0}
+          address={address}
         />
       </section>
 
@@ -88,15 +91,21 @@ export default function RewardsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Leakage Pipeline */}
           <div className="lg:col-span-4">
-            <PersonalFeeAudit positions={positions} />
+            <PersonalFeeAudit positions={positions} earningsHistory={earnings?.intervals} />
           </div>
           
           {/* Growth Projection */}
           <div className="lg:col-span-8">
-            <AutoCompoundChart 
-              positions={positions} 
-              weightedApy={weightedApy} 
-            />
+            {weightedApy > 0 ? (
+              <AutoCompoundChart 
+                positions={positions} 
+                weightedApy={weightedApy} 
+              />
+            ) : (
+              <div className="p-8 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm flex items-center justify-center min-h-[300px]">
+                <p className="text-zinc-500">Loading APY data...</p>
+              </div>
+            )}
           </div>
         </div>
 

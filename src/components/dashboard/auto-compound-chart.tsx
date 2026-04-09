@@ -18,7 +18,7 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
   const [projectionData, setProjectionData] = useState<any[]>([]);
 
   useEffect(() => {
-    if (totalBonded === 0) {
+    if (totalBonded === 0 || weightedApy <= 0) {
       setProjectionData([]);
       return;
     }
@@ -40,7 +40,7 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
         active: activeBalance,
       });
 
-      passiveBalance += totalBonded * monthlyRate;
+      passiveBalance = totalBonded;
       activeBalance *= (1 + monthlyRate);
     }
 

@@ -2,16 +2,18 @@
 
 import React, { useMemo } from 'react';
 import { BondPosition } from '@/lib/types/node';
+import { EarningsIntervalRaw } from '@/lib/api/midgard';
 import { cn } from '@/lib/utils';
 import { calculatePersonalFeeLeakage } from '@/lib/utils/fee-calculations';
 import { ArrowRight, TrendingDown, ShieldAlert, Info } from 'lucide-react';
 
 interface PersonalFeeAuditProps {
   positions: BondPosition[];
+  earningsHistory?: EarningsIntervalRaw[];
 }
 
-export function PersonalFeeAudit({ positions }: PersonalFeeAuditProps) {
-  const audit = useMemo(() => calculatePersonalFeeLeakage(positions, 'monthly'), [positions]);
+export function PersonalFeeAudit({ positions, earningsHistory }: PersonalFeeAuditProps) {
+  const audit = useMemo(() => calculatePersonalFeeLeakage(positions, 'monthly', earningsHistory), [positions, earningsHistory]);
 
   if (positions.length === 0) {
     return (

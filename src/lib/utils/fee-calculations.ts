@@ -9,25 +9,59 @@ export interface FeeAuditResult {
   period: 'daily' | 'monthly';
 }
 
+interface EarningsData {
+  bondingEarnings: string;
+  runePriceUSD: string;
+}
+
 /**
  * Calculates the estimated fee leakage based on current bond positions.
- * Handles zero-reward cases to prevent division-by-zero glitches.
+ * Uses real earnings from Midgard API when available, with fallback estimates.
  */
-export function calculatePersonalFeeLeakage(positions: BondPosition[], period: 'daily' | 'monthly' = 'monthly'): FeeAuditResult {
-  const ESTIMATED_DAILY_RATE = 0.000001; 
+export function calculatePersonalFeeLeakage(
+  positions: BondPosition[], 
+  period: 'daily' | 'monthly' = 'monthly',
+  earningsHistory?: EarningsData[]
+): FeeAuditResult {
   const daysInPeriod = period === 'daily' ? 1 : 30;
+
+  if (positions.length === 0) {
+    return {
+      grossReward: 0,
+      feeLeakage: 0,
+      netTakeHome: 0,
+      leakagePercent: 0,
+      period,
+    };
+  }
 
   let totalGross = 0;
   let totalFees = 0;
 
-  positions.forEach(pos => {
-    const bond = runeToNumber(pos.bondAmount);
-    const dailyGross = bond * ESTIMATED_DAILY_RATE * daysInPeriod;
-    const feeRate = pos.operatorFee || 0.01;
-    const feeAmount = dailyGross * feeRate;
-    totalGross += dailyGross;
-    totalFees += feeAmount;
-  });
+  if (earningsHistory && earningsHistory.length > 0) {
+    const totalBond = positions.reduce((sum, p) => sum + runeToNumber(p.bondAmount), 0);
+    const networkTotalBond = 26300000000; // Approximate - from network metrics
+    
+    earningsHistory.forEach(interval => {
+      const bondEarnings = runeToNumber(interval.bondingEarnings);
+      const bondShare = totalBond / networkTotalBond;
+      const userEarnings = bondEarnings * bondShare;
+      totalGross += userEarnings;
+      
+      const feeRate = positions[0]?.operatorFee || 0.05;
+      totalFees += userEarnings * feeRate;
+    });
+  } else {
+    const ESTIMATED_DAILY_RATE = 0.000001;
+    positions.forEach(pos => {
+      const bond = runeToNumber(pos.bondAmount);
+      const dailyGross = bond * ESTIMATED_DAILY_RATE * daysInPeriod;
+      const feeRate = pos.operatorFee || 0.05;
+      const feeAmount = dailyGross * feeRate;
+      totalGross += dailyGross;
+      totalFees += feeAmount;
+    });
+  }
 
   if (totalGross === 0) {
     return {

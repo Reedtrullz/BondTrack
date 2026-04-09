@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { BondPosition } from '@/lib/types/node';
 import { calculatePricePnL, calculateTotalReturn, calculateOperatorFeePaid } from '@/lib/utils/calculations';
 import { formatRuneAmount, runeToNumber } from '@/lib/utils/formatters';
@@ -10,6 +9,7 @@ import { TrendingUp, DollarSign, Percent, Wallet, Edit3, Check, X } from 'lucide
 interface PnLDashboardProps {
   positions: BondPosition[];
   currentRunePrice: number;
+  address: string | null;
   entryRunePrice?: number;
   earningsHistory?: {
     intervals: {
@@ -33,12 +33,11 @@ function getStorageKey(address: string | null): string | null {
 export function PnLDashboard({
   positions,
   currentRunePrice,
+  address,
   entryRunePrice,
   earningsHistory,
   bondHistory,
 }: PnLDashboardProps) {
-  const searchParams = useSearchParams();
-  const address = searchParams.get('address');
   const storageKey = getStorageKey(address);
 
   const [isEditing, setIsEditing] = useState(false);
