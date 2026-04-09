@@ -15,7 +15,7 @@ export function PersonalFeeAudit({ positions }: PersonalFeeAuditProps) {
 
   if (positions.length === 0) {
     return (
-      <div className="p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col items-center justify-center text-center h-full min-h-[200px]">
+      <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col items-center justify-center text-center h-full min-h-[200px]">
         <ShieldAlert className="w-8 h-8 text-zinc-300 mb-2" />
         <p className="text-sm text-zinc-500">No positions found to audit</p>
       </div>
@@ -77,7 +77,7 @@ export function PersonalFeeAudit({ positions }: PersonalFeeAuditProps) {
         </div>
         <div className="text-right">
           <div className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-            {((audit.feeLeakage / audit.grossReward) * 100).toFixed(2)}%
+            {audit.leakagePercent.toFixed(2)}%
           </div>
           <div className="text-[10px] text-zinc-500 uppercase">Lost to fees</div>
         </div>

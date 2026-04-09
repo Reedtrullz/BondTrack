@@ -5,16 +5,15 @@ export interface FeeAuditResult {
   grossReward: number;
   feeLeakage: number;
   netTakeHome: number;
+  leakagePercent: number;
   period: 'daily' | 'monthly';
 }
 
 /**
  * Calculates the estimated fee leakage based on current bond positions.
- * This is a projection based on typical THORChain reward distributions.
+ * Handles zero-reward cases to prevent division-by-zero glitches.
  */
 export function calculatePersonalFeeLeakage(positions: BondPosition[], period: 'daily' | 'monthly' = 'monthly'): FeeAuditResult {
-  // Typical estimated daily reward rate for a healthy node (~0.0001% per day)
-  // In a real scenario, this would be fetched from the user's actual earnings history
   const ESTIMATED_DAILY_RATE = 0.000001; 
   const daysInPeriod = period === 'daily' ? 1 : 30;
 
@@ -25,18 +24,32 @@ export function calculatePersonalFeeLeakage(positions: BondPosition[], period: '
     const bond = runeToNumber(pos.bondAmount);
     const dailyGross = bond * ESTIMATED_DAILY_RATE * daysInPeriod;
     
-    // operatorFee is usually a decimal (e.g., 0.01 for 1%)
-    const feeRate = pos.operatorFee || 0.01; // Default to 1% if not provided
+    const feeRate = pos.operatorFee || 0.01;
     const feeAmount = dailyGross * feeRate;
 
     totalGross += dailyGross;
     totalFees += feeAmount;
   });
 
+  // Guard against zero rewards to prevent absurd percentages
+  if (totalGross === 0) {
+    return {
+      grossReward: 0,
+      feeLeakage: 0,
+      netTakeHome: 0,
+      leakagePercent: 0,
+      period,
+    };
+  }
+
+  // Calculate percentage and cap at 100%
+  const leakagePercent = Math.min(100, (totalFees / totalGross) * 100);
+
   return {
     grossReward: totalGross,
     feeLeakage: totalFees,
     netTakeHome: totalGross - totalFees,
+    leakagePercent,
     period,
   };
 }

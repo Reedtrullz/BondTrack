@@ -94,13 +94,13 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
   const intervals: { value: IntervalOption; label: string }[] = [
     { value: 'day', label: '24H' },
     { value: 'week', label: '7D' },
-    { value: 'month', label: '30D' },
+    { value: 'month', label: '30D, '},
     { value: 'year', label: '1Y' },
   ];
 
   return (
-    <div className="p-8 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-6 rounded-2xl bg-transparent border border-transparent shadow-none">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">RUNE Price</h3>
           <p className="text-sm text-zinc-500">Current market valuation</p>

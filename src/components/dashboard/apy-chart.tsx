@@ -101,15 +101,15 @@ export function APYChart({ interval = 'year', count = 365 }: APYChartProps) {
   }, [interval, count]);
 
   return (
-    <div className="p-8 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-6 rounded-2xl bg-transparent border border-transparent shadow-none">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">Estimated Network APY</h3>
           <p className="text-sm text-zinc-500">Annualized 1Y Trend</p>
         </div>
         
         {currentApy !== null && (
-          <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold uppercase">
+          <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px] font-bold uppercase">
             <TrendingUp className="w-3 h-3" />
             <span>{formatAPY(currentApy)}</span>
           </div>
@@ -136,11 +136,11 @@ export function APYChart({ interval = 'year', count = 365 }: APYChartProps) {
           <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
             <defs>
               <linearGradient id="apyGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3} />
+                <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.2} />
                 <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" opacity={0.05} vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" opacity={0.03} vertical={false} />
             <XAxis
               dataKey="date"
               axisLine={false}
