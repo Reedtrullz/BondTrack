@@ -27,7 +27,6 @@ export function calculatePersonalFeeLeakage(
   }
 
   const totalBond = safePositions.reduce((sum, p) => sum + p.bondAmount, 0);
-  console.log('[FEE DEBUG] totalBond:', totalBond, 'positions:', safePositions.map(p => ({ bond: p.bondAmount, opFee: p.operatorFee })));
   const apy = networkApy ?? 0.20; 
   
   const monthlyRate = apy / 12;

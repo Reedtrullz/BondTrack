@@ -46,7 +46,7 @@ export default function RewardsPage() {
     );
   }
 
-  const networkApy = networkData?.bondingAPY ? parseFloat(networkData.bondingAPY) / 100 : undefined;
+  const networkApy = networkData?.bondingAPY ? parseFloat(networkData.bondingAPY) : undefined;
   
   const weightedApy = useMemo(() => {
     if (!networkApy) return 0;
