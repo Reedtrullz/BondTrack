@@ -4,10 +4,10 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-# THORNode Watcher — Knowledge Base
+# BondTrack — Knowledge Base
 
 **Stack**: Next.js 16.2.2 (App Router, Turbopack) · TypeScript · Tailwind v4 · SWR · Recharts · lucide-react
-**Purpose**: Dashboard for THORChain bond providers to monitor bonded RUNE, node health, rewards, and risk.
+**Purpose**: Professional Investment Command Center for THORChain bond providers to monitor and optimize bonded RUNE, node health, rewards, and risk.
 **Note**: Renamed to "BondTrack" but directory remains `thornode-watcher/`
 
 ## DEPLOYMENT
@@ -20,6 +20,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 **Domains configured**:
 - thorchain.no (custom, verified)
 - bond-track-pi.vercel.app (auto-created)
+- dev.thorchain.no (Staging/Development)
 
 **Observability**: No drains (Hobby plan), no analytics/speed insights installed
 
@@ -57,29 +58,31 @@ thornode-watcher/
 └── src/lib/utils.ts            # cn() utility (clsx + tailwind-merge)
 ```
 
-## KEY FEATURES (Bond Provider Focus)
+## KEY FEATURES (Investment Command Center)
 
-**Portfolio Tracking**:
+**Portfolio Intelligence**:
 - Total bonded, weighted APY, position count
-- Per-node bond amount and share percentage
+- **Portfolio Health Score (0-100)**: Calculated based on slash points, jail status, and churn risk.
+- **Bond Optimizer**: AI-driven suggestions for re-bonding to optimize yield vs risk.
 - Manual initial bond input with localStorage persistence (`pnl-dashboard.tsx`)
 
-**Yield Guard System**:
-- Auto-flags nodes at risk: overbonded, highest slash, lowest bond, oldest, leaving
-- Risk badges on position table (`position-table.tsx`)
-- "Your Nodes at Risk" summary on Risk page
+**Risk Defense Center**:
+- **Visual Risk Heatmap**: mapping Slashes vs. Churn Risk for all positions.
+- **Prescriptive Alerts**: Alerts shift from diagnostic to actionable (e.g., "Action: Reduce bond to mitigate risk").
+- **Unbond Window Tracker**: Real-time countdown for the unbonding window.
+- **Security Monitor**: Slash point monitoring and churn-out risk relative to the active set.
 
-**Bond History**:
-- Address-specific BOND/UNBOND transactions from Midgard `/v2/actions?type=bond`
-- Cumulative bond tracking over time
-- Date parsing: nanoseconds → divide by 1e9
+**PnL Performance Statement**:
+- **Reward Velocity**: Visual flow from Gross Earnings $\rightarrow$ Fee Leakage $\rightarrow$ Net Take-Home.
+- **Yield Benchmarking**: Comparison of user's weighted APY vs network averages and top-tier nodes.
+- **Earnings Projections**: Dynamic short and long-term projections with auto-compounding.
+- **Net Earnings Transparency**: Clear breakdown of operator fee impact on total returns.
 
-**Risk Monitoring**:
-- Your positions at risk summary
-- Slash point monitoring (per your nodes)
-- Churn-out risk (your ranking vs all active)
-- Unbond window tracker
-- **Incentive Pendulum** - shows Node/LP reward split, effective security, bond-to-pool ratio
+**Strategic Control Room**:
+- **Guided Bonding**: Strategic presets for common bond amounts and targets.
+- **Impact Preview**: Real-time simulation of how a bond move affects Health Score and APY.
+- **Integrated Workflow**: Direct "Quick Action" links from Node/Risk pages to the composer.
+- **Watchlist**: Monitoring target nodes for optimal entry points.
 
 ## WHERE TO LOOK
 | Task | Location |
@@ -136,6 +139,12 @@ thornode-watcher/
 - Never hardcode wallet names in UI — use WalletType enum
 
 ## RECENT CHANGES
+- **Full "Investment Command Center" Overhaul**:
+  - Integrated Portfolio Health Scoring (0-100) and an "Intelligence Hub" on Overview.
+  - Implemented a Visual Risk Heatmap and prescriptive "Defense" alerts on Risk page.
+  - Added Individual Health Grades and "Quick Action" shortcuts to the Nodes registry.
+  - Created a "Reward Velocity" PnL statement with Gross $\rightarrow$ Fee $\rightarrow$ Net transparency.
+  - Upgraded Transactions to a "Control Room" with guided presets and URL-driven flows.
 - Fix jail detection: use Midgard `/v2/health` for current block height instead of stale node `active_block_height`
 - Add `useCurrentBlockHeight` hook for real-time block height from Midgard
 - Complete UI/UX overhaul with Network Comparison and Pooled Node details
@@ -151,7 +160,7 @@ thornode-watcher/
 - `pnl-dashboard.tsx`: Manual initial bond input with localStorage
 - **Risk dashboard overhaul**: Refactor all components to show user's nodes only (not network-wide)
 - **useNodeRankings hook**: Computes user's node rank in active set, percentile, at-risk status
-- **Incentive Pendulum card**: Shows Node/LP reward split, effective security, pendulum status
+- **Incentive Pendulum card**: Shows Node/LP reward split, effective security, bond-to-pool ratio
 - **EarningStatusSummary**: Quick view of Active (earning) vs Standby (not earning) vs Jailed
 
 ## KNOWN ISSUES
