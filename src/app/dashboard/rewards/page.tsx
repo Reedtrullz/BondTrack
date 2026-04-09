@@ -21,7 +21,7 @@ export default function RewardsPage() {
   const address = searchParams.get('address');
   const { positions, isLoading } = useBondPositions(address);
   const { price: runePrice } = useRunePrice();
-  const { networkApy } = useNetworkMetrics(); // Get real-time network APY
+  const { data: networkData } = useNetworkMetrics(); // Correct SWR destructuring
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -46,9 +46,10 @@ export default function RewardsPage() {
   }
 
   const weightedApy = useMemo(() => {
-    // Use networkApy as the fallback baseline to ensure the forecast is always realistic
-    return calculateWeightedApy(positions, networkApy || 0);
-  }, [positions, networkApy]);
+    // Parse the network APY string to a number (e.g. "0.27" -> 0.0027)
+    const baseline = networkData?.bondingAPY ? parseFloat(networkData.bondingAPY) / 100 : 0;
+    return calculateWeightedApy(positions, baseline);
+  }, [positions, networkData]);
 
   if (!mounted) {
     return <div className="p-8 flex items-center justify-center min-h-[400px]" />;
@@ -122,7 +123,7 @@ export default function RewardsPage() {
       <section className="space-y-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
-            <TrendingPUp className="w-4 h-4" />
+            <TrendingUp className="w-4 h-4" />
           </div>
           <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-widest">
             Market Context
