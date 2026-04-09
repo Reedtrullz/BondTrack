@@ -3,17 +3,15 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle, X, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { generatePortfolioAlerts, type PortfolioAlert } from '@/lib/utils/portfolio-alerts';
 import { BondPosition } from '@/lib/types/node';
 
 interface ActionableAlertsProps {
   positions: BondPosition[];
+  address?: string | null;
 }
 
-export function ActionableAlerts({ positions }: ActionableAlertsProps) {
-  const searchParams = useSearchParams();
-  const address = searchParams.get('address');
+export function ActionableAlerts({ positions, address }: ActionableAlertsProps) {
   const [alerts, setAlerts] = useState<PortfolioAlert[]>([]);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 

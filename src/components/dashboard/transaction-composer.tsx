@@ -21,14 +21,16 @@ type Mode = 'BOND' | 'UNBOND';
 
 interface TransactionComposerProps {
   positions: BondPosition[];
+  address?: string | null;
 }
 
-export function TransactionComposer({ positions }: TransactionComposerProps) {
+export function TransactionComposer({ positions, address }: TransactionComposerProps) {
   const searchParams = useSearchParams();
-  const address = searchParams.get('address') || '';
-  const paramNode = searchParams.get('node');
-  const paramAmount = searchParams.get('amount');
-  const paramAction = searchParams.get('action') as Mode | null;
+  const paramNode = searchParams?.get('node');
+  const paramAmount = searchParams?.get('amount');
+  const paramAction = searchParams?.get('action') as Mode | null;
+  
+  const resolvedAddress = address || '';
 
   const [mode, setMode] = useState<Mode>('BOND');
   const [nodeAddress, setNodeAddress] = useState('');

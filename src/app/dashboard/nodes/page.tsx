@@ -24,7 +24,7 @@ export default function NodesPage() {
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Node Health</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {positions.map((pos) => (
-            <NodeStatusCard key={pos.nodeAddress} position={pos} />
+            <NodeStatusCard key={pos.nodeAddress} position={pos} address={address} />
           ))}
         </div>
       </div>

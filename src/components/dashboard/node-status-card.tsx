@@ -4,18 +4,16 @@ import { AlertTriangle, Shield, Server, Info, ArrowRight, PlusCircle, MinusCircl
 import { calculatePortfolioHealth, getGradeColor } from '@/lib/utils/health-score';
 import { useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 
 interface NodeStatusCardProps {
   position: BondPosition;
   currentBlockHeight?: number;
+  address?: string | null;
 }
 
-export function NodeStatusCard({ position, currentBlockHeight }: NodeStatusCardProps) {
+export function NodeStatusCard({ position, currentBlockHeight, address }: NodeStatusCardProps) {
   const health = calculatePortfolioHealth([position]);
   const [isHovered, setIsHovered] = useState(false);
-  const searchParams = useSearchParams();
-  const address = searchParams.get('address') || '';
 
   return (
     <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-3 relative group transition-all hover:border-zinc-300 dark:hover:border-zinc-700">

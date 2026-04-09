@@ -24,7 +24,7 @@ export default function TransactionsPage() {
           <h3 className="text-md font-medium text-zinc-700 dark:text-zinc-300 mb-4">
             Transaction Composer
           </h3>
-          <TransactionComposer positions={positions} />
+          <TransactionComposer positions={positions} address={address} />
         </div>
 
         <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">

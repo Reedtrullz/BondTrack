@@ -79,7 +79,7 @@ export default function OverviewPage() {
         )}
       </div>
 
-      <ActionableAlerts positions={positions} />
+      <ActionableAlerts positions={positions} address={address} />
 
       {/* Main Dashboard Grid - Fixed 3:1 Ratio */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -136,7 +136,7 @@ export default function OverviewPage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {positions.map((pos) => (
-              <NodeStatusCard key={pos.nodeAddress} position={pos} />
+              <NodeStatusCard key={pos.nodeAddress} position={pos} address={address} />
             ))}
           </div>
         </div>
