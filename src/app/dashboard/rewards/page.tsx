@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { useRunePrice } from '@/lib/hooks/use-rune-price';
-import { runeToNumber } from '@/lib/utils/formatters';
 import { PnLDashboard } from '@/components/dashboard/pnl-dashboard';
 import { PersonalFeeAudit } from '@/components/dashboard/fee-impact-tracker';
 import { AutoCompoundChart } from '@/components/dashboard/auto-compound-chart';
@@ -15,7 +14,6 @@ import { useMemo, useState, useEffect } from 'react';
 import { TrendingUp, Zap } from 'lucide-react';
 import { calculateWeightedApy } from '@/lib/utils/fee-calculations';
 import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
-import { useEarningsHistory } from '@/lib/hooks/use-earnings';
 
 export default function RewardsPage() {
   const searchParams = useSearchParams();
@@ -23,12 +21,13 @@ export default function RewardsPage() {
   const { positions, isLoading } = useBondPositions(address);
   const { price: runePrice } = useRunePrice();
   const { data: networkData } = useNetworkMetrics();
-  const { earnings } = useEarningsHistory('day', 30);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const safePositions = positions ?? [];
 
   if (isLoading) {
     return (
@@ -38,7 +37,7 @@ export default function RewardsPage() {
     );
   }
 
-  if (!address || positions.length === 0) {
+  if (!address || safePositions.length === 0) {
     return (
       <div className="p-8 text-center bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 max-w-2xl mx-auto mt-12">
         <h2 className="text-xl font-semibold mb-2">No Bond Positions Found</h2>
@@ -47,11 +46,12 @@ export default function RewardsPage() {
     );
   }
 
+  const networkApy = networkData?.bondingAPY ? parseFloat(networkData.bondingAPY) / 100 : undefined;
+  
   const weightedApy = useMemo(() => {
-    if (!networkData?.bondingAPY) return 0;
-    const baseline = parseFloat(networkData.bondingAPY) / 100;
-    return calculateWeightedApy(positions, baseline);
-  }, [positions, networkData]);
+    if (!networkApy) return 0;
+    return calculateWeightedApy(safePositions, networkApy);
+  }, [safePositions, networkApy]);
 
   if (!mounted) {
     return <div className="p-8 flex items-center justify-center min-h-[400px]" />;
@@ -59,7 +59,6 @@ export default function RewardsPage() {
 
   return (
     <div className="space-y-12 pb-20">
-      {/* LAYER 1: PERFORMANCE HEADLINE */}
       <section className="relative">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">PnL Performance</h2>
@@ -68,13 +67,12 @@ export default function RewardsPage() {
           </div>
         </div>
         <PnLDashboard 
-          positions={positions} 
+          positions={safePositions} 
           currentRunePrice={runePrice || 0}
           address={address}
         />
       </section>
 
-      {/* LAYER 2: THE OPTIMIZATION HUB */}
       <section className="space-y-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -89,16 +87,14 @@ export default function RewardsPage() {
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Leakage Pipeline */}
           <div className="lg:col-span-4">
-            <PersonalFeeAudit positions={positions} earningsHistory={earnings?.intervals} />
+            <PersonalFeeAudit positions={safePositions} networkApy={networkApy} />
           </div>
           
-          {/* Growth Projection */}
           <div className="lg:col-span-8">
             {weightedApy > 0 ? (
               <AutoCompoundChart 
-                positions={positions} 
+                positions={safePositions} 
                 weightedApy={weightedApy} 
               />
             ) : (
@@ -109,14 +105,13 @@ export default function RewardsPage() {
           </div>
         </div>
 
-        {/* Strategic Insight Bar */}
         <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-1 h-8 bg-emerald-500 rounded-full" />
             <div>
               <div className="text-xs font-bold text-zinc-400 uppercase tracking-tight">Strategic Insight</div>
               <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                {positions.length === 1 
+                {safePositions.length === 1 
                   ? "Your portfolio is concentrated in a single node. Consider diversifying to reduce operator fee exposure."
                   : "Your weighted APY is stable. Compounding your rewards monthly could increase your end-of-year balance."}
               </p>
@@ -128,7 +123,6 @@ export default function RewardsPage() {
         </div>
       </section>
 
-      {/* LAYER 3: MARKET BASELINE */}
       <section className="space-y-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-500">

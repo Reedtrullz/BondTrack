@@ -2,19 +2,18 @@
 
 import React, { useMemo } from 'react';
 import { BondPosition } from '@/lib/types/node';
-import { EarningsIntervalRaw } from '@/lib/api/midgard';
 import { cn } from '@/lib/utils';
 import { calculatePersonalFeeLeakage } from '@/lib/utils/fee-calculations';
 import { ArrowRight, TrendingDown, ShieldAlert, Info } from 'lucide-react';
 
 interface PersonalFeeAuditProps {
   positions: BondPosition[];
-  earningsHistory?: EarningsIntervalRaw[];
+  networkApy?: number;
 }
 
-export function PersonalFeeAudit({ positions, earningsHistory }: PersonalFeeAuditProps) {
+export function PersonalFeeAudit({ positions, networkApy }: PersonalFeeAuditProps) {
   const safePositions = positions ?? [];
-  const audit = useMemo(() => calculatePersonalFeeLeakage(safePositions, 'monthly', earningsHistory), [safePositions, earningsHistory]);
+  const audit = useMemo(() => calculatePersonalFeeLeakage(safePositions, 'monthly', networkApy), [safePositions, networkApy]);
 
   if (safePositions.length === 0) {
     return (
@@ -40,7 +39,6 @@ export function PersonalFeeAudit({ positions, earningsHistory }: PersonalFeeAudi
       </div>
 
       <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-        {/* Gross Rewards */}
         <div className="flex-1 w-full text-center md:text-left">
           <div className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Gross Rewards</div>
           <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 font-mono">
@@ -63,7 +61,6 @@ export function PersonalFeeAudit({ positions, earningsHistory }: PersonalFeeAudi
           <div className="hidden md:block w-12 h-px bg-zinc-200 dark:bg-zinc-800" />
         </div>
 
-        {/* Net Take-home */}
         <div className="flex-1 w-full text-center md:text-right">
           <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-1">Net Take-home</div>
           <div className="text-3xl font-bold text-emerald-700 dark:text-emerald-300 font-mono">
@@ -73,35 +70,19 @@ export function PersonalFeeAudit({ positions, earningsHistory }: PersonalFeeAudi
         </div>
       </div>
 
-      <div className="mt-8 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-        {hasRewards ? (
-          <>
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500">
-                <TrendingDown className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-[10px] font-bold text-zinc-400 uppercase">Monthly Leakage</div>
-                <div className="text-sm font-bold text-red-600 dark:text-red-400">
-                  -{audit.feeLeakage.toLocaleString(undefined, { minimumFractionDigits: 4 })} RUNE
-                </div>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-                {audit.leakagePercent.toFixed(2)}%
-              </div>
-              <div className="text-[10px] text-zinc-500 uppercase">Lost to fees</div>
-            </div>
-          </>
-        ) : (
-          <div className="flex items-center gap-3 w-full justify-center text-center">
-            <Info className="w-4 h-4 text-zinc-400" />
-            <p className="text-xs text-zinc-500 italic">
-              Insufficient reward activity to calculate leakage.
-            </p>
+      <div className="mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-zinc-500">Monthly Leakage</span>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-red-600 dark:text-red-400">
+              -{audit.feeLeakage.toLocaleString(undefined, { minimumFractionDigits: 4 })} RUNE
+            </span>
+            <span className="text-zinc-400">|</span>
+            <span className="font-mono text-zinc-600 dark:text-zinc-400">
+              {audit.leakagePercent.toFixed(2)}% lost to fees
+            </span>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
