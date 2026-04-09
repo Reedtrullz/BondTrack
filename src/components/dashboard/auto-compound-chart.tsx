@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { TrendingUp, Coins } from 'lucide-react';
 import { BondPosition } from '@/lib/types/node';
@@ -15,8 +15,13 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
     positions.reduce((sum, p) => sum + p.bondAmount, 0), 
   [positions]);
 
-  const projectionData = useMemo(() => {
-    if (totalBonded === 0) return [];
+  const [projectionData, setProjectionData] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (totalBonded === 0) {
+      setProjectionData([]);
+      return;
+    }
 
     const data = [];
     const months = 12;
@@ -39,7 +44,7 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
       activeBalance *= (1 + monthlyRate);
     }
 
-    return data;
+    setProjectionData(data);
   }, [totalBonded, weightedApy]);
 
   const opportunityCost = projectionData.length > 0 
