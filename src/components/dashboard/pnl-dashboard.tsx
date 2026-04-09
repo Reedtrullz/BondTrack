@@ -82,13 +82,13 @@ export function PnLDashboard({
     setIsEditing(false);
   };
 
-  const effectiveInitialBond = manualInitialBond ?? (bondHistory?.initialBond ?? positions.reduce((sum, pos) => sum + pos.bondAmount, 0));
-  const totalBondingEarnings = bondHistory?.currentBond ?? (positions.reduce((sum, pos) => sum + pos.bondAmount, 0) + (bondHistory?.bondGrowth ?? 0));
+  const effectiveInitialBond = manualInitialBond ?? (bondHistory?.initialBond ?? (positions?.reduce((sum, pos) => sum + pos.bondAmount, 0) ?? 0));
+  const totalBondingEarnings = bondHistory?.currentBond ?? ((positions?.reduce((sum, pos) => sum + pos.bondAmount, 0) ?? 0) + (bondHistory?.bondGrowth ?? 0));
   const currentBond = bondHistory?.currentBond ?? (effectiveInitialBond + totalBondingEarnings - effectiveInitialBond);
   
   const effectiveEntryPrice = useMemo(() => 
     entryRunePrice || 
-    (earningsHistory?.intervals[0] ? Number(earningsHistory.intervals[0].runePriceUSD) : currentRunePrice),
+    (earningsHistory?.intervals?.length ? Number(earningsHistory.intervals[0].runePriceUSD) : currentRunePrice),
     [entryRunePrice, earningsHistory, currentRunePrice]
   );
   
