@@ -7,7 +7,7 @@ import { SlashMonitor } from '@/components/dashboard/slash-monitor';
 import { ChurnOutRisk } from '@/components/dashboard/churn-out-risk';
 import { NetworkSecurityMetrics } from '@/components/dashboard/network-security-metrics';
 import { UnbondWindowTracker } from '@/components/dashboard/unbond-window-tracker';
-import { RiskHeatmap } from '@/components/dashboard/risk-heatmap';
+import { RiskExposureSummary } from '@/components/dashboard/risk-exposure-summary';
 import type { YieldGuardFlag } from '@/lib/types/node';
 import { useState } from 'react';
 import { generatePortfolioAlerts } from '@/lib/utils/portfolio-alerts';
@@ -121,7 +121,6 @@ function YourNodesAtRisk({ positions }: { positions: ReturnType<typeof useBondPo
       ) : (
         <div className="space-y-2">
           {atRiskPositions.map(pos => {
-            // Find the specific alert for this node's primary risk
             const primaryFlag = pos.yieldGuardFlags?.[0];
             const alert = alerts.find(a => {
               if (primaryFlag === 'highest_slash' && a.type === 'SLASH') return true;
@@ -202,10 +201,7 @@ export default function RiskPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
-          <RiskHeatmap 
-            positions={positions} 
-            onNodeSelect={(addr) => setSelectedNode(addr)} 
-          />
+          <RiskExposureSummary positions={positions} />
         </div>
         <div className="lg:col-span-2 space-y-6">
           <YourNodesAtRisk positions={positions} />
