@@ -16,25 +16,16 @@ interface Transaction {
 
 function parseActions(actions: ActionRaw[]): Transaction[] {
   return actions
-    .filter((action) => {
-      const memo = action.memo?.toUpperCase() || '';
-      return memo.startsWith('BOND:') || memo.startsWith('UNBOND:');
-    })
-    .map((action) => {
-      const memo = action.memo?.toUpperCase() || '';
-      const type: 'BOND' | 'UNBOND' = memo.startsWith('BOND:') ? 'BOND' : 'UNBOND';
+    .filter((action) => action.type === 'bond' || action.type === 'unstake')
+    .map((action): Transaction => {
+      const inCoin = action.in?.[0]?.coins?.find((c) => c.asset === 'THOR.RUNE');
       
-      const runeCoin = action.tx?.coins?.find((c) => c.asset === 'THOR.RUNE');
-      const amount = runeCoin ? parseFloat(runeCoin.amount) : 0;
-      const parts = memo.split(':');
-      const nodeAddress = parts[1] || action.tx?.address || '';
-
       return {
-        type,
-        amount,
-        nodeAddress,
-        timestamp: new Date(action.date),
-        txHash: action.tx?.txID || '',
+        type: action.type === 'bond' ? 'BOND' : 'UNBOND' as const,
+        amount: inCoin ? parseFloat(inCoin.amount) / 1e8 : 0,
+        nodeAddress: action.metadata?.bond?.nodeAddress || action.in?.[0]?.address || '',
+        timestamp: new Date(Number(action.date) / 1e6),
+        txHash: action.in?.[0]?.txID || action.out?.[0]?.txID || '',
         status: action.status || 'unknown',
       };
     })
