@@ -1,51 +1,48 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { TrendingUp, Coins } from 'lucide-react';
 import { BondPosition } from '@/lib/types/node';
 
 interface CompoundGrowthForecastProps {
   positions: BondPosition[];
-  weightedApy: number; // e.g., 0.12 for 12%
+  weightedApy: number;
 }
 
 export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthForecastProps) {
   const totalBonded = useMemo(() => 
-    positions.reduce((sum, p) => sum + p.bondAmount, 0), 
+    positions?.reduce((sum, p) => sum + p.bondAmount, 0) ?? 0, 
   [positions]);
 
-  const [projectionData, setProjectionData] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (totalBonded === 0 || weightedApy <= 0) {
-      setProjectionData([]);
-      return;
+  const projectionData = useMemo(() => {
+    if (!positions?.length || totalBonded === 0 || weightedApy <= 0) {
+      return [];
     }
 
     const data = [];
     const months = 12;
     const monthlyRate = weightedApy / 12;
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
 
-    let passiveBalance = totalBonded;
     let activeBalance = totalBonded;
 
     for (let i = 0; i <= months; i++) {
-      const date = new Date();
+      const date = new Date(startDate);
       date.setMonth(date.getMonth() + i);
       
       data.push({
         month: date.toLocaleDateString('en-US', { month: 'short' }),
-        passive: passiveBalance,
+        passive: totalBonded,
         active: activeBalance,
       });
 
-      passiveBalance = totalBonded;
       activeBalance *= (1 + monthlyRate);
     }
 
-    setProjectionData(data);
-  }, [totalBonded, weightedApy]);
+    return data;
+  }, [positions, totalBonded, weightedApy]);
 
   const opportunityCost = projectionData.length > 0 
     ? projectionData[projectionData.length - 1].active - projectionData[projectionData.length - 1].passive 
