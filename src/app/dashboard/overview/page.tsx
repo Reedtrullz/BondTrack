@@ -128,20 +128,6 @@ export default function OverviewPage() {
           </div>
         </div>
       </div>
-
-      {/* Bottom Details Section */}
-      {positions.length > 0 && (
-        <div className="space-y-4 pt-8 border-t border-zinc-200 dark:border-zinc-800">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-            Node Details
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {positions.map((pos) => (
-              <NodeStatusCard key={pos.nodeAddress} position={pos} address={address} />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
