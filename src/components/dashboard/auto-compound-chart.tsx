@@ -44,7 +44,7 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
     return data;
   }, [positions, totalBonded, weightedApy]);
 
-  const opportunityCost = projectionData.length > 0 
+  const compoundGains = projectionData.length > 0 
     ? projectionData[projectionData.length - 1].active - projectionData[projectionData.length - 1].passive 
     : 0;
 
@@ -120,10 +120,10 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
         <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
           <div className="flex items-center gap-2 text-zinc-400 mb-1">
             <Coins className="w-3 h-3" />
-            <span className="text-[10px] font-bold uppercase">Opportunity Cost</span>
+            <span className="text-[10px] font-bold uppercase">Compound Gains</span>
           </div>
-          <div className="text-lg font-bold font-mono text-red-600 dark:text-red-400">
-            +{opportunityCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          <div className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
+            +{compoundGains.toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </div>
         </div>
         <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">

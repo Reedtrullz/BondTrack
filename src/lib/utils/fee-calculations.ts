@@ -1,5 +1,5 @@
 import { BondPosition } from '@/lib/types/node';
-import { runeToNumber } from '@/lib/utils/formatters';
+import { runeToNumber } from './formatters';
 
 export interface FeeAuditResult {
   grossReward: number;
@@ -7,6 +7,13 @@ export interface FeeAuditResult {
   netTakeHome: number;
   leakagePercent: number;
   period: 'daily' | 'monthly';
+}
+
+function getBondAmount(pos: BondPosition): number {
+  if (typeof pos.bondAmount === 'string') {
+    return runeToNumber(pos.bondAmount);
+  }
+  return pos.bondAmount;
 }
 
 export function calculatePersonalFeeLeakage(
@@ -26,20 +33,26 @@ export function calculatePersonalFeeLeakage(
     };
   }
 
-  const totalBond = safePositions.reduce((sum, p) => sum + p.bondAmount, 0);
+  const totalBond = safePositions.reduce((sum, p) => sum + getBondAmount(p), 0);
   const apy = networkApy ?? 0.20; 
   
   const monthlyRate = apy / 12;
   const grossReward = totalBond * monthlyRate;
   const avgOperatorFee = safePositions.reduce((sum, p) => sum + (p.operatorFee || 500), 0) / safePositions.length;
-  const feeLeakage = grossReward * (avgOperatorFee / 10000);
+  const feeLeakage = grossReward * (avgOperatorFee / 100);
   const netTakeHome = grossReward - feeLeakage;
+  
+  let leakagePercent = 0;
+  if (grossReward > 0) {
+    leakagePercent = (feeLeakage / grossReward) * 100;
+    if (leakagePercent > 100) leakagePercent = 100;
+  }
 
   return {
     grossReward,
     feeLeakage,
     netTakeHome,
-    leakagePercent: (feeLeakage / grossReward) * 100,
+    leakagePercent,
     period,
   };
 }
@@ -49,7 +62,7 @@ export function calculateWeightedApy(positions: BondPosition[], networkBaselineA
   let weightedSum = 0;
 
   positions.forEach(pos => {
-    const bond = runeToNumber(pos.bondAmount);
+    const bond = getBondAmount(pos);
     const apy = pos.netAPY || networkBaselineApy;
     totalBond += bond;
     weightedSum += bond * apy;
