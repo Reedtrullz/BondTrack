@@ -27,6 +27,8 @@ export const useLpPositions = () => {
     }
   );
 
+  const isNotFound = error?.includes('404');
+
   const positions: LpPosition[] = (data?.memberDetails?.pools || []).map((poolRaw) => {
     const poolData = data?.pools?.find((p) => p.asset === poolRaw.pool);
     
@@ -43,13 +45,13 @@ export const useLpPositions = () => {
     };
   });
 
-  const totalBondedRune = positions.reduce((acc, pos) => acc + BigInt(pos.bondedRune), 0n).toString();
-  const totalRewards = positions.reduce((acc, pos) => acc + BigInt(pos.rewards), 0n).toString();
+  const totalBondedRune = isNotFound ? '0' : positions.reduce((acc, pos) => acc + BigInt(pos.bondedRune), 0n).toString();
+  const totalRewards = isNotFound ? '0' : positions.reduce((acc, pos) => acc + BigInt(pos.rewards), 0n).toString();
 
   return {
     positions,
     isLoading,
-    error: error instanceof Error ? error.message : undefined,
+    error: isNotFound ? undefined : (error instanceof Error ? error.message : undefined),
     totalBondedRune,
     totalRewards,
   };

@@ -33,6 +33,12 @@ export async function GET(
       clearTimeout(timeoutId);
 
       if (!response.ok) {
+        if (response.status >= 400 && response.status < 500) {
+          return NextResponse.json(
+            { error: `Upstream API error: ${response.status}`, details: errors },
+            { status: response.status }
+          );
+        }
         errors.push(`${baseUrl}: ${response.status}`);
         continue;
       }
