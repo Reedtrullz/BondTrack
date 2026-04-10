@@ -63,10 +63,6 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
     selectedAddress ? ['actions', selectedAddress] : null,
     async () => {
       const result = await getActions(selectedAddress, 50, 'bond');
-      console.log('[DEBUG] Raw API response actions count:', result?.actions?.length);
-      if (result?.actions?.length > 0) {
-        console.log('[DEBUG] First raw action:', JSON.stringify(result.actions[0], null, 2));
-      }
       return result;
     },
     { 
@@ -76,12 +72,6 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
   );
 
   const transactions = data?.actions ? parseActions(data.actions) : [];
-
-  if (transactions.length > 0) {
-    console.log('[DEBUG] Parsed transactions:', JSON.stringify(transactions.slice(0, 2), null, 2));
-  } else if (data?.actions?.length === 0) {
-    console.log('[DEBUG] No bond actions found - raw actions:', data.actions);
-  }
 
   const handleSearch = () => {
     if (inputAddress.trim()) {
@@ -156,10 +146,10 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
                   {tx.status}
                 </span>
               </div>
-              <div>
+                <div>
                 <div className="text-xs text-zinc-500">Amount</div>
                 <div className="font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                  {formatRuneAmount(String(Math.floor(tx.amount)))}
+                  {formatRuneAmount(String(Math.floor(tx.amount * 1e8)))}
                 </div>
               </div>
               <div>
@@ -215,7 +205,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
                     </span>
                   </td>
                   <td className="px-3 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
-                    {formatRuneAmount(String(Math.floor(tx.amount)))}
+                    {formatRuneAmount(String(Math.floor(tx.amount * 1e8)))}
                   </td>
                   <td className="px-3 py-3 font-mono text-xs text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
                     {tx.nodeAddress.length > 20
