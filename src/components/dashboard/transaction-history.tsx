@@ -73,6 +73,10 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
 
   const transactions = data?.actions ? parseActions(data.actions) : [];
 
+  if (transactions.length > 0) {
+    console.log('[DEBUG] Parsed transactions:', JSON.stringify(transactions.slice(0, 2), null, 2));
+  }
+
   const handleSearch = () => {
     if (inputAddress.trim()) {
       setSelectedAddress(inputAddress.trim());
