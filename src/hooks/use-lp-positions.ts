@@ -27,7 +27,7 @@ export const useLpPositions = () => {
     }
   );
 
-  const isNotFound = error?.includes('404');
+  const isNotFound = error && String(error).includes('404');
 
   const positions: LpPosition[] = (data?.memberDetails?.pools || []).map((poolRaw) => {
     const poolData = data?.pools?.find((p) => p.asset === poolRaw.pool);
