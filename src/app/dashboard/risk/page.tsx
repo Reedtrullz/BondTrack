@@ -5,7 +5,7 @@ import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { useCurrentBlockHeight } from '@/lib/hooks/use-current-block-height';
 import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
 import { useNetworkConstants } from '@/lib/hooks/use-network-constants';
-import { AlertTriangle, Shield, TrendingDown, Clock, Zap, AlertCircle, Lock, Hourglass, Activity, CheckCircle, TrendingUp, Minus, AlertCircle as AlertIcon } from 'lucide-react';
+import { AlertTriangle, Shield, TrendingDown, Clock, Zap, AlertCircle, Lock, Hourglass, Activity, CheckCircle, TrendingUp, Minus, AlertCircle as AlertIcon, DollarSign, TrendingUp as ArrowUp } from 'lucide-react';
 import { SlashMonitor } from '@/components/dashboard/slash-monitor';
 import { ChurnOutRisk } from '@/components/dashboard/churn-out-risk';
 import { NetworkSecurityMetrics } from '@/components/dashboard/network-security-metrics';
@@ -290,6 +290,112 @@ function RiskKPIs({ positions }: { positions: BondPosition[] }) {
   );
 }
 
+function IncentivePendulum({ positions }: { positions: BondPosition[] }) {
+  const { data: network, isLoading: networkLoading } = useNetworkMetrics();
+  const totalBonded = positions.reduce((sum, p) => sum + p.bondAmount, 0);
+  
+  const totalBonds = network?.bondMetrics?.totalActiveBond ? runeToNumber(network.bondMetrics.totalActiveBond) : 0;
+  const totalLiquidity = network?.totalPooledRune ? runeToNumber(network.totalPooledRune) : 0;
+  const bondToPoolRatio = totalLiquidity > 0 ? totalBonds / totalLiquidity : 0;
+  const userShare = totalBonds > 0 ? (totalBonded / totalBonds) * 100 : 0;
+  
+  let pendulumStatus: { status: string; icon: React.ReactNode; color: string; bg: string; desc: string };
+  if (bondToPoolRatio >= 2.5) {
+    pendulumStatus = { 
+      status: "Node Favored", 
+      icon: <TrendingUp className="w-4 h-4" />, 
+      color: "text-emerald-600 dark:text-emerald-400",
+      bg: "bg-emerald-50 dark:bg-emerald-900/20",
+      desc: "High bond → nodes earn more. LP yields may be lower."
+    };
+  } else if (bondToPoolRatio <= 1.2) {
+    pendulumStatus = { 
+      status: "LP Favored", 
+      icon: <TrendingDown className="w-4 h-4" />, 
+      color: "text-amber-600 dark:text-amber-400",
+      bg: "bg-amber-50 dark:bg-amber-900/20",
+      desc: "More liquidity than bond → LPs earn more. Consider bonding more?"
+    };
+  } else {
+    pendulumStatus = { 
+      status: "Balanced", 
+      icon: <Minus className="w-4 h-4" />, 
+      color: "text-zinc-600 dark:text-zinc-400",
+      bg: "bg-zinc-50 dark:bg-zinc-900",
+      desc: "Near equilibrium (~2x). Rewards split fairly between nodes and LPs."
+    };
+  }
+
+  const nodeShare = totalLiquidity > 0 ? Math.min((totalBonds / totalLiquidity) * 50, 75) : 50;
+  const lpShare = 100 - nodeShare;
+
+  if (networkLoading || !network) {
+    return (
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
+        <div className="animate-pulse h-32 bg-zinc-200 dark:bg-zinc-800 rounded" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
+      <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Incentive Pendulum</h3>
+      </div>
+
+      <div className={cn("p-4", pendulumStatus.bg)}>
+        <div className="flex items-center gap-2">
+          {pendulumStatus.icon}
+          <span className={cn("font-medium text-lg", pendulumStatus.color)}>
+            {pendulumStatus.status}
+          </span>
+        </div>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+          {pendulumStatus.desc}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 p-4">
+        <div className="p-3 rounded bg-blue-50 dark:bg-blue-900/20 text-center">
+          <div className="flex items-center justify-center gap-1 mb-1">
+            <Zap className="w-3 h-3 text-blue-600" />
+            <span className="text-xs text-blue-700 dark:text-blue-400">Your Share</span>
+          </div>
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{userShare.toFixed(1)}%</div>
+        </div>
+        <div className="p-3 rounded bg-purple-50 dark:bg-purple-900/20 text-center">
+          <div className="flex items-center justify-center gap-1 mb-1">
+            <Activity className="w-3 h-3 text-purple-600" />
+            <span className="text-xs text-purple-700 dark:text-purple-400">LP Share</span>
+          </div>
+          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{lpShare.toFixed(0)}%</div>
+        </div>
+      </div>
+
+      <div className="p-4 pt-0">
+        <div className="flex items-center justify-between text-sm mb-1">
+          <span className="text-zinc-500">Bond-to-Pool Ratio</span>
+          <span className="font-medium text-zinc-700 dark:text-zinc-300">{bondToPoolRatio.toFixed(2)}x</span>
+        </div>
+        <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+          <div 
+            className={cn(
+              "h-full transition-all",
+              bondToPoolRatio >= 1.5 && bondToPoolRatio <= 3 ? "bg-emerald-500" :
+              bondToPoolRatio >= 1 ? "bg-amber-500" : "bg-red-500"
+            )}
+            style={{ width: `${Math.min(bondToPoolRatio * 33, 100)}%` }}
+          />
+        </div>
+        <div className="flex items-center justify-between text-xs text-zinc-400 mt-1">
+          <span>Target: 1.5x - 3x</span>
+          <span>Current: {bondToPoolRatio.toFixed(2)}x</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function RiskPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
@@ -310,7 +416,14 @@ export default function RiskPage() {
 
       <RiskSummaryBanner positions={positions} />
 
-      <RiskKPIs positions={positions} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div>
+          <RiskKPIs positions={positions} />
+        </div>
+        <div>
+          <IncentivePendulum positions={positions} />
+        </div>
+      </div>
 
       <NodesList positions={positions} />
 
