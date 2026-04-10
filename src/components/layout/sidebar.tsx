@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Shield, Activity, BarChart3, AlertTriangle, ArrowRightLeft, Menu, X } from 'lucide-react';
+import { Shield, Activity, BarChart3, AlertTriangle, ArrowRightLeft, Menu, X, ScrollText } from 'lucide-react';
 import { ThemeToggle } from './theme-toggle';
 
 const basePath = '/dashboard';
@@ -14,6 +14,7 @@ const navItems = (addr: string | null) => [
   { href: `${basePath}/rewards?address=${addr}`, label: 'Rewards', icon: <BarChart3 className="w-4 h-4" /> },
   { href: `${basePath}/risk?address=${addr}`, label: 'Risk', icon: <AlertTriangle className="w-4 h-4" /> },
   { href: `${basePath}/transactions?address=${addr}`, label: 'Transactions', icon: <ArrowRightLeft className="w-4 h-4" /> },
+  { href: `${basePath}/changelogs?address=${addr}`, label: 'Changelogs', icon: <ScrollText className="w-4 h-4" /> },
 ];
 
 interface SidebarProps {
