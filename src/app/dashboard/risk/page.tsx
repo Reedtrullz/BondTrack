@@ -55,10 +55,20 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
   const statusText = healthScore >= 80 ? "Healthy" : healthScore >= 50 ? "Needs Attention" : "At Risk";
   const statusColor = healthScore >= 80 ? "text-emerald-600 dark:text-emerald-400" : healthScore >= 50 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400";
 
-  // Use NETWORK bonds (not user's) for pendulum
-  const networkBond = network?.bondMetrics?.totalActiveBond ? runeToNumber(network.bondMetrics.totalActiveBond) : 0;
-  const networkLiquidity = network?.totalPooledRune ? runeToNumber(network.totalPooledRune) : 0;
+  // Use NETWORK bonds for pendulum
+  const networkBondRaw = network?.bondMetrics?.totalActiveBond || '0';
+  const networkLiquidityRaw = network?.totalPooledRune || '0';
+  const networkBond = runeToNumber(networkBondRaw);
+  const networkLiquidity = runeToNumber(networkLiquidityRaw);
   const bondToPoolRatio = networkLiquidity > 0 ? networkBond / networkLiquidity : 0;
+  
+  // For display - multiply back to 1e8 for formatter
+  const networkLiquidityDisplay = networkLiquidity > 0 
+    ? String(Math.floor(networkLiquidity * 1e8)) 
+    : '0';
+  const networkBondDisplay = networkBond > 0 
+    ? String(Math.floor(networkBond * 1e8)) 
+    : '0';
   
   // LP Favored = too much bonded (> 2.5)
   // Node Favored = too much liquidity (< 1.5)
@@ -99,7 +109,7 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
           </div>
         </div>
         <div className="text-right">
-          <div className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneAmount(String(totalBonded))}</div>
+          <div className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneAmount(String(Math.floor(totalBonded * 1e8)))}</div>
           <div className="text-xs text-zinc-500">Total Bonded</div>
         </div>
       </div>
@@ -150,7 +160,7 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
           </div>
         </div>
         <div className="text-xs text-zinc-400">
-          {formatRuneAmount(String(networkLiquidity))} TVL
+          {formatRuneAmount(networkLiquidityDisplay)} TVL
         </div>
       </div>
     </div>
@@ -173,7 +183,7 @@ function NodesList({ positions }: { positions: BondPosition[] }) {
           <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Your Nodes</h3>
         </div>
         <div className="text-xs text-zinc-500">
-          {positions.length} nodes · {formatRuneAmount(String(totalBonded))} RUNE
+          {positions.length} nodes · {formatRuneAmount(String(Math.floor(totalBonded * 1e8)))} RUNE
         </div>
       </div>
 
@@ -237,7 +247,7 @@ function NodesList({ positions }: { positions: BondPosition[] }) {
                     {pos.status}
                   </span>
                   <span className="text-sm text-zinc-500">
-                    {formatRuneAmount(String(pos.bondAmount))}
+                    {formatRuneAmount(String(Math.floor(pos.bondAmount * 1e8)))}
                   </span>
                 </div>
               </div>
@@ -298,10 +308,15 @@ function IncentivePendulum({ positions }: { positions: BondPosition[] }) {
   const { data: network, isLoading: networkLoading } = useNetworkMetrics();
   const totalBonded = positions.reduce((sum, p) => sum + p.bondAmount, 0);
   
-  const totalBonds = network?.bondMetrics?.totalActiveBond ? runeToNumber(network.bondMetrics.totalActiveBond) : 0;
-  const totalLiquidity = network?.totalPooledRune ? runeToNumber(network.totalPooledRune) : 0;
+  const totalBondsRaw = network?.bondMetrics?.totalActiveBond || '0';
+  const totalLiquidityRaw = network?.totalPooledRune || '0';
+  const totalBonds = runeToNumber(totalBondsRaw);
+  const totalLiquidity = runeToNumber(totalLiquidityRaw);
   const bondToPoolRatio = totalLiquidity > 0 ? totalBonds / totalLiquidity : 0;
-  const userShare = totalBonds > 0 ? (totalBonded / totalBonds) * 100 : 0;
+  
+  // For display - convert back to 1e8
+  const bondsDisplay = totalBonds > 0 ? String(Math.floor(totalBonds * 1e8)) : '0';
+  const liquidityDisplay = totalLiquidity > 0 ? String(Math.floor(totalLiquidity * 1e8)) : '0';
   
   let pendulumStatus: { status: string; icon: React.ReactNode; color: string; bg: string; desc: string };
   // LP Favored = too much bonded capital (>2.5 ratio)
@@ -368,7 +383,7 @@ function IncentivePendulum({ positions }: { positions: BondPosition[] }) {
             <Zap className="w-3 h-3 text-emerald-600" />
             <span className="text-xs text-emerald-700 dark:text-emerald-400">Nodes (Bond)</span>
           </div>
-          <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatRuneAmount(String(totalBonds))}</div>
+          <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatRuneAmount(bondsDisplay)}</div>
           <div className="text-xs text-emerald-600 dark:text-emerald-400">{nodeShare.toFixed(0)}%</div>
         </div>
         <div className="p-3 rounded bg-blue-50 dark:bg-blue-900/20 text-center">
@@ -376,7 +391,7 @@ function IncentivePendulum({ positions }: { positions: BondPosition[] }) {
             <Activity className="w-3 h-3 text-blue-600" />
             <span className="text-xs text-blue-700 dark:text-blue-400">LPs (Liquidity)</span>
           </div>
-          <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{formatRuneAmount(String(totalLiquidity))}</div>
+          <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{formatRuneAmount(liquidityDisplay)}</div>
           <div className="text-xs text-blue-600 dark:text-blue-400">{lpShare.toFixed(0)}%</div>
         </div>
       </div>
