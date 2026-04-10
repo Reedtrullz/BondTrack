@@ -51,5 +51,14 @@ export async function fetchThornode<T>(path: string, init?: RequestInit): Promis
 }
 
 export async function fetchMidgard<T>(path: string, init?: RequestInit): Promise<T> {
-  return fetchApi<T>(ENDPOINTS.midgard, path, init);
+  try {
+    return await fetchApi<T>(ENDPOINTS.midgard, path, init);
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    if (errorMsg.includes('500') || errorMsg.includes('CORS') || errorMsg.includes('network')) {
+      console.warn(`Midgard primary failed, trying fallback: ${errorMsg}`);
+      return await fetchApi<T>(ENDPOINTS.fallbackMidgard, path, init);
+    }
+    throw error;
+  }
 }
