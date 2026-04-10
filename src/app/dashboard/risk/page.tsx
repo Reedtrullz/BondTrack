@@ -17,6 +17,11 @@ import { cn } from '@/lib/utils';
 import { estimateNextChurn } from '@/lib/utils/calculations';
 import { runeToNumber, formatRuneAmount } from '@/lib/utils/formatters';
 
+function formatRuneValue(value: number): string {
+  if (!value || value <= 0) return '--';
+  return formatRuneAmount(String(Math.floor(value * 1e8)));
+}
+
 function getNodeSeverityScore(p: BondPosition): number {
   let score = 0;
   if (p.slashPoints >= 200) score += 50;
@@ -109,7 +114,7 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
           </div>
         </div>
         <div className="text-right">
-          <div className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneAmount(String(Math.floor(totalBonded * 1e8)))}</div>
+          <div className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneValue(totalBonded)}</div>
           <div className="text-xs text-zinc-500">Total Bonded</div>
         </div>
       </div>
@@ -160,7 +165,7 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
           </div>
         </div>
         <div className="text-xs text-zinc-400">
-          {formatRuneAmount(networkLiquidityDisplay)} TVL
+          {networkLiquidity > 0 ? formatRuneAmount(networkLiquidityDisplay) : '--'} TVL
         </div>
       </div>
     </div>
@@ -183,7 +188,7 @@ function NodesList({ positions }: { positions: BondPosition[] }) {
           <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Your Nodes</h3>
         </div>
         <div className="text-xs text-zinc-500">
-          {positions.length} nodes · {formatRuneAmount(String(Math.floor(totalBonded * 1e8)))} RUNE
+          {positions.length} nodes · {formatRuneValue(totalBonded)} RUNE
         </div>
       </div>
 
@@ -247,7 +252,7 @@ function NodesList({ positions }: { positions: BondPosition[] }) {
                     {pos.status}
                   </span>
                   <span className="text-sm text-zinc-500">
-                    {formatRuneAmount(String(Math.floor(pos.bondAmount * 1e8)))}
+                    {formatRuneValue(pos.bondAmount)}
                   </span>
                 </div>
               </div>
@@ -383,7 +388,7 @@ function IncentivePendulum({ positions }: { positions: BondPosition[] }) {
             <Zap className="w-3 h-3 text-emerald-600" />
             <span className="text-xs text-emerald-700 dark:text-emerald-400">Nodes (Bond)</span>
           </div>
-          <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatRuneAmount(bondsDisplay)}</div>
+          <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{totalBonds > 0 ? formatRuneAmount(bondsDisplay) : '--'}</div>
           <div className="text-xs text-emerald-600 dark:text-emerald-400">{nodeShare.toFixed(0)}%</div>
         </div>
         <div className="p-3 rounded bg-blue-50 dark:bg-blue-900/20 text-center">
@@ -391,7 +396,7 @@ function IncentivePendulum({ positions }: { positions: BondPosition[] }) {
             <Activity className="w-3 h-3 text-blue-600" />
             <span className="text-xs text-blue-700 dark:text-blue-400">LPs (Liquidity)</span>
           </div>
-          <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{formatRuneAmount(liquidityDisplay)}</div>
+          <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{totalLiquidity > 0 ? formatRuneAmount(liquidityDisplay) : '--'}</div>
           <div className="text-xs text-blue-600 dark:text-blue-400">{lpShare.toFixed(0)}%</div>
         </div>
       </div>
