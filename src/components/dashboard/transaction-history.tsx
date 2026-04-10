@@ -16,16 +16,35 @@ interface Transaction {
 
 function parseActions(actions: ActionRaw[]): Transaction[] {
   return actions
-    .filter((action) => action.type === 'bond' || action.type === 'unstake')
+    .filter((action) => action.type === 'bond' || action.type === 'unstake' || action.type === 'addLiquidity')
     .map((action): Transaction => {
-      const inCoin = action.in?.[0]?.coins?.find((c) => c.asset === 'THOR.RUNE');
+      let amount = 0;
+      
+      if (action.in?.[0]?.coins) {
+        const inCoin = action.in[0].coins.find((c) => c.asset === 'THOR.RUNE' || c.asset === 'THOR');
+        if (inCoin) amount = parseFloat(inCoin.amount) / 1e8;
+      }
+      
+      if (amount === 0 && action.tx?.coins) {
+        const txCoin = action.tx.coins.find((c) => c.asset === 'THOR.RUNE' || c.asset === 'THOR');
+        if (txCoin) amount = parseFloat(txCoin.amount) / 1e8;
+      }
+      
+      if (amount === 0 && action.out?.[0]?.coins) {
+        const outCoin = action.out[0].coins.find((c) => c.asset === 'THOR.RUNE' || c.asset === 'THOR');
+        if (outCoin) amount = parseFloat(outCoin.amount) / 1e8;
+      }
+      
+      const type = action.type === 'bond' || action.type === 'addLiquidity' ? 'BOND' : 'UNBOND';
+      const nodeAddress = action.metadata?.bond?.nodeAddress || action.in?.[0]?.address || action.tx?.address || '';
+      const timestamp = action.date ? new Date(Number(action.date) / 1e9 * 1000) : new Date();
       
       return {
-        type: action.type === 'bond' ? 'BOND' : 'UNBOND' as const,
-        amount: inCoin ? parseFloat(inCoin.amount) / 1e8 : 0,
-        nodeAddress: action.metadata?.bond?.nodeAddress || action.in?.[0]?.address || '',
-        timestamp: new Date(Number(action.date) / 1e6),
-        txHash: action.in?.[0]?.txID || action.out?.[0]?.txID || '',
+        type,
+        amount,
+        nodeAddress,
+        timestamp,
+        txHash: action.in?.[0]?.txID || action.tx?.txID || action.out?.[0]?.txID || '',
         status: action.status || 'unknown',
       };
     })

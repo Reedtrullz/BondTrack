@@ -33,12 +33,19 @@ export function useBondHistory(address: string | null) {
 
   const bondActions: BondAction[] = actions?.actions
     ?.map((action) => {
-      const inCoin = action.in?.[0]?.coins?.find((c) => c.asset === 'THOR.RUNE');
-      const amount = inCoin ? parseFloat(inCoin.amount) / 1e8 : 0;
+      const inCoin = action.in?.[0]?.coins?.find((c) => c.asset === 'THOR.RUNE' || c.asset === 'THOR');
+      const txCoin = action.tx?.coins?.find((c) => c.asset === 'THOR.RUNE' || c.asset === 'THOR');
+      
+      const amount = inCoin 
+        ? parseFloat(inCoin.amount) / 1e8 
+        : txCoin 
+          ? parseFloat(txCoin.amount) / 1e8 
+          : 0;
+      
       return {
         type: 'BOND' as const,
         amount,
-        date: new Date(Number(action.date) / 1e6),
+        date: action.date ? new Date(Number(action.date) / 1e9 * 1000) : new Date(),
       };
     })
     .sort((a, b) => a.date.getTime() - b.date.getTime()) || [];
