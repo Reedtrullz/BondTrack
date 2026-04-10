@@ -17,14 +17,15 @@ const mockPositions: BondPosition[] = [
     yieldGuardFlags: [],
     totalBond: 100000,
     netAPY: 0.12,
-    earningsDaily: 0.3,
-    earningsMonthly: 9,
-    earningsYearly: 109.5,
+    jailReleaseHeight: 0,
+    version: '',
+    requestedToLeave: false
   },
   {
     nodeAddress: 'node2',
     nodeOperatorAddress: 'op2',
     bondAmount: 20000,
+    bondSharePercent: 0.2,
     operatorFee: 0.02,
     operatorFeeFormatted: '2%',
     status: 'Active',
@@ -33,10 +34,10 @@ const mockPositions: BondPosition[] = [
     yieldGuardFlags: [],
     totalBond: 200000,
     netAPY: 0.11,
-    earningsDaily: 0.6,
-    earningsMonthly: 18,
-    earningsYearly: 219,
-  },
+    jailReleaseHeight: 0,
+    version: '',
+    requestedToLeave: false
+  }
 ];
 
 describe('PersonalFeeAudit', () => {
@@ -48,6 +49,7 @@ describe('PersonalFeeAudit', () => {
     expect(screen.getByText(/0.0150/)).toBeInTheDocument();
     expect(screen.getByText(/Fee Leakage/i)).toBeInTheDocument();
   });
+});
 
   it('handles zero positions gracefully', () => {
     render(<PersonalFeeAudit positions={[]} />);
