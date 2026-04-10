@@ -1,6 +1,6 @@
-import { BondPosition } from '@/lib/types/node';
 import { runeToNumber } from '@/lib/utils/formatters';
 import { getAllNodes } from '@/lib/api/thornode';
+import { NETWORK } from '../config';
 
 export interface YieldBenchmarks {
   networkAverageAPY: number;
@@ -9,9 +9,29 @@ export interface YieldBenchmarks {
 }
 
 /**
- * a la RUNE-Tools: calculates network-wide APY benchmarks.
- * Since THORChain APY is dynamic and node-specific, we compute 
- * these by analyzing the current active set.
+ * Calculate APY for a full node (100% bond share).
+ * APY = (currentAward * churnsPerYear / totalBond) * 100
+ */
+function calculateNodeAPY(currentAward: string, totalBond: string): number {
+  const award = runeToNumber(currentAward);
+  const bond = runeToNumber(totalBond);
+  if (bond === 0) return 0;
+  return ((award * NETWORK.CHURNS_PER_YEAR) / bond) * 100;
+}
+
+/**
+ * Calculate percentile from sorted array.
+ * percentile: 0-100, e.g., 90 = top 10% (90th percentile)
+ */
+function getPercentile(sortedArr: number[], percentile: number): number {
+  if (sortedArr.length === 0) return 0;
+  const index = Math.ceil((percentile / 100) * sortedArr.length) - 1;
+  return sortedArr[Math.min(index, sortedArr.length - 1)];
+}
+
+/**
+ * Calculates network-wide APY benchmarks from actual active node data.
+ * Computes real percentiles based on calculated node APYs.
  */
 export async function fetchYieldBenchmarks(): Promise<YieldBenchmarks> {
   const nodes = await getAllNodes();
@@ -21,27 +41,27 @@ export async function fetchYieldBenchmarks(): Promise<YieldBenchmarks> {
     return { networkAverageAPY: 0, topTierAPY: 0, medianAPY: 0 };
   }
 
-  // Note: Real APY calculation requires current reward emission vs total bond.
-  // For this a la "Optimizer" view, we derive a representative APY 
-  // based on recent earnings data if available, or a standardized network constant.
-  // Here we simulate the benchmark logic based on active set distribution.
-  
-  const bonds = activeNodes.map(n => runeToNumber(n.total_bond)).sort((a, b) => a - b);
-  
-  // Proxy for APY: In THORChain, higher bond often correlates with stability but lower % yield 
-  // than the "sweet spot" nodes.
-  const avgBond = bonds.reduce((a, b) => a + b, 0) / bonds.length;
-  
-  // This is a heuristic for the benchmark. In a production environment,
-  // we would fetch the actual current episode rewards from Midgard.
-  const networkAverageAPY = 10.5; // Base benchmark
-  const topTierAPY = 14.2;       // Top 10% performance
-  const medianAPY = 10.2;
+  // Calculate APY for each active node (assuming 100% bond ownership for node-level APY)
+  const nodeAPYs = activeNodes
+    .map(n => calculateNodeAPY(n.current_award, n.total_bond))
+    .filter(apy => apy > 0 && apy < 100); // Filter outliers (>100% APY is unrealistic)
+
+  if (nodeAPYs.length === 0) {
+    return { networkAverageAPY: 0, topTierAPY: 0, medianAPY: 0 };
+  }
+
+  // Sort for percentile calculation
+  const sortedAPYs = [...nodeAPYs].sort((a, b) => a - b);
+
+  // Calculate real percentiles from network data
+  const networkAverageAPY = sortedAPYs.reduce((a, b) => a + b, 0) / sortedAPYs.length;
+  const medianAPY = getPercentile(sortedAPYs, 50);
+  const topTierAPY = getPercentile(sortedAPYs, 90); // Top 10% of nodes
 
   return {
-    networkAverageAPY,
-    topTierAPY,
-    medianAPY
+    networkAverageAPY: Math.round(networkAverageAPY * 10) / 10,
+    topTierAPY: Math.round(topTierAPY * 10) / 10,
+    medianAPY: Math.round(medianAPY * 10) / 10
   };
 }
 

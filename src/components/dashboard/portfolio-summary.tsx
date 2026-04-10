@@ -48,7 +48,7 @@ export function PortfolioSummary({ totalBonded, runePrice, weightedAPY, position
         icon={<Activity className="w-5 h-5" />}
         label="Weighted APY"
         value={<span className={`font-semibold ${apyColor}`}>{weightedAPY.toFixed(2)}%</span>}
-        subValue={benchmarks ? `Avg: ${benchmarks.networkAverageAPY}% · Top: ${benchmarks.topTierAPY}%` : undefined}
+        subValue={benchmarks ? `Net avg: ${benchmarks.networkAverageAPY}% · Max (top 10%): ${benchmarks.topTierAPY}%` : undefined}
       />
       <SummaryCard
         icon={<ShieldCheck className="w-5 h-5" />}
