@@ -84,11 +84,12 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 ```
 src/
 ├── app/                    # Next.js App Router pages
+│   ├── api/                # Server-side API proxy routes (bypass CORS)
 │   ├── dashboard/          # Dashboard pages (overview, nodes, rewards, risk, transactions)
 │   ├── layout.tsx          # Root layout with ThemeProvider
 │   └── page.tsx            # Landing page
 ├── components/
-│   ├── dashboard/          # 14 domain components (charts, tables, monitors)
+│   ├── dashboard/          # 18 domain components (charts, tables, monitors)
 │   ├── layout/             # sidebar, dashboard-shell, theme-toggle
 │   ├── wallet/             # wallet-connect, transaction-preview
 │   ├── alerts/             # alert-toast
@@ -101,6 +102,15 @@ src/
     ├── types/              # TypeScript interfaces
     └── utils/              # formatters, calculations
 ```
+
+## API CORS Workaround
+
+External Midgard/THORNode APIs block browser requests due to CORS. The app uses server-side proxy routes:
+
+- `/api/midgard/*` → proxies to `midgard.ninerealms.com` (falls back to liquify)
+- `/api/thorchain/*` → proxies to `gateway.liquify.com/chain/thorchain_api`
+
+All API calls from frontend go through these proxies, bypassing browser CORS restrictions.
 
 ## Supported Wallets
 

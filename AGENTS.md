@@ -31,6 +31,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 thornode-watcher/
 ├── src/
 │   ├── app/                    # Next.js App Router pages
+│   │   ├── api/                # Server-side API proxy routes
+│   │   │   ├── midgard/[...path]/route.ts  # Midgard proxy (bypasses CORS)
+│   │   │   └── thorchain/[...path]/route.ts # THORNode proxy (bypasses CORS)
 │   │   ├── page.tsx            # Landing — address input
 │   │   ├── layout.tsx          # Root — ThemeProvider wrapper
 │   │   └── dashboard/          # All dashboard pages (requires ?address= param)
@@ -101,13 +104,15 @@ thornode-watcher/
 
 **RUNE amounts**: All API returns are strings in 1e8 units. Use `runeToNumber()` for display, `BigInt()` for math. Never use `Number()` directly on raw amounts.
 
+**Amount display**: When displaying parsed amounts in UI, multiply by `1e8` before passing to `formatRuneAmount()` because the parsing divides by 1e8, but the formatter expects 1e8 units. Example: `formatRuneAmount(String(Math.floor(tx.amount * 1e8)))`.
+
 **useSearchParams**: Must be wrapped in Suspense boundary. `dashboard/layout.tsx` provides this. Pages using it must be `'use client'`.
 
 **Address prop**: Dashboard pages get address from `useSearchParams().get('address')`. The `/dashboard` redirect passes it through.
 
-**API client**: `src/lib/api/client.ts` provides `fetchThornode<T>()` and `fetchMidgard<T>()`. Next.js `fetch` with `next: { revalidate: 60 }` for caching.
+**API client**: `src/lib/api/client.ts` provides `fetchThornode<T>()` and `fetchMidgard<T>()`. Next.js `fetch` with `next: { revalidate: 60 }` for caching. All calls go through server-side proxy routes to bypass CORS.
 
-**Endpoints**: Default to Liquify (`gateway.liquify.com`). Override via `NEXT_PUBLIC_THORNODE_API`, `NEXT_PUBLIC_MIDGARD_API`, etc.
+**Endpoints**: Default to ninerealms (`midgard.ninerealms.com`) with liquify fallback. Override via `NEXT_PUBLIC_MIDGARD_API`, `NEXT_PUBLIC_THORNODE_API` env vars.
 
 **Dark mode**: Uses next-themes with `attribute="class"`. All components use `dark:` Tailwind variants.
 
@@ -139,11 +144,13 @@ thornode-watcher/
 - Never hardcode wallet names in UI — use WalletType enum
 
 ## RECENT CHANGES
+- **Transaction history fix**: Fixed amount display (0.00 → correct amounts) by multiplying parsed amounts by 1e8 before passing to `formatRuneAmount()`. Also fixed timestamp parsing (nanoseconds → milliseconds).
+- **CORS workaround**: Created server-side API proxy routes at `/api/midgard/[...path]` and `/api/thorchain/[...path]` to bypass browser CORS restrictions when calling external Midgard/THORNode APIs.
 - **Full "Investment Command Center" Overhaul**:
   - Integrated Portfolio Health Scoring (0-100) and an "Intelligence Hub" on Overview.
   - Implemented a Visual Risk Heatmap and prescriptive "Defense" alerts on Risk page.
   - Added Individual Health Grades and "Quick Action" shortcuts to the Nodes registry.
-  - Created a "Reward Velocity" PnL statement with Gross $\rightarrow$ Fee $\rightarrow$ Net transparency.
+  - Created a "Reward Velocity" PnL statement with Gross → Fee → Net transparency.
   - Upgraded Transactions to a "Control Room" with guided presets and URL-driven flows.
 - Fix jail detection: use Midgard `/v2/health` for current block height instead of stale node `active_block_height`
 - Add `useCurrentBlockHeight` hook for real-time block height from Midgard
