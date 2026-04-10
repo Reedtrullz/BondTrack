@@ -15,11 +15,16 @@ import { useState } from 'react';
 import { generatePortfolioAlerts } from '@/lib/utils/portfolio-alerts';
 import { cn } from '@/lib/utils';
 import { estimateNextChurn } from '@/lib/utils/calculations';
-import { runeToNumber, formatRuneAmount } from '@/lib/utils/formatters';
+import { runeToNumber, formatRuneAmount, formatCompactNumber } from '@/lib/utils/formatters';
 
 function formatRuneValue(value: number): string {
   if (!value || value <= 0) return '--';
   return formatRuneAmount(String(Math.floor(value * 1e8)));
+}
+
+function formatRuneCompact(value: number): string {
+  if (!value || value <= 0) return '--';
+  return formatCompactNumber(value);
 }
 
 function getNodeSeverityScore(p: BondPosition): number {
@@ -388,7 +393,7 @@ function IncentivePendulum({ positions }: { positions: BondPosition[] }) {
             <Zap className="w-3 h-3 text-emerald-600" />
             <span className="text-xs text-emerald-700 dark:text-emerald-400">Nodes (Bond)</span>
           </div>
-          <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{totalBonds > 0 ? formatRuneAmount(bondsDisplay) : '--'}</div>
+          <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{totalBonds > 0 ? formatRuneCompact(totalBonds) : '--'}</div>
           <div className="text-xs text-emerald-600 dark:text-emerald-400">{nodeShare.toFixed(0)}%</div>
         </div>
         <div className="p-3 rounded bg-blue-50 dark:bg-blue-900/20 text-center">
@@ -396,7 +401,7 @@ function IncentivePendulum({ positions }: { positions: BondPosition[] }) {
             <Activity className="w-3 h-3 text-blue-600" />
             <span className="text-xs text-blue-700 dark:text-blue-400">LPs (Liquidity)</span>
           </div>
-          <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{totalLiquidity > 0 ? formatRuneAmount(liquidityDisplay) : '--'}</div>
+          <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{totalLiquidity > 0 ? formatRuneCompact(totalLiquidity) : '--'}</div>
           <div className="text-xs text-blue-600 dark:text-blue-400">{lpShare.toFixed(0)}%</div>
         </div>
       </div>
