@@ -3,7 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { useCurrentBlockHeight } from '@/lib/hooks/use-current-block-height';
-import { AlertTriangle, Shield, TrendingDown, Clock, Zap, AlertCircle, Lock, Hourglass } from 'lucide-react';
+import { AlertTriangle, Shield, TrendingDown, Clock, Zap, AlertCircle, Lock, Hourglass, Activity, CheckCircle, AlertCircle as AlertIcon } from 'lucide-react';
 import { SlashMonitor } from '@/components/dashboard/slash-monitor';
 import { ChurnOutRisk } from '@/components/dashboard/churn-out-risk';
 import { NetworkSecurityMetrics } from '@/components/dashboard/network-security-metrics';
@@ -13,18 +13,7 @@ import { useState } from 'react';
 import { generatePortfolioAlerts } from '@/lib/utils/portfolio-alerts';
 import { cn } from '@/lib/utils';
 import { estimateNextChurn } from '@/lib/utils/calculations';
-
-function formatRune(num: number): string {
-  return num.toLocaleString();
-}
-
-const YIELD_GUARD_CONFIG: Record<YieldGuardFlag, { icon: React.ReactNode; color: string; label: string }> = {
-  overbonded: { icon: <TrendingDown className="w-3 h-3" />, color: 'text-orange-500', label: 'Overbonded' },
-  highest_slash: { icon: <AlertTriangle className="w-3 h-3" />, color: 'text-red-500', label: 'High Slash' },
-  lowest_bond: { icon: <TrendingDown className="w-3 h-3" />, color: 'text-yellow-500', label: 'Lowest Bond' },
-  oldest: { icon: <Clock className="w-3 h-3" />, color: 'text-purple-500', label: 'Oldest' },
-  leaving: { icon: <AlertCircle className="w-3 h-3" />, color: 'text-zinc-500', label: 'Leaving' },
-};
+import { formatRuneAmount } from '@/lib/utils/formatters';
 
 function getNodeSeverityScore(p: BondPosition): number {
   let score = 0;
@@ -37,86 +26,33 @@ function getNodeSeverityScore(p: BondPosition): number {
   return score;
 }
 
-function RiskKPIPill({
-  icon,
-  value,
-  label,
-  color,
-  subtext,
-}: {
-  icon: React.ReactNode;
-  value: number | string;
-  label: string;
-  color: string;
-  subtext?: string;
-}) {
-  return (
-    <div className={cn("flex-1 min-w-[80px] p-3 rounded-lg border", color)}>
-      <div className="flex items-center gap-2">
-        <div className="shrink-0">{icon}</div>
-        <div className="flex-1 min-w-0">
-          <div className="text-xl font-bold truncate">{value}</div>
-          <div className="text-xs truncate">{label}</div>
-        </div>
-      </div>
-      {subtext && <div className="text-xs opacity-70 mt-1 truncate">{subtext}</div>}
-    </div>
-  );
-}
+const YIELD_GUARD_CONFIG: Record<YieldGuardFlag, { icon: React.ReactNode; color: string; label: string }> = {
+  overbonded: { icon: <TrendingDown className="w-3 h-3" />, color: 'text-orange-500', label: 'Overbonded' },
+  highest_slash: { icon: <AlertTriangle className="w-3 h-3" />, color: 'text-red-500', label: 'High Slash' },
+  lowest_bond: { icon: <TrendingDown className="w-3 h-3" />, color: 'text-yellow-500', label: 'Lowest Bond' },
+  oldest: { icon: <Clock className="w-3 h-3" />, color: 'text-purple-500', label: 'Oldest' },
+  leaving: { icon: <AlertCircle className="w-3 h-3" />, color: 'text-zinc-500', label: 'Leaving' },
+};
 
-function RiskKPIRow({ positions }: { positions: BondPosition[] }) {
-  const { currentBlockHeight } = useCurrentBlockHeight();
+function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
+  const totalBonded = positions.reduce((sum, p) => sum + p.bondAmount, 0);
   const activeCount = positions.filter(p => p.status === 'Active').length;
   const standbyCount = positions.filter(p => p.status === 'Standby').length;
   const jailedCount = positions.filter(p => p.isJailed).length;
-  const slashNodes = positions.filter(p => p.slashPoints > 0).length;
-  const criticalSlash = positions.filter(p => p.slashPoints >= 200).length;
-  const warningSlash = positions.filter(p => p.slashPoints >= 50 && p.slashPoints < 200).length;
-  const nextChurnEstimate = currentBlockHeight ? estimateNextChurn(currentBlockHeight) : null;
-
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-      <RiskKPIPill
-        icon={<Zap className="w-4 h-4" />}
-        value={activeCount}
-        label="Earning"
-        color="bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400"
-        subtext={standbyCount > 0 ? `${standbyCount} standby` : undefined}
-      />
-      <RiskKPIPill
-        icon={<AlertTriangle className="w-4 h-4" />}
-        value={slashNodes}
-        label="Slash Points"
-        color={criticalSlash > 0 ? "bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400" : warningSlash > 0 ? "bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400" : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400"}
-        subtext={criticalSlash > 0 ? `${criticalSlash} critical` : warningSlash > 0 ? `${warningSlash} warning` : undefined}
-      />
-      <RiskKPIPill
-        icon={<Lock className="w-4 h-4" />}
-        value={jailedCount}
-        label="Jailed"
-        color={jailedCount > 0 ? "bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400" : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400"}
-      />
-      <RiskKPIPill
-        icon={<Hourglass className="w-4 h-4" />}
-        value={nextChurnEstimate ? Math.floor(nextChurnEstimate.blocksRemaining / 1440) + 'd' : '--'}
-        label="Next Churn"
-        color="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400"
-        subtext={`${activeCount + standbyCount} nodes`}
-      />
-    </div>
-  );
-}
-
-function YourNodesAtRisk({ positions }: { positions: BondPosition[] }) {
-  const alerts = generatePortfolioAlerts(positions);
-  const sortedPositions = [...positions].sort((a, b) => getNodeSeverityScore(b) - getNodeSeverityScore(a));
-  const totalBonded = positions.reduce((sum, p) => sum + p.bondAmount, 0);
-  const jailedCount = positions.filter(p => p.isJailed).length;
+  const atRiskCount = positions.filter(p => p.yieldGuardFlags && p.yieldGuardFlags.length > 0).length;
+  const criticalCount = positions.filter(p => p.slashPoints >= 200).length;
+  const warningCount = positions.filter(p => p.slashPoints >= 50 && p.slashPoints < 200).length;
+  
+  const healthScore = Math.max(0, 100 - (atRiskCount * 15) - (criticalCount * 20) - (warningCount * 10) - (jailedCount * 30));
+  
+  const statusIcon = healthScore >= 80 ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : healthScore >= 50 ? <AlertIcon className="w-5 h-5 text-amber-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />;
+  const statusText = healthScore >= 80 ? "Healthy" : healthScore >= 50 ? "Needs Attention" : "At Risk";
+  const statusColor = healthScore >= 80 ? "text-emerald-600 dark:text-emerald-400" : healthScore >= 50 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400";
 
   if (positions.length === 0) {
     return (
       <div className="p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-center">
-        <Shield className="w-10 h-10 mx-auto mb-3 text-emerald-500" />
+        <Shield className="w-10 h-10 mx-auto mb-3 text-zinc-400" />
         <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">No Bond Positions</h3>
         <p className="text-sm text-zinc-500">Enter an address to view risk status.</p>
       </div>
@@ -124,22 +60,75 @@ function YourNodesAtRisk({ positions }: { positions: BondPosition[] }) {
   }
 
   return (
+    <div className="p-4 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          {statusIcon}
+          <div>
+            <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{healthScore}</div>
+            <div className={cn("text-sm font-medium", statusColor)}>{statusText}</div>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneAmount(String(totalBonded))}</div>
+          <div className="text-xs text-zinc-500">Total Bonded</div>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 text-sm">
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+          <Zap className="w-3 h-3" />{activeCount} active
+        </span>
+        {standbyCount > 0 && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+            {standbyCount} standby
+          </span>
+        )}
+        {jailedCount > 0 && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
+            <Lock className="w-3 h-3" />{jailedCount} jailed
+          </span>
+        )}
+        {atRiskCount > 0 && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
+            <AlertTriangle className="w-3 h-3" />{atRiskCount} at risk
+          </span>
+        )}
+        {criticalCount > 0 && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-300">
+            {criticalCount} critical
+          </span>
+        )}
+        {warningCount > 0 && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
+            {warningCount} warning
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function NodesList({ positions }: { positions: BondPosition[] }) {
+  const alerts = generatePortfolioAlerts(positions);
+  const sortedPositions = [...positions].sort((a, b) => getNodeSeverityScore(b) - getNodeSeverityScore(a));
+  const totalBonded = positions.reduce((sum, p) => sum + p.bondAmount, 0);
+  const jailedCount = positions.filter(p => p.isJailed).length;
+  const atRiskCount = positions.filter(p => p.yieldGuardFlags && p.yieldGuardFlags.length > 0).length;
+
+  if (positions.length === 0) return null;
+
+  return (
     <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
-      <div className="p-4 border-b border-zinc-100 dark:border-zinc-800">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
-            <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Nodes by Risk</h3>
-          </div>
-          <div className="flex items-center gap-3 text-sm text-zinc-500">
-            <span>{positions.length} nodes</span>
-            <span className="text-emerald-600 dark:text-emerald-400">{formatRune(totalBonded)} RUNE</span>
-            {jailedCount > 0 && <span className="text-red-500">{jailedCount} jailed</span>}
-          </div>
+      <div className="p-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Your Nodes</h3>
+        </div>
+        <div className="text-xs text-zinc-500">
+          {positions.length} nodes · {formatRuneAmount(String(totalBonded))} RUNE
         </div>
       </div>
 
-      <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+      <div className="divide-y divide-zinc-100 dark:divide-zinc-800 max-h-[400px] overflow-y-auto">
         {sortedPositions.map(pos => {
           const primaryFlag = pos.yieldGuardFlags?.[0];
           const alert = alerts.find(a => {
@@ -189,7 +178,7 @@ function YourNodesAtRisk({ positions }: { positions: BondPosition[] }) {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0 ml-2">
+                <div className="flex items-center gap-2 shrink-0 ml-2">
                   <span className={cn(
                     "px-2 py-0.5 rounded text-xs font-medium",
                     pos.status === 'Active' ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-400" :
@@ -199,12 +188,12 @@ function YourNodesAtRisk({ positions }: { positions: BondPosition[] }) {
                     {pos.status}
                   </span>
                   <span className="text-sm text-zinc-500">
-                    {formatRune(pos.bondAmount)}
+                    {formatRuneAmount(String(pos.bondAmount))}
                   </span>
                 </div>
               </div>
               {alert && (
-                <div className="flex items-start gap-2 mt-2">
+                <div className="flex items-start gap-2 mt-1.5">
                   <div className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0">
                     Action
                   </div>
@@ -217,6 +206,41 @@ function YourNodesAtRisk({ positions }: { positions: BondPosition[] }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function RiskKPIs({ positions }: { positions: BondPosition[] }) {
+  const { currentBlockHeight } = useCurrentBlockHeight();
+  const activeCount = positions.filter(p => p.status === 'Active').length;
+  const standbyCount = positions.filter(p => p.status === 'Standby').length;
+  const jailedCount = positions.filter(p => p.isJailed).length;
+  const slashNodes = positions.filter(p => p.slashPoints > 0).length;
+  const criticalSlash = positions.filter(p => p.slashPoints >= 200).length;
+  const warningSlash = positions.filter(p => p.slashPoints >= 50 && p.slashPoints < 200).length;
+  const nextChurnEstimate = currentBlockHeight ? estimateNextChurn(currentBlockHeight) : null;
+
+  const pills = [
+    { icon: <Zap className="w-4 h-4" />, value: activeCount, label: "Earning", color: "bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400", sub: standbyCount > 0 ? `${standbyCount} standby` : null },
+    { icon: <AlertTriangle className="w-4 h-4" />, value: slashNodes, label: "Slash", color: criticalSlash > 0 ? "bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400" : warningSlash > 0 ? "bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400" : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400", sub: criticalSlash > 0 ? `${criticalSlash} crit` : warningSlash > 0 ? `${warningSlash} warn` : null },
+    { icon: <Lock className="w-4 h-4" />, value: jailedCount, label: "Jailed", color: jailedCount > 0 ? "bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400" : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400", sub: null },
+    { icon: <Hourglass className="w-4 h-4" />, value: nextChurnEstimate ? Math.floor(nextChurnEstimate.blocksRemaining / 1440) + 'd' : '--', label: "Churn", color: "bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400", sub: null },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {pills.map((pill, i) => (
+        <div key={i} className={cn("flex-1 min-w-[80px] p-2.5 rounded-lg border", pill.color)}>
+          <div className="flex items-center gap-2">
+            <div className="shrink-0">{pill.icon}</div>
+            <div className="flex-1 min-w-0">
+              <div className="text-lg font-bold truncate">{pill.value}</div>
+              <div className="text-xs truncate opacity-80">{pill.label}</div>
+            </div>
+          </div>
+          {pill.sub && <div className="text-xs opacity-70 mt-0.5 truncate">{pill.sub}</div>}
+        </div>
+      ))}
     </div>
   );
 }
@@ -239,9 +263,11 @@ export default function RiskPage() {
         </button>
       </div>
 
-      <RiskKPIRow positions={positions} />
+      <RiskSummaryBanner positions={positions} />
 
-      <YourNodesAtRisk positions={positions} />
+      <RiskKPIs positions={positions} />
+
+      <NodesList positions={positions} />
 
       {showDetails && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
