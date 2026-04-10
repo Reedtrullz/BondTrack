@@ -70,10 +70,11 @@ thornode-watcher/
 - Manual initial bond input with localStorage persistence (`pnl-dashboard.tsx`)
 
 **Risk Defense Center**:
-- **Visual Risk Heatmap**: mapping Slashes vs. Churn Risk for all positions.
-- **Prescriptive Alerts**: Alerts shift from diagnostic to actionable (e.g., "Action: Reduce bond to mitigate risk").
-- **Unbond Window Tracker**: Real-time countdown for the unbonding window.
-- **Security Monitor**: Slash point monitoring and churn-out risk relative to the active set.
+- **Risk Summary Banner**: Health score (0-100), total bonded, status pills (active/standby/jailed/at-risk), pendulum status, unbond timer
+- **Incentive Pendulum**: Shows Node vs LP split with actual RUNE amounts and percentages, bond-to-pool ratio with visual bar
+- **Quick KPIs**: Compact pills for Earning, Slash, Jailed, Churn countdown
+- **Nodes List**: All nodes sorted by severity score, with action alerts
+- **Show Details toggle**: Expands to show SlashMonitor, ChurnOutRisk, UnbondWindowTracker, NetworkSecurityMetrics
 
 **PnL Performance Statement**:
 - **Reward Velocity**: Visual flow from Gross Earnings $\rightarrow$ Fee Leakage $\rightarrow$ Net Take-Home.
@@ -142,8 +143,28 @@ thornode-watcher/
 - Never use `@ts-ignore` or `as any`
 - Never modify API client files when adding UI components
 - Never hardcode wallet names in UI — use WalletType enum
+- **Risk page formatting**: When display shows "--" for 0/undefined values (use guard like `value > 0 ? formatted : '--'`)
+
+## RISK PAGE
+
+The Risk page (`src/app/dashboard/risk/page.tsx`) shows portfolio risk assessment with:
+
+1. **Risk Summary Banner**: Health score (0-100), total bonded RUNE, status pills (active/standby/jailed/at-risk), Incentive Pendulum status, unbond countdown, network TVL
+
+2. **Risk KPIs Row**: 4 compact pills - Earning (active nodes), Slash (nodes with slash points), Jailed, Next Churn
+
+3. **Incentive Pendulum Card**: Full pendulum showing Nodes (Bond) amount + %, LPs (Liquidity) amount + %, bond-to-pool ratio with visual bar, target vs current
+
+4. **Your Nodes List**: All positions sorted by severity, showing status, bond amount, action alerts
+
+5. **Show Details**: Toggles expanded sections (SlashMonitor, ChurnOutRisk, UnbondWindowTracker, NetworkSecurityMetrics)
+
+**Formatting**: Network values need special handling - `runeToNumber()` divides by 1e8, so multiply back before `formatRuneAmount()`. User bond amounts from hook are already in RUNE units, so multiply by 1e8 for formatting. Use `--` when value is 0 or undefined to indicate missing data.
 
 ## RECENT CHANGES
+- **Risk page redesign**: Streamlined layout with health score banner, compact KPIs, always-visible nodes list, and collapsible details section
+- **Incentive Pendulum fix**: Show Node/LP amounts (not user's share), correct pendulum logic (LP favored when ratio > 2.5), use network data
+- **Formatting fix**: Show '--' instead of '00' when values are 0 or undefined
 - **Real APY benchmarks**: Calculate actual network percentiles from node data instead of hardcoded values
 - **Optimize link fix**: Now passes bond provider address instead of node address
 - **Layout fixes**: Truncated node addresses, fixed text overflow in BondOptimizer card
