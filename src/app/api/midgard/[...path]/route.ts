@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const MIDGARD_ENDPOINTS = [
-  process.env.MIDGARD_API_URL || 'https://midgard.ninerealms.com',
   process.env.MIDGARD_FALLBACK_URL || 'https://gateway.liquify.com/chain/thorchain_midgard',
+  process.env.MIDGARD_API_URL || 'https://midgard.ninerealms.com',
 ];
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +15,6 @@ export async function GET(
   const pathStr = path.join('/');
   const searchParams = request.nextUrl.search;
 
-  // Try each endpoint until one works
   for (const baseUrl of MIDGARD_ENDPOINTS) {
     const targetUrl = `${baseUrl}/${pathStr}${searchParams}`;
     
