@@ -363,19 +363,21 @@ function IncentivePendulum({ positions }: { positions: BondPosition[] }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3 p-4">
+        <div className="p-3 rounded bg-emerald-50 dark:bg-emerald-900/20 text-center">
+          <div className="flex items-center justify-center gap-1 mb-1">
+            <Zap className="w-3 h-3 text-emerald-600" />
+            <span className="text-xs text-emerald-700 dark:text-emerald-400">Nodes (Bond)</span>
+          </div>
+          <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatRuneAmount(String(totalBonds))}</div>
+          <div className="text-xs text-emerald-600 dark:text-emerald-400">{nodeShare.toFixed(0)}%</div>
+        </div>
         <div className="p-3 rounded bg-blue-50 dark:bg-blue-900/20 text-center">
           <div className="flex items-center justify-center gap-1 mb-1">
-            <Zap className="w-3 h-3 text-blue-600" />
-            <span className="text-xs text-blue-700 dark:text-blue-400">Your Share</span>
+            <Activity className="w-3 h-3 text-blue-600" />
+            <span className="text-xs text-blue-700 dark:text-blue-400">LPs (Liquidity)</span>
           </div>
-          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{userShare.toFixed(1)}%</div>
-        </div>
-        <div className="p-3 rounded bg-purple-50 dark:bg-purple-900/20 text-center">
-          <div className="flex items-center justify-center gap-1 mb-1">
-            <Activity className="w-3 h-3 text-purple-600" />
-            <span className="text-xs text-purple-700 dark:text-purple-400">LP Share</span>
-          </div>
-          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{lpShare.toFixed(0)}%</div>
+          <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{formatRuneAmount(String(totalLiquidity))}</div>
+          <div className="text-xs text-blue-600 dark:text-blue-400">{lpShare.toFixed(0)}%</div>
         </div>
       </div>
 
