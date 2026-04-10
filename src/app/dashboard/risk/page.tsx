@@ -300,21 +300,24 @@ function IncentivePendulum({ positions }: { positions: BondPosition[] }) {
   const userShare = totalBonds > 0 ? (totalBonded / totalBonds) * 100 : 0;
   
   let pendulumStatus: { status: string; icon: React.ReactNode; color: string; bg: string; desc: string };
-  if (bondToPoolRatio >= 2.5) {
-    pendulumStatus = { 
-      status: "Node Favored", 
-      icon: <TrendingUp className="w-4 h-4" />, 
-      color: "text-emerald-600 dark:text-emerald-400",
-      bg: "bg-emerald-50 dark:bg-emerald-900/20",
-      desc: "High bond → nodes earn more. LP yields may be lower."
-    };
-  } else if (bondToPoolRatio <= 1.2) {
+  // LP Favored = too much bonded capital (>2.5 ratio)
+  // Node Favored = too much liquidity (<1.5 ratio) - need more security
+  // Balanced = near target 2:1 ratio
+  if (bondToPoolRatio > 2.5) {
     pendulumStatus = { 
       status: "LP Favored", 
       icon: <TrendingDown className="w-4 h-4" />, 
       color: "text-amber-600 dark:text-amber-400",
       bg: "bg-amber-50 dark:bg-amber-900/20",
-      desc: "More liquidity than bond → LPs earn more. Consider bonding more?"
+      desc: "Too much bond → rewards shift to LPs. Bond more for better returns?"
+    };
+  } else if (bondToPoolRatio < 1.5) {
+    pendulumStatus = { 
+      status: "Node Favored", 
+      icon: <TrendingUp className="w-4 h-4" />, 
+      color: "text-emerald-600 dark:text-emerald-400",
+      bg: "bg-emerald-50 dark:bg-emerald-900/20",
+      desc: "More liquidity than bond → rewards shift to nodes for security."
     };
   } else {
     pendulumStatus = { 
@@ -322,7 +325,7 @@ function IncentivePendulum({ positions }: { positions: BondPosition[] }) {
       icon: <Minus className="w-4 h-4" />, 
       color: "text-zinc-600 dark:text-zinc-400",
       bg: "bg-zinc-50 dark:bg-zinc-900",
-      desc: "Near equilibrium (~2x). Rewards split fairly between nodes and LPs."
+      desc: "Near optimal 2:1 ratio. Fair split between nodes and LPs."
     };
   }
 
