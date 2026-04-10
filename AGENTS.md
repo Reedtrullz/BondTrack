@@ -144,6 +144,10 @@ thornode-watcher/
 - Never hardcode wallet names in UI — use WalletType enum
 
 ## RECENT CHANGES
+- **Real APY benchmarks**: Calculate actual network percentiles from node data instead of hardcoded values
+- **Optimize link fix**: Now passes bond provider address instead of node address
+- **Layout fixes**: Truncated node addresses, fixed text overflow in BondOptimizer card
+- **Removed redundant node details**: Removed duplicate section from overview (available in Positions table and /nodes page)
 - **Transaction history fix**: Fixed amount display (0.00 → correct amounts) by multiplying parsed amounts by 1e8 before passing to `formatRuneAmount()`. Also fixed timestamp parsing (nanoseconds → milliseconds).
 - **CORS workaround**: Created server-side API proxy routes at `/api/midgard/[...path]` and `/api/thorchain/[...path]` to bypass browser CORS restrictions when calling external Midgard/THORNode APIs.
 - **Full "Investment Command Center" Overhaul**:
