@@ -63,6 +63,10 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
     selectedAddress ? ['actions', selectedAddress] : null,
     async () => {
       const result = await getActions(selectedAddress, 50, 'bond');
+      console.log('[DEBUG] Raw API response actions count:', result?.actions?.length);
+      if (result?.actions?.length > 0) {
+        console.log('[DEBUG] First raw action:', JSON.stringify(result.actions[0], null, 2));
+      }
       return result;
     },
     { 
@@ -75,6 +79,8 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
 
   if (transactions.length > 0) {
     console.log('[DEBUG] Parsed transactions:', JSON.stringify(transactions.slice(0, 2), null, 2));
+  } else if (data?.actions?.length === 0) {
+    console.log('[DEBUG] No bond actions found - raw actions:', data.actions);
   }
 
   const handleSearch = () => {
