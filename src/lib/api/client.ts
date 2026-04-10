@@ -51,10 +51,11 @@ export async function fetchThornode<T>(path: string, init?: RequestInit): Promis
 }
 
 export async function fetchMidgard<T>(path: string, init?: RequestInit): Promise<T> {
+  const localProxy = '/api/midgard';
+  
   try {
-    return await fetchApi<T>(ENDPOINTS.midgard, path, init);
+    return await fetchApi<T>(localProxy, path, init);
   } catch (error) {
-    console.warn(`Midgard primary failed, trying fallback: ${error instanceof Error ? error.message : String(error)}`);
-    return await fetchApi<T>(ENDPOINTS.fallbackMidgard, path, init);
+    throw new Error(`Midgard proxy failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
