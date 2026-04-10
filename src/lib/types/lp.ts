@@ -1,3 +1,7 @@
+/**
+ * Represents a processed LP position ready for UI consumption.
+ * Metrics like APY, healthScore, etc., are derived from raw API data.
+ */
 export interface LpPosition {
   address: string;
   pool: string;

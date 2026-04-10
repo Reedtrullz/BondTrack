@@ -1,31 +1,56 @@
-import { useState } from 'react';
 import useSWR from 'swr';
 import { useSearchParams } from 'next/navigation';
+import { getMemberDetails, getPools, MemberDetailsRaw, PoolDetailRaw } from '../lib/api/midgard';
+import { LpPosition } from '../lib/types/lp';
 
-export const fetcher = async (url: string) => {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Failed to fetch LP positions');
-  return res.json();
-};
+interface LpData {
+  memberDetails: MemberDetailsRaw;
+  pools: PoolDetailRaw[];
+}
 
 export const useLpPositions = () => {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
 
-  const { data, error, isLoading } = useSWR(
-    address ? `/v2/member/${address}` : null,
-    fetcher,
+  const { data, error, isLoading } = useSWR<LpData>(
+    address ? address : null,
+    async (addr) => {
+      const [memberDetails, pools] = await Promise.all([
+        getMemberDetails(addr),
+        getPools(),
+      ]);
+      return { memberDetails, pools };
+    },
     {
-      refreshInterval: 30000, // Poll every 30 seconds
+      refreshInterval: 30000,
       revalidateOnFocus: true,
     }
   );
 
+  const positions: LpPosition[] = (data?.memberDetails?.pools || []).map((poolRaw) => {
+    const poolData = data?.pools?.find((p) => p.asset === poolRaw.pool);
+    
+    return {
+      address: poolRaw.assetAddress,
+      pool: poolRaw.pool,
+      bondedRune: poolRaw.runeDeposit,
+      rewards: poolRaw.runeAdded,
+      apy: poolData ? parseFloat(poolData.poolAPY) : 0,
+      healthScore: 100,
+      slashRisk: 0,
+      status: 'active',
+      unbondWindowRemaining: 0,
+    };
+  });
+
+  const totalBondedRune = positions.reduce((acc, pos) => acc + BigInt(pos.bondedRune), 0n).toString();
+  const totalRewards = positions.reduce((acc, pos) => acc + BigInt(pos.rewards), 0n).toString();
+
   return {
-    positions: isLoading ? [] : data?.positions || [],
+    positions,
     isLoading,
     error: error instanceof Error ? error.message : undefined,
-    totalBondedRune: data?.totalBondedRune || '0',
-    totalRewards: data?.totalRewards || '0',
+    totalBondedRune,
+    totalRewards,
   };
 };

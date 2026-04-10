@@ -141,6 +141,82 @@ export interface ActionRaw {
   };
 }
 
+export interface MemberDetailsRaw {
+  pools: MemberPoolRaw[];
+}
+
+export interface MemberPoolRaw {
+  pool: string;
+  runeAddress: string;
+  assetAddress: string;
+  liquidityUnits: string;
+  runeDeposit: string;
+  assetDeposit: string;
+  runeAdded: string;
+  assetAdded: string;
+  runePending: string;
+  assetPending: string;
+  runeWithdrawn: string;
+  assetWithdrawn: string;
+  dateFirstAdded: string;
+  dateLastAdded: string;
+}
+
+export interface PoolDetailRaw {
+  asset: string;
+  volume24h: string;
+  assetDepth: string;
+  runeDepth: string;
+  assetPrice: string;
+  assetPriceUSD: string;
+  annualPercentageRate: string;
+  poolAPY: string;
+  earnings: string;
+  earningsAnnualAsPercentOfDepth: string;
+  lpLuvi: string;
+  saversAPR: string;
+  status: string;
+  liquidityUnits: string;
+  synthUnits: string;
+  synthSupply: string;
+  units: string;
+  nativeDecimal: string;
+  saversUnits: string;
+  saversDepth: string;
+  totalCollateral: string;
+  totalDebtTor: string;
+  saversYieldShare: string;
+  depthPlus2Percent: string;
+  depthMinus2Percent: string;
+}
+
+export interface ActionsResponseRaw {
+  actions: ActionRaw[];
+  count: string;
+}
+
+
+export interface MemberDetailsRaw {
+  pools: MemberPoolRaw[];
+}
+
+export interface MemberPoolRaw {
+  pool: string;
+  runeAddress: string;
+  assetAddress: string;
+  liquidityUnits: string;
+  runeDeposit: string;
+  assetDeposit: string;
+  runeAdded: string;
+  assetAdded: string;
+  runePending: string;
+  assetPending: string;
+  runeWithdrawn: string;
+  assetWithdrawn: string;
+  dateFirstAdded: string;
+  dateLastAdded: string;
+}
+
 export interface ActionsResponseRaw {
   actions: ActionRaw[];
   count: string;
@@ -179,6 +255,10 @@ export async function getActions(address: string, limit = 50, type?: string): Pr
   return fetchMidgard<ActionsResponseRaw>(`/v2/actions${qs ? `?${qs}` : ''}`);
 }
 
+export async function getPools(): Promise<PoolDetailRaw[]> {
+  return fetchMidgard<PoolDetailRaw[]>('/v2/pools');
+}
+
 export interface THORNameAliasRaw {
   chain: string;
   address: string;
@@ -210,4 +290,8 @@ export interface HealthRaw {
 
 export async function getHealth(): Promise<HealthRaw> {
   return fetchMidgard<HealthRaw>('/v2/health');
+}
+
+export async function getMemberDetails(address: string): Promise<MemberDetailsRaw> {
+  return fetchMidgard<MemberDetailsRaw>(`/v2/member/${address}`);
 }
