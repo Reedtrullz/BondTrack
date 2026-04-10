@@ -55,14 +55,18 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
   const statusText = healthScore >= 80 ? "Healthy" : healthScore >= 50 ? "Needs Attention" : "At Risk";
   const statusColor = healthScore >= 80 ? "text-emerald-600 dark:text-emerald-400" : healthScore >= 50 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400";
 
-  const totalLiquidity = network?.totalPooledRune ? runeToNumber(network.totalPooledRune) : 0;
-  const bondToPoolRatio = totalLiquidity > 0 ? totalBonded / totalLiquidity : 0;
+  // Use NETWORK bonds (not user's) for pendulum
+  const networkBond = network?.bondMetrics?.totalActiveBond ? runeToNumber(network.bondMetrics.totalActiveBond) : 0;
+  const networkLiquidity = network?.totalPooledRune ? runeToNumber(network.totalPooledRune) : 0;
+  const bondToPoolRatio = networkLiquidity > 0 ? networkBond / networkLiquidity : 0;
   
+  // LP Favored = too much bonded (> 2.5)
+  // Node Favored = too much liquidity (< 1.5)
   let pendulumStatus: { status: string; icon: React.ReactNode; color: string };
-  if (bondToPoolRatio >= 2.5) {
-    pendulumStatus = { status: "Node Favored", icon: <TrendingUp className="w-3 h-3" />, color: "text-emerald-600 dark:text-emerald-400" };
-  } else if (bondToPoolRatio <= 1.2) {
+  if (bondToPoolRatio > 2.5) {
     pendulumStatus = { status: "LP Favored", icon: <TrendingDown className="w-3 h-3" />, color: "text-amber-600 dark:text-amber-400" };
+  } else if (bondToPoolRatio < 1.5) {
+    pendulumStatus = { status: "Node Favored", icon: <TrendingUp className="w-3 h-3" />, color: "text-emerald-600 dark:text-emerald-400" };
   } else {
     pendulumStatus = { status: "Balanced", icon: <Minus className="w-3 h-3" />, color: "text-zinc-500" };
   }
@@ -146,7 +150,7 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
           </div>
         </div>
         <div className="text-xs text-zinc-400">
-          {formatRuneAmount(String(totalLiquidity))} TVL
+          {formatRuneAmount(String(networkLiquidity))} TVL
         </div>
       </div>
     </div>
