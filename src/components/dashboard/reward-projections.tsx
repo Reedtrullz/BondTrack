@@ -48,7 +48,7 @@ function calculateProjections(
     }));
   }
 
-  const dailyRate = weightedAPY / 365 / 100;
+  const dailyRate = Math.pow(1 + weightedAPY / 100, 1 / 365) - 1;
   const feeMultiplier = averageFeeBps / 10000;
 
   return TIMEFRAMES.map((tf) => {

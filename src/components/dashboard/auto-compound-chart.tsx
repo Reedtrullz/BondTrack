@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { TrendingUp, Coins } from 'lucide-react';
 import { BondPosition } from '@/lib/types/node';
@@ -22,7 +22,7 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
 
     const data = [];
     const months = 12;
-    const monthlyRate = weightedApy / 12;
+    const monthlyRate = Math.pow(1 + weightedApy / 100, 1 / 12) - 1;
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
 
