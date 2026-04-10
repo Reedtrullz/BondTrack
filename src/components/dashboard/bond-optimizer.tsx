@@ -11,10 +11,11 @@ interface BondOptimizerProps {
   positions: BondPosition[];
   benchmarks: YieldBenchmarks | undefined;
   allNodes: any[];
+  providerAddress: string | null;
   isLoading?: boolean;
 }
 
-export function BondOptimizer({ positions, benchmarks, allNodes, isLoading }: BondOptimizerProps) {
+export function BondOptimizer({ positions, benchmarks, allNodes, providerAddress, isLoading }: BondOptimizerProps) {
   const suggestions = useMemo(() => {
     if (!benchmarks || !allNodes) return [];
     return analyzeBondOptimization(positions, benchmarks, allNodes);
@@ -102,7 +103,7 @@ export function BondOptimizer({ positions, benchmarks, allNodes, isLoading }: Bo
                 <span> {sug.currentAPY.toFixed(2)}% → {sug.suggestedAPY.toFixed(2)}%</span>
               </div>
               <Link 
-                href={`/dashboard/transactions?address=${sug.currentNodeAddress}`}
+                href={`/dashboard/transactions?address=${providerAddress}`}
                 className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 flex-shrink-0"
               >
                 Optimize →

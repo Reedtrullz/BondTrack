@@ -114,12 +114,13 @@ export default function OverviewPage() {
             <span className="text-xs font-bold uppercase tracking-widest">Portfolio Intelligence</span>
           </div>
           
-          <BondOptimizer 
-            positions={positions} 
-            benchmarks={benchmarks} 
-            allNodes={allNodes || []} 
-            isLoading={allNodesLoading || benchmarksLoading}
-          />
+<BondOptimizer 
+              positions={positions} 
+              benchmarks={benchmarks} 
+              allNodes={allNodes || []}
+              providerAddress={address}
+              isLoading={allNodesLoading || benchmarksLoading}
+            />
           
           {/* Mobile Only Export - hidden on sm+ */}
           <div className="sm:hidden flex justify-end">
