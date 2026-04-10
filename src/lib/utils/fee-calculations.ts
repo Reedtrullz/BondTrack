@@ -39,7 +39,7 @@ export function calculatePersonalFeeLeakage(
   const monthlyRate = apy / 12;
   const grossReward = totalBond * monthlyRate;
   const avgOperatorFee = safePositions.reduce((sum, p) => sum + (p.operatorFee || 500), 0) / safePositions.length;
-  const feeLeakage = grossReward * (avgOperatorFee / 100);
+  const feeLeakage = grossReward * (avgOperatorFee / 10000);
   const netTakeHome = grossReward - feeLeakage;
   
   let leakagePercent = 0;
