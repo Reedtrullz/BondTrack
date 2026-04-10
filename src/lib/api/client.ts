@@ -47,7 +47,13 @@ async function fetchApi<T>(baseUrl: string, path: string, init?: RequestInit, re
 }
 
 export async function fetchThornode<T>(path: string, init?: RequestInit): Promise<T> {
-  return fetchApi<T>(ENDPOINTS.thornode, path, init);
+  const localProxy = '/api/thorchain';
+  
+  try {
+    return await fetchApi<T>(localProxy, path, init);
+  } catch (error) {
+    throw new Error(`THORNode proxy failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 export async function fetchMidgard<T>(path: string, init?: RequestInit): Promise<T> {
