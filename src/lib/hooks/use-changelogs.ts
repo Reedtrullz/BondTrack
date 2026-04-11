@@ -963,9 +963,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'mid-sep-2022',
-    title: 'Mid Sep 2022',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    title: 'AVAX mainnet, BSC won chain vote, ADR004 adopted',
+    date: 'Sep 2022',
+    fullDate: 'September 2022',
     content: [
       {
         type: 'chain',
@@ -991,9 +991,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'early-oct-2022',
-    title: 'Early Oct 2022',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    title: 'BSC integration, Savers testing, Orderbook design',
+    date: 'Oct 2022',
+    fullDate: 'October 2022',
     content: [
       {
         type: 'chain',
@@ -1014,9 +1014,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'early-nov-2022',
-    title: 'Early Nov 2022',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    title: 'BSC progress, Savers prep, Network stability',
+    date: 'Nov 2022',
+    fullDate: 'November 2022',
     content: [
       {
         type: 'chain',
@@ -1037,9 +1037,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'end-nov-2022',
-    title: 'End Nov 2022',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    title: 'BSC launch, Savers coming, Network halt fix',
+    date: 'Nov 2022',
+    fullDate: 'November 2022',
     content: [
       {
         type: 'chain',
@@ -1063,9 +1063,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'mid-dec-2022',
-    title: 'Mid Dec 2022',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    title: 'BSC integration, Savers completion, THORNames dev',
+    date: 'Dec 2022',
+    fullDate: 'December 2022',
     content: [
       {
         type: 'chain',
@@ -1086,9 +1086,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'end-jan-2023',
-    title: 'End Jan 2023',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    title: 'BSC launch, Savers prep, THORNames testing',
+    date: 'Jan 2023',
+    fullDate: 'January 2023',
     content: [
       {
         type: 'chain',
@@ -1114,14 +1114,14 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'early-mar-2023',
-    title: 'Early Mar 2023',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    title: 'Savers live, THORNames staging, Planned Obsolescence progress',
+    date: 'Mar 2023',
+    fullDate: 'March 2023',
     content: [
       {
         type: 'feature',
         title: 'Savers Vaults Launch',
-        description: 'Savers Vaults live on Mainnet -用户提供单一资产流动性，提供无无常损失收益.',
+        description: 'Savers Vaults live on Mainnet - providing single-sided liquidity with impermanent loss protection.',
       },
       {
         type: 'feature',
@@ -1138,8 +1138,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'mar-2023',
     title: 'THORNames live, Savers growth, v2 migration planning',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    date: 'Mar 2023',
+    fullDate: 'March 2023',
     content: [
       {
         type: 'feature',
@@ -1160,9 +1160,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'apr-2023',
-    title: 'Lending development, Cosmos SDK upgrade, THORFi progress',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    title: 'Lending dev, Cosmos SDK v0.47, THORFi progress',
+    date: 'Apr 2023',
+    fullDate: 'April 2023',
     content: [
       {
         type: 'feature',
@@ -1183,9 +1183,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'may-2023',
-    title: 'Lending protocol, security audits, THORFi development',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    title: 'Lending protocol, Security audits, THORFi dev',
+    date: 'May 2023',
+    fullDate: 'May 2023',
     content: [
       {
         type: 'feature',
@@ -1206,9 +1206,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'jun-2023',
-    title: 'Lending progress, THORFi, network upgrades',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    title: 'Lending dev targeting Q3, THORFi, Network upgrades',
+    date: 'Jun 2023',
+    fullDate: 'June 2023',
     content: [
       {
         type: 'feature',
@@ -1229,9 +1229,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'jul-2023',
-    title: 'Lending launch prep, THORFi ecosystem',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    title: 'Lending launch prep, THORFi ecosystem, Chain integrations',
+    date: 'Jul 2023',
+    fullDate: 'July 2023',
     content: [
       {
         type: 'feature',
@@ -1252,9 +1252,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'aug-2023',
-    title: 'Lending protocol, THORFi, planned obsolescence',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    title: 'Lending dev, THORFi, Planned Obsolescence',
+    date: 'Aug 2023',
+    fullDate: 'August 2023',
     content: [
       {
         type: 'feature',
@@ -1275,9 +1275,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'sep-2023',
-    title: 'Lending progress, THORFi development, streaming swaps',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    title: 'Lending nearing completion, THORFi, Streaming swaps',
+    date: 'Sep 2023',
+    fullDate: 'September 2023',
     content: [
       {
         type: 'feature',
@@ -1298,9 +1298,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'oct-2023',
-    title: 'Lending launch, THORFi, network stability',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    title: 'Lending launch, THORFi, Network stability',
+    date: 'Oct 2023',
+    fullDate: 'October 2023',
     content: [
       {
         type: 'feature',
@@ -1321,9 +1321,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'nov-2023',
-    title: 'Lending protocol, THORFi, protocol improvements',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    title: 'Lending protocol, THORFi, Protocol improvements',
+    date: 'Nov 2023',
+    fullDate: 'November 2023',
     content: [
       {
         type: 'feature',
