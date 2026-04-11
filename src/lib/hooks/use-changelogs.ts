@@ -302,8 +302,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'jul-2025',
     title: 'TRON integration complete, Advanced Swap Queue dev',
-    date: 'Aug 1, 2025',
-    fullDate: 'August 1, 2025',
+    date: 'Jul 2025',
+    fullDate: 'July 2025',
     sortDate: '2025-07',
     content: [
       {
@@ -538,8 +538,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'oct-2024',
     title: 'V3 release prep, min swap fee to 8bps',
-    date: 'Nov 1, 2024',
-    fullDate: 'November 1, 2024',
+    date: 'Oct 2024',
+    fullDate: 'October 2024',
     sortDate: '2024-10',
     content: [
       {
@@ -557,8 +557,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'sep-2024',
     title: 'V3 development, THORFi recovery planning',
-    date: 'Oct 2, 2024',
-    fullDate: 'October 2, 2024',
+    date: 'Sep 2024',
+    fullDate: 'September 2024',
     sortDate: '2024-09',
     content: [
       {
@@ -581,8 +581,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'aug-2024',
     title: 'V3 dev, THORFi unwind, protocol upgrades',
-    date: 'Sep 6, 2024',
-    fullDate: 'September 6, 2024',
+    date: 'Aug 2024',
+    fullDate: 'August 2024',
     sortDate: '2024-08',
     content: [
       {
@@ -605,8 +605,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'may-jun-2024',
     title: 'May-Jun 2024',
-    date: 'Jul 5, 2024',
-    fullDate: 'July 5, 2024',
+    date: 'Jun 2024',
+    fullDate: 'June 2024',
     sortDate: '2024-06',
     content: [
       {
@@ -634,8 +634,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'apr-2024',
     title: 'April 2024',
-    date: 'May 7, 2024',
-    fullDate: 'May 7, 2024',
+    date: 'Apr 2024',
+    fullDate: 'April 2024',
     sortDate: '2024-04',
     content: [
       {
@@ -658,8 +658,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'mar-2024',
     title: 'March 2024',
-    date: 'Apr 2, 2024',
-    fullDate: 'April 2, 2024',
+    date: 'Mar 2024',
+    fullDate: 'March 2024',
     sortDate: '2024-03',
     content: [
       {
@@ -682,8 +682,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'feb-2024',
     title: 'February 2024',
-    date: 'Mar 4, 2024',
-    fullDate: 'March 4, 2024',
+    date: 'Feb 2024',
+    fullDate: 'February 2024',
     sortDate: '2024-02',
     content: [
       {
@@ -706,8 +706,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'jan-2024',
     title: 'January 2024',
-    date: 'Feb 5, 2024',
-    fullDate: 'February 5, 2024',
+    date: 'Jan 2024',
+    fullDate: 'January 2024',
     sortDate: '2024-01',
     content: [
       {
@@ -730,8 +730,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'q4-2023',
     title: 'Q4 2023',
-    date: 'Jan 23, 2024',
-    fullDate: 'January 23, 2024',
+    date: 'Dec 2023',
+    fullDate: 'December 2023',
     sortDate: '2023-12',
     content: [
       {
@@ -769,8 +769,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'q3-2023',
     title: 'Q3 2023',
-    date: 'Oct 4, 2023',
-    fullDate: 'October 4, 2023',
+    date: 'Sep 2023',
+    fullDate: 'September 2023',
     sortDate: '2023-09',
     content: [
       {
