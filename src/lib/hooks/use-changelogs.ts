@@ -604,7 +604,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'may-jun-2024',
-    title: 'May-Jun 2024',
+    title: 'Lending live, THORFi growth, New chains, Mimir V2',
     date: 'Jun 2024',
     fullDate: 'June 2024',
     sortDate: '2024-06',
@@ -633,7 +633,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'apr-2024',
-    title: 'April 2024',
+    title: 'Lending launch, Savers vaults, Network upgrades',
     date: 'Apr 2024',
     fullDate: 'April 2024',
     sortDate: '2024-04',
@@ -657,7 +657,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'mar-2024',
-    title: 'March 2024',
+    title: 'Lending launch prep, THORFi dev, Planned Obsolescence',
     date: 'Mar 2024',
     fullDate: 'March 2024',
     sortDate: '2024-03',
@@ -681,7 +681,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'feb-2024',
-    title: 'February 2024',
+    title: 'Lending final dev, Savers growth, Security audits',
     date: 'Feb 2024',
     fullDate: 'February 2024',
     sortDate: '2024-02',
@@ -705,7 +705,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'jan-2024',
-    title: 'January 2024',
+    title: 'Lending dev, Savers growth, Cosmos SDK upgrade',
     date: 'Jan 2024',
     fullDate: 'January 2024',
     sortDate: '2024-01',
@@ -729,7 +729,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'q4-2023',
-    title: 'Q4 2023',
+    title: 'Mimir V2, Min swap fee to 8bps, Memoless in pipeline',
     date: 'Dec 2023',
     fullDate: 'December 2023',
     sortDate: '2023-12',
@@ -768,7 +768,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'q3-2023',
-    title: 'Q3 2023',
+    title: 'Lending live, Streaming swaps, BSC added, TOR unit',
     date: 'Sep 2023',
     fullDate: 'September 2023',
     sortDate: '2023-09',
@@ -807,7 +807,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'q2-2023',
-    title: 'Q2 2023',
+    title: 'BNB Chain added, Lending development progressed',
     date: 'Jun 2023',
     fullDate: 'June 2023',
     sortDate: '2023-06',
@@ -826,7 +826,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'q1-2023',
-    title: 'Q1 2023',
+    title: 'Planned Obsolescence, BSC integration, New wallet integrations',
     date: 'Mar 2023',
     fullDate: 'March 2023',
     sortDate: '2023-03',
@@ -855,7 +855,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'q4-2022',
-    title: 'Q4 2022',
+    title: 'Mainnet launch, AVAX integration, THORNames, Savers, Network halt',
     date: 'Dec 2022',
     fullDate: 'December 2022',
     sortDate: '2022-12',
@@ -908,9 +908,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'q3-2022',
-    title: 'Q3 2022',
+    title: 'AVAX Stagenet, Next chain vote, POL implemented, LUNA airdrop',
     date: 'Oct 2022',
-    fullDate: 'October 21, 2022',
+    fullDate: 'October 2022',
     sortDate: '2022-09',
     content: [
       {
@@ -950,9 +950,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'end-aug-2022',
-    title: 'End Aug 2022',
+    title: 'Next chain vote, AVAX Stagenet, Terra LUNA airdrop',
     date: 'Aug 2022',
-    fullDate: 'Next chain vote, AVAX Stagenet, POL progress',
+    fullDate: 'August 2022',
     sortDate: '2022-08',
     content: [
       {
