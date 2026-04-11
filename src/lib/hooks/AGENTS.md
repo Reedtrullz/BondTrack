@@ -1,6 +1,6 @@
 # SWR Hooks — Data Fetching Layer
 
-**12 hooks**: `use-bond-positions`, `use-bond-history`, `use-earnings`, `use-network-constants`, `use-rune-price`, `use-watchlist`, `use-wallet`, `use-all-nodes`, `use-churn-countdown`, `use-network-metrics`, `use-current-block-height`, `use-node-rankings`
+**13 hooks**: `use-bond-positions`, `use-bond-history`, `use-earnings`, `use-network-constants`, `use-rune-price`, `use-watchlist`, `use-wallet`, `use-all-nodes`, `use-churn-countdown`, `use-network-metrics`, `use-current-block-height`, `use-node-rankings`, `use-changelogs`
 
 ## WHERE TO LOOK
 | Need | File |
@@ -17,6 +17,39 @@
 | Network metrics | `use-network-metrics.ts` — returns TVL, bond-to-pool ratio, total bond |
 | Current block height | `use-current-block-height.ts` — returns real-time block height from Midgard `/v2/health` |
 | Node rankings | `use-node-rankings.ts` — computes user's node rank in active set, percentile, at-risk status |
+| Changelogs | `use-changelogs.ts` — returns sorted changelog entries from TCC/TCU Medium publication |
+
+## useChangelogs
+
+Data source for the Changelogs dashboard page (`/dashboard/changelogs`). Returns changelog entries sorted newest-first by `sortDate`.
+
+**Interface:**
+```typescript
+interface ChangelogItem {
+  id: string;           // Unique identifier (e.g., 'mar-2026', 'end-aug-2022')
+  title: string;        // Key highlights from the period (NOT the date!)
+  date: string;        // Short display: "Mar 2026"
+  fullDate: string;    // Full display: "March 2026" 
+  sortDate?: string;   // For sorting: "2026-03" or "2022-08-15" for bi-weekly
+  content: ChangelogEntry[];
+}
+
+interface ChangelogEntry {
+  type: 'update' | 'adr' | 'chain' | 'feature' | 'bug';
+  title: string;
+  description: string;
+  links?: { text: string; url: string }[];
+}
+```
+
+**Sorting**: Entries are sorted newest-first using `sortDate` (falls back to `date` if missing). Format: `YYYY-MM` for monthly, `YYYY-MM-DD` for bi-weekly entries.
+
+**Adding new entries**: When adding entries from TCC/TCU Medium:
+1. Use the period from the article title (e.g., "End Aug 2022" → sortDate: "2022-08")
+2. Set `title` to key highlights (extract from article content), NOT just the date
+3. Set `date` to short month/year format (e.g., "Aug 2022")
+4. Set `fullDate` to same as date or descriptive (e.g., "August 2022")
+5. Add multiple content entries with appropriate `type`
 
 ## CONVENTIONS
 
