@@ -46,10 +46,19 @@ export function runeToNumber(raw: string | number | undefined): number {
 
 /**
  * Convert a RUNE number to raw API format (1e8 units as string).
+ * NOTE: Precision is limited by JavaScript's Number.MAX_SAFE_INTEGER (~90M RUNE).
  */
 export function numberToRune(num: number): string {
   if (typeof num !== 'number' || isNaN(num)) return '0';
   return String(BigInt(Math.round(num * Number(RUNE_DIVISOR))));
+}
+
+/**
+ * Formats a RUNE decimal number as a formatted string.
+ * Uses numberToRune internally to ensure consistent satoshi-based formatting.
+ */
+export function formatRuneFromNumber(num: number, decimals = 2): string {
+  return formatRuneAmount(numberToRune(num), decimals);
 }
 
 /**

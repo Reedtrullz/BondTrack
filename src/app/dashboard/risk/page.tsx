@@ -15,11 +15,11 @@ import { useState } from 'react';
 import { generatePortfolioAlerts } from '@/lib/utils/portfolio-alerts';
 import { cn } from '@/lib/utils';
 import { estimateNextChurn } from '@/lib/utils/calculations';
-import { runeToNumber, formatRuneAmount, formatCompactNumber } from '@/lib/utils/formatters';
+import { runeToNumber, formatRuneAmount, formatCompactNumber, formatRuneFromNumber } from '@/lib/utils/formatters';
 
 function formatRuneValue(value: number): string {
   if (!value || value <= 0) return '--';
-  return formatRuneAmount(String(Math.floor(value * 1e8)));
+  return formatRuneFromNumber(value);
 }
 
 function formatRuneCompact(value: number): string {
@@ -72,12 +72,12 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
   const networkLiquidity = runeToNumber(networkLiquidityRaw);
   const bondToPoolRatio = networkLiquidity > 0 ? networkBond / networkLiquidity : 0;
   
-  // For display - multiply back to 1e8 for formatter
+  // For display
   const networkLiquidityDisplay = networkLiquidity > 0 
-    ? String(Math.floor(networkLiquidity * 1e8)) 
+    ? formatRuneFromNumber(networkLiquidity) 
     : '0';
   const networkBondDisplay = networkBond > 0 
-    ? String(Math.floor(networkBond * 1e8)) 
+    ? formatRuneFromNumber(networkBond) 
     : '0';
   
   // LP Favored = too much bonded (> 2.5)

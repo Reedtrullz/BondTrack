@@ -7,6 +7,7 @@ export interface FeeAuditResult {
   netTakeHome: number;
   leakagePercent: number;
   period: 'daily' | 'monthly';
+  isEstimated: boolean;
 }
 
 function getBondAmount(pos: BondPosition): number {
@@ -30,15 +31,32 @@ export function calculatePersonalFeeLeakage(
       netTakeHome: 0,
       leakagePercent: 0,
       period,
+      isEstimated: false,
     };
   }
 
   const totalBond = safePositions.reduce((sum, p) => sum + getBondAmount(p), 0);
+  
+  // APY Estimation
+  const isApyEstimated = networkApy === undefined;
   const apy = networkApy ?? 0.20; 
   
+  // Fee Estimation
+  let operatorFeeMissing = false;
+  const totalOperatorFeeBps = safePositions.reduce((sum, p) => {
+    if (p.operatorFee === undefined || p.operatorFee === null) {
+      operatorFeeMissing = true;
+      return sum + 500; // Fallback to 5%
+    }
+    return sum + p.operatorFee;
+  }, 0);
+  
+  const avgOperatorFee = totalOperatorFeeBps / safePositions.length;
+  const isFeeEstimated = operatorFeeMissing;
+  const isEstimated = isApyEstimated || isFeeEstimated;
+
   const monthlyRate = apy / 12;
   const grossReward = totalBond * monthlyRate;
-  const avgOperatorFee = safePositions.reduce((sum, p) => sum + (p.operatorFee || 500), 0) / safePositions.length;
   const feeLeakage = grossReward * (avgOperatorFee / 10000);
   const netTakeHome = grossReward - feeLeakage;
   
@@ -54,6 +72,7 @@ export function calculatePersonalFeeLeakage(
     netTakeHome,
     leakagePercent,
     period,
+    isEstimated,
   };
 }
 

@@ -67,6 +67,7 @@ thornode-watcher/
 - Total bonded, weighted APY, position count
 - **Portfolio Health Score (0-100)**: Calculated based on slash points, jail status, and churn risk.
 - **Bond Optimizer**: AI-driven suggestions for re-bonding to optimize yield vs risk.
+- **Liquidity Provider (LP) Dashboard**: Monitor LP positions, rewards, and pool-specific metrics.
 - Manual initial bond input with localStorage persistence (`pnl-dashboard.tsx`)
 
 **Risk Defense Center**:
@@ -94,7 +95,8 @@ thornode-watcher/
 | Add new API endpoint | `src/lib/api/thornode.ts` or `midgard.ts` |
 | Add new data hook | `src/lib/hooks/` — use SWR pattern |
 | Add dashboard page | `src/app/dashboard/<name>/page.tsx` — must be 'use client' if using useSearchParams |
-| New chart component | `src/components/dashboard/` — use Recharts ResponsiveContainer |
+| Add new chart component | `src/components/dashboard/` — use Recharts ResponsiveContainer |
+| Add LP dashboard page | `src/app/dashboard/lp/page.tsx` |
 | New calculation | `src/lib/utils/calculations.ts` |
 | New formatter | `src/lib/utils/formatters.ts` |
 | Change API URLs | `src/lib/config.ts` — env vars override defaults |
@@ -108,6 +110,8 @@ thornode-watcher/
 **Amount display**: When displaying parsed amounts in UI, multiply by `1e8` before passing to `formatRuneAmount()` because the parsing divides by 1e8, but the formatter expects 1e8 units. Example: `formatRuneAmount(String(Math.floor(tx.amount * 1e8)))`.
 
 **useSearchParams**: Must be wrapped in Suspense boundary. `dashboard/layout.tsx` provides this. Pages using it must be `'use client'`.
+
+**Midgard Proxy**: The proxy in `src/app/api/midgard/[...path]/route.ts` passes through 4xx errors from the upstream Midgard API. Ensure any new API client calls use the proxy to avoid CORS issues.
 
 **Address prop**: Dashboard pages get address from `useSearchParams().get('address')`. The `/dashboard` redirect passes it through.
 
