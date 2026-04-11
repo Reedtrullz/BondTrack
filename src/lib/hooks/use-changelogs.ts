@@ -18,9 +18,9 @@ export interface ChangelogEntry {
 const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'mar-2026',
-    title: 'March 2026',
+    title: 'Solana unhalted, EVM chains bug, ADR-23 passed',
     date: 'Mar 2026',
-    fullDate: 'Solana unhalted, EVM chains bug, ADR-23 passed',
+    fullDate: 'March 2026',
     content: [
       {
         type: 'update',
@@ -60,9 +60,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'feb-2026',
-    title: 'February 2026',
+    title: 'Ethereum Bifrost issue, ADR-022/023, Solana launch',
     date: 'Feb 2026',
-    fullDate: 'Ethereum Bifrost issue, ADR-022/023, Solana launch attempt',
+    fullDate: 'February 2026',
     content: [
       {
         type: 'bug',
@@ -104,9 +104,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'jan-2026',
-    title: 'January 2026',
+    title: 'Limit orders paused, BCH bug, v3.15 adopted, Solana prep',
     date: 'Jan 2026',
-    fullDate: 'Limit orders paused, BCH bug, v3.15 adopted, Solana prep',
+    fullDate: 'January 2026',
     content: [
       {
         type: 'bug',
@@ -141,9 +141,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'dec-2025',
-    title: 'December 2025',
+    title: 'v3.14 release, advanced trading features',
     date: 'Dec 2025',
-    fullDate: 'v3.14 release, advanced trading features',
+    fullDate: 'December 2025',
     content: [
       {
         type: 'update',
@@ -159,9 +159,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'nov-2025',
-    title: 'November 2025',
+    title: 'v3.12/13, Limit orders, Memoless, UTXO exploit',
     date: 'Nov 2025',
-    fullDate: 'v3.12/13, Limit orders, Memoless, UTXO exploit',
+    fullDate: 'November 2025',
     content: [
       {
         type: 'update',
@@ -214,9 +214,9 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'oct-2025',
-    title: 'October 2025',
+    title: 'Limit orders attempt, block halt, BSC issues',
     date: 'Oct 2025',
-    fullDate: 'Limit orders attempt, block halt, BSC issues',
+    fullDate: 'October 2025',
     content: [
       {
         type: 'feature',
@@ -245,7 +245,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'sep-2025',
-    title: 'September 2025',
+    title: 'TRON integration, EdDSA support, ADR-21 Marketing',
     date: 'Sep 2025',
     fullDate: 'TRON integration live, EdDSA, ADR-21 Marketing',
     content: [
@@ -268,7 +268,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'aug-2025',
-    title: 'August 2025',
+    title: 'TRON ready, Advanced Swap Queue dev, Security incident',
     date: 'Aug 2025',
     fullDate: 'TRON ready, Advanced Swap Queue dev, Security incident',
     content: [
@@ -291,7 +291,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'jul-2025',
-    title: 'July 2025',
+    title: 'TRON integration complete, Advanced Swap Queue dev',
     date: 'Aug 1, 2025',
     fullDate: 'August 1, 2025',
     content: [
@@ -309,7 +309,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'jun-2025',
-    title: 'June 2025',
+    title: 'XRP Chain, TCY launch, TRON integration',
     date: 'Jun 2025',
     fullDate: 'XRP Chain, TCY launch, TRON integration',
     content: [
@@ -332,7 +332,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'may-2025',
-    title: 'May 2025',
+    title: 'XRP swaps live, TCY launched, THORFi unwind',
     date: 'May 2025',
     fullDate: 'XRP swaps live, TCY launched, THORFi unwind',
     content: [
@@ -355,7 +355,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'apr-2025',
-    title: 'April 2025',
+    title: 'XRP ready, Base added, THORFi unwind begins',
     date: 'Apr 2025',
     fullDate: 'XRP ready, Base added, THORFi unwind begins',
     content: [
@@ -383,7 +383,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'mar-2025',
-    title: 'March 2025',
+    title: 'Base added, CosmWasm, Token Factory, block rewards deprecated',
     date: 'Mar 2025',
     fullDate: 'Base added, CosmWasm, Token Factory, block rewards deprecated',
     content: [
@@ -421,7 +421,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'feb-2025',
-    title: 'February 2025',
+    title: 'Base integration, THORFi recovery, EdDSA development',
     date: 'Feb 2025',
     fullDate: 'Base integration, THORFi recovery, EdDSA development',
     content: [
@@ -444,7 +444,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'jan-2025',
-    title: 'January 2025',
+    title: 'Base live, Rujira soft-launch, Proposal 6 passed',
     date: 'Jan 2025',
     fullDate: 'Base live, Rujira soft-launch, Proposal 6 passed',
     content: [
@@ -467,7 +467,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'dec-2024',
-    title: 'December 2024',
+    title: 'Min swap fee, Cosmos SDK v0.50, RUNE burn, wallet integrations',
     date: 'Dec 2024',
     fullDate: 'Min swap fee, Cosmos SDK v0.50, RUNE burn, wallet integrations',
     content: [
@@ -500,7 +500,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'nov-2024',
-    title: 'November 2024',
+    title: 'Cosmos SDK v0.50 upgrade, App layer focus',
     date: 'Nov 2024',
     fullDate: 'Cosmos SDK v0.50 upgrade, App layer focus',
     content: [
@@ -518,7 +518,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'oct-2024',
-    title: 'October 2024',
+    title: 'V3 release prep, min swap fee to 8bps',
     date: 'Nov 1, 2024',
     fullDate: 'November 1, 2024',
     content: [
@@ -536,7 +536,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'sep-2024',
-    title: 'September 2024',
+    title: 'V3 development, THORFi recovery planning',
     date: 'Oct 2, 2024',
     fullDate: 'October 2, 2024',
     content: [
@@ -559,7 +559,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'aug-2024',
-    title: 'August 2024',
+    title: 'V3 dev, THORFi unwind, protocol upgrades',
     date: 'Sep 6, 2024',
     fullDate: 'September 6, 2024',
     content: [
@@ -1137,7 +1137,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'mar-2023',
-    title: 'Mar 2023',
+    title: 'THORNames live, Savers growth, v2 migration planning',
     date: 'Apr 3, 2024',
     fullDate: 'April 3, 2024',
     content: [
@@ -1160,7 +1160,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'apr-2023',
-    title: 'Apr 2023',
+    title: 'Lending development, Cosmos SDK upgrade, THORFi progress',
     date: 'Apr 3, 2024',
     fullDate: 'April 3, 2024',
     content: [
@@ -1183,7 +1183,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'may-2023',
-    title: 'May 2023',
+    title: 'Lending protocol, security audits, THORFi development',
     date: 'Apr 3, 2024',
     fullDate: 'April 3, 2024',
     content: [
@@ -1206,7 +1206,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'jun-2023',
-    title: 'Jun 2023',
+    title: 'Lending progress, THORFi, network upgrades',
     date: 'Apr 3, 2024',
     fullDate: 'April 3, 2024',
     content: [
@@ -1229,7 +1229,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'jul-2023',
-    title: 'Jul 2023',
+    title: 'Lending launch prep, THORFi ecosystem',
     date: 'Apr 3, 2024',
     fullDate: 'April 3, 2024',
     content: [
@@ -1252,7 +1252,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'aug-2023',
-    title: 'Aug 2023',
+    title: 'Lending protocol, THORFi, planned obsolescence',
     date: 'Apr 3, 2024',
     fullDate: 'April 3, 2024',
     content: [
@@ -1275,7 +1275,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'sep-2023',
-    title: 'Sep 2023',
+    title: 'Lending progress, THORFi development, streaming swaps',
     date: 'Apr 3, 2024',
     fullDate: 'April 3, 2024',
     content: [
@@ -1298,7 +1298,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'oct-2023',
-    title: 'Oct 2023',
+    title: 'Lending launch, THORFi, network stability',
     date: 'Apr 3, 2024',
     fullDate: 'April 3, 2024',
     content: [
@@ -1321,7 +1321,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   },
   {
     id: 'nov-2023',
-    title: 'Nov 2023',
+    title: 'Lending protocol, THORFi, protocol improvements',
     date: 'Apr 3, 2024',
     fullDate: 'April 3, 2024',
     content: [
