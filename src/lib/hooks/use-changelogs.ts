@@ -19,8 +19,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'mar-2026',
     title: 'March 2026',
-    date: 'Apr 1, 2026',
-    fullDate: 'April 1, 2026',
+    date: 'Mar 2026',
+    fullDate: 'Solana unhalted, EVM chains bug, ADR-23 passed',
     content: [
       {
         type: 'update',
@@ -61,8 +61,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'feb-2026',
     title: 'February 2026',
-    date: 'Mar 2, 2026',
-    fullDate: 'March 2, 2026',
+    date: 'Feb 2026',
+    fullDate: 'Ethereum Bifrost issue, ADR-022/023, Solana launch attempt',
     content: [
       {
         type: 'bug',
@@ -105,8 +105,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'jan-2026',
     title: 'January 2026',
-    date: 'Feb 11, 2026',
-    fullDate: 'February 11, 2026',
+    date: 'Jan 2026',
+    fullDate: 'Limit orders paused, BCH bug, v3.15 adopted, Solana prep',
     content: [
       {
         type: 'bug',
@@ -142,8 +142,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'dec-2025',
     title: 'December 2025',
-    date: 'Jan 5, 2026',
-    fullDate: 'January 5, 2026',
+    date: 'Dec 2025',
+    fullDate: 'v3.14 release, advanced trading features',
     content: [
       {
         type: 'update',
@@ -160,8 +160,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'nov-2025',
     title: 'November 2025',
-    date: 'Dec 8, 2025',
-    fullDate: 'December 8, 2025',
+    date: 'Nov 2025',
+    fullDate: 'v3.12/13, Limit orders, Memoless, UTXO exploit',
     content: [
       {
         type: 'update',
@@ -215,8 +215,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'oct-2025',
     title: 'October 2025',
-    date: 'Nov 4, 2025',
-    fullDate: 'November 4, 2025',
+    date: 'Oct 2025',
+    fullDate: 'Limit orders attempt, block halt, BSC issues',
     content: [
       {
         type: 'feature',
@@ -246,8 +246,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'sep-2025',
     title: 'September 2025',
-    date: 'Oct 2, 2025',
-    fullDate: 'October 2, 2025',
+    date: 'Sep 2025',
+    fullDate: 'TRON integration live, EdDSA, ADR-21 Marketing',
     content: [
       {
         type: 'chain',
@@ -269,8 +269,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'aug-2025',
     title: 'August 2025',
-    date: 'Sep 2, 2025',
-    fullDate: 'September 2, 2025',
+    date: 'Aug 2025',
+    fullDate: 'TRON ready, Advanced Swap Queue dev, Security incident',
     content: [
       {
         type: 'chain',
@@ -310,8 +310,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'jun-2025',
     title: 'June 2025',
-    date: 'Jul 9, 2025',
-    fullDate: 'July 9, 2025',
+    date: 'Jun 2025',
+    fullDate: 'XRP Chain, TCY launch, TRON integration',
     content: [
       {
         type: 'chain',
@@ -333,8 +333,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'may-2025',
     title: 'May 2025',
-    date: 'Jun 4, 2025',
-    fullDate: 'June 4, 2025',
+    date: 'May 2025',
+    fullDate: 'XRP swaps live, TCY launched, THORFi unwind',
     content: [
       {
         type: 'chain',
@@ -356,8 +356,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'apr-2025',
     title: 'April 2025',
-    date: 'May 4, 2025',
-    fullDate: 'May 4, 2025',
+    date: 'Apr 2025',
+    fullDate: 'XRP ready, Base added, THORFi unwind begins',
     content: [
       {
         type: 'chain',
@@ -384,8 +384,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'mar-2025',
     title: 'March 2025',
-    date: 'Apr 7, 2025',
-    fullDate: 'April 7, 2025',
+    date: 'Mar 2025',
+    fullDate: 'Base added, CosmWasm, Token Factory, block rewards deprecated',
     content: [
       {
         type: 'chain',
@@ -422,8 +422,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'feb-2025',
     title: 'February 2025',
-    date: 'Mar 2, 2025',
-    fullDate: 'March 2, 2025',
+    date: 'Feb 2025',
+    fullDate: 'Base integration, THORFi recovery, EdDSA development',
     content: [
       {
         type: 'chain',
@@ -445,8 +445,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'jan-2025',
     title: 'January 2025',
-    date: 'Feb 11, 2025',
-    fullDate: 'February 11, 2025',
+    date: 'Jan 2025',
+    fullDate: 'Base live, Rujira soft-launch, Proposal 6 passed',
     content: [
       {
         type: 'chain',
@@ -468,8 +468,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'dec-2024',
     title: 'December 2024',
-    date: 'Jan 2, 2025',
-    fullDate: 'January 2, 2025',
+    date: 'Dec 2024',
+    fullDate: 'Min swap fee, Cosmos SDK v0.50, RUNE burn, wallet integrations',
     content: [
       {
         type: 'update',
@@ -501,8 +501,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'nov-2024',
     title: 'November 2024',
-    date: 'Dec 2, 2024',
-    fullDate: 'December 2, 2024',
+    date: 'Nov 2024',
+    fullDate: 'Cosmos SDK v0.50 upgrade, App layer focus',
     content: [
       {
         type: 'update',
@@ -918,8 +918,8 @@ const CHANGELOG_DATA: ChangelogItem[] = [
   {
     id: 'end-aug-2022',
     title: 'End Aug 2022',
-    date: 'Apr 3, 2024',
-    fullDate: 'April 3, 2024',
+    date: 'Aug 2022',
+    fullDate: 'Next chain vote, AVAX Stagenet, POL progress',
     content: [
       {
         type: 'chain',
