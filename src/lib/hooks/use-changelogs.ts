@@ -1,10 +1,12 @@
 import useSWR from 'swr';
+import { useMemo } from 'react';
 
 export interface ChangelogItem {
   id: string;
   title: string;
   date: string;
   fullDate: string;
+  sortDate?: string;
   content: ChangelogEntry[];
 }
 
@@ -21,6 +23,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Solana unhalted, EVM chains bug, ADR-23 passed',
     date: 'Mar 2026',
     fullDate: 'March 2026',
+    sortDate: '2026-03',
     content: [
       {
         type: 'update',
@@ -63,6 +66,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Ethereum Bifrost issue, ADR-022/023, Solana launch',
     date: 'Feb 2026',
     fullDate: 'February 2026',
+    sortDate: '2026-02',
     content: [
       {
         type: 'bug',
@@ -107,6 +111,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Limit orders paused, BCH bug, v3.15 adopted, Solana prep',
     date: 'Jan 2026',
     fullDate: 'January 2026',
+    sortDate: '2026-01',
     content: [
       {
         type: 'bug',
@@ -144,6 +149,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'v3.14 release, advanced trading features',
     date: 'Dec 2025',
     fullDate: 'December 2025',
+    sortDate: '2025-12',
     content: [
       {
         type: 'update',
@@ -162,6 +168,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'v3.12/13, Limit orders, Memoless, UTXO exploit',
     date: 'Nov 2025',
     fullDate: 'November 2025',
+    sortDate: '2025-11',
     content: [
       {
         type: 'update',
@@ -217,6 +224,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Limit orders attempt, block halt, BSC issues',
     date: 'Oct 2025',
     fullDate: 'October 2025',
+    sortDate: '2025-10',
     content: [
       {
         type: 'feature',
@@ -248,6 +256,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'TRON integration, EdDSA support, ADR-21 Marketing',
     date: 'Sep 2025',
     fullDate: 'TRON integration live, EdDSA, ADR-21 Marketing',
+    sortDate: '2025-09',
     content: [
       {
         type: 'chain',
@@ -271,6 +280,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'TRON ready, Advanced Swap Queue dev, Security incident',
     date: 'Aug 2025',
     fullDate: 'TRON ready, Advanced Swap Queue dev, Security incident',
+    sortDate: '2025-08',
     content: [
       {
         type: 'chain',
@@ -294,6 +304,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'TRON integration complete, Advanced Swap Queue dev',
     date: 'Aug 1, 2025',
     fullDate: 'August 1, 2025',
+    sortDate: '2025-07',
     content: [
       {
         type: 'chain',
@@ -312,6 +323,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'XRP Chain, TCY launch, TRON integration',
     date: 'Jun 2025',
     fullDate: 'XRP Chain, TCY launch, TRON integration',
+    sortDate: '2025-06',
     content: [
       {
         type: 'chain',
@@ -335,6 +347,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'XRP swaps live, TCY launched, THORFi unwind',
     date: 'May 2025',
     fullDate: 'XRP swaps live, TCY launched, THORFi unwind',
+    sortDate: '2025-05',
     content: [
       {
         type: 'chain',
@@ -358,6 +371,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'XRP ready, Base added, THORFi unwind begins',
     date: 'Apr 2025',
     fullDate: 'XRP ready, Base added, THORFi unwind begins',
+    sortDate: '2025-04',
     content: [
       {
         type: 'chain',
@@ -386,6 +400,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Base added, CosmWasm, Token Factory, block rewards deprecated',
     date: 'Mar 2025',
     fullDate: 'Base added, CosmWasm, Token Factory, block rewards deprecated',
+    sortDate: '2025-03',
     content: [
       {
         type: 'chain',
@@ -424,6 +439,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Base integration, THORFi recovery, EdDSA development',
     date: 'Feb 2025',
     fullDate: 'Base integration, THORFi recovery, EdDSA development',
+    sortDate: '2025-02',
     content: [
       {
         type: 'chain',
@@ -447,6 +463,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Base live, Rujira soft-launch, Proposal 6 passed',
     date: 'Jan 2025',
     fullDate: 'Base live, Rujira soft-launch, Proposal 6 passed',
+    sortDate: '2025-01',
     content: [
       {
         type: 'chain',
@@ -470,6 +487,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Min swap fee, Cosmos SDK v0.50, RUNE burn, wallet integrations',
     date: 'Dec 2024',
     fullDate: 'Min swap fee, Cosmos SDK v0.50, RUNE burn, wallet integrations',
+    sortDate: '2024-12',
     content: [
       {
         type: 'update',
@@ -503,6 +521,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Cosmos SDK v0.50 upgrade, App layer focus',
     date: 'Nov 2024',
     fullDate: 'Cosmos SDK v0.50 upgrade, App layer focus',
+    sortDate: '2024-11',
     content: [
       {
         type: 'update',
@@ -521,6 +540,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'V3 release prep, min swap fee to 8bps',
     date: 'Nov 1, 2024',
     fullDate: 'November 1, 2024',
+    sortDate: '2024-10',
     content: [
       {
         type: 'update',
@@ -539,6 +559,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'V3 development, THORFi recovery planning',
     date: 'Oct 2, 2024',
     fullDate: 'October 2, 2024',
+    sortDate: '2024-09',
     content: [
       {
         type: 'update',
@@ -562,6 +583,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'V3 dev, THORFi unwind, protocol upgrades',
     date: 'Sep 6, 2024',
     fullDate: 'September 6, 2024',
+    sortDate: '2024-08',
     content: [
       {
         type: 'update',
@@ -585,6 +607,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'May-Jun 2024',
     date: 'Jul 5, 2024',
     fullDate: 'July 5, 2024',
+    sortDate: '2024-06',
     content: [
       {
         type: 'feature',
@@ -613,6 +636,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'April 2024',
     date: 'May 7, 2024',
     fullDate: 'May 7, 2024',
+    sortDate: '2024-04',
     content: [
       {
         type: 'feature',
@@ -636,6 +660,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'March 2024',
     date: 'Apr 2, 2024',
     fullDate: 'April 2, 2024',
+    sortDate: '2024-03',
     content: [
       {
         type: 'feature',
@@ -659,6 +684,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'February 2024',
     date: 'Mar 4, 2024',
     fullDate: 'March 4, 2024',
+    sortDate: '2024-02',
     content: [
       {
         type: 'feature',
@@ -682,6 +708,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'January 2024',
     date: 'Feb 5, 2024',
     fullDate: 'February 5, 2024',
+    sortDate: '2024-01',
     content: [
       {
         type: 'feature',
@@ -705,6 +732,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Q4 2023',
     date: 'Jan 23, 2024',
     fullDate: 'January 23, 2024',
+    sortDate: '2023-12',
     content: [
       {
         type: 'feature',
@@ -743,6 +771,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Q3 2023',
     date: 'Oct 4, 2023',
     fullDate: 'October 4, 2023',
+    sortDate: '2023-09',
     content: [
       {
         type: 'feature',
@@ -781,6 +810,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Q2 2023',
     date: 'Jun 2023',
     fullDate: 'June 2023',
+    sortDate: '2023-06',
     content: [
       {
         type: 'chain',
@@ -799,6 +829,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Q1 2023',
     date: 'Mar 2023',
     fullDate: 'March 2023',
+    sortDate: '2023-03',
     content: [
       {
         type: 'adr',
@@ -827,6 +858,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Q4 2022',
     date: 'Dec 2022',
     fullDate: 'December 2022',
+    sortDate: '2022-12',
     content: [
       {
         type: 'chain',
@@ -879,6 +911,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Q3 2022',
     date: 'Oct 2022',
     fullDate: 'October 21, 2022',
+    sortDate: '2022-09',
     content: [
       {
         type: 'chain',
@@ -920,6 +953,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'End Aug 2022',
     date: 'Aug 2022',
     fullDate: 'Next chain vote, AVAX Stagenet, POL progress',
+    sortDate: '2022-08',
     content: [
       {
         type: 'chain',
@@ -966,6 +1000,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'AVAX mainnet, BSC won chain vote, ADR004 adopted',
     date: 'Sep 2022',
     fullDate: 'September 2022',
+    sortDate: '2022-09-15',
     content: [
       {
         type: 'chain',
@@ -994,6 +1029,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'BSC integration, Savers testing, Orderbook design',
     date: 'Oct 2022',
     fullDate: 'October 2022',
+    sortDate: '2022-10-05',
     content: [
       {
         type: 'chain',
@@ -1017,6 +1053,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'BSC progress, Savers prep, Network stability',
     date: 'Nov 2022',
     fullDate: 'November 2022',
+    sortDate: '2022-11-05',
     content: [
       {
         type: 'chain',
@@ -1040,6 +1077,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'BSC launch, Savers coming, Network halt fix',
     date: 'Nov 2022',
     fullDate: 'November 2022',
+    sortDate: '2022-11-20',
     content: [
       {
         type: 'chain',
@@ -1066,6 +1104,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'BSC integration, Savers completion, THORNames dev',
     date: 'Dec 2022',
     fullDate: 'December 2022',
+    sortDate: '2022-12-15',
     content: [
       {
         type: 'chain',
@@ -1089,6 +1128,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'BSC launch, Savers prep, THORNames testing',
     date: 'Jan 2023',
     fullDate: 'January 2023',
+    sortDate: '2023-01-25',
     content: [
       {
         type: 'chain',
@@ -1117,6 +1157,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Savers live, THORNames staging, Planned Obsolescence progress',
     date: 'Mar 2023',
     fullDate: 'March 2023',
+    sortDate: '2023-03-05',
     content: [
       {
         type: 'feature',
@@ -1140,6 +1181,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'THORNames live, Savers growth, v2 migration planning',
     date: 'Mar 2023',
     fullDate: 'March 2023',
+    sortDate: '2023-03-20',
     content: [
       {
         type: 'feature',
@@ -1163,6 +1205,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Lending dev, Cosmos SDK v0.47, THORFi progress',
     date: 'Apr 2023',
     fullDate: 'April 2023',
+    sortDate: '2023-04',
     content: [
       {
         type: 'feature',
@@ -1186,6 +1229,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Lending protocol, Security audits, THORFi dev',
     date: 'May 2023',
     fullDate: 'May 2023',
+    sortDate: '2023-05',
     content: [
       {
         type: 'feature',
@@ -1209,6 +1253,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Lending dev targeting Q3, THORFi, Network upgrades',
     date: 'Jun 2023',
     fullDate: 'June 2023',
+    sortDate: '2023-06',
     content: [
       {
         type: 'feature',
@@ -1232,6 +1277,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Lending launch prep, THORFi ecosystem, Chain integrations',
     date: 'Jul 2023',
     fullDate: 'July 2023',
+    sortDate: '2023-07',
     content: [
       {
         type: 'feature',
@@ -1255,6 +1301,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Lending dev, THORFi, Planned Obsolescence',
     date: 'Aug 2023',
     fullDate: 'August 2023',
+    sortDate: '2023-08',
     content: [
       {
         type: 'feature',
@@ -1278,6 +1325,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Lending nearing completion, THORFi, Streaming swaps',
     date: 'Sep 2023',
     fullDate: 'September 2023',
+    sortDate: '2023-09',
     content: [
       {
         type: 'feature',
@@ -1301,6 +1349,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Lending launch, THORFi, Network stability',
     date: 'Oct 2023',
     fullDate: 'October 2023',
+    sortDate: '2023-10',
     content: [
       {
         type: 'feature',
@@ -1324,6 +1373,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     title: 'Lending protocol, THORFi, Protocol improvements',
     date: 'Nov 2023',
     fullDate: 'November 2023',
+    sortDate: '2023-11',
     content: [
       {
         type: 'feature',
@@ -1360,8 +1410,17 @@ export function useChangelogs() {
     }
   );
 
+  const sortedChangelogs = useMemo(() => {
+    if (!data) return [];
+    return [...data].sort((a, b) => {
+      const dateA = a.sortDate || a.date;
+      const dateB = b.sortDate || b.date;
+      return dateB.localeCompare(dateA);
+    });
+  }, [data]);
+
   return {
-    changelogs: data || [],
+    changelogs: sortedChangelogs,
     isLoading,
     isError: !!error,
     refresh: mutate,
