@@ -603,7 +603,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     ]
   },
   {
-    id: 'may-jun-2024',
+    id: '2024-06',
     title: 'Lending live, THORFi growth, New chains, Mimir V2',
     date: 'Jun 2024',
     fullDate: 'June 2024',
@@ -728,7 +728,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     ]
   },
   {
-    id: 'q4-2023',
+    id: '2023-12',
     title: 'Mimir V2, Min swap fee to 8bps, Memoless in pipeline',
     date: 'Dec 2023',
     fullDate: 'December 2023',
@@ -767,7 +767,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     ]
   },
   {
-    id: 'q3-2023',
+    id: '2023-09',
     title: 'Lending live, Streaming swaps, BSC added, TOR unit',
     date: 'Sep 2023',
     fullDate: 'September 2023',
@@ -806,7 +806,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     ]
   },
   {
-    id: 'q2-2023',
+    id: '2023-06',
     title: 'BNB Chain added, Lending development progressed',
     date: 'Jun 2023',
     fullDate: 'June 2023',
@@ -825,7 +825,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     ]
   },
   {
-    id: 'q1-2023',
+    id: '2023-03',
     title: 'Planned Obsolescence, BSC integration, New wallet integrations',
     date: 'Mar 2023',
     fullDate: 'March 2023',
@@ -854,7 +854,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     ]
   },
   {
-    id: 'q4-2022',
+    id: '2022-12',
     title: 'Mainnet launch, AVAX integration, THORNames, Savers, Network halt',
     date: 'Dec 2022',
     fullDate: 'December 2022',
@@ -896,18 +896,11 @@ const CHANGELOG_DATA: ChangelogItem[] = [
           { text: 'Medium Article', url: 'https://medium.com/thorchain/savers-vaults-on-thorchain-67e346eb641f' }
         ]
       },
-      {
-        type: 'bug',
-        title: 'Network Halt (Oct 27, 2022)',
-        description: 'THORChain halted due to software bug (cosmos.Uint string in memo handling). Fixed after ~20 hours.',
-        links: [
-          { text: 'CoinDesk', url: 'https://www.coindesk.com/tech/2022/10/27/thorchain-suffers-an-outage-due-to-software-bug' }
-        ]
-      }
+      
     ]
   },
   {
-    id: 'q3-2022',
+    id: '2022-09',
     title: 'AVAX Stagenet, Next chain vote, POL implemented, LUNA airdrop',
     date: 'Oct 2022',
     fullDate: 'October 2022',
@@ -949,7 +942,7 @@ const CHANGELOG_DATA: ChangelogItem[] = [
     ]
   },
   {
-    id: 'end-aug-2022',
+    id: '2022-08',
     title: 'Next chain vote, AVAX Stagenet, Terra LUNA airdrop',
     date: 'Aug 2022',
     fullDate: 'August 2022',

@@ -1,0 +1,23 @@
+{
+  "active_plan": "/Users/reidar/Downloads/THORNode Watcher/thornode-watcher/.sisyphus/plans/changelogs-improvements.md",
+  "started_at": "2026-04-11T23:35:00.881Z",
+  "session_ids": [
+    "ses_283113a08ffeHQM39no53GJUwo"
+  ],
+  "session_origins": {
+    "ses_283113a08ffeHQM39no53GJUwo": "direct"
+  },
+  "plan_name": "changelogs-improvements",
+  "agent": "atlas",
+  "task_sessions": {
+    "todo:3": {
+      "task_key": "todo:3",
+      "task_label": "3",
+      "task_title": "**Add search/filter state management**",
+      "session_id": "ses_280ffce68ffemzn91ACDMxBt4S",
+      "agent": "Sisyphus-Junior",
+      "category": "visual-engineering",
+      "updated_at": "2026-04-12T00:08:18.632Z"
+    }
+  }
+}
