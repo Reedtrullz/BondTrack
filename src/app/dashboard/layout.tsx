@@ -23,7 +23,7 @@ export default function DashboardLayout({
           </main>
         </div>
       }>
-        <DashboardShell>{children}</DashboardShell>
+        <DashboardShell requireAddress>{children}</DashboardShell>
       </Suspense>
       <AlertToast 
         alerts={alerts} 

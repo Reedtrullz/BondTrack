@@ -32,8 +32,10 @@ function truncateAddress(addr: string): string {
 
 export function DashboardShell({
   children,
+  requireAddress = true,
 }: {
   children: React.ReactNode;
+  requireAddress?: boolean;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const searchParams = useSearchParams();
@@ -41,6 +43,8 @@ export function DashboardShell({
   const [thorName, setThorName] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number>(Date.now());
   const [, setTick] = useState(0);
+
+  const hasAddress = requireAddress ? !!address : true;
 
   useEffect(() => {
     const interval = setInterval(() => setTick((t) => t + 1), 10_000);
@@ -70,7 +74,7 @@ export function DashboardShell({
     return () => { cancelled = true; };
   }, [address]);
 
-  if (!address) {
+  if (!hasAddress) {
     return (
       <div className="flex min-h-screen">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -92,9 +96,11 @@ export function DashboardShell({
               <h1 className="text-base sm:text-lg md:text-xl font-semibold text-zinc-900 dark:text-zinc-100">
                 Dashboard
               </h1>
-              <p className="text-[10px] sm:text-xs md:text-sm text-zinc-500 font-mono mt-0.5 truncate" title={address}>
-                {thorName || truncateAddress(address)}
-              </p>
+              {address && (
+                <p className="text-[10px] sm:text-xs md:text-sm text-zinc-500 font-mono mt-0.5 truncate" title={address}>
+                  {thorName || truncateAddress(address)}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
