@@ -1,22 +1,34 @@
 'use client';
 
-import { useChangelogs, getTypeColor, getTypeLabel, ChangelogItem, ChangelogEntry } from '@/lib/hooks/use-changelogs';
-import { ScrollText, ExternalLink, Search, ChevronDown, X, SearchX } from 'lucide-react';
+import { useChangelogs, getTypeLabel, getTypeIcon, getTypeBadgeStyle, ChangelogItem, ChangelogEntry } from '@/lib/hooks/use-changelogs';
+import { Search, ChevronDown, X, SearchX, Zap, FileText, Link, Rocket, Wrench } from 'lucide-react';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 type FilterType = 'all' | ChangelogEntry['type'];
 
-const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'update', label: 'Update' },
-  { value: 'adr', label: 'ADR' },
-  { value: 'chain', label: 'Chain' },
-  { value: 'feature', label: 'Feature' },
-  { value: 'bug', label: 'Bug' },
+const FILTER_OPTIONS: { value: FilterType; label: string; icon: React.ReactNode }[] = [
+  { value: 'all', label: 'All', icon: <Zap className="w-3 h-3" /> },
+  { value: 'update', label: 'Update', icon: <Zap className="w-3 h-3" /> },
+  { value: 'adr', label: 'ADR', icon: <FileText className="w-3 h-3" /> },
+  { value: 'chain', label: 'Chain', icon: <Link className="w-3 h-3" /> },
+  { value: 'feature', label: 'Feature', icon: <Rocket className="w-3 h-3" /> },
+  { value: 'bug', label: 'Bug', icon: <Wrench className="w-3 h-3" /> },
 ];
 
 const STORAGE_KEY = 'changelogs-expanded';
+
+// THORChain brand colors
+const TC = {
+  blue: '#00CCFF',
+  orange: '#F3BA2F',
+  green: '#33FF99',
+  red: '#FF4954',
+  turquoise: '#23DDC8',
+  dark: '#1a1d23',
+  border: '#3d4149',
+  muted: '#6b7280',
+};
 
 function extractYears(changelogs: ChangelogItem[]): number[] {
   const years = new Set<number>();
@@ -53,7 +65,11 @@ function HighlightText({ text, highlight }: { text: string; highlight: string })
     <>
       {parts.map((part, i) => 
         part.toLowerCase() === highlight.toLowerCase() ? (
-          <mark key={i} className="bg-yellow-200 dark:bg-yellow-500/30 text-zinc-900 dark:text-zinc-100 rounded px-0.5">
+          <mark 
+            key={i} 
+            className="bg-[#F3BA2F]/30 text-white rounded px-0.5 font-semibold"
+            style={{ backgroundColor: 'rgba(243, 186, 47, 0.3)' }}
+          >
             {part}
           </mark>
         ) : (
@@ -61,6 +77,43 @@ function HighlightText({ text, highlight }: { text: string; highlight: string })
         )
       )}
     </>
+  );
+}
+
+function StatsBanner({ totalEntries, totalMonths }: { totalEntries: number; totalMonths: number }) {
+  return (
+    <div 
+      className="relative overflow-hidden rounded-xl p-4 mb-6"
+      style={{ backgroundColor: 'rgba(0, 204, 255, 0.1)', border: '1px solid rgba(0, 204, 255, 0.2)' }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#00CCFF]/5 to-transparent" />
+      <div className="relative flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div 
+            className="w-10 h-10 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: TC.blue }}
+          >
+            <Zap className="w-5 h-5 text-black" />
+          </div>
+          <div>
+            <p className="text-sm text-zinc-400">Protocol Updates</p>
+            <p className="text-xl font-bold text-white" style={{ fontFamily: 'Exo 2, sans-serif' }}>
+              {totalEntries} changes across {totalMonths} months
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-6 text-right">
+          <div>
+            <p className="text-xs text-zinc-500 uppercase tracking-wide">Latest</p>
+            <p className="text-sm font-semibold text-[#00CCFF]">v3.16</p>
+          </div>
+          <div>
+            <p className="text-xs text-zinc-500 uppercase tracking-wide">Since</p>
+            <p className="text-sm font-semibold text-white">Aug 2022</p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -139,11 +192,25 @@ export default function ChangelogsPage() {
       content: item.content.filter(entry => matchesFilter(entry, searchQuery, typeFilter))
     })).filter(item => item.content.length > 0);
   }, [changelogs, searchQuery, typeFilter]);
-  
+
   const totalEntries = useMemo(() => {
     return filteredChangelogs.reduce((acc, item) => acc + item.content.length, 0);
   }, [filteredChangelogs]);
+
+  const totalMonths = useMemo(() => changelogs.length, [changelogs]);
   
+  const typeBreakdown = useMemo(() => {
+    const breakdown: Record<string, number> = { update: 0, adr: 0, chain: 0, feature: 0, bug: 0 };
+    changelogs.forEach(item => {
+      item.content.forEach(entry => {
+        if (breakdown[entry.type] !== undefined) {
+          breakdown[entry.type]++;
+        }
+      });
+    });
+    return breakdown;
+  }, [changelogs]);
+
   useEffect(() => {
     if (changelogs.length > 0 && expandedIds.size === 0) {
       setExpandedIds(new Set(changelogs.map(c => c.id)));
@@ -179,10 +246,10 @@ export default function ChangelogsPage() {
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 space-y-6">
-        <div className="h-12 w-48 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+        <div className="h-24 rounded-xl animate-pulse" style={{ backgroundColor: '#282c34' }} />
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-32 bg-zinc-200 dark:bg-zinc-800 rounded-lg animate-pulse" />
+            <div key={i} className="h-32 rounded-xl animate-pulse" style={{ backgroundColor: '#282c34' }} />
           ))}
         </div>
       </div>
@@ -191,31 +258,48 @@ export default function ChangelogsPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-          <ScrollText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-2">
+        <div 
+          className="w-12 h-12 rounded-xl flex items-center justify-center"
+          style={{ backgroundColor: TC.blue }}
+        >
+          <Zap className="w-6 h-6 text-black" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">THORChain Changelogs</h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Monthly protocol updates and changes</p>
+          <h1 
+            className="text-2xl font-bold text-white"
+            style={{ fontFamily: 'Exo 2, sans-serif' }}
+          >
+            THORChain Changelogs
+          </h1>
+          <p className="text-sm text-zinc-500">Protocol updates and changes</p>
         </div>
       </div>
 
+      {/* Stats Banner */}
+      <StatsBanner totalEntries={changelogs.reduce((a, c) => a + c.content.length, 0)} totalMonths={totalMonths} />
+
+      {/* Search & Filters */}
       <div className="space-y-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: TC.blue }} />
           <input
             ref={searchInputRef}
             type="text"
             placeholder="Search changelogs... (press /)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-2.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="w-full pl-10 pr-10 py-3 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none transition-all"
+            style={{ 
+              backgroundColor: '#1a1d23',
+              border: '1px solid #3d4149',
+            }}
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -227,25 +311,41 @@ export default function ChangelogsPage() {
             <button
               key={option.value}
               onClick={() => setTypeFilter(option.value)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-full transition-all ${
+              className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 transition-all ${
                 typeFilter === option.value
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                  ? 'text-black'
+                  : 'text-zinc-400 hover:text-white'
               }`}
+              style={{
+                backgroundColor: typeFilter === option.value ? TC.blue : 'transparent',
+                border: typeFilter === option.value ? 'none' : '1px solid #3d4149',
+              }}
             >
+              {option.icon}
               {option.label}
+              {option.value !== 'all' && typeBreakdown[option.value] > 0 && (
+                <span 
+                  className="px-1.5 py-0.5 text-xs rounded-full"
+                  style={{ 
+                    backgroundColor: typeFilter === option.value ? 'rgba(0,0,0,0.2)' : '#1a1d23',
+                  }}
+                >
+                  {typeBreakdown[option.value]}
+                </span>
+              )}
             </button>
           ))}
         </div>
         
         {hasActiveFilters && (
           <div className="flex items-center justify-between text-sm">
-            <span className="text-zinc-500 dark:text-zinc-400">
-              Showing {totalEntries} {totalEntries === 1 ? 'entry' : 'entries'} of {changelogs.length} {changelogs.length === 1 ? 'month' : 'months'}
+            <span className="text-zinc-500">
+              Showing {totalEntries} {totalEntries === 1 ? 'entry' : 'entries'} of {changelogs.reduce((a, c) => a + c.content.length, 0)} total
             </span>
             <button
               onClick={clearFilters}
-              className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+              className="flex items-center gap-1 hover:text-white transition-colors"
+              style={{ color: TC.blue }}
             >
               <X className="w-3 h-3" /> Clear filters
             </button>
@@ -253,14 +353,23 @@ export default function ChangelogsPage() {
         )}
       </div>
 
+      {/* Year Quick Nav */}
       {years.length > 1 && (
-        <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 bg-zinc-50/80 dark:bg-zinc-950/80 backdrop-blur-sm border-b border-zinc-200 dark:border-zinc-800">
+        <div 
+          className="sticky top-0 z-10 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 backdrop-blur-sm"
+          style={{ backgroundColor: 'rgba(26, 29, 35, 0.9)', borderBottom: '1px solid #3d4149' }}
+        >
           <div className="flex flex-wrap gap-2">
             {years.map((year) => (
               <button
                 key={year}
                 onClick={() => scrollToYear(String(year))}
-                className="px-3 py-1 text-xs font-semibold bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-full hover:bg-blue-600 hover:text-white transition-colors"
+                className="px-4 py-1.5 text-sm font-semibold rounded-lg transition-all hover:text-black"
+                style={{
+                  backgroundColor: '#1a1d23',
+                  border: '1px solid #3d4149',
+                  color: '#6b7280',
+                }}
               >
                 {year}
               </button>
@@ -269,15 +378,27 @@ export default function ChangelogsPage() {
         </div>
       )}
 
+      {/* Timeline */}
       <div className="relative">
-        <div className="hidden sm:block absolute left-4 top-0 bottom-0 w-0.5 bg-zinc-200 dark:bg-zinc-800" />
+        {/* Animated timeline line with pulsing dots */}
+        <div className="hidden sm:block absolute left-4 top-0 bottom-0 w-0.5">
+          <div 
+            className="absolute inset-0"
+            style={{ background: `linear-gradient(to bottom, #00CCFF 0%, #00CCFF 20%, transparent 20%)` }}
+          />
+        </div>
         
-        <div className="space-y-8">
+        <div className="space-y-6">
           {filteredChangelogs.length === 0 ? (
-            <div className="text-center py-12 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl border border-zinc-200 dark:border-zinc-800">
-              <SearchX className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">No results found</h3>
-              <p className="text-zinc-500 dark:text-zinc-400 mb-4">
+            <div 
+              className="text-center py-16 rounded-xl"
+              style={{ backgroundColor: '#1a1d23', border: '1px solid #3d4149' }}
+            >
+              <SearchX className="w-16 h-16 mx-auto mb-4" style={{ color: '#3d4149' }} />
+              <h3 className="text-lg font-semibold text-white mb-2" style={{ fontFamily: 'Exo 2, sans-serif' }}>
+                No results found
+              </h3>
+              <p className="text-zinc-500 mb-4">
                 {searchQuery 
                   ? `No entries matching "${searchQuery}"`
                   : 'No entries match your current filters'}
@@ -285,7 +406,8 @@ export default function ChangelogsPage() {
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
-                  className="text-blue-600 dark:text-blue-400 hover:underline"
+                  className="hover:underline"
+                  style={{ color: TC.blue }}
                 >
                   Clear all filters
                 </button>
@@ -305,64 +427,95 @@ export default function ChangelogsPage() {
                   }}
                   className="relative pl-0 sm:pl-10"
                 >
-                  <div className="hidden sm:block absolute left-0 top-2 w-8 h-8 -translate-x-1/2 rounded-full flex items-center justify-center border-4 border-zinc-50 dark:border-zinc-950 bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
-                    <span className="text-xs font-bold">{index + 1}</span>
+                  {/* Pulsing timeline dot */}
+                  <div className="hidden sm:block absolute left-0 top-6 w-4 h-4 -translate-x-1/2">
+                    <div 
+                      className="absolute inset-0 rounded-full animate-ping"
+                      style={{ backgroundColor: TC.blue, opacity: 0.75 }}
+                    />
+                    <div 
+                      className="absolute inset-1 rounded-full"
+                      style={{ backgroundColor: TC.blue }}
+                    />
                   </div>
 
-                  <div className="bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+                  {/* Card */}
+                  <div 
+                    className="rounded-xl overflow-hidden transition-all duration-300 hover:translate-y-[-2px]"
+                    style={{ 
+                      backgroundColor: '#1a1d23', 
+                      border: '1px solid #3d4149',
+                      boxShadow: isExpanded ? `0 0 20px rgba(0, 204, 255, 0.1)` : 'none',
+                    }}
+                  >
                     <button
                       onClick={() => toggleExpand(item.id)}
-                      className="w-full px-6 py-4 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                      className="w-full px-6 py-4 flex items-center justify-between transition-colors hover:bg-white/5"
+                      style={{ borderBottom: isExpanded ? 'none' : '1px solid #3d4149' }}
                     >
-                      <div className="flex items-center gap-3 text-left">
-                        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                      <div className="flex items-center gap-4 text-left">
+                        <h2 
+                          className="text-lg font-bold text-white"
+                          style={{ fontFamily: 'Exo 2, sans-serif' }}
+                        >
                           <HighlightText text={item.title} highlight={searchQuery} />
                         </h2>
-                        <span className="text-sm text-zinc-500 dark:text-zinc-400">{item.date}</span>
+                        <span className="text-sm" style={{ color: '#6b7280' }}>{item.date}</span>
                       </div>
                       <ChevronDown 
-                        className={`w-5 h-5 text-zinc-400 transition-transform duration-200 ${
+                        className={`w-5 h-5 transition-transform duration-300 ${
                           isExpanded ? 'rotate-180' : ''
                         }`}
+                        style={{ color: TC.blue }}
                       />
                     </button>
 
+                    {/* Expandable content */}
                     <div 
-                      className={`overflow-hidden transition-all duration-200 ease-in-out ${
-                        isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+                      className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                        isExpanded ? 'max-h-[3000px] opacity-100' : 'max-h-0 opacity-0'
                       }`}
                     >
                       <div className="p-6 space-y-4">
                         {item.content.map((entry, entryIndex) => (
                           <div 
                             key={entryIndex} 
-                            className="relative pl-4 border-l-2 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+                            className="relative pl-4 transition-colors hover:bg-white/5 rounded-lg p-3"
+                            style={{ borderLeft: `2px solid ${getTypeBadgeStyle(entry.type).text}` }}
                           >
-                            <div className="flex flex-wrap items-start gap-2 mb-2">
-                              <span className={`
-                                inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border
-                                ${getTypeColor(entry.type)}
-                              `}>
-                                {getTypeLabel(entry.type)}
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <span 
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border"
+                                style={{ 
+                                  backgroundColor: getTypeBadgeStyle(entry.type).bg,
+                                  borderColor: getTypeBadgeStyle(entry.type).border,
+                                  color: getTypeBadgeStyle(entry.type).text,
+                                }}
+                              >
+                                {getTypeIcon(entry.type)} {getTypeLabel(entry.type)}
                               </span>
-                              <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+                              <h3 
+                                className="font-semibold text-white"
+                                style={{ fontFamily: 'Exo 2, sans-serif' }}
+                              >
                                 <HighlightText text={entry.title} highlight={searchQuery} />
                               </h3>
                             </div>
-                            <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                            <p className="text-sm leading-relaxed" style={{ color: '#9ca3af' }}>
                               <HighlightText text={entry.description} highlight={searchQuery} />
                             </p>
                             {entry.links && entry.links.length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-2">
+                              <div className="mt-3 flex flex-wrap gap-3">
                                 {entry.links.map((link, linkIndex) => (
                                   <a
                                     key={linkIndex}
                                     href={link.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                    className="inline-flex items-center gap-1 text-xs hover:underline transition-colors"
+                                    style={{ color: TC.blue }}
                                   >
-                                    {link.text} <ExternalLink className="w-3 h-3" />
+                                    {link.text} <Link className="w-3 h-3" />
                                   </a>
                                 ))}
                               </div>
@@ -379,18 +532,23 @@ export default function ChangelogsPage() {
         </div>
       </div>
 
-      <div className="mt-12 p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-lg border border-zinc-200 dark:border-zinc-800">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      {/* Footer */}
+      <div 
+        className="mt-12 p-4 rounded-lg"
+        style={{ backgroundColor: '#1a1d23', border: '1px solid #3d4149' }}
+      >
+        <p className="text-sm" style={{ color: '#6b7280' }}>
           Data sourced from{' '}
           <a 
             href="https://tcupdates.medium.com" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+            className="hover:underline inline-flex items-center gap-1 transition-colors"
+            style={{ color: TC.blue }}
           >
-            TCC Cross-Chain Updates <ExternalLink className="w-3 h-3" />
+            TCC Cross-Chain Updates <Link className="w-3 h-3" />
           </a>
-          {' '}&bull; THORChain community Medium publication
+          {' '}— THORChain community Medium publication
         </p>
       </div>
     </div>
