@@ -8,15 +8,18 @@ import { ThemeToggle } from './theme-toggle';
 
 const basePath = '/dashboard';
 
-const navItems = (addr: string | null) => [
-  { href: `${basePath}/overview?address=${addr}`, label: 'Overview', icon: <Activity className="w-4 h-4" /> },
-  { href: `${basePath}/nodes?address=${addr}`, label: 'Nodes', icon: <Shield className="w-4 h-4" /> },
-  { href: `${basePath}/rewards?address=${addr}`, label: 'Rewards', icon: <BarChart3 className="w-4 h-4" /> },
-  { href: `${basePath}/risk?address=${addr}`, label: 'Risk', icon: <AlertTriangle className="w-4 h-4" /> },
-   { href: `${basePath}/transactions?address=${addr}`, label: 'Transactions', icon: <ArrowRightLeft className="w-4 h-4" /> },
-   { href: `${basePath}/lp?address=${addr}`, label: 'LP Status', icon: <Coins className="w-4 h-4" /> },
-   { href: `${basePath}/changelogs?address=${addr}`, label: 'Changelogs', icon: <ScrollText className="w-4 h-4" /> },
-];
+const navItems = (addr: string | null) => {
+  const addrParam = addr ? `?address=${addr}` : '';
+  return [
+    { href: `${basePath}/overview${addrParam}`, label: 'Overview', icon: <Activity className="w-4 h-4" /> },
+    { href: `${basePath}/nodes${addrParam}`, label: 'Nodes', icon: <Shield className="w-4 h-4" /> },
+    { href: `${basePath}/rewards${addrParam}`, label: 'Rewards', icon: <BarChart3 className="w-4 h-4" /> },
+    { href: `${basePath}/risk${addrParam}`, label: 'Risk', icon: <AlertTriangle className="w-4 h-4" /> },
+    { href: `${basePath}/transactions${addrParam}`, label: 'Transactions', icon: <ArrowRightLeft className="w-4 h-4" /> },
+    { href: `${basePath}/lp${addrParam}`, label: 'LP Status', icon: <Coins className="w-4 h-4" /> },
+    { href: `${basePath}/changelogs${addrParam}`, label: 'Changelogs', icon: <ScrollText className="w-4 h-4" /> },
+  ];
+};
 
 interface SidebarProps {
   isOpen?: boolean;
