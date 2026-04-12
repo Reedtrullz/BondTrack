@@ -26,10 +26,10 @@ Data source for the Changelogs dashboard page (`/dashboard/changelogs`). Returns
 **Interface:**
 ```typescript
 interface ChangelogItem {
-  id: string;           // Unique identifier (e.g., 'mar-2026', 'end-aug-2022')
+  id: string;           // Unique identifier (e.g., '2023-09', '2026-03')
   title: string;        // Key highlights from the period (NOT the date!)
-  date: string;        // Short display: "Mar 2026"
-  fullDate: string;    // Full display: "March 2026" 
+  date: string;         // Short display: "Mar 2026"
+  fullDate: string;     // Full display: "March 2026" 
   sortDate?: string;   // For sorting: "2026-03" or "2022-08-15" for bi-weekly
   content: ChangelogEntry[];
 }
@@ -42,14 +42,28 @@ interface ChangelogEntry {
 }
 ```
 
-**Sorting**: Entries are sorted newest-first using `sortDate` (falls back to `date` if missing). Format: `YYYY-MM` for monthly, `YYYY-MM-DD` for bi-weekly entries.
+**URL Sync**: Search and filter state sync to URL params:
+- `?q=Solana` — search query
+- `?type=bug` — type filter (update|adr|chain|feature|bug)
+- `?q=Solana&type=bug` — combined
+
+**Search Highlighting**: Matching text in titles and descriptions is highlighted with yellow background.
+
+**Keyboard Shortcuts**:
+- `/` — focus search input
+- `Esc` — clear search/filters and close search
+
+**localStorage**: Collapsed/expanded state persists across sessions (key: `changelogs-expanded`).
+
+**Sorting**: Entries sorted newest-first using `sortDate`. Format: `YYYY-MM` for monthly, `YYYY-MM-DD` for bi-weekly.
 
 **Adding new entries**: When adding entries from TCC/TCU Medium:
-1. Use the period from the article title (e.g., "End Aug 2022" → sortDate: "2022-08")
+1. Use the period from the article title (e.g., "End Aug 2022" → id: "2022-08", sortDate: "2022-08")
 2. Set `title` to key highlights (extract from article content), NOT just the date
 3. Set `date` to short month/year format (e.g., "Aug 2022")
 4. Set `fullDate` to same as date or descriptive (e.g., "August 2022")
 5. Add multiple content entries with appropriate `type`
+6. ID format: `YYYY-MM` for monthly, `YYYY-MM-DD` for bi-weekly entries
 
 ## CONVENTIONS
 
