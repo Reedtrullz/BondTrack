@@ -6,25 +6,16 @@ import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { LoadingSkeleton } from '@/components/shared/loading-skeleton';
 import { AlertToast } from '@/components/alerts/alert-toast';
 import { useAlerts } from '@/lib/hooks/use-alerts';
+import { useSearchParams } from 'next/navigation';
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function DashboardContent({ children }: { children: React.ReactNode }) {
+  const searchParams = useSearchParams();
+  const address = searchParams.get('address');
   const { alerts, dismissAlert, permission, requestPermission } = useAlerts();
 
   return (
     <ErrorBoundary>
-      <Suspense fallback={
-        <div className="flex min-h-screen">
-          <main className="flex-1 p-4 md:p-6">
-            <LoadingSkeleton />
-          </main>
-        </div>
-      }>
-        <DashboardShell requireAddress>{children}</DashboardShell>
-      </Suspense>
+      <DashboardShell requireAddress={!!address}>{children}</DashboardShell>
       <AlertToast 
         alerts={alerts} 
         onDismiss={dismissAlert}
@@ -32,5 +23,23 @@ export default function DashboardLayout({
         onRequestPermission={requestPermission}
       />
     </ErrorBoundary>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen">
+        <main className="flex-1 p-4 md:p-6">
+          <LoadingSkeleton />
+        </main>
+      </div>
+    }>
+      <DashboardContent>{children}</DashboardContent>
+    </Suspense>
   );
 }
