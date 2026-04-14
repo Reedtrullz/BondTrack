@@ -60,7 +60,7 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
 
   if (isLoading || error || !network) {
     return (
-      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
         <div className="animate-pulse h-48 bg-zinc-200 dark:bg-zinc-800 rounded" />
       </div>
     );
@@ -94,7 +94,7 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
   const nodeSharePercent = secured > 0 ? Math.min((securing / secured) * 50, 75) : 50;
 
   return (
-    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Incentive Pendulum</h3>
         <Shield className="w-4 h-4 text-zinc-400" />

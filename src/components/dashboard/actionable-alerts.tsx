@@ -40,7 +40,7 @@ export function ActionableAlerts({ positions, address }: ActionableAlertsProps) 
         return (
           <div 
             key={alert.id} 
-            className={`flex items-start gap-3 p-4 rounded-lg border ${severityColors[alert.severity]} transition-all animate-in fade-in slide-in-from-top-2`}
+            className={`flex items-start gap-3 p-4 rounded-lg border ${severityColors[alert.severity]} transition-all animate-in fade-in slide-in-from-top-2 ${alert.severity === 'critical' ? 'animate-pulse' : ''}`}
           >
             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
             <div className="flex-1">

@@ -64,7 +64,7 @@ export function BondOptimizer({ positions, benchmarks, allNodes, providerAddress
   }
 
   return (
-    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
       <div className="flex items-center gap-2 mb-4">
         <TrendingUp className="w-4 h-4 text-emerald-500" />
         <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">

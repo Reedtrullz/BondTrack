@@ -88,7 +88,7 @@ export function NetworkComparisonTable({ address }: { address: string | null }) 
       </div>
       <div className="hidden md:block overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
         <table className="w-full text-sm min-w-[500px]">
-          <thead className="bg-zinc-50 dark:bg-zinc-900">
+          <thead className="bg-zinc-50 dark:bg-zinc-900 sticky top-0">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-zinc-500">Metric</th>
               <th className="px-4 py-3 text-right font-medium text-zinc-500">Your Node</th>
@@ -104,7 +104,7 @@ export function NetworkComparisonTable({ address }: { address: string | null }) 
                     {pos.nodeAddress.slice(0, 12)}...{pos.nodeAddress.slice(-8)}
                   </td>
                 </tr>
-                <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
+                <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
                   <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">Bond Amount</td>
                   <td className="px-4 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100">{formatRune(pos.bondAmount)} RUNE</td>
                   <td className="px-4 py-3 text-right font-mono text-zinc-500">{formatRune(networkAverages.avgBond)} RUNE</td>

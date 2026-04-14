@@ -51,10 +51,10 @@ async function calculateAPYHistory(earningsRaw: EarningsHistoryRaw, networkRaw: 
 function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-zinc-900 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-3 shadow-lg">
+      <div className="bg-zinc-900 dark:bg-zinc-800 border border-zinc-700 dark:border-zinc-700 rounded-lg p-3 shadow-lg">
         <p className="text-xs text-zinc-400 mb-1">{label}</p>
-        <p className="text-sm font-semibold text-zinc-100">
-          APY: {formatAPY(payload[0].value)}
+        <p className="text-sm font-bold text-white">
+          {formatAPY(payload[0].value)} APY
         </p>
       </div>
     );

@@ -96,7 +96,7 @@ export function PositionTable({ positions }: PositionTableProps) {
 
       <div className="block md:hidden space-y-3">
         {positions.map((pos) => (
-          <div key={pos.nodeAddress} className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-3">
+          <div key={pos.nodeAddress} className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm space-y-3">
             <div className="flex items-start justify-between">
               <div className="min-w-0 flex-1">
                 <div className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
@@ -149,7 +149,7 @@ export function PositionTable({ positions }: PositionTableProps) {
 
       <div className="hidden md:block overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
         <table className="w-full text-sm min-w-[640px]">
-          <thead className="bg-zinc-50 dark:bg-zinc-900">
+          <thead className="bg-zinc-50 dark:bg-zinc-900 sticky top-0">
             <tr className="border-b border-zinc-200 dark:border-zinc-800">
               <th className="px-3 py-3 text-left font-medium text-zinc-500 whitespace-nowrap">Node</th>
               <th className="px-3 py-3 text-left font-medium text-zinc-500 whitespace-nowrap">Status</th>
@@ -162,7 +162,7 @@ export function PositionTable({ positions }: PositionTableProps) {
           </thead>
           <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {positions.map((pos) => (
-              <tr key={pos.nodeAddress} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
+              <tr key={pos.nodeAddress} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
                 <td className="px-3 py-3 whitespace-nowrap align-middle">
                   <div className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
                     {pos.nodeAddress.slice(0, 12)}...{pos.nodeAddress.slice(-8)}

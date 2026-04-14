@@ -16,7 +16,7 @@ export function NodeStatusCard({ position, currentBlockHeight, address }: NodeSt
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-3 relative group transition-all hover:border-zinc-300 dark:hover:border-zinc-700">
+    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm space-y-3 relative group hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-md hover:shadow-emerald-500/10 transition-all">
       <div className="flex items-center justify-between">
         <div className="font-mono text-sm text-zinc-600 dark:text-zinc-400">
           {position.nodeAddress.slice(0, 16)}...{position.nodeAddress.slice(-6)}

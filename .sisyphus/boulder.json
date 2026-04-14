@@ -1,23 +1,87 @@
 {
-  "active_plan": "/Users/reidar/Downloads/THORNode Watcher/thornode-watcher/.sisyphus/plans/changelogs-improvements.md",
-  "started_at": "2026-04-11T23:35:00.881Z",
+  "active_plan": "/Users/reidar/Downloads/THORNode Watcher/thornode-watcher/.sisyphus/plans/ui-visual-overhaul.md",
+  "started_at": "2026-04-14T11:18:37.629Z",
   "session_ids": [
-    "ses_283113a08ffeHQM39no53GJUwo"
+    "ses_2744906f5ffep4MiKypAXlT5N0",
+    "ses_274483c0affeHeo7JuKHHA5j9v"
   ],
   "session_origins": {
-    "ses_283113a08ffeHQM39no53GJUwo": "direct"
+    "ses_2744906f5ffep4MiKypAXlT5N0": "direct",
+    "ses_274483c0affeHeo7JuKHHA5j9v": "appended"
   },
-  "plan_name": "changelogs-improvements",
+  "plan_name": "ui-visual-overhaul",
   "agent": "atlas",
   "task_sessions": {
-    "todo:3": {
-      "task_key": "todo:3",
-      "task_label": "3",
-      "task_title": "**Add search/filter state management**",
-      "session_id": "ses_280ffce68ffemzn91ACDMxBt4S",
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "Fix pendulum logic bug in risk/page.tsx",
+      "session_id": "ses_274483c0affeHeo7JuKHHA5j9v",
+      "agent": "explore",
+      "updated_at": "2026-04-14T11:20:48.098Z"
+    },
+    "todo:5": {
+      "task_key": "todo:5",
+      "task_label": "5",
+      "task_title": "Create shared card style and apply shadows to all cards",
+      "session_id": "ses_2744228a2ffeS6mqicSqyRQuEC",
       "agent": "Sisyphus-Junior",
       "category": "visual-engineering",
-      "updated_at": "2026-04-12T00:08:18.632Z"
+      "updated_at": "2026-04-14T11:32:03.246Z"
+    },
+    "todo:6": {
+      "task_key": "todo:6",
+      "task_label": "6",
+      "task_title": "Enhance charts with gradients + tooltips",
+      "session_id": "ses_2743c4a44ffeXHwzeMHQB84ErT",
+      "agent": "Sisyphus-Junior",
+      "category": "visual-engineering",
+      "updated_at": "2026-04-14T11:33:54.904Z"
+    },
+    "todo:7": {
+      "task_key": "todo:7",
+      "task_label": "7",
+      "task_title": "Add alert animations (critical pulse)",
+      "session_id": "ses_2743a52a6ffe370uTsHYk0tCJT",
+      "agent": "Sisyphus-Junior",
+      "category": "visual-engineering",
+      "updated_at": "2026-04-14T11:35:24.707Z"
+    },
+    "todo:8": {
+      "task_key": "todo:8",
+      "task_label": "8",
+      "task_title": "Add table hover states + sticky headers",
+      "session_id": "ses_274391bbdffe5tTmmU6Qmv65N5",
+      "agent": "Sisyphus-Junior",
+      "category": "visual-engineering",
+      "updated_at": "2026-04-14T11:38:26.605Z"
+    },
+    "todo:9": {
+      "task_key": "todo:9",
+      "task_label": "9",
+      "task_title": "Add button glow effects",
+      "session_id": "ses_27436564dffejaCEr51U7S6ydQ",
+      "agent": "Sisyphus-Junior",
+      "category": "visual-engineering",
+      "updated_at": "2026-04-14T11:39:35.850Z"
+    },
+    "todo:10": {
+      "task_key": "todo:10",
+      "task_label": "10",
+      "task_title": "Add glassmorphism to sidebar/header",
+      "session_id": "ses_274354ed1ffeDejPOSgfxJoQC4",
+      "agent": "Sisyphus-Junior",
+      "category": "visual-engineering",
+      "updated_at": "2026-04-14T11:40:59.357Z"
+    },
+    "todo:11": {
+      "task_key": "todo:11",
+      "task_label": "11",
+      "task_title": "Standardize loading skeletons",
+      "session_id": "ses_27433effbffe6Uk9klE8YP86r2",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-04-14T11:41:44.002Z"
     }
   }
 }

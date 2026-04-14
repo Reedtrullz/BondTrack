@@ -125,7 +125,7 @@ export function TransactionComposer({ positions, address }: TransactionComposerP
         <button onClick={() => setMode('BOND')} className={cn("px-4 py-2 rounded-lg font-medium transition", mode === 'BOND' ? 'bg-emerald-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400')}>BOND</button>
         <button onClick={() => setMode('UNBOND')} className={cn("px-4 py-2 rounded-lg font-medium transition", mode === 'UNBOND' ? 'bg-amber-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400')}>UNBOND</button>
       </div>
-      <div className="bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-5 space-y-5">
+      <div className="bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-5 space-y-5 hover:shadow-md hover:shadow-emerald-500/10 transition-all">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="space-y-1">
             <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Node Address</label>

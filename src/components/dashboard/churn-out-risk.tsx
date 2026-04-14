@@ -46,7 +46,7 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
 
   if (isLoading) {
     return (
-      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
         <div className="animate-pulse h-48 bg-zinc-200 dark:bg-zinc-800 rounded" />
       </div>
     );
@@ -54,7 +54,7 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
 
   if (nodesWithRank.length === 0) {
     return (
-      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Churn-Out Risk</h3>
           <TrendingDown className="w-4 h-4 text-zinc-400" />
@@ -71,7 +71,7 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
   }
 
   return (
-    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Churn-Out Risk</h3>
         <TrendingDown className="w-4 h-4 text-zinc-400" />

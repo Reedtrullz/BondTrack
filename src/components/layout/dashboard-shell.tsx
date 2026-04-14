@@ -89,7 +89,7 @@ export function DashboardShell({
     <div className="flex min-h-screen">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto">
-        <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-3 mb-4">
+        <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-3 mb-4 pb-3 border-b border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-950/50 backdrop-blur-md rounded-lg px-2 sm:px-3 -mx-2 sm:-mx-3 -mt-3 sm:-mt-4 md:-mt-6 pt-3 sm:pt-4 md:pt-6">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <MobileMenuButton onClick={() => setSidebarOpen(true)} />
             <div className="min-w-0">

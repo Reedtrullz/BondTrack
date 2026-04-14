@@ -42,7 +42,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         fixed md:relative z-50 md:z-0
         w-56 h-screen
         border-r border-zinc-200 dark:border-zinc-800 
-        bg-white dark:bg-zinc-950 
+        bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md
         p-4 space-y-1
         transform transition-transform duration-200 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
@@ -56,8 +56,8 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
         <Link href="/" className="flex items-center gap-2 px-3 py-2 mb-4 font-semibold text-zinc-900 dark:text-zinc-100">
           <Shield className="w-5 h-5 text-blue-600" />
-          <span className="hidden md:inline">THORNode Watcher</span>
-          <span className="md:hidden">Watcher</span>
+          <span className="hidden md:inline">BondTrack</span>
+          <span className="md:hidden">Bond</span>
         </Link>
         
         <div className="px-3 py-2">

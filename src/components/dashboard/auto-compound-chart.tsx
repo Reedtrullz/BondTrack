@@ -91,8 +91,9 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
                 border: '1px solid #3f3f46',
                 borderRadius: '8px',
                 fontSize: '12px',
+                padding: '12px',
               }}
-              labelStyle={{ color: '#a1a1aa' }}
+              labelStyle={{ color: '#a1a1aa', marginBottom: '4px' }}
               formatter={(value: any) => [`${(Number(value) || 0).toLocaleString()} RUNE`, 'Balance']}
             />
             <Area 

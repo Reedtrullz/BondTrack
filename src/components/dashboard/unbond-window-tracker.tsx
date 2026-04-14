@@ -35,7 +35,7 @@ export function UnbondWindowTracker({ positions }: { positions: BondPosition[] }
 
   if (isLoadingFull) {
     return (
-      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
         <div className="animate-pulse h-48 bg-zinc-200 dark:bg-zinc-800 rounded" />
       </div>
     );
@@ -43,7 +43,7 @@ export function UnbondWindowTracker({ positions }: { positions: BondPosition[] }
 
   if (error) {
     return (
-      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
         <div className="text-red-500 text-sm">Error: {error}</div>
       </div>
     );
@@ -51,7 +51,7 @@ export function UnbondWindowTracker({ positions }: { positions: BondPosition[] }
 
   if (!positions || positions.length === 0) {
     return (
-      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Unbond Window</h3>
           <div className="flex items-center gap-1 text-xs text-zinc-500">
@@ -72,7 +72,7 @@ export function UnbondWindowTracker({ positions }: { positions: BondPosition[] }
 
   if (!nodes) {
     return (
-      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
         <div className="animate-pulse h-48 bg-zinc-200 dark:bg-zinc-800 rounded" />
       </div>
     );
@@ -109,7 +109,7 @@ export function UnbondWindowTracker({ positions }: { positions: BondPosition[] }
   const nextChurn = estimateNextChurn(currentBlockHeight);
 
   return (
-    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Unbond Window</h3>
         <div className="flex items-center gap-1 text-xs text-zinc-500">

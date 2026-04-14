@@ -80,13 +80,14 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
     ? formatRuneFromNumber(networkBond) 
     : '0';
   
-  // LP Favored = too much bonded (> 2.5)
-  // Node Favored = too much liquidity (< 1.5)
+  // THORChain Incentive Pendulum:
+  // - High bond-to-pool ratio (>2.5) → Node Favored (nodes earn more from bond)
+  // - Low bond-to-pool ratio (<1.5) → LP Favored (liquidity earns more)
   let pendulumStatus: { status: string; icon: React.ReactNode; color: string };
   if (bondToPoolRatio > 2.5) {
-    pendulumStatus = { status: "LP Favored", icon: <TrendingDown className="w-3 h-3" />, color: "text-amber-600 dark:text-amber-400" };
-  } else if (bondToPoolRatio < 1.5) {
     pendulumStatus = { status: "Node Favored", icon: <TrendingUp className="w-3 h-3" />, color: "text-emerald-600 dark:text-emerald-400" };
+  } else if (bondToPoolRatio < 1.5) {
+    pendulumStatus = { status: "LP Favored", icon: <TrendingDown className="w-3 h-3" />, color: "text-amber-600 dark:text-amber-400" };
   } else {
     pendulumStatus = { status: "Balanced", icon: <Minus className="w-3 h-3" />, color: "text-zinc-500" };
   }

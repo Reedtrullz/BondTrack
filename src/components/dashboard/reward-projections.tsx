@@ -90,7 +90,7 @@ export function RewardProjections({
   const hasData = totalBonded > 0 && weightedAPY > 0;
 
   return (
-    <div className="p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+    <div className="p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
       <div className="flex items-center gap-2 mb-6">
         <TrendingUp className="w-4 h-4 text-emerald-500" />
         <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">

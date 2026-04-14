@@ -95,7 +95,7 @@ function SummaryCard({ icon, label, value, subValue }: {
   subValue?: string;
 }) {
   return (
-    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 h-full flex flex-col">
+    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm h-full flex flex-col">
       <div className="flex items-center gap-2 text-zinc-500 mb-1">
         {icon}
         <span className="text-sm">{label}</span>

@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  CartesianGrid,
 } from 'recharts';
 import { getRunePriceHistory, type RunePriceHistoryRaw } from '@/lib/api/midgard';
 
@@ -47,9 +48,9 @@ function parsePriceData(raw: RunePriceHistoryRaw): PriceDataPoint[] {
 function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-zinc-900 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-3 shadow-lg">
+      <div className="bg-zinc-900 dark:bg-zinc-800 border border-zinc-700 dark:border-zinc-700 rounded-lg p-3 shadow-lg">
         <p className="text-xs text-zinc-400 mb-1">{label}</p>
-        <p className="text-sm font-semibold text-zinc-100">
+        <p className="text-sm font-bold text-white">
           {formatPrice(payload[0].value)}
         </p>
       </div>
@@ -136,7 +137,14 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={160}>
-          <LineChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+          <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+            <defs>
+              <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" opacity={0.05} vertical={false} />
             <XAxis
               dataKey="date"
               axisLine={false}
@@ -155,15 +163,16 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
               domain={['dataMin - 0.1', 'dataMax + 0.1']}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Line
+            <Area
               type="monotone"
               dataKey="price"
               stroke="#3b82f6"
               strokeWidth={2}
+              fill="url(#priceGradient)"
               dot={false}
               activeDot={{ r: 4, fill: '#3b82f6' }}
             />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       )}
     </div>

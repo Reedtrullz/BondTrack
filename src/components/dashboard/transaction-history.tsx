@@ -123,7 +123,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
         <>
           <div className="block md:hidden space-y-3">
           {transactions.map((tx) => (
-            <div key={tx.txHash} className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-2">
+            <div key={tx.txHash} className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm space-y-2">
               <div className="flex items-center justify-between">
                 <span
                   className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
@@ -180,7 +180,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
 
         <div className="hidden md:block overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-sm min-w-[720px]">
-            <thead className="bg-zinc-50 dark:bg-zinc-900">
+            <thead className="bg-zinc-50 dark:bg-zinc-900 sticky top-0">
               <tr>
                 <th className="px-3 py-3 text-left font-medium text-zinc-500 whitespace-nowrap">Type</th>
                 <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap">Amount</th>
@@ -192,7 +192,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {transactions.map((tx) => (
-                <tr key={tx.txHash} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
+                <tr key={tx.txHash} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
                   <td className="px-3 py-3 whitespace-nowrap">
                     <span
                       className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
