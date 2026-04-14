@@ -5,7 +5,7 @@ import { useNetworkConstants } from '@/lib/hooks/use-network-constants';
 import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { runeToNumber, formatCompactNumber } from '@/lib/utils/formatters';
 import type { BondPosition } from '@/lib/types/node';
-import { Shield, Lock, Activity, TrendingUp, TrendingDown, Minus, Wallet, Users, Zap } from 'lucide-react';
+import { Shield, Lock, Activity, TrendingUp, TrendingDown, Minus, Wallet, Users, Zap, Coins, Clock } from 'lucide-react';
 
 function calculateNetworkHealth(bondToPoolRatio: number): 'healthy' | 'warning' | 'critical' {
   if (bondToPoolRatio >= 1.5 && bondToPoolRatio <= 3) return 'healthy';
@@ -92,6 +92,18 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
   const securing = effectiveSecurityBond > 0 ? effectiveSecurityBond : totalBonds;
   const secured = totalLiquidity;
   const nodeSharePercent = secured > 0 ? Math.min((securing / secured) * 50, 75) : 50;
+
+  // Block rewards (per block)
+  const blockReward = runeToNumber(network.blockRewards?.blockReward || '0');
+  const bondReward = runeToNumber(network.blockRewards?.bondReward || '0');
+  const poolReward = runeToNumber(network.blockRewards?.poolReward || '0');
+  
+  // Total reserve
+  const totalReserve = runeToNumber(network.totalReserve || '0');
+  
+  // Pool activation countdown (blocks)
+  const poolActivationCountdown = parseInt(network.poolActivationCountdown || '0', 10);
+  const activationDays = Math.floor(poolActivationCountdown / 1440); // ~1 block per 6 seconds = 1440/day
 
   return (
     <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
@@ -203,6 +215,52 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
                 of {formatCompactNumber(totalBonds)} RUNE
               </span>
             </div>
+          </div>
+        )}
+
+        {/* Block Rewards */}
+        <div className="border-t border-zinc-200 dark:border-zinc-700 pt-3 mt-3">
+          <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 mb-2">
+            <Zap className="w-4 h-4" />
+            <span>Block Rewards (per block)</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-zinc-500">Node Bond</span>
+              <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                {formatCompactNumber(bondReward)} RUNE
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-zinc-500">LP Pool</span>
+              <span className="font-medium text-purple-600 dark:text-purple-400">
+                {formatCompactNumber(poolReward)} RUNE
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Total Reserve */}
+        <div className="flex items-center justify-between pt-3">
+          <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <Coins className="w-4 h-4" />
+            <span>Total Reserve</span>
+          </div>
+          <span className="font-medium text-zinc-900 dark:text-zinc-100">
+            {formatCompactNumber(totalReserve)} RUNE
+          </span>
+        </div>
+
+        {/* Pool Activation */}
+        {poolActivationCountdown > 0 && (
+          <div className="flex items-center justify-between pt-3">
+            <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+              <Clock className="w-4 h-4" />
+              <span>Pool Activation</span>
+            </div>
+            <span className="font-medium text-amber-600 dark:text-amber-400">
+              {activationDays > 0 ? `${activationDays}d` : `${poolActivationCountdown} blocks`}
+            </span>
           </div>
         )}
       </div>

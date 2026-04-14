@@ -103,6 +103,7 @@ export interface NetworkRaw {
     poolReward: string;
   };
   nextChurnHeight: string;
+  poolActivationCountdown: string;
 }
 
 export interface ActionRaw {

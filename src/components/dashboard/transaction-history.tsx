@@ -4,6 +4,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { getActions, type ActionRaw } from '@/lib/api/midgard';
 import { formatRuneAmount } from '@/lib/utils/formatters';
+import { ExternalLink } from 'lucide-react';
 
 interface Transaction {
   type: 'BOND' | 'UNBOND';
@@ -168,11 +169,17 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
               </div>
               <div>
                 <div className="text-xs text-zinc-500">Tx Hash</div>
-                <div className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                <a
+                  href={`https://runescan.io/tx/${tx.txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-xs text-zinc-600 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 inline-flex items-center gap-1"
+                >
                   {tx.txHash.length > 20
                     ? `${tx.txHash.slice(0, 12)}...${tx.txHash.slice(-8)}`
                     : tx.txHash}
-                </div>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
               </div>
             </div>
           ))}
@@ -216,9 +223,17 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
                     {tx.timestamp.toLocaleDateString()} {tx.timestamp.toLocaleTimeString()}
                   </td>
                   <td className="px-3 py-3 font-mono text-xs text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
-                    {tx.txHash.length > 20
-                      ? `${tx.txHash.slice(0, 12)}...${tx.txHash.slice(-8)}`
-                      : tx.txHash}
+                    <a
+                      href={`https://runescan.io/tx/${tx.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-blue-600 dark:hover:text-blue-400 inline-flex items-center gap-1"
+                    >
+                      {tx.txHash.length > 20
+                        ? `${tx.txHash.slice(0, 12)}...${tx.txHash.slice(-8)}`
+                        : tx.txHash}
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap">
                     <span

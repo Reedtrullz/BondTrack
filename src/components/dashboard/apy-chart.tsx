@@ -171,6 +171,9 @@ export function APYChart({ interval = 'year', count = 365 }: APYChartProps) {
           </AreaChart>
         </ResponsiveContainer>
       )}
+      <div className="mt-2 text-[10px] text-zinc-500 italic">
+        APR is backward-calculated from historical earnings and does not guarantee future returns.
+      </div>
     </div>
   );
 }
