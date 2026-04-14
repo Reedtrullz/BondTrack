@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const MIDGARD_ENDPOINTS = [
   process.env.MIDGARD_API_URL || 'https://midgard.ninerealms.com',
   process.env.MIDGARD_FALLBACK_URL || 'https://gateway.liquify.com/chain/thorchain_midgard',
+  'https://midgard.thorchain.network',
 ];
 
 export const dynamic = 'force-dynamic';
