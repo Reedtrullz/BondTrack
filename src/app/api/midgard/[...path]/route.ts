@@ -23,10 +23,13 @@ export async function GET(
     
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       const response = await fetch(targetUrl, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 
+          'Accept': 'application/json',
+          'User-Agent': 'BondTrack/1.0',
+        },
         cache: 'no-store',
         signal: controller.signal,
       });
@@ -34,12 +37,6 @@ export async function GET(
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        if (response.status >= 400 && response.status < 500) {
-          return NextResponse.json(
-            { error: `Upstream API error: ${response.status}`, details: errors },
-            { status: response.status }
-          );
-        }
         errors.push(`${baseUrl}: ${response.status}`);
         continue;
       }
