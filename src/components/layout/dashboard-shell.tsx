@@ -41,10 +41,13 @@ export function DashboardShell({
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
   const [thorName, setThorName] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<number>(Date.now());
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
+  const [tickAtRefresh, setTickAtRefresh] = useState(0);
 
   const hasAddress = requireAddress ? !!address : true;
+
+  const elapsedMs = (tick - tickAtRefresh) * 10_000;
+  const freshnessLabel = formatElapsed(elapsedMs);
 
   useEffect(() => {
     const interval = setInterval(() => setTick((t) => t + 1), 10_000);
@@ -53,11 +56,9 @@ export function DashboardShell({
 
   const handleRefresh = useCallback(() => {
     SWR_KEYS.forEach((key) => mutate(key));
-    setLastUpdated(Date.now());
-  }, []);
-
-  const elapsed = Date.now() - lastUpdated;
-  const freshnessLabel = formatElapsed(elapsed);
+    setTickAtRefresh(tick);
+    setTick((t) => t + 1);
+  }, [tick]);
 
   useEffect(() => {
     if (!address) return;
