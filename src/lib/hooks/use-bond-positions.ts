@@ -80,7 +80,7 @@ export function useBondPositions(address: string | null) {
     : [];
 
   const optimalBond = constants?.int_64_values?.OptimalBondD
-    ? Number(constants.int_64_values.OptimalBondD) / 1e8
+    ? Number(constants.int_64_values.OptimalBondD)
     : null;
 
   const yieldGuardFlags = getYieldGuardFlags(positions, nodes || [], optimalBond);
