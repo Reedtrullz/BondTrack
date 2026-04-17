@@ -25,7 +25,7 @@ export function useBondHistory(address: string | null) {
 
   const { data: actions, isLoading: isLoadingActions } = useSWR<ActionsResponseRaw>(
     address ? ['actions-bond', address] : null,
-    () => getActions(address!, 100, 'bond'),
+    () => getActions(address!, 50, 'bond,unbond,leave'),
     { refreshInterval: 60_000 }
   );
 
@@ -42,8 +42,11 @@ export function useBondHistory(address: string | null) {
           ? parseFloat(txCoin.amount) / 1e8 
           : 0;
       
+      const isBondAction = action.type === 'bond' || action.type === 'addLiquidity';
+      const type: 'BOND' | 'UNBOND' = isBondAction ? 'BOND' : 'UNBOND';
+      
       return {
-        type: 'BOND' as const,
+        type,
         amount,
         date: action.date ? new Date(Number(action.date) / 1e9 * 1000) : new Date(),
       };
@@ -52,7 +55,9 @@ export function useBondHistory(address: string | null) {
 
   const history: BondHistory | null = address
     ? (() => {
-        const initialBond = bondActions.reduce((sum, a) => sum + a.amount, 0);
+        const initialBond = bondActions
+          .filter((a) => a.type === 'BOND')
+          .reduce((sum, a) => sum + a.amount, 0);
         const currentBond = bondDetails ? runeToNumber(bondDetails.totalBonded) : 0;
         const bondGrowth = currentBond - initialBond;
 

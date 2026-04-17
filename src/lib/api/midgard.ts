@@ -247,11 +247,11 @@ export async function getNetwork(): Promise<NetworkRaw> {
   return fetchMidgard<NetworkRaw>('/v2/network');
 }
 
-export async function getActions(address: string, limit = 50, type?: string): Promise<ActionsResponseRaw> {
+export async function getActions(address: string, limit = 50, txType?: string): Promise<ActionsResponseRaw> {
   const params = new URLSearchParams();
   params.set('address', address);
   params.set('limit', String(limit));
-  if (type) params.set('type', type);
+  if (txType) params.set('txType', txType);
   const qs = params.toString();
   return fetchMidgard<ActionsResponseRaw>(`/v2/actions${qs ? `?${qs}` : ''}`);
 }

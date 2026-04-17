@@ -17,7 +17,7 @@ interface Transaction {
 
 function parseActions(actions: ActionRaw[]): Transaction[] {
   return actions
-    .filter((action) => action.type === 'bond' || action.type === 'unstake' || action.type === 'addLiquidity')
+    .filter((action) => action.type === 'bond' || action.type === 'unbond' || action.type === 'unstake' || action.type === 'leave' || action.type === 'addLiquidity')
     .map((action): Transaction => {
       let amount = 0;
       
@@ -63,7 +63,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
   const { data, error, isLoading } = useSWR(
     selectedAddress ? ['actions', selectedAddress] : null,
     async () => {
-      const result = await getActions(selectedAddress, 50, 'bond');
+      const result = await getActions(selectedAddress, 50, 'bond,unbond,leave');
       return result;
     },
     { 
