@@ -251,7 +251,8 @@ export async function getActions(address: string, limit = 50, txType?: string): 
   const params = new URLSearchParams();
   params.set('address', address);
   params.set('limit', String(limit));
-  if (txType) params.set('txType', txType);
+  // Midgard uses 'type' parameter for bond/unbond/leave, not 'txType'
+  if (txType) params.set('type', txType);
   const qs = params.toString();
   return fetchMidgard<ActionsResponseRaw>(`/v2/actions${qs ? `?${qs}` : ''}`);
 }
