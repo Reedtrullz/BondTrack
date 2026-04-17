@@ -18,6 +18,10 @@ const FILTER_OPTIONS: { value: FilterType; label: string; icon: React.ReactNode 
 
 const STORAGE_KEY = 'changelogs-expanded';
 
+function parseTypeFilter(value: string | null): FilterType {
+  return FILTER_OPTIONS.some(option => option.value === value) ? (value as FilterType) : 'all';
+}
+
 // THORChain brand colors
 const TC = {
   blue: '#00CCFF',
@@ -124,9 +128,12 @@ export default function ChangelogsPage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const yearRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
-  const [typeFilter, setTypeFilter] = useState<FilterType>((searchParams.get('type') as FilterType) || 'all');
-  
+  const urlSearchQuery = searchParams.get('q') || '';
+  const urlTypeFilter = parseTypeFilter(searchParams.get('type'));
+
+  const [searchQuery, setSearchQuery] = useState(urlSearchQuery);
+  const [typeFilter, setTypeFilter] = useState<FilterType>(urlTypeFilter);
+
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -140,25 +147,71 @@ export default function ChangelogsPage() {
     }
     return new Set();
   });
+  const [hasResolvedExpandedPreference, setHasResolvedExpandedPreference] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(STORAGE_KEY) !== null;
+    }
 
-  // Sync to URL when state changes
+    return false;
+  });
+
+  useEffect(() => {
+    if (searchQuery !== urlSearchQuery) {
+      setSearchQuery(urlSearchQuery);
+    }
+
+    if (typeFilter !== urlTypeFilter) {
+      setTypeFilter(urlTypeFilter);
+    }
+  }, [searchQuery, typeFilter, urlSearchQuery, urlTypeFilter]);
+
   useEffect(() => {
     const params = new URLSearchParams();
-    if (searchQuery) params.set('q', searchQuery);
-    if (typeFilter !== 'all') params.set('type', typeFilter);
-    
-    const newUrl = params.toString() 
-      ? `?${params.toString()}` 
-      : '/dashboard/changelogs';
-    
+    const currentParams = new URLSearchParams(searchParams.toString());
+    let shouldReplace = false;
+
+    if (searchQuery) {
+      params.set('q', searchQuery);
+      if (currentParams.get('q') !== searchQuery) {
+        shouldReplace = true;
+      }
+    } else if (currentParams.has('q')) {
+      shouldReplace = true;
+    }
+
+    if (typeFilter !== 'all') {
+      params.set('type', typeFilter);
+      if (currentParams.get('type') !== typeFilter) {
+        shouldReplace = true;
+      }
+    } else if (currentParams.has('type')) {
+      shouldReplace = true;
+    }
+
+    if (!shouldReplace) {
+      return;
+    }
+
+    const queryString = params.toString();
+    const newUrl = queryString ? `?${queryString}` : '/dashboard/changelogs';
+
     router.replace(newUrl, { scroll: false });
-  }, [searchQuery, typeFilter, router]);
+  }, [searchQuery, typeFilter, router, searchParams]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && expandedIds.size > 0) {
+    if (typeof window !== 'undefined' && hasResolvedExpandedPreference) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify([...expandedIds]));
     }
-  }, [expandedIds]);
+  }, [expandedIds, hasResolvedExpandedPreference]);
+
+  useEffect(() => {
+    if (hasResolvedExpandedPreference || changelogs.length === 0) {
+      return;
+    }
+
+    setExpandedIds(new Set(changelogs.map(c => c.id)));
+    setHasResolvedExpandedPreference(true);
+  }, [changelogs, hasResolvedExpandedPreference]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -211,12 +264,6 @@ export default function ChangelogsPage() {
     return breakdown;
   }, [changelogs]);
 
-  useEffect(() => {
-    if (changelogs.length > 0 && expandedIds.size === 0) {
-      setExpandedIds(new Set(changelogs.map(c => c.id)));
-    }
-  }, [changelogs, expandedIds]);
-  
   const toggleExpand = useCallback((id: string) => {
     setExpandedIds(prev => {
       const next = new Set(prev);
