@@ -36,7 +36,7 @@ A comprehensive dashboard for THORChain bond providers to monitor bonded RUNE, n
 
 ### 🔧 Transaction Tools
 - BOND/UNBOND memo composer
-- Transaction history from Midgard
+- Transaction history from Midgard bond/unbond/leave actions
 - Wallet connection (Keplr, XDEFI, Vultisig)
 - Watchlist management
 
@@ -75,9 +75,10 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `NEXT_PUBLIC_THORNODE_API` | THORNode RPC endpoint | `gateway.liquify.com/chain/thorchain_api` |
-| `NEXT_PUBLIC_MIDGARD_API` | Midgard API endpoint | `gateway.liquify.com/chain/thorchain_midgard` |
-| `NEXT_PUBLIC_RPC_URL` | THORChain RPC | `https://rpc.thorchain.info` |
+| `NEXT_PUBLIC_THORNODE_API` | THORNode API endpoint | `https://midgard.ninerealms.com` |
+| `NEXT_PUBLIC_MIDGARD_API` | Midgard API endpoint | `https://midgard.ninerealms.com` |
+| `NEXT_PUBLIC_MIDGARD_FALLBACK` | Secondary Midgard fallback | `https://gateway.liquify.com/chain/thorchain_midgard` |
+| `NEXT_PUBLIC_THORCHAIN_RPC` | THORChain RPC | `https://rpc.thorchain.info` |
 
 ## Project Structure
 
@@ -107,7 +108,7 @@ src/
 
 External Midgard/THORNode APIs block browser requests due to CORS. The app uses server-side proxy routes:
 
-- `/api/midgard/*` → proxies to `midgard.ninerealms.com` (falls back to liquify)
+- `/api/midgard/*` → proxies to `midgard.ninerealms.com` (falls back to liquify, then `midgard.thorchain.network`)
 - `/api/thorchain/*` → proxies to `gateway.liquify.com/chain/thorchain_api`
 
 All API calls from frontend go through these proxies, bypassing browser CORS restrictions.
@@ -121,7 +122,7 @@ All API calls from frontend go through these proxies, bypassing browser CORS res
 ## API Endpoints
 
 - **THORNode**: Nodes, Network Constants, Supply
-- **Midgard**: Bonds, Earnings, History, Network, Actions
+- **Midgard**: Bonds, Earnings, History, Network, Actions (`txType` for bond/unbond/leave history)
 
 ## Contributing
 

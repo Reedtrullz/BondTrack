@@ -113,11 +113,13 @@ thornode-watcher/
 
 **Midgard Proxy**: The proxy in `src/app/api/midgard/[...path]/route.ts` passes through 4xx errors from the upstream Midgard API. Ensure any new API client calls use the proxy to avoid CORS issues.
 
+**Midgard actions**: Use `txType` (not `type`) for bond/unbond/leave history queries to `/v2/actions`, and keep `limit <= 50` to stay within the documented API maximum. Reserve `type` for action categories like swap or addLiquidity.
+
 **Address prop**: Dashboard pages get address from `useSearchParams().get('address')`. The `/dashboard` redirect passes it through.
 
 **API client**: `src/lib/api/client.ts` provides `fetchThornode<T>()` and `fetchMidgard<T>()`. Next.js `fetch` with `next: { revalidate: 60 }` for caching. All calls go through server-side proxy routes to bypass CORS.
 
-**Endpoints**: Default to ninerealms (`midgard.ninerealms.com`) with liquify fallback. Override via `NEXT_PUBLIC_MIDGARD_API`, `NEXT_PUBLIC_THORNODE_API` env vars.
+**Endpoints**: Default to ninerealms (`midgard.ninerealms.com`) with liquify fallback and `midgard.thorchain.network` as the final Midgard fallback. Override via `NEXT_PUBLIC_MIDGARD_API`, `NEXT_PUBLIC_THORNODE_API`, and related fallback env vars.
 
 **Dark mode**: Uses next-themes with `attribute="class"`. All components use `dark:` Tailwind variants.
 
@@ -163,11 +165,15 @@ The Risk page (`src/app/dashboard/risk/page.tsx`) shows portfolio risk assessmen
 
 5. **Show Details**: Toggles expanded sections (SlashMonitor, ChurnOutRisk, UnbondWindowTracker, NetworkSecurityMetrics)
 
-**Formatting**: Network values need special handling - `runeToNumber()` divides by 1e8, so multiply back before `formatRuneAmount()`. User bond amounts from hook are already in RUNE units, so multiply by 1e8 for formatting. Use `--` when value is 0 or undefined to indicate missing data.
+**Formatting**: Network values need special handling - `runeToNumber()` divides by 1e8, so only multiply back before `formatRuneAmount()` when you still have a numeric RUNE value. If you already have a formatted string from `formatRuneFromNumber()`, render it directly instead of wrapping it in `formatRuneAmount()` again. Use `--` when value is 0 or undefined to indicate missing data.
 
 ## RECENT CHANGES
 - **Risk page redesign**: Streamlined layout with health score banner, compact KPIs, always-visible nodes list, and collapsible details section
-- **Incentive Pendulum fix**: Show Node/LP amounts (not user's share), correct pendulum logic (LP favored when ratio > 2.5), use network data
+- **Incentive Pendulum fix**: Show Node/LP amounts (not user's share), use network data, and keep both pendulum surfaces aligned (`LP Favored` below `1.5x`, `Node Favored` above `2.5x`).
+- **Risk TVL fix**: Risk Summary Banner now renders the already-formatted network liquidity string directly, avoiding the old double-format/double-divide bug.
+- **Transaction history fix**: Midgard action history now uses `txType=bond,unbond,leave` with `limit=50`, so bond history and the Transactions page surface unbond/leave exits without 502s.
+- **Dashboard freshness fix**: `DashboardShell` now derives the freshness label from tick state instead of calling `Date.now()` during render.
+- **LP status/health fix**: `use-lp-positions.ts` maps live Midgard pool statuses (`available`, `staged`) to LP UI status/health instead of hardcoded placeholders.
 - **Formatting fix**: Show '--' instead of '00' when values are 0 or undefined
 - **Real APY benchmarks**: Calculate actual network percentiles from node data instead of hardcoded values
 - **Optimize link fix**: Now passes bond provider address instead of node address
@@ -200,7 +206,6 @@ The Risk page (`src/app/dashboard/risk/page.tsx`) shows portfolio risk assessmen
 - **EarningStatusSummary**: Quick view of Active (earning) vs Standby (not earning) vs Jailed
 
 ## KNOWN ISSUES
-- Bond history may show empty for addresses that should have transactions — check `getActions()` type=bond filter
 - 6 pre-existing test failures in `use-watchlist.test.ts` and `use-bond-positions.test.ts`
 
 ## COMMANDS
