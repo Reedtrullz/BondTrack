@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { mutate } from 'swr';
-import { RefreshCw, Clock } from 'lucide-react';
+import { RefreshCw, Clock, Wifi } from 'lucide-react';
 import { Sidebar, MobileMenuButton } from '@/components/layout/sidebar';
 import { WalletConnect } from '@/components/wallet/wallet-connect';
 import { Button } from '@/components/ui/button';
@@ -70,7 +70,6 @@ export function DashboardShell({
         }
       })
       .catch(() => {
-        // Silently fall back to address
       });
     return () => { cancelled = true; };
   }, [address]);
@@ -87,14 +86,14 @@ export function DashboardShell({
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-zinc-900">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto">
-        <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-3 mb-4 pb-3 border-b border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-950/50 backdrop-blur-md rounded-lg px-2 sm:px-3 -mx-2 sm:-mx-3 -mt-3 sm:-mt-4 md:-mt-6 pt-3 sm:pt-4 md:pt-6">
+        <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-3 mb-4 pb-3 border-b border-zinc-200/60 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl rounded-lg px-3 sm:px-4 -mx-3 sm:-mx-4 -mt-3 sm:-mt-4 md:-mt-6 pt-3 sm:pt-4 md:pt-6 shadow-sm">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <MobileMenuButton onClick={() => setSidebarOpen(true)} />
             <div className="min-w-0">
-              <h1 className="text-base sm:text-lg md:text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
                 Dashboard
               </h1>
               {address && (
@@ -104,18 +103,20 @@ export function DashboardShell({
               )}
             </div>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <span className="hidden sm:flex items-center gap-1 text-xs text-zinc-400 dark:text-zinc-500">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <span className="hidden sm:flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/60 px-2.5 py-1.5 rounded-full">
+              <Wifi className="h-3 w-3 text-emerald-500" />
               <Clock className="h-3 w-3" />
-              {freshnessLabel}
+              <span className="font-medium">{freshnessLabel}</span>
             </span>
             <WalletConnect />
             <Button
-              variant="outline"
+              variant="glass"
               size="icon"
               onClick={handleRefresh}
               title="Refresh data"
               aria-label="Refresh dashboard data"
+              className="bg-white/80 dark:bg-zinc-800/80"
             >
               <RefreshCw className="h-4 w-4" />
             </Button>

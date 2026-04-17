@@ -8,13 +8,12 @@ import { useYieldBenchmarks } from '@/lib/hooks/use-yield-benchmarks';
 import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { PortfolioSummary } from '@/components/dashboard/portfolio-summary';
 import { PositionTable } from '@/components/dashboard/position-table';
-import { NodeStatusCard } from '@/components/dashboard/node-status-card';
 import { RewardProjections } from '@/components/dashboard/reward-projections';
 import { ActionableAlerts } from '@/components/dashboard/actionable-alerts';
 import { BondOptimizer } from '@/components/dashboard/bond-optimizer';
-
+import { Button } from '@/components/ui/button';
 import { ExportButton } from '@/components/shared/export-button';
-import { Plus, Minus, Sparkles, BrainCircuit } from 'lucide-react';
+import { Plus, Minus, Sparkles, BrainCircuit, TrendingUp } from 'lucide-react';
 
 export default function OverviewPage() {
   const searchParams = useSearchParams();
@@ -29,10 +28,10 @@ export default function OverviewPage() {
       <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 py-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 rounded-lg bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
+            <div key={i} className="h-24 rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60 animate-pulse" />
           ))}
         </div>
-        <div className="h-64 rounded-lg bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
+        <div className="h-64 rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60 animate-pulse" />
       </div>
     );
   }
@@ -47,29 +46,26 @@ export default function OverviewPage() {
     : 0;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 px-4 sm:px-6 py-4">
-      {/* Header Section */}
+    <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 py-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex gap-2">
-            <Link
-              href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Bond More
+            <Link href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}>
+              <Button variant="success" className="gap-2">
+                <Plus className="w-4 h-4" />
+                Bond More
+              </Button>
             </Link>
-            <Link
-              href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition-colors"
-            >
-              <Minus className="w-4 h-4" />
-              Unbond
+            <Link href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}>
+              <Button variant="destructive" className="gap-2">
+                <Minus className="w-4 h-4" />
+                Unbond
+              </Button>
             </Link>
           </div>
-          <div className="flex items-center gap-1 px-2 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded text-[10px] font-bold uppercase tracking-wider border border-emerald-100 dark:border-emerald-800">
-            <Sparkles className="w-3 h-3" />
-            Live Update
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-semibold border border-emerald-200/60 dark:border-emerald-800/50">
+            <Sparkles className="w-3 h-3 animate-pulse" />
+            <span>Live</span>
           </div>
         </div>
         {positions.length > 0 && (
@@ -81,10 +77,8 @@ export default function OverviewPage() {
 
       <ActionableAlerts positions={positions} address={address} />
 
-      {/* Main Dashboard Grid - Fixed 3:1 Ratio */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Main Content Area (75% width on desktop) */}
-        <div className="lg:col-span-3 space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-3 space-y-6">
           <PortfolioSummary
             totalBonded={totalBonded}
             runePrice={price}
@@ -94,7 +88,7 @@ export default function OverviewPage() {
             benchmarks={benchmarks}
           />
           
-          <div className="space-y-8">
+          <div className="space-y-6">
             {totalBonded > 0 && weightedAPY > 0 && (
               <RewardProjections
                 totalBonded={totalBonded}
@@ -107,23 +101,21 @@ export default function OverviewPage() {
           </div>
         </div>
 
-        {/* Intelligence Hub Column (25% width on desktop) */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="flex items-center gap-2 mb-2 text-zinc-500 dark:text-zinc-400">
+        <div className="lg:col-span-1 space-y-4">
+          <div className="flex items-center gap-2 mb-3 text-zinc-500 dark:text-zinc-400">
             <BrainCircuit className="w-4 h-4" />
-            <span className="text-xs font-bold uppercase tracking-widest">Portfolio Intelligence</span>
+            <span className="text-xs font-bold uppercase tracking-widest">Intelligence</span>
           </div>
           
-<BondOptimizer 
-              positions={positions} 
-              benchmarks={benchmarks} 
-              allNodes={allNodes || []}
-              providerAddress={address}
-              isLoading={allNodesLoading || benchmarksLoading}
-            />
+          <BondOptimizer 
+            positions={positions} 
+            benchmarks={benchmarks} 
+            allNodes={allNodes || []}
+            providerAddress={address}
+            isLoading={allNodesLoading || benchmarksLoading}
+          />
           
-          {/* Mobile Only Export - hidden on sm+ */}
-          <div className="sm:hidden flex justify-end">
+          <div className="sm:hidden flex justify-end mt-4">
             <ExportButton bondPositions={positions} />
           </div>
         </div>
