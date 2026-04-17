@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { getActions, type ActionRaw } from '@/lib/api/midgard';
 import { formatRuneAmount } from '@/lib/utils/formatters';
@@ -59,6 +59,12 @@ interface TransactionHistoryProps {
 export function TransactionHistory({ address }: TransactionHistoryProps) {
   const [selectedAddress, setSelectedAddress] = useState<string>(address || '');
   const [inputAddress, setInputAddress] = useState<string>(address || '');
+
+  // Sync state with prop changes
+  useEffect(() => {
+    setSelectedAddress(address || '');
+    setInputAddress(address || '');
+  }, [address]);
 
   const { data, error, isLoading } = useSWR(
     selectedAddress ? ['actions', selectedAddress] : null,

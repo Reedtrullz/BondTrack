@@ -196,33 +196,6 @@ export interface ActionsResponseRaw {
   count: string;
 }
 
-
-export interface MemberDetailsRaw {
-  pools: MemberPoolRaw[];
-}
-
-export interface MemberPoolRaw {
-  pool: string;
-  runeAddress: string;
-  assetAddress: string;
-  liquidityUnits: string;
-  runeDeposit: string;
-  assetDeposit: string;
-  runeAdded: string;
-  assetAdded: string;
-  runePending: string;
-  assetPending: string;
-  runeWithdrawn: string;
-  assetWithdrawn: string;
-  dateFirstAdded: string;
-  dateLastAdded: string;
-}
-
-export interface ActionsResponseRaw {
-  actions: ActionRaw[];
-  count: string;
-}
-
 export async function getBondDetails(address: string): Promise<BondDetailsRaw> {
   return fetchMidgard<BondDetailsRaw>(`/v2/bonds/${address}`);
 }
@@ -251,8 +224,7 @@ export async function getActions(address: string, limit = 50, txType?: string): 
   const params = new URLSearchParams();
   params.set('address', address);
   params.set('limit', String(limit));
-  // Midgard uses 'type' parameter for bond/unbond/leave, not 'txType'
-  if (txType) params.set('type', txType);
+  if (txType) params.set('txType', txType);
   const qs = params.toString();
   return fetchMidgard<ActionsResponseRaw>(`/v2/actions${qs ? `?${qs}` : ''}`);
 }
