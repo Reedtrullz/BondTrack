@@ -8,6 +8,37 @@ interface LpData {
   pools: PoolDetailRaw[];
 }
 
+/**
+ * Maps Midgard pool status to LP UI status union.
+ * available = pool is healthy and accepting LPs → active
+ * staged = pool is not yet activated → standby
+ */
+const mapPoolStatusToUi = (poolStatus: string | undefined): LpPosition['status'] => {
+  switch (poolStatus) {
+    case 'available':
+      return 'active';
+    case 'staged':
+      return 'standby';
+    default:
+      return 'standby'; // Default to standby for unknown statuses
+  }
+};
+
+/**
+ * Derives health score from pool status.
+ * LP positions cannot be slashed like node bonds, so health is based on pool availability.
+ */
+const deriveHealthScore = (poolStatus: string | undefined): number => {
+  switch (poolStatus) {
+    case 'available':
+      return 100; // Pool is healthy
+    case 'staged':
+      return 50; // Pool not yet fully active
+    default:
+      return 50; // Default to reduced health for unknown statuses
+  }
+};
+
 export const useLpPositions = () => {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
@@ -31,6 +62,7 @@ export const useLpPositions = () => {
 
   const positions: LpPosition[] = (data?.memberDetails?.pools || []).map((poolRaw) => {
     const poolData = data?.pools?.find((p) => p.asset === poolRaw.pool);
+    const poolStatus = poolData?.status;
     
     return {
       address: poolRaw.assetAddress,
@@ -38,9 +70,9 @@ export const useLpPositions = () => {
       bondedRune: poolRaw.runeDeposit,
       rewards: poolRaw.runeAdded,
       apy: poolData ? parseFloat(poolData.poolAPY) : 0,
-      healthScore: 100,
+      healthScore: deriveHealthScore(poolStatus),
       slashRisk: 0,
-      status: 'active',
+      status: mapPoolStatusToUi(poolStatus),
       unbondWindowRemaining: 0,
     };
   });
