@@ -35,7 +35,26 @@ export function BondOptimizer({ positions, benchmarks, allNodes, providerAddress
     );
   }
 
-  // "Certified Optimal" State
+  // Empty/No Data State
+  if (!positions || positions.length === 0 || !benchmarks || !allNodes) {
+    return (
+      <div className="relative p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-center">
+        <div className="flex justify-center mb-3">
+          <div className="p-3 rounded-full bg-zinc-100 dark:bg-zinc-800/40 text-zinc-600 dark:text-zinc-400 shadow-sm">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+        </div>
+        <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1 uppercase tracking-wider">
+          No Data Available
+        </h3>
+        <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+          Please add bond positions or ensure network data is available.
+        </p>
+      </div>
+    );
+  }
+
+  // Portfolio Optimized State
   if (suggestions.length === 0) {
     return (
       <div className="relative p-6 rounded-lg border-2 border-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-900/10 text-center group overflow-hidden">
