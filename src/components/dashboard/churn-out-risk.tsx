@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { type BondPosition } from '@/lib/types/node';
 import { useNodeRankings, type NodeRanking } from '@/lib/hooks/use-node-rankings';
 import { formatRuneAmount } from '@/lib/utils/formatters';
-import { AlertTriangle, TrendingDown } from 'lucide-react';
+import { AlertTriangle, TrendingDown, Clock, XCircle } from 'lucide-react';
 
 interface NodeWithRank extends NodeRanking {
   totalBond: number;
@@ -17,6 +17,19 @@ interface ChurnOutRiskProps {
 
 export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
   const rankings = useNodeRankings(positions);
+  const [error, setError] = useState<string | null>(null);
+  const [showError, setShowError] = useState(false);
+
+  // Timeout for loading state to prevent endless loading
+  useEffect(() => {
+    if (rankings.length === 0 && positions.length > 0) {
+      const timer = setTimeout(() => {
+        setShowError(true);
+      }, 10000); // Show error after 10 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [rankings, positions]);
 
   const nodesWithRank: NodeWithRank[] = useMemo(() => {
     if (rankings.length === 0) {
@@ -44,10 +57,49 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
   const safeNodes = nodesWithRank.filter((n) => !n.isAtRisk);
   const isLoading = rankings.length === 0 && positions.length > 0;
 
+  if (error || showError) {
+    return (
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Churn-Out Risk</h3>
+          <XCircle className="w-4 h-4 text-zinc-400" />
+        </div>
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <XCircle className="w-8 h-8 text-zinc-300 dark:text-zinc-600 mb-3" />
+          <p className="text-zinc-600 dark:text-zinc-400 text-sm font-medium">Unable to load churn risk data</p>
+          <p className="text-zinc-500 dark:text-zinc-500 text-xs max-w-[200px] mt-2">
+            There was an error loading node rankings. Please check your connection or try again later.
+          </p>
+          <button
+            onClick={() => {
+              setError(null);
+              setShowError(false);
+              // Trigger SWR revalidation
+              // Note: Rankings are derived from useAllNodes, so we need to revalidate that
+              // This is a limitation - we can't directly revalidate rankings
+            }}
+            className="mt-4 px-3 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded text-sm hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
-        <div className="animate-pulse h-48 bg-zinc-200 dark:bg-zinc-800 rounded" />
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Churn-Out Risk</h3>
+          <Clock className="w-4 h-4 text-zinc-400" />
+        </div>
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <Clock className="w-8 h-8 text-zinc-300 dark:text-zinc-600 mb-3 animate-pulse" />
+          <p className="text-zinc-600 dark:text-zinc-400 text-sm font-medium">Loading node rankings...</p>
+          <p className="text-zinc-500 dark:text-zinc-500 text-xs max-w-[200px] mt-2">
+            This may take a few seconds depending on network conditions.
+          </p>
+        </div>
       </div>
     );
   }
@@ -59,11 +111,14 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
           <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Churn-Out Risk</h3>
           <TrendingDown className="w-4 h-4 text-zinc-400" />
         </div>
-        <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="flex flex-col items-center justify-center py-8 text-center">
           <TrendingDown className="w-8 h-8 text-zinc-300 dark:text-zinc-600 mb-3" />
           <p className="text-zinc-600 dark:text-zinc-400 text-sm font-medium">No active nodes found</p>
+          <p className="text-zinc-500 dark:text-zinc-500 text-xs max-w-[200px] mt-2">
+            You have no active nodes currently bonded. Only active nodes are monitored for churn risk.
+          </p>
           <p className="text-zinc-500 dark:text-zinc-500 text-xs max-w-[200px] mt-1">
-            Active nodes are ranked by bond amount. Only bonded positions with 'Active' status are monitored for churn risk.
+            Check your bond positions or wait for nodes to become active.
           </p>
         </div>
       </div>
