@@ -4,8 +4,8 @@ import { useSearchParams } from 'next/navigation';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { useCurrentBlockHeight } from '@/lib/hooks/use-current-block-height';
 import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
-import { useNetworkConstants } from '@/lib/hooks/use-network-constants';
-import { AlertTriangle, Shield, TrendingDown, Clock, Zap, AlertCircle, Lock, Hourglass, Activity, CheckCircle, TrendingUp, Minus, AlertCircle as AlertIcon, DollarSign, TrendingUp as ArrowUp } from 'lucide-react';
+
+import { AlertTriangle, Shield, TrendingDown, Clock, Zap, AlertCircle, Lock, Hourglass, Activity, CheckCircle, TrendingUp, Minus, AlertCircle as AlertIcon } from 'lucide-react';
 import { SlashMonitor } from '@/components/dashboard/slash-monitor';
 import { ChurnOutRisk } from '@/components/dashboard/churn-out-risk';
 import { NetworkSecurityMetrics } from '@/components/dashboard/network-security-metrics';
@@ -15,7 +15,7 @@ import { useState } from 'react';
 import { generatePortfolioAlerts } from '@/lib/utils/portfolio-alerts';
 import { cn } from '@/lib/utils';
 import { estimateNextChurn } from '@/lib/utils/calculations';
-import { runeToNumber, formatRuneAmount, formatCompactNumber, formatRuneFromNumber } from '@/lib/utils/formatters';
+import { runeToNumber, formatCompactNumber, formatRuneFromNumber } from '@/lib/utils/formatters';
 
 function formatRuneValue(value: number): string {
   if (!value || value <= 0) return '--';
@@ -47,8 +47,7 @@ const YIELD_GUARD_CONFIG: Record<YieldGuardFlag, { icon: React.ReactNode; color:
 };
 
 function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
-  const { data: network, isLoading: networkLoading } = useNetworkMetrics();
-  const { constants, isLoading: constantsLoading } = useNetworkConstants();
+  const { data: network } = useNetworkMetrics();
   const { currentBlockHeight } = useCurrentBlockHeight();
   
   const totalBonded = positions.reduce((sum, p) => sum + p.bondAmount, 0);
@@ -75,9 +74,6 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
   // For display
   const networkLiquidityDisplay = networkLiquidity > 0 
     ? formatRuneFromNumber(networkLiquidity) 
-    : '0';
-  const networkBondDisplay = networkBond > 0 
-    ? formatRuneFromNumber(networkBond) 
     : '0';
   
   // THORChain Incentive Pendulum:
@@ -171,7 +167,7 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
           </div>
         </div>
         <div className="text-xs text-zinc-400">
-          {networkLiquidity > 0 ? formatRuneAmount(networkLiquidityDisplay) : '--'} TVL
+          {networkLiquidity > 0 ? networkLiquidityDisplay : '--'} TVL
         </div>
       </div>
     </div>
@@ -182,8 +178,6 @@ function NodesList({ positions }: { positions: BondPosition[] }) {
   const alerts = generatePortfolioAlerts(positions);
   const sortedPositions = [...positions].sort((a, b) => getNodeSeverityScore(b) - getNodeSeverityScore(a));
   const totalBonded = positions.reduce((sum, p) => sum + p.bondAmount, 0);
-  const jailedCount = positions.filter(p => p.isJailed).length;
-  const atRiskCount = positions.filter(p => p.yieldGuardFlags && p.yieldGuardFlags.length > 0).length;
 
   if (positions.length === 0) return null;
 
@@ -315,19 +309,14 @@ function RiskKPIs({ positions }: { positions: BondPosition[] }) {
   );
 }
 
-function IncentivePendulum({ positions }: { positions: BondPosition[] }) {
-  const { data: network, isLoading: networkLoading } = useNetworkMetrics();
-  const totalBonded = positions.reduce((sum, p) => sum + p.bondAmount, 0);
+function IncentivePendulum() {
+  const { data: network } = useNetworkMetrics();
   
   const totalBondsRaw = network?.bondMetrics?.totalActiveBond || '0';
   const totalLiquidityRaw = network?.totalPooledRune || '0';
   const totalBonds = runeToNumber(totalBondsRaw);
   const totalLiquidity = runeToNumber(totalLiquidityRaw);
   const bondToPoolRatio = totalLiquidity > 0 ? totalBonds / totalLiquidity : 0;
-  
-  // For display - convert back to 1e8
-  const bondsDisplay = totalBonds > 0 ? String(Math.floor(totalBonds * 1e8)) : '0';
-  const liquidityDisplay = totalLiquidity > 0 ? String(Math.floor(totalLiquidity * 1e8)) : '0';
   
   // THORChain Incentive Pendulum:
   // - High bond-to-pool ratio (>2.5) → Node Favored (nodes earn more from bond)
@@ -362,7 +351,7 @@ function IncentivePendulum({ positions }: { positions: BondPosition[] }) {
   const nodeShare = totalLiquidity > 0 ? Math.min((totalBonds / totalLiquidity) * 50, 75) : 50;
   const lpShare = 100 - nodeShare;
 
-  if (networkLoading || !network) {
+  if (!network) {
     return (
       <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
         <div className="animate-pulse h-32 bg-zinc-200 dark:bg-zinc-800 rounded" />
@@ -456,7 +445,7 @@ export default function RiskPage() {
           <RiskKPIs positions={positions} />
         </div>
         <div>
-          <IncentivePendulum positions={positions} />
+          <IncentivePendulum />
         </div>
       </div>
 

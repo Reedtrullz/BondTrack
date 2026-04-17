@@ -37,7 +37,7 @@ function getPendulumStatus(bondToPoolRatio: number): { status: string; icon: Rea
       description: 'High bond → nodes earn more. LP yields may be lower.'
     };
   }
-  if (bondToPoolRatio <= 1.2) {
+  if (bondToPoolRatio < 1.5) {
     return {
       status: 'LP Favored',
       icon: <TrendingDown className="w-4 h-4" />,
@@ -53,7 +53,7 @@ function getPendulumStatus(bondToPoolRatio: number): { status: string; icon: Rea
 
 export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition[] }) {
   const { data: network, error, isLoading: networkLoading } = useNetworkMetrics();
-  const { constants, isLoading: constantsLoading } = useNetworkConstants();
+  const { isLoading: constantsLoading } = useNetworkConstants();
   const { data: nodes } = useAllNodes();
 
   const isLoading = networkLoading || constantsLoading;
@@ -94,7 +94,6 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
   const nodeSharePercent = secured > 0 ? Math.min((securing / secured) * 50, 75) : 50;
 
   // Block rewards (per block)
-  const blockReward = runeToNumber(network.blockRewards?.blockReward || '0');
   const bondReward = runeToNumber(network.blockRewards?.bondReward || '0');
   const poolReward = runeToNumber(network.blockRewards?.poolReward || '0');
   
