@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react';
 import type { BondPosition } from '@/lib/types/node';
 import { useWallet } from '@/lib/hooks/use-wallet';
 import { Button } from '@/components/ui/button';
-import { Wallet, Copy, CheckCircle, AlertCircle, Sparkles, Target, MinusCircle } from 'lucide-react';
 import { TransactionPreview, type TransactionPreviewData } from '@/components/wallet/transaction-preview';
 import { 
   executeBondTransaction, 
@@ -19,23 +18,49 @@ import { cn } from '@/lib/utils';
 
 type Mode = 'BOND' | 'UNBOND';
 
+function validateUnbondAmount(amount: string): { valid: boolean; error?: string } {
+  const trimmed = amount.trim();
+  if (!trimmed) {
+    return { valid: false, error: 'Amount is required' };
+  }
+
+  if (!/^(?:\d+\.\d+|\d+)$/.test(trimmed)) {
+    return { valid: false, error: 'Amount must be a number' };
+  }
+
+  const parsedAmount = parseFloat(trimmed);
+  if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    return { valid: false, error: 'Amount must be greater than 0' };
+  }
+
+  return { valid: true };
+}
+
 interface TransactionComposerProps {
   positions: BondPosition[];
   address?: string | null;
 }
 
 export function TransactionComposer({ positions, address }: TransactionComposerProps) {
+  void address;
   const searchParams = useSearchParams();
   const paramNode = searchParams?.get('node');
   const paramAmount = searchParams?.get('amount');
-  const paramAction = searchParams?.get('action') as Mode | null;
+  const paramAction = (() => {
+    switch (searchParams?.get('action')?.toLowerCase()) {
+      case 'bond':
+        return 'BOND' as Mode;
+      case 'unbond':
+        return 'UNBOND' as Mode;
+      default:
+        return null;
+    }
+  })();
   
-  const resolvedAddress = address || '';
-
   const [mode, setMode] = useState<Mode>('BOND');
   const [nodeAddress, setNodeAddress] = useState('');
   const [bondProviderAddress, setBondProviderAddress] = useState('');
-  const [nodeOperatorFee, setNodeOperatorFee] = useState('');
+  const [nodeOperatorFee] = useState('');
   const [amountToUnbond, setAmountToUnbond] = useState('0');
   const [copied, setCopied] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -53,7 +78,7 @@ export function TransactionComposer({ positions, address }: TransactionComposerP
     if (paramNode) setNodeAddress(paramNode);
     if (paramAmount) {
       if (paramAction === 'BOND') setBondProviderAddress(paramAmount);
-      else setAmountToUnbond(paramAmount);
+      else if (paramAction === 'UNBOND') setAmountToUnbond(paramAmount);
     }
   }, [paramAction, paramNode, paramAmount]);
 
@@ -78,6 +103,8 @@ export function TransactionComposer({ positions, address }: TransactionComposerP
     estimatedFee: '0.02',
     walletType: walletType || 'keplr',
   }), [mode, nodeAddress, bondProviderAddress, amountToUnbond, memo, walletType]);
+
+  const unbondAmountValidation = useMemo(() => validateUnbondAmount(amountToUnbond), [amountToUnbond]);
 
   const unbondValidation = useMemo(() => {
     if (mode === 'UNBOND' && selectedPosition) {
@@ -115,9 +142,9 @@ export function TransactionComposer({ positions, address }: TransactionComposerP
   const canSubmit = useMemo(() => {
     if (!isConnected || isNetworkMismatch) return false;
     if (mode === 'BOND') return validateBondAmount(bondProviderAddress || '0').valid;
-    if (mode === 'UNBOND') return unbondValidation.canUnbond;
+    if (mode === 'UNBOND') return Boolean(selectedPosition) && unbondValidation.canUnbond && unbondAmountValidation.valid;
     return false;
-  }, [isConnected, isNetworkMismatch, mode, bondProviderAddress, unbondValidation]);
+  }, [isConnected, isNetworkMismatch, mode, bondProviderAddress, selectedPosition, unbondValidation, unbondAmountValidation]);
 
   return (
     <div className="space-y-6">
