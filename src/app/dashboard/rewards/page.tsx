@@ -22,12 +22,16 @@ export default function RewardsPage() {
   const { price: runePrice } = useRunePrice();
   const { data: networkData } = useNetworkMetrics();
   const [mounted, setMounted] = useState(false);
+  const safePositions = positions ?? [];
+  const networkApy = networkData?.bondingAPY ? parseFloat(networkData.bondingAPY) : undefined;
+  const weightedApy = useMemo(() => {
+    if (!networkApy) return 0;
+    return calculateWeightedApy(safePositions, networkApy);
+  }, [safePositions, networkApy]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  const safePositions = positions ?? [];
 
   if (isLoading) {
     return (
@@ -45,13 +49,6 @@ export default function RewardsPage() {
       </div>
     );
   }
-
-  const networkApy = networkData?.bondingAPY ? parseFloat(networkData.bondingAPY) : undefined;
-  
-  const weightedApy = useMemo(() => {
-    if (!networkApy) return 0;
-    return calculateWeightedApy(safePositions, networkApy);
-  }, [safePositions, networkApy]);
 
   if (!mounted) {
     return <div className="p-8 flex items-center justify-center min-h-[400px]" />;
