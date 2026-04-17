@@ -24,7 +24,7 @@
 |-----------|---------|
 | `slash-monitor.tsx` | Your nodes' slash points (OK/Warning/Critical), jail countdown. Shows only your bonded nodes. |
 | `churn-out-risk.tsx` | Your nodes' rank in active set, bottom 33% flagged as at-risk. Shows only your nodes with ranking. |
-| `network-security-metrics.tsx` | **Incentive Pendulum** - pendulum status (Node/LP Favored), estimated reward split, effective security (bottom 2/3 nodes), bond-to-pool ratio. |
+| `network-security-metrics.tsx` | **Incentive Pendulum** - pendulum status (LP Favored below `1.5x`, Node Favored above `2.5x`), estimated reward split, effective security (bottom 2/3 nodes), bond-to-pool ratio. |
 | `unbond-window-tracker.tsx` | Your nodes' unbond eligibility (can unbond vs locked), next churn countdown. Shows only your nodes. |
 | `network-comparison-table.tsx` | Compare your bond positions vs network averages |
 
@@ -37,7 +37,7 @@
 | Component | Purpose |
 |-----------|---------|
 | `transaction-composer.tsx` | BOND/UNBOND memo generator with copy-to-clipboard |
-| `transaction-history.tsx` | Past BOND/UNBOND events from Midgard `/v2/actions` |
+| `transaction-history.tsx` | Past BOND/UNBOND exit events from Midgard `/v2/actions` using `txType=bond,unbond,leave` |
 
 ## CONVENTIONS
 

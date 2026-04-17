@@ -24,7 +24,7 @@ The proxies:
 2. Forward to external Midgard/THORNode APIs server-side (no CORS)
 3. Return data to frontend with CORS headers
 
-The proxy tries ninerealms first (`midgard.ninerealms.com`), then falls back to liquify (`gateway.liquify.com`).
+The proxy tries ninerealms first (`midgard.ninerealms.com`), then falls back to liquify (`gateway.liquify.com`), then `midgard.thorchain.network`.
 
 ## CONVENTIONS
 
@@ -37,6 +37,8 @@ The proxy tries ninerealms first (`midgard.ninerealms.com`), then falls back to 
 **Current block height**: Always fetch from Midgard `/v2/health` (returns `lastThorNode.height`), NOT from node `active_block_height` which can be stale by thousands of blocks.
 
 **Midgard timestamps**: All timestamps are nanosecond strings. Divide by `1e9` for seconds.
+
+**Midgard actions**: `getActions()` uses the `txType` query parameter for bond/unbond/leave history lookups. Keep `limit <= 50` because Midgard documents 50 as the maximum for `/v2/actions`.
 
 **Amount display**: When displaying amounts in UI, multiply by `1e8` before passing to `formatRuneAmount()` because the parsed value is already in RUNE units (divided by 1e8), but the formatter expects 1e8 units.
 
@@ -55,7 +57,7 @@ The proxy tries ninerealms first (`midgard.ninerealms.com`), then falls back to 
 - `getEarningsHistory(interval?, count?)` → `/v2/history/earnings`
 - `getRunePriceHistory(interval, count)` → `/v2/history/rune`
 - `getNetwork()` → `/v2/network`
-- `getActions(address, count, type?)` → `/v2/actions` — type can be 'bond', 'unstake', etc.
+- `getActions(address, limit, txType?)` → `/v2/actions` — use `txType` for `bond`, `unbond`, `leave`; reserve `type` for action categories like `swap` or `addLiquidity`
 
 ## ANTI-PATTERNS
 - Never modify `client.ts` when adding endpoints — only add to `thornode.ts` or `midgard.ts`
