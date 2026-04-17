@@ -2,8 +2,8 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { BondPosition } from '@/lib/types/node';
-import { calculatePricePnL, calculateTotalReturn, calculateOperatorFeePaid } from '@/lib/utils/calculations';
-import { formatRuneAmount, runeToNumber } from '@/lib/utils/formatters';
+import { calculatePricePnL, calculateTotalReturn } from '@/lib/utils/calculations';
+import { formatRuneAmount } from '@/lib/utils/formatters';
 import { TrendingUp, DollarSign, Percent, Wallet, Edit3, Check, X } from 'lucide-react';
 
 interface PnLDashboardProps {
@@ -45,13 +45,19 @@ export function PnLDashboard({
   const [manualInitialBond, setManualInitialBond] = useState<number | null>(null);
 
   useEffect(() => {
-    if (storageKey) {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = parseFloat(saved);
-        if (!isNaN(parsed) && parsed > 0) {
-          setManualInitialBond(parsed);
-        }
+    setManualInitialBond(null);
+    setInputValue('');
+    setIsEditing(false);
+
+    if (!storageKey) {
+      return;
+    }
+
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      const parsed = parseFloat(saved);
+      if (!isNaN(parsed) && parsed > 0) {
+        setManualInitialBond(parsed);
       }
     }
   }, [storageKey]);
@@ -97,21 +103,6 @@ export function PnLDashboard({
   const pricePnL = useMemo(() => calculatePricePnL(effectiveInitialBond, effectiveEntryPrice, currentRunePrice), [effectiveInitialBond, effectiveEntryPrice, currentRunePrice]);
   const totalReturn = useMemo(() => calculateTotalReturn(effectiveInitialBond, currentBond, effectiveEntryPrice, currentRunePrice), [effectiveInitialBond, currentBond, effectiveEntryPrice, currentRunePrice]);
   const totalReturnPercent = useMemo(() => effectiveInitialBond > 0 ? (totalReturn / initialBondValueUSD) * 100 : 0, [effectiveInitialBond, totalReturn, initialBondValueUSD]);
-
-  const totalEarnings = useMemo(() => 
-    earningsHistory?.intervals.reduce((sum, interval) => {
-      return sum + runeToNumber(interval.earnings || interval.bondingEarnings);
-    }, 0) || 0,
-    [earningsHistory]
-  );
-  
-  const avgOperatorFeeBps = useMemo(() => 
-    positions.length > 0 
-      ? positions.reduce((sum, pos) => sum + (pos.operatorFee || 1000), 0) / positions.length
-      : 1000,
-    [positions]
-  );
-  const operatorFeePaid = useMemo(() => calculateOperatorFeePaid(totalEarnings, avgOperatorFeeBps), [totalEarnings, avgOperatorFeeBps]);
 
   const bondGrowth = currentBond - effectiveInitialBond;
   const bondGrowthPercent = effectiveInitialBond > 0 ? (bondGrowth / effectiveInitialBond) * 100 : 0;
