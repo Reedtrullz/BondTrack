@@ -7,14 +7,14 @@ Create a page on dev.thorchain.no where users can view the status of their THORC
 - Total bonded RUNE
 - Weighted APY
 - Health score (0-100)
-- Slash risk (%)
+- Slash risk (fixed `0` for LP positions — LPs are not slashable like node bonds)
 - Unbond window remaining (hours)
-- Status per position (active, standby, jailed, at-risk)
+- Status per position (currently mapped from Midgard pool status: `available -> active`, `staged -> standby`)
 
 ## 3. Data Sources
 - Midgard API: `GET /v2/member/{address}` for LP positions
-- THORNode API: node health and status
-- Cosmos RPC: reward balances
+- Midgard API: `GET /v2/pools` for pool status and APY
+- Current implementation does not require THORNode or Cosmos RPC for LP summary/status mapping
 
 ## 4. UI Components
 - **LpStatusBadge**: status pill (active/standby/jailed/at-risk)
@@ -26,13 +26,13 @@ Create a page on dev.thorchain.no where users can view the status of their THORC
 1. Define types in `src/lib/types/lp.ts` (done)
 2. Create status badge component (done)
 3. Create summary card component (done)
-4. Build node list/table view (pending)
-5. Integrate Midgard fetch via SWR hook (pending)
+4. Build node list/table view (done)
+5. Integrate Midgard fetch via SWR hook (done)
 6. Add wallet auth (Keplr/XDEFI) to retrieve user addresses (pending)
-7. Make layout responsive (pending)
+7. Make layout responsive (done)
 8. Write tests (pending)
-9. QA & review (pending)
-10. Deploy to staging (pending)
+9. QA & review (done)
+10. Deploy to staging (done)
 
 ## 6. File Structure
 ```
@@ -51,6 +51,6 @@ src/
 ```
 
 ## 7. Next Actions
-- Complete node row component
-- Create SWR hook for Midgard data
-- Wire auth to fetch user's LP addresses
+- Add explicit LP-focused tests for `use-lp-positions.ts` and the LP dashboard components
+- Wire auth or address selection flows for LP-specific users
+- Expand LP health/status derivation beyond `available/staged` if Midgard exposes more pool/member state in the future
