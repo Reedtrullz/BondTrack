@@ -95,14 +95,12 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
     setInputAddress(address || '');
   }, [address]);
 
-  // Fetch all actions WITHOUT txType filter - Midgard's txType param is deprecated/unreliable
-  // Filter client-side using parseActions() which already detects bond/unbond/leave from metadata
+  // Use type= (not txType) param - txType is deprecated/unreliable
   const { data, error, isLoading } = useSWR(
     selectedAddress ? ['actions', selectedAddress] : null,
     async () => {
-      // Fetch up to 200 actions to ensure we get historical bond transactions
-      // (Midgard returns most recent first, so older bonds may be beyond limit=50)
-      const result = await getActions(selectedAddress, 200);
+      // Fetch all bond/unbond/leave types - type= works, txType= returns empty
+      const result = await getActions(selectedAddress, 50, 'bond,unbond,leave', 'type');
       return result;
     },
     { 
