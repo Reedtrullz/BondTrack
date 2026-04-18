@@ -1,68 +1,185 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { AlertTriangle, RefreshCw, Waves } from 'lucide-react';
 import { LpSummaryCard } from '../../../components/dashboard/lp-summary-card';
 import { LpNodeRow } from '../../../components/dashboard/lp-node-row';
+import { Button } from '../../../components/ui/button';
+import { ErrorBoundary } from '../../../components/ui/error-boundary';
 import { useLpPositions } from '../../../hooks/use-lp-positions';
 import { LpPosition } from '../../../lib/types/lp';
 
+interface LpStatePanelProps {
+  tone: 'empty' | 'error';
+  title: string;
+  description: string;
+  detail: string;
+  address?: string | null;
+  action?: React.ReactNode;
+}
+
+const panelToneStyles: Record<LpStatePanelProps['tone'], string> = {
+  empty: 'border-zinc-200 bg-white/90 text-zinc-600 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-300',
+  error: 'border-red-200 bg-red-50/90 text-red-700 shadow-sm dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300',
+};
+
+function LpStatePanel({ tone, title, description, detail, address, action }: LpStatePanelProps) {
+  const Icon = tone === 'error' ? AlertTriangle : Waves;
+  const iconTone = tone === 'error'
+    ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300'
+    : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300';
+
+  return (
+    <section className={`rounded-2xl border p-8 text-center ${panelToneStyles[tone]}`}>
+      <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${iconTone}`}>
+        <Icon className="h-7 w-7" />
+      </div>
+      <div className="mx-auto mt-5 max-w-2xl space-y-3">
+        <h2 className="text-2xl font-semibold text-zinc-950 dark:text-zinc-50">{title}</h2>
+        <p className="text-sm leading-6">{description}</p>
+        <p className="text-xs leading-5 text-zinc-500 dark:text-zinc-400">{detail}</p>
+      </div>
+      {address ? (
+        <div className="mx-auto mt-5 inline-flex max-w-full items-center rounded-full border border-zinc-200 bg-zinc-100/80 px-4 py-2 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-300">
+          <span className="mr-2 uppercase tracking-[0.24em] text-zinc-400 dark:text-zinc-500">Address</span>
+          <span className="truncate font-mono">{address}</span>
+        </div>
+      ) : null}
+      {action ? <div className="mt-6 flex justify-center">{action}</div> : null}
+    </section>
+  );
+}
+
+function LpLoadingState() {
+  return (
+    <div className="animate-pulse space-y-8">
+      <section className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+        <div className="h-6 w-44 rounded bg-zinc-200 dark:bg-zinc-800" />
+        <div className="mt-3 h-4 w-full max-w-xl rounded bg-zinc-200 dark:bg-zinc-800" />
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-36 rounded-xl bg-zinc-100 dark:bg-zinc-800/70" />
+          ))}
+        </div>
+      </section>
+      <section className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+        <div className="h-6 w-56 rounded bg-zinc-200 dark:bg-zinc-800" />
+        <div className="mt-6 space-y-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="h-16 rounded-xl bg-zinc-100 dark:bg-zinc-800/70" />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function LpErrorBoundaryFallback() {
+  return (
+    <LpStatePanel
+      tone="error"
+      title="LP dashboard failed to render"
+      description="The LP route hit a client-side rendering issue before the page could finish loading."
+      detail="Refresh the page to try again. If the problem persists, check another dashboard route to confirm whether the issue is route-specific or upstream."
+      action={
+        <Button onClick={() => window.location.reload()} variant="destructive">
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Reload LP page
+        </Button>
+      }
+    />
+  );
+}
+
 const DashboardContent = () => {
-  const { positions, isLoading, error } = useLpPositions();
+  const searchParams = useSearchParams();
+  const address = searchParams.get('address');
+  const { positions, isLoading, error, state, retry } = useLpPositions(address);
 
   if (isLoading) {
+    return <LpLoadingState />;
+  }
+
+  if (state === 'error' && error) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
+      <LpStatePanel
+        tone="error"
+        title="LP member data is temporarily unavailable"
+        description={error}
+        detail="This is an upstream Midgard response problem, not a confirmed “no LP positions” result. Retry the member lookup once Midgard recovers."
+        address={address}
+        action={
+          <Button onClick={() => void retry()} variant="destructive">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Try again
+          </Button>
+        }
+      />
     );
   }
 
-  if (error) {
+  if (state === 'empty') {
     return (
-      <div className="text-center text-red-500 p-12 bg-red-50 rounded-lg">
-        <p className="text-lg font-semibold">Error loading LP positions</p>
-        <p className="text-sm">{error}</p>
-      </div>
+      <LpStatePanel
+        tone="empty"
+        title="No LP positions found"
+        description="Midgard returned a successful member lookup, but there are no liquidity positions associated with this address."
+        detail="This empty state only appears after the LP member endpoint responds successfully, so it is distinct from an upstream failure."
+        address={address}
+      />
     );
   }
 
   return (
-    <div className="space-y-12">
-      <section>
-        <h2 className="text-2xl font-bold mb-6">Portfolio Overview</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="space-y-8">
+      <section className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+        <div className="flex flex-col gap-3 border-b border-zinc-200/80 pb-6 dark:border-zinc-800/80 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-500 dark:text-zinc-400">
+              LP Status
+            </p>
+            <h2 className="mt-2 text-2xl font-bold text-zinc-950 dark:text-zinc-50">Portfolio Overview</h2>
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+              Midgard returned {positions.length} liquidity {positions.length === 1 ? 'position' : 'positions'} for this address.
+            </p>
+          </div>
+          {address ? (
+            <p className="max-w-full truncate rounded-full border border-zinc-200 bg-zinc-100/80 px-4 py-2 font-mono text-xs text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-300">
+              {address}
+            </p>
+          ) : null}
+        </div>
+        <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {(positions as LpPosition[]).map((pos) => (
-            <LpSummaryCard key={pos.address} position={pos} />
+            <LpSummaryCard key={`${pos.pool}-${pos.address}`} position={pos} />
           ))}
         </div>
       </section>
 
-      <section>
-        <h2 className="text-2xl font-bold mb-6">Your Liquidity Positions</h2>
-        <div className="bg-white rounded-lg shadow overflow-hidden border border-zinc-200">
-          <table className="min-w-full divide-y divide-zinc-200">
-            <thead className="bg-zinc-50 sticky top-0">
+      <section className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-zinc-950 dark:text-zinc-50">Your Liquidity Positions</h2>
+          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+            Pool-level status, estimated yield, and health remain visible only after the LP member lookup succeeds.
+          </p>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
+          <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-800">
+            <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-950/60">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Pool</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Bonded RUNE</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">APY</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Health</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-zinc-500 uppercase tracking-wider">Action</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Pool</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Bonded RUNE</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">APY</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Health</th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Action</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-zinc-200">
-              {positions.length > 0 ? (
-                positions.map((pos: LpPosition) => (
-                  <LpNodeRow key={pos.address} position={pos} />
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
-                    No LP positions found.
-                  </td>
-                </tr>
-              )}
+            <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-900/50">
+              {positions.map((pos: LpPosition) => (
+                <LpNodeRow key={`${pos.pool}-${pos.address}`} position={pos} />
+              ))}
             </tbody>
           </table>
         </div>
@@ -74,9 +191,11 @@ const DashboardContent = () => {
 const LpDashboardPage = () => {
   return (
     <div className="container mx-auto py-10 px-4">
-      <Suspense fallback={<div className="text-center py-20">Loading LP Dashboard...</div>}>
-        <DashboardContent />
-      </Suspense>
+      <ErrorBoundary fallback={<LpErrorBoundaryFallback />}>
+        <Suspense fallback={<LpLoadingState />}>
+          <DashboardContent />
+        </Suspense>
+      </ErrorBoundary>
     </div>
   );
 };
