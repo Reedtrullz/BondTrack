@@ -136,6 +136,11 @@ export interface ActionRaw {
       memo: string;
       nodeAddress: string;
     };
+    refund?: {
+      memo: string;
+      txType: string;
+      reason?: string;
+    };
     send?: {
       memo: string;
     };
