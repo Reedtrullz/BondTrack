@@ -313,15 +313,16 @@ function RiskKPIs({ positions }: { positions: BondPosition[] }) {
 function IncentivePendulum() {
   const { data: network } = useNetworkMetrics();
   
-  const totalBondsRaw = network?.bondMetrics?.totalActiveBond || '0';
+  const totalActiveRaw = network?.bondMetrics?.totalActiveBond || '0';
+  const totalStandbyRaw = network?.bondMetrics?.totalStandbyBond || '0';
   const totalLiquidityRaw = network?.totalPooledRune || '0';
-  const totalBonds = runeToNumber(totalBondsRaw);
+  const totalBonds = runeToNumber(totalActiveRaw) + runeToNumber(totalStandbyRaw);
   const totalLiquidity = runeToNumber(totalLiquidityRaw);
   const bondToPoolRatio = totalLiquidity > 0 ? totalBonds / totalLiquidity : 0;
   
   // THORChain Incentive Pendulum:
   // - High bond-to-pool ratio (>2.5) → Node Favored (nodes earn more from bond)
-  // - Low bond-to-pool ratio (<1.5) → LP Favored (liquidity earns more)
+  // - Low bond-to-pool ratio (<1.5) → Node Incentivized (rewards shift to nodes to encourage bonding)
   let pendulumStatus: { status: string; icon: React.ReactNode; color: string; bg: string; desc: string };
   if (bondToPoolRatio > 2.5) {
     pendulumStatus = { 
@@ -329,15 +330,15 @@ function IncentivePendulum() {
       icon: <TrendingUp className="w-4 h-4" />, 
       color: "text-emerald-600 dark:text-emerald-400",
       bg: "bg-emerald-50 dark:bg-emerald-900/20",
-      desc: "High bond → nodes earn more. LP yields may be lower."
+      desc: "Sufficient bond → nodes earn more. LP yields reduced."
     };
   } else if (bondToPoolRatio < 1.5) {
     pendulumStatus = { 
-      status: "LP Favored", 
+      status: "Node Incentivized", 
       icon: <TrendingDown className="w-4 h-4" />, 
       color: "text-amber-600 dark:text-amber-400",
       bg: "bg-amber-50 dark:bg-amber-900/20",
-      desc: "More liquidity than bond → LPs earn more. Consider bonding more?"
+      desc: "Less bond than liquidity → rewards shift to nodes to encourage bonding."
     };
   } else {
     pendulumStatus = { 
