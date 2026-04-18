@@ -8,7 +8,6 @@ import { useRunePrice } from '@/lib/hooks/use-rune-price';
 import { PnLDashboard } from '@/components/dashboard/pnl-dashboard';
 import { PersonalFeeAudit } from '@/components/dashboard/fee-impact-tracker';
 import { AutoCompoundChart } from '@/components/dashboard/auto-compound-chart';
-import { APYChart } from '@/components/dashboard/apy-chart';
 import { PriceChart } from '@/components/dashboard/price-chart';
 import { useMemo, useState, useEffect } from 'react';
 import { TrendingUp, Zap } from 'lucide-react';
@@ -148,14 +147,7 @@ export default function RewardsPage() {
             Market Context
           </h3>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <APYChart />
-          </div>
-          <div className="lg:col-span-1">
-            <PriceChart />
-          </div>
-        </div>
+        <PriceChart />
       </section>
     </div>
   );
