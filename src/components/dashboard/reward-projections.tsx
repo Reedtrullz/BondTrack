@@ -74,10 +74,9 @@ function calculateProjections(
   });
 }
 
-function formatProjectionAmount(amount: number, timeframe: string): string {
+function formatProjectionAmount(amount: number, _timeframe: string): string {
   if (amount === 0) return '0.00';
-  const decimals = timeframe === 'Daily' ? 8 : timeframe === 'Weekly' ? 6 : 4;
-  return parseFloat(amount.toFixed(decimals)).toString();
+  return parseFloat(amount.toFixed(2)).toString();
 }
 
 export function RewardProjections({
