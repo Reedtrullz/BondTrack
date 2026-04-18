@@ -4,6 +4,8 @@
 
 > **Quick Summary**: Fix data quality issues, add search/filter/collapse features, improve mobile experience, and add polish enhancements to the Changelogs page.
 
+> **Current deployed status note**: On `https://dev.thorchain.no`, year quick-nav works, but search input, filter pills, and entry-button interactions still show broken behavior and remain in the active remediation scope.
+
 > **Deliverables**:
 > - Deduplicated/cleaned changelog data with consistent IDs
 > - Search bar with real-time filtering
@@ -93,6 +95,12 @@ Every task includes agent-executed QA scenarios. Verification via Playwright:
 - Test filter: click "Bug Fix" pill, verify only bugs show
 - Test collapse: click entry header, verify content hides
 - Test mobile: resize to 375px, verify layout works
+
+Do not consider the changelog work complete until the deployed dev site confirms:
+- search input keeps typed value and updates URL/state
+- filter pills change active state and URL/state
+- year pills still scroll correctly
+- every visible entry button has a meaningful visible interaction outcome
 
 ---
 
