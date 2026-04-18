@@ -64,10 +64,11 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
   const statusText = healthScore >= 80 ? "Healthy" : healthScore >= 50 ? "Needs Attention" : "At Risk";
   const statusColor = healthScore >= 80 ? "text-emerald-600 dark:text-emerald-400" : healthScore >= 50 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400";
 
-  // Use NETWORK bonds for pendulum
+  // Use NETWORK bonds for pendulum (active + standby)
   const networkBondRaw = network?.bondMetrics?.totalActiveBond || '0';
+  const networkStandbyRaw = network?.bondMetrics?.totalStandbyBond || '0';
   const networkLiquidityRaw = network?.totalPooledRune || '0';
-  const networkBond = runeToNumber(networkBondRaw);
+  const networkBond = runeToNumber(networkBondRaw) + runeToNumber(networkStandbyRaw);
   const networkLiquidity = runeToNumber(networkLiquidityRaw);
   const bondToPoolRatio = networkLiquidity > 0 ? networkBond / networkLiquidity : 0;
   
@@ -78,12 +79,12 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
   
   // THORChain Incentive Pendulum:
   // - High bond-to-pool ratio (>2.5) → Node Favored (nodes earn more from bond)
-  // - Low bond-to-pool ratio (<1.5) → LP Favored (liquidity earns more)
+  // - Low bond-to-pool ratio (<1.5) → Node Incentivized (rewards shift to nodes to encourage bonding)
   let pendulumStatus: { status: string; icon: React.ReactNode; color: string };
   if (bondToPoolRatio > 2.5) {
     pendulumStatus = { status: "Node Favored", icon: <TrendingUp className="w-3 h-3" />, color: "text-emerald-600 dark:text-emerald-400" };
   } else if (bondToPoolRatio < 1.5) {
-    pendulumStatus = { status: "LP Favored", icon: <TrendingDown className="w-3 h-3" />, color: "text-amber-600 dark:text-amber-400" };
+    pendulumStatus = { status: "Node Incentivized", icon: <TrendingDown className="w-3 h-3" />, color: "text-amber-600 dark:text-amber-400" };
   } else {
     pendulumStatus = { status: "Balanced", icon: <Minus className="w-3 h-3" />, color: "text-zinc-500" };
   }
