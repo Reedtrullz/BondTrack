@@ -32,15 +32,14 @@ function formatPrice(value: number): string {
   })}`;
 }
 
-function parsePriceData(raw: RunePriceHistoryRaw): PriceDataPoint[] {
-  return raw.intervals.map((interval) => {
-    const date = new Date(Number(interval.startTime) * 1000);
+function parsePriceData(raw: RunePriceHistoryRaw, isHourly: boolean): PriceDataPoint[] {
+  return raw.intervals.map((item) => {
+    const date = new Date(Number(item.startTime) * 1000);
     return {
-      date: date.toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-      }),
-      price: Number(interval.runePriceUSD),
+      date: isHourly
+        ? date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+        : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      price: Number(item.runePriceUSD),
     };
   });
 }
@@ -83,8 +82,9 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
       try {
         const apiInterval = interval === 'day' ? 'hour' : (interval === 'week' ? 'day' : (interval === 'month' ? 'day' : 'day'));
         const count = interval === 'day' ? 24 : interval === 'week' ? 7 : interval === 'month' ? 30 : 365;
+        const isHourly = interval === 'day';
         const raw = await getRunePriceHistory(apiInterval, count);
-        setData(parsePriceData(raw));
+        setData(parsePriceData(raw, isHourly));
       } catch (err) {
         setError('Failed to load price data');
         console.error(err);
