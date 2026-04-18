@@ -83,6 +83,22 @@ describe('ChangelogsPage', () => {
     });
   });
 
+  it('keeps the clicked filter active until search params catch up', async () => {
+    render(<ChangelogsPage />);
+
+    const allButton = screen.getByRole('button', { name: /all/i });
+    const bugButton = screen.getByRole('button', { name: /bug/i });
+
+    fireEvent.click(bugButton);
+
+    await waitFor(() => {
+      expect(mocks.replace).toHaveBeenLastCalledWith('?type=bug', { scroll: false });
+    });
+
+    expect(allButton.style.backgroundColor).not.toBe('rgb(0, 204, 255)');
+    expect(bugButton.style.backgroundColor).toBe('rgb(0, 204, 255)');
+  });
+
   it('updates the active filter styling when URL changes', async () => {
     const { rerender } = render(<ChangelogsPage />);
 

@@ -295,7 +295,6 @@ export default function ChangelogsPage() {
 
     setSearchQuery(nextSearchQuery);
     setTypeFilter(nextTypeFilter);
-    lastSyncedUrlRef.current = nextUrl;
     router.replace(nextUrl, { scroll: false });
   }, [router]);
 
@@ -303,7 +302,6 @@ export default function ChangelogsPage() {
     const nextUrl = buildChangelogQuery(nextSearchQuery, typeFilter);
 
     setSearchQuery(nextSearchQuery);
-    lastSyncedUrlRef.current = nextUrl;
     router.replace(nextUrl, { scroll: false });
   }, [router, typeFilter]);
 
@@ -311,7 +309,6 @@ export default function ChangelogsPage() {
     const nextUrl = buildChangelogQuery(searchQuery, nextTypeFilter);
 
     setTypeFilter(nextTypeFilter);
-    lastSyncedUrlRef.current = nextUrl;
     router.replace(nextUrl, { scroll: false });
   }, [router, searchQuery]);
 
@@ -344,7 +341,6 @@ export default function ChangelogsPage() {
 
           setSearchQuery(nextSearchQuery);
           setTypeFilter(nextTypeFilter);
-          lastSyncedUrlRef.current = nextUrl;
           router.replace(nextUrl, { scroll: false });
         }
       }
