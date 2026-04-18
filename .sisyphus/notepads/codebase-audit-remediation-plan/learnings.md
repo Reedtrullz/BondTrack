@@ -1,0 +1,11 @@
+
+- Canonical contract split: URL `action` values stay lowercase (`bond` / `unbond`), while composer internals use uppercase `Mode` values (`BOND` / `UNBOND`).
+- UNBOND submit gating should combine node eligibility with amount validity; the amount rule is simple UI validation (`trim` + numeric + `> 0`) and stays local to the composer.
+- Midgard `/v2/actions` uses `txType` for bond/unbond/leave history lookups; `type` is reserved for higher-level action categories.
+- `OptimalBondD` and `node.total_bond` must be compared in the same unit space; for Yield Guard, keep the comparison raw-vs-raw inside `use-bond-positions.ts` so the derived flag stays consistent with THORNode's 1e8-unit bond values.
+- Route-driven transaction history state must mirror into both `selectedAddress` and `inputAddress`, otherwise dashboard navigation can keep showing and fetching the previous address after a prop change.
+- Route-driven manual-baseline state must clear the in-memory value before reading `localStorage`, otherwise a previous address can leak its `manualInitialBond` into the next address when the storage key changes.
+- Route pages with loading/empty/data branches still need every hook declared before the first early return; moving derived `useMemo` work above the guards prevents hook-order crashes during state transitions.
+- Changelog expanded state must distinguish "no saved preference" from a saved empty array; `[]` should stay collapsed instead of being treated like an uninitialized state.
+- Churn-out-risk tests are more stable when they mirror the component's exact truncation (`slice(0, 12)` + `slice(-6)`) and query lucide SVGs via selectors instead of alt text.
+- Timeout-based UI tests should reset fake timers back to a known epoch before each case; otherwise previous elapsed time can leak into the next assertion.
