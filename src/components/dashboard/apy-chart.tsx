@@ -102,18 +102,8 @@ export function APYChart({ interval = 'year', count = 365 }: APYChartProps) {
 
   return (
     <div className="p-6 rounded-2xl bg-transparent border border-transparent shadow-none">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">Estimated Network APY</h3>
-          <p className="text-sm text-zinc-500">Annualized 1Y Trend</p>
-        </div>
-        
-        {currentApy !== null && (
-          <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px] font-bold uppercase">
-            <TrendingUp className="w-3 h-3" />
-            <span>{formatAPY(currentApy)}</span>
-          </div>
-        )}
+      <div className="mb-6">
+        <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Earnings History</h3>
       </div>
 
       {loading ? (
