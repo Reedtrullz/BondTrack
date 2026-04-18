@@ -5,7 +5,6 @@ import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { runeToNumber } from '@/lib/utils/formatters';
 import { ArrowUp, ArrowDown, Minus } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import React from 'react';
 
 interface NetworkAverages {
@@ -15,28 +14,15 @@ interface NetworkAverages {
   activeNodeCount: number;
 }
 
-function MetricRowMobile({ label, yourValue, avgValue, indicator }: { label: string; yourValue: string; avgValue: string; indicator: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <div className="text-xs text-zinc-500">{label}</div>
-      <div className="flex items-center justify-between text-sm">
-        <span className="font-mono text-zinc-900 dark:text-zinc-100">{yourValue}</span>
-        <span className="font-mono text-zinc-500 text-xs">{avgValue}</span>
-      </div>
-      <div>{indicator}</div>
-    </div>
-  );
-}
-
 function ComparisonIndicator({ userValue, avgValue, format }: { userValue: number; avgValue: number; format: (v: number) => string }) {
   const diff = userValue - avgValue;
   const percentDiff = avgValue !== 0 ? ((diff / avgValue) * 100) : 0;
 
-  if (Math.abs(percentDiff) < 1) {
+  if (diff === 0) {
     return (
       <span className="inline-flex items-center gap-1 text-zinc-500 text-xs">
         <Minus className="w-3 h-3" />
-        ~{format(avgValue)}
+        {format(0)} (0.0%)
       </span>
     );
   }
@@ -48,7 +34,7 @@ function ComparisonIndicator({ userValue, avgValue, format }: { userValue: numbe
   return (
     <span className={`inline-flex items-center gap-1 text-xs font-medium ${color}`}>
       <Icon className="w-3 h-3" />
-      {format(userValue)} ({isAbove ? '+' : ''}{percentDiff.toFixed(1)}%)
+      {format(diff)} ({isAbove ? '+' : ''}{percentDiff.toFixed(1)}%)
     </span>
   );
 }
@@ -77,8 +63,6 @@ export function NetworkComparisonTable({ address }: { address: string | null }) 
   if (!networkAverages || positions.length === 0) return null;
 
   const formatRune = (v: number) => v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const formatSlash = (v: number) => v.toFixed(1);
-  const formatFee = (v: number) => `${(v / 100).toFixed(2)}%`;
 
   return (
     <div className="space-y-4">
@@ -105,11 +89,14 @@ export function NetworkComparisonTable({ address }: { address: string | null }) 
                   </td>
                 </tr>
                 <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">Bond Amount</td>
-                  <td className="px-4 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100">{formatRune(pos.bondAmount)} RUNE</td>
+                  <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">Node Total Bond</td>
+                  <td className="px-4 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100">
+                    <div>{formatRune(pos.totalBond)} RUNE</div>
+                    <div className="text-xs text-zinc-500">Your bond: {formatRune(pos.bondAmount)} RUNE</div>
+                  </td>
                   <td className="px-4 py-3 text-right font-mono text-zinc-500">{formatRune(networkAverages.avgBond)} RUNE</td>
                   <td className="px-4 py-3 text-right">
-                    <ComparisonIndicator userValue={pos.bondAmount} avgValue={networkAverages.avgBond} format={(v) => `${formatRune(v)} RUNE`} />
+                    <ComparisonIndicator userValue={pos.totalBond} avgValue={networkAverages.avgBond} format={(v) => `${formatRune(v)} RUNE`} />
                   </td>
                 </tr>
               </React.Fragment>
