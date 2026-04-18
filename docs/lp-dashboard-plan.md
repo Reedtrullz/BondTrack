@@ -16,6 +16,11 @@ Create a page on dev.thorchain.no where users can view the status of their THORC
 - Midgard API: `GET /v2/pools` for pool status and APY
 - Current implementation does not require THORNode or Cosmos RPC for LP summary/status mapping
 
+**Live QA note**: the deployed dev site currently shows that `/v2/member/{address}` can fail for real addresses. The LP dashboard must distinguish:
+- successful LP data load
+- valid empty/no-position state
+- upstream member lookup failure with an explicit degraded/error state
+
 ## 4. UI Components
 - **LpStatusBadge**: status pill (active/standby/jailed/at-risk)
 - **LpSummaryCard**: per-pool card with key metrics
@@ -54,3 +59,5 @@ src/
 - Add explicit LP-focused tests for `use-lp-positions.ts` and the LP dashboard components
 - Wire auth or address selection flows for LP-specific users
 - Expand LP health/status derivation beyond `available/staged` if Midgard exposes more pool/member state in the future
+- Fix the current dev-site degraded-state gap so member lookup failures do not leave users on a partial shell-only route
+- Re-test the LP route on `https://dev.thorchain.no` after each change until success/empty/error states are all confirmed
