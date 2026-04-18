@@ -77,16 +77,17 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
     ? formatRuneFromNumber(networkLiquidity) 
     : '0';
   
-  // THORChain Incentive Pendulum:
-  // - High bond-to-pool ratio (>2.5) → Node Favored (nodes earn more from bond)
-  // - Low bond-to-pool ratio (<1.5) → Node Incentivized (rewards shift to nodes to encourage bonding)
+  // THORChain Incentive Pendulum status:
+  // - >2.5x: Well Secured, 1.5-2.5x: Healthy, 1.0-1.5x: Building, <1.0x: Under-secured
   let pendulumStatus: { status: string; icon: React.ReactNode; color: string };
   if (bondToPoolRatio > 2.5) {
-    pendulumStatus = { status: "Node Favored", icon: <TrendingUp className="w-3 h-3" />, color: "text-emerald-600 dark:text-emerald-400" };
-  } else if (bondToPoolRatio < 1.5) {
-    pendulumStatus = { status: "Node Incentivized", icon: <TrendingDown className="w-3 h-3" />, color: "text-amber-600 dark:text-amber-400" };
+    pendulumStatus = { status: "Well Secured", icon: <TrendingUp className="w-3 h-3" />, color: "text-emerald-600 dark:text-emerald-400" };
+  } else if (bondToPoolRatio >= 1.5) {
+    pendulumStatus = { status: "Healthy", icon: <Minus className="w-3 h-3" />, color: "text-emerald-600 dark:text-emerald-400" };
+  } else if (bondToPoolRatio >= 1.0) {
+    pendulumStatus = { status: "Building", icon: <TrendingDown className="w-3 h-3" />, color: "text-amber-600 dark:text-amber-400" };
   } else {
-    pendulumStatus = { status: "Balanced", icon: <Minus className="w-3 h-3" />, color: "text-zinc-500" };
+    pendulumStatus = { status: "Under-secured", icon: <TrendingDown className="w-3 h-3" />, color: "text-red-600 dark:text-red-400" };
   }
 
   const nextChurn = currentBlockHeight ? estimateNextChurn(currentBlockHeight) : null;
@@ -321,32 +322,42 @@ function IncentivePendulum() {
   const bondToPoolRatio = totalLiquidity > 0 ? totalBonds / totalLiquidity : 0;
   
   // THORChain Incentive Pendulum:
-  // - High bond-to-pool ratio (>2.5) → Node Favored (nodes earn more from bond)
-  // - Low bond-to-pool ratio (<1.5) → Node Incentivized (rewards shift to nodes to encourage bonding)
+  // - >2.5x: Well Secured (nodes earn more)
+  // - 1.5-2.5x: Healthy (balanced)
+  // - 1.0-1.5x: Building (bond > liquidity but needs more)
+  // - <1.0x: Under-secured (liquidity > bond)
   let pendulumStatus: { status: string; icon: React.ReactNode; color: string; bg: string; desc: string };
   if (bondToPoolRatio > 2.5) {
     pendulumStatus = { 
-      status: "Node Favored", 
+      status: "Well Secured", 
       icon: <TrendingUp className="w-4 h-4" />, 
       color: "text-emerald-600 dark:text-emerald-400",
       bg: "bg-emerald-50 dark:bg-emerald-900/20",
-      desc: "Sufficient bond → nodes earn more. LP yields reduced."
+      desc: "Bond exceeds 2.5x liquidity. Node rewards maximized, LP yields reduced."
     };
-  } else if (bondToPoolRatio < 1.5) {
+  } else if (bondToPoolRatio >= 1.5) {
     pendulumStatus = { 
-      status: "Node Incentivized", 
+      status: "Healthy", 
+      icon: <Minus className="w-4 h-4" />, 
+      color: "text-emerald-600 dark:text-emerald-400",
+      bg: "bg-emerald-50 dark:bg-emerald-900/20",
+      desc: "Bond 1.5-2x liquidity. Balanced reward distribution."
+    };
+  } else if (bondToPoolRatio >= 1.0) {
+    pendulumStatus = { 
+      status: "Building", 
       icon: <TrendingDown className="w-4 h-4" />, 
       color: "text-amber-600 dark:text-amber-400",
       bg: "bg-amber-50 dark:bg-amber-900/20",
-      desc: "Less bond than liquidity → rewards shift to nodes to encourage bonding."
+      desc: "Bond > liquidity but below target. More bonding needed for full security."
     };
   } else {
     pendulumStatus = { 
-      status: "Balanced", 
-      icon: <Minus className="w-4 h-4" />, 
-      color: "text-zinc-600 dark:text-zinc-400",
-      bg: "bg-zinc-50 dark:bg-zinc-900",
-      desc: "Near optimal 2:1 ratio. Fair split between nodes and LPs."
+      status: "Under-secured", 
+      icon: <TrendingDown className="w-4 h-4" />, 
+      color: "text-red-600 dark:text-red-400",
+      bg: "bg-red-50 dark:bg-red-900/20",
+      desc: "Liquidity exceeds bond. Network shifts rewards to nodes to encourage bonding."
     };
   }
 

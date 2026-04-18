@@ -8,8 +8,8 @@ import type { BondPosition } from '@/lib/types/node';
 import { Shield, Lock, Activity, TrendingUp, TrendingDown, Minus, Wallet, Users, Zap, Coins, Clock } from 'lucide-react';
 
 function calculateNetworkHealth(bondToPoolRatio: number): 'healthy' | 'warning' | 'critical' {
-  if (bondToPoolRatio >= 1.5 && bondToPoolRatio <= 3) return 'healthy';
-  if (bondToPoolRatio >= 1 && bondToPoolRatio < 1.5) return 'warning';
+  if (bondToPoolRatio >= 1.5) return 'healthy';
+  if (bondToPoolRatio >= 1.0) return 'warning';
   return 'critical';
 }
 
@@ -32,22 +32,29 @@ function getHealthBgColor(status: 'healthy' | 'warning' | 'critical'): string {
 function getPendulumStatus(bondToPoolRatio: number): { status: string; icon: React.ReactNode; description: string } {
   if (bondToPoolRatio >= 2.5) {
     return {
-      status: 'Node Favored',
+      status: 'Well Secured',
       icon: <TrendingUp className="w-4 h-4" />,
-      description: 'Sufficient bond → nodes earn more. LP yields reduced.'
+      description: 'Bond exceeds 2.5x liquidity. Node rewards maximized, LP yields reduced.'
     };
   }
-  if (bondToPoolRatio < 1.5) {
+  if (bondToPoolRatio >= 1.5) {
     return {
-      status: 'Node Incentivized',
+      status: 'Healthy',
+      icon: <Minus className="w-4 h-4" />,
+      description: 'Bond 1.5-2x liquidity. Balanced reward distribution.'
+    };
+  }
+  if (bondToPoolRatio >= 1.0) {
+    return {
+      status: 'Building',
       icon: <TrendingDown className="w-4 h-4" />,
-      description: 'Less bond than liquidity → rewards shift to nodes to encourage bonding.'
+      description: 'Bond > liquidity but below target. More bonding needed for full security.'
     };
   }
   return {
-    status: 'Balanced',
-    icon: <Minus className="w-4 h-4" />,
-    description: 'Near equilibrium (~2x). Rewards split fairly between nodes and LPs.'
+    status: 'Under-secured',
+    icon: <TrendingDown className="w-4 h-4" />,
+    description: 'Liquidity exceeds bond. Network shifts rewards to nodes to encourage bonding.'
   };
 }
 
