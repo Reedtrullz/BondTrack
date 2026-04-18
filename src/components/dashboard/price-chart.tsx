@@ -165,10 +165,11 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#71717a', fontSize: 10 }}
-              tickFormatter={(value) => `$${value.toFixed(0)}`}
+              tickFormatter={(value) => `$${value.toFixed(2)}`}
               dx={-5}
-              width={40}
-              domain={['dataMin - 0.1', 'dataMax + 0.1']}
+              width={55}
+              domain={['dataMin - 0.05', 'dataMax + 0.05']}
+              interval="preserveStartEnd"
             />
             <Tooltip content={<CustomTooltip />} />
             <Area
