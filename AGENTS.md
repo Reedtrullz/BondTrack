@@ -135,7 +135,7 @@ thornode-watcher/
 
 **API client**: `src/lib/api/client.ts` provides `fetchThornode<T>()` and `fetchMidgard<T>()`. Next.js `fetch` with `next: { revalidate: 60 }` for caching. All calls go through server-side proxy routes to bypass CORS.
 
-**Endpoints**: Default to ninerealms (`midgard.ninerealms.com`) with liquify fallback and `midgard.thorchain.network` as the final Midgard fallback. Override via `NEXT_PUBLIC_MIDGARD_API`, `NEXT_PUBLIC_THORNODE_API`, and related fallback env vars.
+**Endpoints**: Default to liquify (`gateway.liquify.com`) with `midgard.thorchain.network` as fallback. Override via `NEXT_PUBLIC_MIDGARD_API`, `NEXT_PUBLIC_THORNODE_API`, and related fallback env vars.
 
 **Dark mode**: Uses next-themes with `attribute="class"`. All components use `dark:` Tailwind variants.
 

@@ -24,7 +24,7 @@ The proxies:
 2. Forward to external Midgard/THORNode APIs server-side (no CORS)
 3. Return data to frontend with CORS headers
 
-The proxy tries ninerealms first (`midgard.ninerealms.com`), then falls back to liquify (`gateway.liquify.com`), then `midgard.thorchain.network`.
+The proxy tries liquify first (`gateway.liquify.com`), then falls back to `midgard.thorchain.network`.
 
 ## CONVENTIONS
 

@@ -74,9 +74,9 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `NEXT_PUBLIC_THORNODE_API` | THORNode API endpoint | `https://midgard.ninerealms.com` |
-| `NEXT_PUBLIC_MIDGARD_API` | Midgard API endpoint | `https://midgard.ninerealms.com` |
-| `NEXT_PUBLIC_MIDGARD_FALLBACK` | Secondary Midgard fallback | `https://gateway.liquify.com/chain/thorchain_midgard` |
+| `NEXT_PUBLIC_THORNODE_API` | THORNode API endpoint | `https://gateway.liquify.com/chain/thorchain_api` |
+| `NEXT_PUBLIC_MIDGARD_API` | Midgard API endpoint | `https://gateway.liquify.com/chain/thorchain_midgard` |
+| `NEXT_PUBLIC_MIDGARD_FALLBACK` | Secondary Midgard fallback | `https://midgard.thorchain.network` |
 | `NEXT_PUBLIC_THORCHAIN_RPC` | THORChain RPC | `https://rpc.thorchain.info` |
 
 ## Project Structure
@@ -107,7 +107,7 @@ src/
 
 External Midgard/THORNode APIs block browser requests due to CORS. The app uses server-side proxy routes:
 
-- `/api/midgard/*` → proxies to `midgard.ninerealms.com` (falls back to liquify, then `midgard.thorchain.network`)
+- `/api/midgard/*` → proxies to `gateway.liquify.com` (falls back to `midgard.thorchain.network`)
 - `/api/thorchain/*` → proxies to `gateway.liquify.com/chain/thorchain_api`
 
 All API calls from frontend go through these proxies, bypassing browser CORS restrictions.

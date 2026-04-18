@@ -1,9 +1,9 @@
 export const ENDPOINTS = {
-  thornode: process.env.NEXT_PUBLIC_THORNODE_API || 'https://midgard.ninerealms.com',
-  midgard: process.env.NEXT_PUBLIC_MIDGARD_API || 'https://midgard.ninerealms.com',
+  thornode: process.env.NEXT_PUBLIC_THORNODE_API || 'https://gateway.liquify.com/chain/thorchain_api',
+  midgard: process.env.NEXT_PUBLIC_MIDGARD_API || 'https://gateway.liquify.com/chain/thorchain_midgard',
   rpc: process.env.NEXT_PUBLIC_THORCHAIN_RPC || 'https://rpc.thorchain.info',
   track: process.env.NEXT_PUBLIC_TRACK_API || 'https://track.thorchain.org/',
-  fallbackMidgard: process.env.NEXT_PUBLIC_MIDGARD_FALLBACK || 'https://gateway.liquify.com/chain/thorchain_midgard',
+  fallbackMidgard: process.env.NEXT_PUBLIC_MIDGARD_FALLBACK || 'https://midgard.thorchain.network',
 } as const;
 
 export const NETWORK = {
