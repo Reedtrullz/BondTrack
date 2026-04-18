@@ -18,6 +18,21 @@ const FILTER_OPTIONS: { value: FilterType; label: string; icon: React.ReactNode 
 
 const STORAGE_KEY = 'changelogs-expanded';
 
+function buildChangelogQuery(searchQuery: string, typeFilter: FilterType): string {
+  const params = new URLSearchParams();
+
+  if (searchQuery.trim()) {
+    params.set('q', searchQuery);
+  }
+
+  if (typeFilter !== 'all') {
+    params.set('type', typeFilter);
+  }
+
+  const queryString = params.toString();
+  return queryString ? `?${queryString}` : '?' ;
+}
+
 function parseTypeFilter(value: string | null): FilterType {
   return FILTER_OPTIONS.some(option => option.value === value) ? (value as FilterType) : 'all';
 }
@@ -133,6 +148,14 @@ export default function ChangelogsPage() {
 
   const [searchQuery, setSearchQuery] = useState(urlSearchQuery);
   const [typeFilter, setTypeFilter] = useState<FilterType>(urlTypeFilter);
+  const [hasResolvedExpandedPreference, setHasResolvedExpandedPreference] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(STORAGE_KEY) !== null;
+    }
+
+    return false;
+  });
+  const lastSyncedUrlRef = useRef(buildChangelogQuery(urlSearchQuery, urlTypeFilter));
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
     if (typeof window !== 'undefined') {
@@ -147,15 +170,50 @@ export default function ChangelogsPage() {
     }
     return new Set();
   });
-  const [hasResolvedExpandedPreference, setHasResolvedExpandedPreference] = useState(() => {
+  const [expandedEntryIds, setExpandedEntryIds] = useState<Record<string, Set<string>>>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem(STORAGE_KEY) !== null;
+      const saved = localStorage.getItem(`${STORAGE_KEY}-entries`);
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          return {};
+        }
+      }
     }
-
-    return false;
+    return {};
   });
 
+  const toggleEntryExpand = useCallback((changelogId: string, entryIndex: number) => {
+    setExpandedEntryIds(prev => {
+      const changelogEntries = prev[changelogId] || new Set();
+      const nextEntries = new Set(changelogEntries);
+
+      if (nextEntries.has(String(entryIndex))) {
+        nextEntries.delete(String(entryIndex));
+      } else {
+        nextEntries.add(String(entryIndex));
+      }
+
+      const next = { ...prev, [changelogId]: nextEntries };
+
+      if (typeof window !== 'undefined' && hasResolvedExpandedPreference) {
+        localStorage.setItem(`${STORAGE_KEY}-entries`, JSON.stringify(next));
+      }
+
+      return next;
+    });
+  }, [hasResolvedExpandedPreference]);
+
   useEffect(() => {
+    const nextUrl = buildChangelogQuery(urlSearchQuery, urlTypeFilter);
+
+    if (nextUrl === lastSyncedUrlRef.current) {
+      return;
+    }
+
+    lastSyncedUrlRef.current = nextUrl;
+
     if (searchQuery !== urlSearchQuery) {
       setSearchQuery(urlSearchQuery);
     }
@@ -164,39 +222,6 @@ export default function ChangelogsPage() {
       setTypeFilter(urlTypeFilter);
     }
   }, [searchQuery, typeFilter, urlSearchQuery, urlTypeFilter]);
-
-  useEffect(() => {
-    const params = new URLSearchParams();
-    const currentParams = new URLSearchParams(searchParams.toString());
-    let shouldReplace = false;
-
-    if (searchQuery) {
-      params.set('q', searchQuery);
-      if (currentParams.get('q') !== searchQuery) {
-        shouldReplace = true;
-      }
-    } else if (currentParams.has('q')) {
-      shouldReplace = true;
-    }
-
-    if (typeFilter !== 'all') {
-      params.set('type', typeFilter);
-      if (currentParams.get('type') !== typeFilter) {
-        shouldReplace = true;
-      }
-    } else if (currentParams.has('type')) {
-      shouldReplace = true;
-    }
-
-    if (!shouldReplace) {
-      return;
-    }
-
-    const queryString = params.toString();
-    const newUrl = queryString ? `?${queryString}` : '/dashboard/changelogs';
-
-    router.replace(newUrl, { scroll: false });
-  }, [searchQuery, typeFilter, router, searchParams]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && hasResolvedExpandedPreference) {
@@ -212,26 +237,6 @@ export default function ChangelogsPage() {
     setExpandedIds(new Set(changelogs.map(c => c.id)));
     setHasResolvedExpandedPreference(true);
   }, [changelogs, hasResolvedExpandedPreference]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '/' && document.activeElement !== searchInputRef.current) {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-      }
-      if (e.key === 'Escape') {
-        if (document.activeElement === searchInputRef.current) {
-          searchInputRef.current?.blur();
-        }
-        if (searchQuery || typeFilter !== 'all') {
-          clearFilters();
-        }
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchQuery, typeFilter]);
 
   const years = useMemo(() => extractYears(changelogs), [changelogs]);
   
@@ -284,9 +289,70 @@ export default function ChangelogsPage() {
   }, []);
   
   const clearFilters = useCallback(() => {
-    setSearchQuery('');
-    setTypeFilter('all');
-  }, []);
+    const nextSearchQuery = '';
+    const nextTypeFilter: FilterType = 'all';
+    const nextUrl = buildChangelogQuery(nextSearchQuery, nextTypeFilter);
+
+    setSearchQuery(nextSearchQuery);
+    setTypeFilter(nextTypeFilter);
+    lastSyncedUrlRef.current = nextUrl;
+    router.replace(nextUrl, { scroll: false });
+  }, [router]);
+
+  const updateSearchQuery = useCallback((nextSearchQuery: string) => {
+    const nextUrl = buildChangelogQuery(nextSearchQuery, typeFilter);
+
+    setSearchQuery(nextSearchQuery);
+    lastSyncedUrlRef.current = nextUrl;
+    router.replace(nextUrl, { scroll: false });
+  }, [router, typeFilter]);
+
+  const updateTypeFilter = useCallback((nextTypeFilter: FilterType) => {
+    const nextUrl = buildChangelogQuery(searchQuery, nextTypeFilter);
+
+    setTypeFilter(nextTypeFilter);
+    lastSyncedUrlRef.current = nextUrl;
+    router.replace(nextUrl, { scroll: false });
+  }, [router, searchQuery]);
+
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const currentUrl = buildChangelogQuery(searchQuery, typeFilter);
+      if (currentUrl !== lastSyncedUrlRef.current) {
+        lastSyncedUrlRef.current = currentUrl;
+        router.replace(currentUrl, { scroll: false });
+      }
+    };
+
+    handleUrlChange();
+  }, [searchQuery, typeFilter, router]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '/' && document.activeElement !== searchInputRef.current) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      if (e.key === 'Escape') {
+        if (document.activeElement === searchInputRef.current) {
+          searchInputRef.current?.blur();
+        }
+        if (searchQuery || typeFilter !== 'all') {
+          const nextSearchQuery = '';
+          const nextTypeFilter: FilterType = 'all';
+          const nextUrl = buildChangelogQuery(nextSearchQuery, nextTypeFilter);
+
+          setSearchQuery(nextSearchQuery);
+          setTypeFilter(nextTypeFilter);
+          lastSyncedUrlRef.current = nextUrl;
+          router.replace(nextUrl, { scroll: false });
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [router, searchQuery, typeFilter]);
   
   const hasActiveFilters = searchQuery.trim() || typeFilter !== 'all';
 
@@ -336,7 +402,7 @@ export default function ChangelogsPage() {
             type="text"
             placeholder="Search changelogs... (press /)"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => updateSearchQuery(e.target.value)}
             className="w-full pl-10 pr-10 py-3 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none transition-all"
             style={{ 
               backgroundColor: '#1a1d23',
@@ -345,7 +411,7 @@ export default function ChangelogsPage() {
           />
           {searchQuery && (
             <button
-              onClick={() => setSearchQuery('')}
+              onClick={() => updateSearchQuery('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors"
             >
               <X className="w-4 h-4" />
@@ -354,34 +420,39 @@ export default function ChangelogsPage() {
         </div>
         
         <div className="flex flex-wrap gap-2">
-          {FILTER_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => setTypeFilter(option.value)}
-              className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 transition-all ${
-                typeFilter === option.value
-                  ? 'text-black'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-              style={{
-                backgroundColor: typeFilter === option.value ? TC.blue : 'transparent',
-                border: typeFilter === option.value ? 'none' : '1px solid #3d4149',
-              }}
-            >
-              {option.icon}
-              {option.label}
-              {option.value !== 'all' && typeBreakdown[option.value] > 0 && (
-                <span 
-                  className="px-1.5 py-0.5 text-xs rounded-full"
-                  style={{ 
-                    backgroundColor: typeFilter === option.value ? 'rgba(0,0,0,0.2)' : '#1a1d23',
-                  }}
-                >
-                  {typeBreakdown[option.value]}
-                </span>
-              )}
-            </button>
-          ))}
+          {FILTER_OPTIONS.map((option) => {
+            const isActive = typeFilter === option.value;
+            const hasCount = option.value !== 'all' && typeBreakdown[option.value] > 0;
+            
+            return (
+              <button
+                key={option.value}
+                onClick={() => updateTypeFilter(option.value)}
+                className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 transition-all ${
+                  isActive
+                    ? 'text-black'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+                style={{
+                  backgroundColor: isActive ? TC.blue : 'transparent',
+                  border: isActive ? 'none' : '1px solid #3d4149',
+                }}
+              >
+                {option.icon}
+                {option.label}
+                {hasCount && (
+                  <span 
+                    className="px-1.5 py-0.5 text-xs rounded-full"
+                    style={{ 
+                      backgroundColor: isActive ? 'rgba(0,0,0,0.2)' : '#1a1d23',
+                    }}
+                  >
+                    {typeBreakdown[option.value]}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
         
         {hasActiveFilters && (

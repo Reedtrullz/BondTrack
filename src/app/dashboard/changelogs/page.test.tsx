@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ChangelogsPage from './page';
@@ -70,6 +70,31 @@ describe('ChangelogsPage', () => {
 
     await waitFor(() => {
       expect(mocks.replace).toHaveBeenLastCalledWith('?q=v3.16.2&type=bug', { scroll: false });
+    });
+  });
+
+  it('updates the selected filter in the URL when a filter button is clicked', async () => {
+    render(<ChangelogsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /bug/i }));
+
+    await waitFor(() => {
+      expect(mocks.replace).toHaveBeenLastCalledWith('?type=bug', { scroll: false });
+    });
+  });
+
+  it('updates the active filter styling when URL changes', async () => {
+    const { rerender } = render(<ChangelogsPage />);
+
+    expect(screen.getByRole('button', { name: /all/i }).style.backgroundColor).toBe('rgb(0, 204, 255)');
+    expect(screen.getByRole('button', { name: /bug/i }).style.backgroundColor).not.toBe('rgb(0, 204, 255)');
+
+    mocks.searchParams.current = new URLSearchParams('type=bug');
+    rerender(<ChangelogsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /all/i }).style.backgroundColor).not.toBe('rgb(0, 204, 255)');
+      expect(screen.getByRole('button', { name: /bug/i }).style.backgroundColor).toBe('rgb(0, 204, 255)');
     });
   });
 
