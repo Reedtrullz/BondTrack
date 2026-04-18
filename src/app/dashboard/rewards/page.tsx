@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { useRunePrice, useRunePriceHistory, getClosestPriceAtDate } from '@/lib/hooks/use-rune-price';
 import { useBondHistory } from '@/lib/hooks/use-bond-history';
+import { useCoinApiRunePrice } from '@/lib/hooks/use-coinapi-price';
 import { PnLDashboard } from '@/components/dashboard/pnl-dashboard';
 import { PersonalFeeAudit } from '@/components/dashboard/fee-impact-tracker';
 import { AutoCompoundChart } from '@/components/dashboard/auto-compound-chart';
@@ -25,11 +26,17 @@ export default function RewardsPage() {
   const { data: networkData } = useNetworkMetrics();
   const { history: bondHistory } = useBondHistory(address);
   const { oldestPrice, intervals: priceIntervals } = useRunePriceHistory('day', 1825);
+  const { price: coinApiPrice, isLoading: coinApiLoading } = useCoinApiRunePrice(bondHistory?.firstBondDate || null);
+  
   const entryRunePrice = useMemo(() => {
-    if (!bondHistory?.firstBondDate || !priceIntervals.length) return oldestPrice || undefined;
-    const price = getClosestPriceAtDate(priceIntervals, bondHistory.firstBondDate);
-    return price > 0 ? price : oldestPrice;
-  }, [bondHistory, priceIntervals, oldestPrice]);
+    if (!bondHistory?.firstBondDate) return undefined;
+    if (priceIntervals.length) {
+      const midgardPrice = getClosestPriceAtDate(priceIntervals, bondHistory.firstBondDate);
+      if (midgardPrice > 0.5) return midgardPrice;
+    }
+    if (coinApiPrice && coinApiPrice > 0.5) return coinApiPrice;
+    return oldestPrice || undefined;
+  }, [bondHistory, priceIntervals, oldestPrice, coinApiPrice]);
   const [mounted, setMounted] = useState(false);
   const safePositions = positions ?? [];
   const networkApy = networkData?.bondingAPY ? parseFloat(networkData.bondingAPY) : undefined;
