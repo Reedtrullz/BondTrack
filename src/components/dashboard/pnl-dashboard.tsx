@@ -31,6 +31,11 @@ function getStorageKey(address: string | null): string | null {
   return `bondtrack-initial-bond-${address}`;
 }
 
+function getEntryPriceKey(address: string | null): string | null {
+  if (!address) return null;
+  return `bondtrack-entry-price-${address}`;
+}
+
 export function PnLDashboard({
   positions,
   currentRunePrice,
@@ -43,6 +48,9 @@ export function PnLDashboard({
 
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  const [manualEntryPrice, setManualEntryPrice] = useState<number | null>(null);
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
+  const [priceInputValue, setPriceInputValue] = useState('');
   const [manualInitialBond, setManualInitialBond] = useState<number | null>(null);
 
   useEffect(() => {
@@ -62,6 +70,25 @@ export function PnLDashboard({
       }
     }
   }, [storageKey]);
+
+  const entryPriceKey = getEntryPriceKey(address);
+  useEffect(() => {
+    setManualEntryPrice(null);
+    setPriceInputValue('');
+    setIsEditingPrice(false);
+
+    if (!entryPriceKey) {
+      return;
+    }
+
+    const saved = localStorage.getItem(entryPriceKey);
+    if (saved) {
+      const parsed = parseFloat(saved);
+      if (!isNaN(parsed) && parsed > 0) {
+        setManualEntryPrice(parsed);
+      }
+    }
+  }, [entryPriceKey]);
 
   const startEditing = () => {
     setInputValue(manualInitialBond?.toString() ?? '');
@@ -89,21 +116,48 @@ export function PnLDashboard({
     setIsEditing(false);
   };
 
+  const startEditingPrice = () => {
+    setPriceInputValue(manualEntryPrice?.toString() ?? entryRunePrice?.toString() ?? '');
+    setIsEditingPrice(true);
+  };
+
+  const savePriceValue = () => {
+    const parsed = parseFloat(priceInputValue);
+    if (!isNaN(parsed) && parsed > 0 && entryPriceKey) {
+      setManualEntryPrice(parsed);
+      localStorage.setItem(entryPriceKey, parsed.toString());
+    }
+    setIsEditingPrice(false);
+  };
+
+  const cancelEditingPrice = () => {
+    setIsEditingPrice(false);
+  };
+
+  const clearEntryPrice = () => {
+    if (entryPriceKey) {
+      localStorage.removeItem(entryPriceKey);
+    }
+    setManualEntryPrice(null);
+    setIsEditingPrice(false);
+  };
+
   const effectiveInitialBond = manualInitialBond ?? (bondHistory?.initialBond ?? (positions?.reduce((sum, pos) => sum + pos.bondAmount, 0) ?? 0));
   const totalBondingEarnings = bondHistory?.currentBond ?? ((positions?.reduce((sum, pos) => sum + pos.bondAmount, 0) ?? 0) + (bondHistory?.bondGrowth ?? 0));
   const currentBond = bondHistory?.currentBond ?? (effectiveInitialBond + totalBondingEarnings - effectiveInitialBond);
   
   const effectiveEntryPrice = useMemo(() => 
-    entryRunePrice || 
+    manualEntryPrice || entryRunePrice || 
     (earningsHistory?.intervals?.length ? Number(earningsHistory.intervals[0].runePriceUSD) : currentRunePrice),
-    [entryRunePrice, earningsHistory, currentRunePrice]
+    [manualEntryPrice, entryRunePrice, earningsHistory, currentRunePrice]
   );
 
   const entryPriceDisplay = useMemo(() => {
+    if (manualEntryPrice) return manualEntryPrice;
     if (entryRunePrice) return entryRunePrice;
     if (earningsHistory?.intervals?.length) return Number(earningsHistory.intervals[0].runePriceUSD);
     return currentRunePrice;
-  }, [entryRunePrice, earningsHistory, currentRunePrice]);
+  }, [manualEntryPrice, entryRunePrice, earningsHistory, currentRunePrice]);
   
   const initialBondValueUSD = useMemo(() => effectiveInitialBond * effectiveEntryPrice, [effectiveInitialBond, effectiveEntryPrice]);
   const currentBondValueUSD = useMemo(() => currentBond * currentRunePrice, [currentBond, currentRunePrice]);
@@ -200,7 +254,45 @@ export function PnLDashboard({
         />
         <PnLCard
           icon={<DollarSign className="w-4 h-4" />}
-          label="Price PnL"
+          label={
+            <span className="flex items-center gap-1">
+              Price PnL
+              {isEditingPrice ? (
+                <span className="flex items-center gap-0.5 ml-1">
+                  <input
+                    type="number"
+                    step="0.0001"
+                    value={priceInputValue}
+                    onChange={(e) => setPriceInputValue(e.target.value)}
+                    className="w-20 px-1 py-0.5 text-xs border rounded dark:bg-zinc-800 dark:border-zinc-700"
+                    placeholder="Entry price"
+                  />
+                  <button
+                    onClick={savePriceValue}
+                    className="p-0.5 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                    title="Save"
+                  >
+                    <Check className="w-3 h-3 text-emerald-500" />
+                  </button>
+                  <button
+                    onClick={cancelEditingPrice}
+                    className="p-0.5 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                    title="Cancel"
+                  >
+                    <X className="w-3 h-3 text-zinc-400" />
+                  </button>
+                </span>
+              ) : (
+                <button
+                  onClick={startEditingPrice}
+                  className="p-0.5 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                  title="Edit entry price"
+                >
+                  <Edit3 className="w-3 h-3 text-zinc-400" />
+                </button>
+              )}
+            </span>
+          }
           value={`$${pricePnL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           subValue={`Entry: $${entryPriceDisplay.toFixed(4)} → $${currentRunePrice.toFixed(4)}`}
           positive={pricePnL >= 0}
