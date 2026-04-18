@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { Check, Copy, X } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { BondPosition } from '@/lib/types/node';
 import { useWallet } from '@/lib/hooks/use-wallet';
 import { Button } from '@/components/ui/button';
 import { TransactionPreview, type TransactionPreviewData } from '@/components/wallet/transaction-preview';
-import { 
-  executeBondTransaction, 
+import {
+  executeBondTransaction,
   executeUnbondTransaction,
-  validateBondAmount, 
+  validateBondAmount,
   canUnbondNode,
   generateBondMemo,
   generateUnbondMemo,
@@ -17,6 +18,21 @@ import { useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 type Mode = 'BOND' | 'UNBOND';
+type CopyAction = 'inline' | 'button';
+type CopyStatus = 'idle' | 'success' | 'error';
+
+interface CopyFeedbackState {
+  action: CopyAction | null;
+  status: CopyStatus;
+  message: string;
+}
+
+const COPY_FEEDBACK_DURATION_MS = 4000;
+const DEFAULT_COPY_FEEDBACK: CopyFeedbackState = {
+  action: null,
+  status: 'idle',
+  message: '',
+};
 
 function validateUnbondAmount(amount: string): { valid: boolean; error?: string } {
   const trimmed = amount.trim();
@@ -56,16 +72,17 @@ export function TransactionComposer({ positions, address }: TransactionComposerP
         return null;
     }
   })();
-  
+
   const [mode, setMode] = useState<Mode>('BOND');
   const [nodeAddress, setNodeAddress] = useState('');
   const [bondProviderAddress, setBondProviderAddress] = useState('');
   const [nodeOperatorFee] = useState('');
   const [amountToUnbond, setAmountToUnbond] = useState('0');
-  const [copied, setCopied] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState<CopyFeedbackState>(DEFAULT_COPY_FEEDBACK);
   const [showPreview, setShowPreview] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [txResult, setTxResult] = useState<{ success: boolean; txHash?: string; error?: string } | null>(null);
+  const copyFeedbackTimeoutRef = useRef<number | null>(null);
 
   const { address: walletAddress, walletType, isConnected, isNetworkMismatch } = useWallet();
 
@@ -87,6 +104,14 @@ export function TransactionComposer({ positions, address }: TransactionComposerP
       setNodeAddress(positions[0].nodeAddress);
     }
   }, [positions, nodeAddress]);
+
+  useEffect(() => {
+    return () => {
+      if (copyFeedbackTimeoutRef.current !== null) {
+        window.clearTimeout(copyFeedbackTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const memo = useMemo(() => {
     if (mode === 'BOND') {
@@ -113,13 +138,45 @@ export function TransactionComposer({ positions, address }: TransactionComposerP
     return { canUnbond: true };
   }, [mode, selectedPosition]);
 
-  const handleCopy = async () => {
+  const clearCopyFeedback = () => {
+    if (copyFeedbackTimeoutRef.current !== null) {
+      window.clearTimeout(copyFeedbackTimeoutRef.current);
+      copyFeedbackTimeoutRef.current = null;
+    }
+
+    setCopyFeedback(DEFAULT_COPY_FEEDBACK);
+  };
+
+  const scheduleCopyFeedbackReset = () => {
+    if (copyFeedbackTimeoutRef.current !== null) {
+      window.clearTimeout(copyFeedbackTimeoutRef.current);
+    }
+
+    copyFeedbackTimeoutRef.current = window.setTimeout(() => {
+      setCopyFeedback(DEFAULT_COPY_FEEDBACK);
+      copyFeedbackTimeoutRef.current = null;
+    }, COPY_FEEDBACK_DURATION_MS);
+  };
+
+  const handleCopy = async (action: CopyAction) => {
+    clearCopyFeedback();
+
     try {
       await navigator.clipboard.writeText(memo);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopyFeedback({
+        action,
+        status: 'success',
+        message: 'Memo copied to your clipboard. Paste it into your wallet when you are ready.',
+      });
+      scheduleCopyFeedbackReset();
     } catch (err) {
       console.error('Failed to copy:', err);
+      setCopyFeedback({
+        action,
+        status: 'error',
+        message: 'Copy failed. Select the memo above and copy it manually.',
+      });
+      scheduleCopyFeedbackReset();
     }
   };
 
@@ -146,11 +203,17 @@ export function TransactionComposer({ positions, address }: TransactionComposerP
     return false;
   }, [isConnected, isNetworkMismatch, mode, bondProviderAddress, selectedPosition, unbondValidation, unbondAmountValidation]);
 
+  const inlineCopyState = copyFeedback.action === 'inline' ? copyFeedback.status : 'idle';
+  const primaryCopyState = copyFeedback.action === 'button' ? copyFeedback.status : 'idle';
+  const CopyStatusIcon = copyFeedback.status === 'success' ? Check : X;
+  const InlineCopyIcon = inlineCopyState === 'success' ? Check : inlineCopyState === 'error' ? X : Copy;
+  const PrimaryCopyIcon = primaryCopyState === 'success' ? Check : primaryCopyState === 'error' ? X : Copy;
+
   return (
     <div className="space-y-6">
       <div className="flex gap-2">
-        <button onClick={() => setMode('BOND')} className={cn("px-4 py-2 rounded-lg font-medium transition", mode === 'BOND' ? 'bg-emerald-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400')}>BOND</button>
-        <button onClick={() => setMode('UNBOND')} className={cn("px-4 py-2 rounded-lg font-medium transition", mode === 'UNBOND' ? 'bg-amber-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400')}>UNBOND</button>
+        <button onClick={() => setMode('BOND')} className={cn('px-4 py-2 rounded-lg font-medium transition', mode === 'BOND' ? 'bg-emerald-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400')}>BOND</button>
+        <button onClick={() => setMode('UNBOND')} className={cn('px-4 py-2 rounded-lg font-medium transition', mode === 'UNBOND' ? 'bg-amber-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400')}>UNBOND</button>
       </div>
       <div className="bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-5 space-y-5 hover:shadow-md hover:shadow-emerald-500/10 transition-all">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -176,17 +239,57 @@ export function TransactionComposer({ positions, address }: TransactionComposerP
           </div>
           <div className="flex items-center gap-2">
             <code className="flex-1 font-mono text-sm text-zinc-100 break-all">{memo}</code>
-            <button onClick={handleCopy} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-zinc-700 text-zinc-200">{copied ? 'Copied!' : 'Copy'}</button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleCopy('inline')}
+              aria-describedby={copyFeedback.status !== 'idle' ? 'transaction-copy-feedback' : undefined}
+              className={cn(
+                'shrink-0 gap-2 border-zinc-700 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 hover:text-white dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700',
+                inlineCopyState === 'success' && 'border-emerald-500/60 bg-emerald-500 text-white hover:bg-emerald-600 hover:text-white',
+                inlineCopyState === 'error' && 'border-red-500/60 bg-red-500 text-white hover:bg-red-600 hover:text-white'
+              )}
+            >
+              <InlineCopyIcon className="h-4 w-4" />
+              {inlineCopyState === 'success' ? 'Copied' : inlineCopyState === 'error' ? 'Retry copy' : 'Copy'}
+            </Button>
           </div>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
-          <Button variant="outline" onClick={handleCopy} className="flex-1">Copy Memo</Button>
+          <Button
+            type="button"
+            variant={primaryCopyState === 'success' ? 'success' : primaryCopyState === 'error' ? 'destructive' : 'outline'}
+            onClick={() => handleCopy('button')}
+            aria-describedby={copyFeedback.status !== 'idle' ? 'transaction-copy-feedback' : undefined}
+            className="flex-1 gap-2"
+          >
+            <PrimaryCopyIcon className="h-4 w-4" />
+            {primaryCopyState === 'success' ? 'Memo copied' : primaryCopyState === 'error' ? 'Copy failed' : 'Copy Memo'}
+          </Button>
           {isConnected ? (
             <Button onClick={() => setShowPreview(true)} disabled={!canSubmit} className="flex-1">Sign & Broadcast</Button>
           ) : (
             <Button disabled className="flex-1">Connect Wallet</Button>
           )}
         </div>
+        <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {copyFeedback.message}
+        </p>
+        {copyFeedback.status !== 'idle' && (
+          <div
+            id="transaction-copy-feedback"
+            className={cn(
+              'flex items-start gap-2 rounded-lg border px-3 py-2 text-sm',
+              copyFeedback.status === 'success'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300'
+                : 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300'
+            )}
+          >
+            <CopyStatusIcon className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{copyFeedback.message}</span>
+          </div>
+        )}
       </div>
       {showPreview && <TransactionPreview data={previewData} onConfirm={handleSignAndBroadcast} onCancel={() => setShowPreview(false)} isLoading={isSubmitting} error={txResult?.error} position={selectedPosition} />}
     </div>

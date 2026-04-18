@@ -15,6 +15,20 @@ import { Button } from '@/components/ui/button';
 import { ExportButton } from '@/components/shared/export-button';
 import { Plus, Minus, Sparkles, BrainCircuit, TrendingUp } from 'lucide-react';
 
+type TransactionAction = 'bond' | 'unbond';
+
+function buildTransactionHref(address: string | null, action: TransactionAction) {
+  const params = new URLSearchParams();
+
+  if (address) {
+    params.set('address', address);
+  }
+
+  params.set('action', action);
+
+  return `/dashboard/transactions?${params.toString()}`;
+}
+
 export default function OverviewPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
@@ -50,13 +64,13 @@ export default function OverviewPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex gap-2">
-            <Link href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}>
+            <Link href={buildTransactionHref(address, 'bond')}>
               <Button variant="success" className="gap-2">
                 <Plus className="w-4 h-4" />
                 Bond More
               </Button>
             </Link>
-            <Link href={`/dashboard/transactions?address=${encodeURIComponent(address || '')}`}>
+            <Link href={buildTransactionHref(address, 'unbond')}>
               <Button variant="destructive" className="gap-2">
                 <Minus className="w-4 h-4" />
                 Unbond
