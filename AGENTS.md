@@ -129,7 +129,7 @@ thornode-watcher/
 
 **THORName reverse lookup**: Reverse lookup failures on the deployed dev site are currently a known live-QA concern. Treat "lookup unavailable" and "no THORName found" as degraded/non-fatal states in user-facing flows unless the feature explicitly requires a successful reverse lookup.
 
-**Midgard actions**: Use `txType` (not `type`) for bond/unbond/leave history queries to `/v2/actions`, and keep `limit <= 50` to stay within the documented API maximum. Reserve `type` for action categories like swap or addLiquidity.
+**Midgard bond history**: Use `type=` (not `txType=`) for bond history. The `txType` filter is deprecated/unreliable. The API function `getActions()` accepts a `typeParam` argument for this.
 
 **Address prop**: Dashboard pages get address from `useSearchParams().get('address')`. The `/dashboard` redirect passes it through.
 
@@ -139,7 +139,7 @@ thornode-watcher/
 
 **Dark mode**: Uses next-themes with `attribute="class"`. All components use `dark:` Tailwind variants.
 
-**Charts**: Recharts with ResponsiveContainer. Data from Midgard history endpoints. Timestamps are nanoseconds — divide by 1e9.
+**Charts**: Recharts with ResponsiveContainer. Data from Midgard history endpoints. Timestamps are nanoseconds — divide by 1e9. For hourly data (24H), format axis as time; for daily data, format as dates.
 
 ## WALLET INTEGRATION
 
@@ -184,6 +184,10 @@ The Risk page (`src/app/dashboard/risk/page.tsx`) shows portfolio risk assessmen
 **Formatting**: Network values need special handling - `runeToNumber()` divides by 1e8, so only multiply back before `formatRuneAmount()` when you still have a numeric RUNE value. If you already have a formatted string from `formatRuneFromNumber()`, render it directly instead of wrapping it in `formatRuneAmount()` again. Use `--` when value is 0 or undefined to indicate missing data.
 
 ## RECENT CHANGES
+- **Transaction history fix**: Fetch bond history using `type=bond` instead of deprecated `txType` - the proxy returns empty for `txType` but works with `type`.
+- **RUNE price chart axis fix**: Y-axis now shows dollar amounts with 2 decimals instead of "$0,$0,$0,$0,$1".
+- **24H price chart fix**: X-axis shows time (e.g., "10 AM") instead of repeating dates for hourly data.
+- **Removed confusing APY chart**: Removed Estimated Network APY chart from Rewards page - it was confusing and added no value.
 - **Risk page redesign**: Streamlined layout with health score banner, compact KPIs, always-visible nodes list, and collapsible details section
 - **Incentive Pendulum fix**: Show Node/LP amounts (not user's share), use network data, and keep both pendulum surfaces aligned (`LP Favored` below `1.5x`, `Node Favored` above `2.5x`).
 - **Risk TVL fix**: Risk Summary Banner now renders the already-formatted network liquidity string directly, avoiding the old double-format/double-divide bug.
@@ -192,27 +196,8 @@ The Risk page (`src/app/dashboard/risk/page.tsx`) shows portfolio risk assessmen
 - **LP status/health fix**: `use-lp-positions.ts` maps live Midgard pool statuses (`available`, `staged`) to LP UI status/health instead of hardcoded placeholders.
 - **Formatting fix**: Show '--' instead of '00' when values are 0 or undefined
 - **Real APY benchmarks**: Calculate actual network percentiles from node data instead of hardcoded values
-- **Optimize link fix**: Now passes bond provider address instead of node address
-- **Layout fixes**: Truncated node addresses, fixed text overflow in BondOptimizer card
-- **Removed redundant node details**: Removed duplicate section from overview (available in Positions table and /nodes page)
-- **Transaction history fix**: Fixed amount display (0.00 → correct amounts) by multiplying parsed amounts by 1e8 before passing to `formatRuneAmount()`. Also fixed timestamp parsing (nanoseconds → milliseconds).
-- **CORS workaround**: Created server-side API proxy routes at `/api/midgard/[...path]` and `/api/thorchain/[...path]` to bypass browser CORS restrictions when calling external Midgard/THORNode APIs.
-- **Full "Investment Command Center" Overhaul**:
-  - Integrated Portfolio Health Scoring (0-100) and an "Intelligence Hub" on Overview.
-  - Implemented a Visual Risk Heatmap and prescriptive "Defense" alerts on Risk page.
-  - Added Individual Health Grades and "Quick Action" shortcuts to the Nodes registry.
-  - Created a "Reward Velocity" PnL statement with Gross → Fee → Net transparency.
-  - Upgraded Transactions to a "Control Room" with guided presets and URL-driven flows.
-- Fix jail detection: use Midgard `/v2/health` for current block height instead of stale node `active_block_height`
-- Add `useCurrentBlockHeight` hook for real-time block height from Midgard
-- Complete UI/UX overhaul with Network Comparison and Pooled Node details
-- Add NetworkComparisonTable component to compare bond positions vs network averages
-- Add PooledNodeDetails component showing accumulated rewards from all nodes
-- Add useAllNodes, useChurnCountdown, useNetworkMetrics hooks
-- Add RecentAddresses component for quick address switching
-- Add thorchain.no as custom domain, deploy to Vercel
-- `use-bond-positions.ts`: Added Yield Guard flag calculation, skip constants fetch when address is null
-- `position-table.tsx`: Added YieldGuardBadge component with risk flags
+- **Transaction history fix**: Fixed amount display (0.00 → correct amounts) by multiplying parsed amounts by 1e8 before passing to `formatRuneAmount()`. Also fixed timestamp parsing.
+- **CORS workaround**: Created server-side API proxy routes at `/api/midgard/[...path]` and `/api/thorchain/[...path]` to bypass browser CORS restrictions.
 - `risk/page.tsx`: Added YourNodesAtRisk card, improved Your All Positions section
 - `rewards/page.tsx`: Fixed bond history empty states, timestamps divide by 1e9
 - `pnl-dashboard.tsx`: Manual initial bond input with localStorage

@@ -22,11 +22,10 @@ A comprehensive dashboard for THORChain bond providers to monitor bonded RUNE, n
 - Churn-out risk assessment
 
 ### 💰 Rewards & Earnings
-- Earnings history with interval filtering
-- APY chart visualization
-- Fee impact calculations
+- PnL dashboard with initial bond tracking
+- Fee impact breakdown (leakage analysis)
 - Auto-compound projections
-- PnL dashboard
+- RUNE price chart with multiple timeframes
 
 ### ⚠️ Risk Monitoring
 - Slash monitor with severity levels
@@ -36,7 +35,7 @@ A comprehensive dashboard for THORChain bond providers to monitor bonded RUNE, n
 
 ### 🔧 Transaction Tools
 - BOND/UNBOND memo composer
-- Transaction history from Midgard bond/unbond/leave actions
+- Transaction history from Midgard using `type=` filter
 - Wallet connection (Keplr, XDEFI, Vultisig)
 - Watchlist management
 
