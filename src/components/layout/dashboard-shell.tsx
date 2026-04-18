@@ -7,7 +7,9 @@ import { RefreshCw, Clock, Wifi } from 'lucide-react';
 import { Sidebar, MobileMenuButton } from '@/components/layout/sidebar';
 import { WalletConnect } from '@/components/wallet/wallet-connect';
 import { Button } from '@/components/ui/button';
-import { getTHORNameReverseLookup } from '@/lib/api/midgard';
+import { getTHORNameReverseLookupNoRetry as getTHORNameReverseLookup } from '@/lib/api/midgard';
+
+const THORNAME_CACHE_PREFIX = 'thorname-rlookup:';
 
 const SWR_KEYS = [
   'nodes',
@@ -61,15 +63,52 @@ export function DashboardShell({
   }, [tick]);
 
   useEffect(() => {
-    if (!address) return;
+    if (!address) {
+      setThorName(null);
+      return;
+    }
+
     let cancelled = false;
+
+    if (typeof window !== 'undefined') {
+      const cachedThorName = sessionStorage.getItem(`${THORNAME_CACHE_PREFIX}${address}`);
+
+      if (cachedThorName) {
+        setThorName(cachedThorName === '__none__' ? null : cachedThorName);
+        return () => {
+          cancelled = true;
+        };
+      }
+    }
+
     getTHORNameReverseLookup(address)
       .then((data) => {
-        if (!cancelled && data.entry?.name) {
-          setThorName(data.entry.name);
+        if (cancelled) {
+          return;
+        }
+
+        const resolvedThorName = data.entry?.name ?? null;
+
+        setThorName(resolvedThorName);
+
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(
+            `${THORNAME_CACHE_PREFIX}${address}`,
+            resolvedThorName ?? '__none__'
+          );
         }
       })
       .catch(() => {
+        if (!cancelled) {
+          setThorName(null);
+          // Cache the absence to avoid repeated retries on failure
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(
+              `${THORNAME_CACHE_PREFIX}${address}`,
+              '__none__'
+            );
+          }
+        }
       });
     return () => { cancelled = true; };
   }, [address]);
