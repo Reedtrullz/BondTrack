@@ -34,14 +34,14 @@ function getPendulumStatus(bondToPoolRatio: number): { status: string; icon: Rea
     return {
       status: 'Node Favored',
       icon: <TrendingUp className="w-4 h-4" />,
-      description: 'High bond → nodes earn more. LP yields may be lower.'
+      description: 'Sufficient bond → nodes earn more. LP yields reduced.'
     };
   }
   if (bondToPoolRatio < 1.5) {
     return {
-      status: 'LP Favored',
+      status: 'Node Incentivized',
       icon: <TrendingDown className="w-4 h-4" />,
-      description: 'More liquidity than bond → LPs earn more. Consider bonding more?'
+      description: 'Less bond than liquidity → rewards shift to nodes to encourage bonding.'
     };
   }
   return {
@@ -66,7 +66,9 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
     );
   }
 
-  const totalBonds = runeToNumber(network.bondMetrics?.totalActiveBond || '0');
+  const totalActiveBonds = runeToNumber(network.bondMetrics?.totalActiveBond || '0');
+  const totalStandbyBonds = runeToNumber(network.bondMetrics?.totalStandbyBond || '0');
+  const totalBonds = totalActiveBonds + totalStandbyBonds;
   const totalLiquidity = runeToNumber(network.totalPooledRune || '0');
   const bondToPoolRatio = totalLiquidity > 0 ? totalBonds / totalLiquidity : 0;
   const healthStatus = calculateNetworkHealth(bondToPoolRatio);
