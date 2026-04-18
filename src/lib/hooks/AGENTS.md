@@ -47,6 +47,8 @@ interface ChangelogEntry {
 - `?type=bug` — type filter (update|adr|chain|feature|bug)
 - `?q=Solana&type=bug` — combined
 
+**Current deployed QA caveat**: On `dev.thorchain.no`, changelog year navigation works, but search input, type filters, and entry-button interactions are currently part of the active remediation scope. Keep docs and tests aligned with the deployed behavior being fixed.
+
 **Search Highlighting**: Matching text in titles and descriptions is highlighted with yellow background.
 
 **Keyboard Shortcuts**:
@@ -84,6 +86,8 @@ interface ChangelogEntry {
 **useWatchlist**: Client-only (`'use client'`). Uses localStorage. Returns `addAddress`, `removeAddress`, `getAddresses`, `isAddressSaved`, plus `isLoaded` flag for hydration safety.
 
 **useWallet**: Returns `{ address, walletType, chainId, isConnected, isConnecting, error, networkMismatch, connect, disconnect }`. Supports `keplr`, `xdefi`, `vultisig`. Detects network mismatch (mainnet vs stagenet).
+
+**LP/member-backed hooks**: Any hook using Midgard member data must distinguish `empty` from `upstream failure`. The deployed LP route currently needs an explicit degraded/error state when `/v2/member/{address}` fails.
 
 **useCurrentBlockHeight**: Fetches real-time block height from Midgard `/v2/health`. Returns `currentBlockHeight` (primary source for jail detection). Falls back to node-derived height if unavailable. Use this for any jail-related calculations.
 

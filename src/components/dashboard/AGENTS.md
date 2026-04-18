@@ -39,6 +39,15 @@
 | `transaction-composer.tsx` | BOND/UNBOND memo generator with copy-to-clipboard |
 | `transaction-history.tsx` | Past BOND/UNBOND exit events from Midgard `/v2/actions` using `txType=bond,unbond,leave` |
 
+## CURRENT DEPLOYED QA NOTES
+
+- **Overview quick actions**: `Bond More` and `Unbond` must preserve the intended transaction mode. The deployed dev site currently does not.
+- **Transaction composer UX**: the deployed dev site still needs clearer UNBOND-mode behavior and visible success feedback for copy actions.
+- **Notification prompt**: any prompt or toast shown above the dashboard must never block top-right controls like refresh/theme toggle.
+- **Rewards controls**: `Edit initial bond`, `Optimize Now`, and chart-range buttons need visible, intentional responses on the deployed dev site; the `30D,` label oddity is a known live issue.
+- **Changelogs**: year buttons work on deployed dev, but search/filter/entry-button interactions remain under active remediation.
+- **LP route**: upstream member fetch failures must render an explicit degraded/error state rather than a shell-only experience.
+
 ## CONVENTIONS
 
 **Styling**: Tailwind zinc palette, `border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg`. Numbers use `font-mono`. Labels use `text-zinc-500 text-sm`.
@@ -48,6 +57,8 @@
 **Empty states**: Show centered text-zinc-500 message when data is empty.
 
 **Loading states**: Use `animate-pulse` with `bg-zinc-200 dark:bg-zinc-800` skeleton divs.
+
+**Degraded states**: When upstream data fails, show an honest route/component-level degraded state. Do not rely on ambiguous empty shells or controls that appear interactive but do nothing.
 
 ## ANTI-PATTERNS
 - Never import API functions directly — use hooks from `src/lib/hooks/`

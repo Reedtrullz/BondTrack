@@ -40,6 +40,8 @@ The proxy tries ninerealms first (`midgard.ninerealms.com`), then falls back to 
 
 **Midgard actions**: `getActions()` uses the `txType` query parameter for bond/unbond/leave history lookups. Keep `limit <= 50` because Midgard documents 50 as the maximum for `/v2/actions`.
 
+**THORName reverse lookup**: Any Midgard reverse-lookup endpoint used for THORName display should be treated as optional UX enrichment, not a hard dependency for dashboard rendering. On the deployed dev site, reverse lookup has produced repeated 502s; callers should document and handle that as a degraded non-fatal path.
+
 **Amount display**: When displaying amounts in UI, multiply by `1e8` before passing to `formatRuneAmount()` because the parsed value is already in RUNE units (divided by 1e8), but the formatter expects 1e8 units.
 
 ## ENDPOINTS
@@ -64,3 +66,4 @@ The proxy tries ninerealms first (`midgard.ninerealms.com`), then falls back to 
 - Never use raw `fetch()` — always use `fetchThornode<T>()` or `fetchMidgard<T>()`
 - Never hardcode base URLs — import `ENDPOINTS` from config
 - Never call external APIs directly from browser — use the proxy routes
+- Never let THORName reverse lookup failure break the dashboard shell or spam user-facing flows without graceful fallback
