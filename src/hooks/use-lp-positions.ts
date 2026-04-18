@@ -1,11 +1,57 @@
 import useSWR from 'swr';
-import { useSearchParams } from 'next/navigation';
 import { getMemberDetails, getPools, MemberDetailsRaw, PoolDetailRaw } from '../lib/api/midgard';
 import { LpPosition } from '../lib/types/lp';
 
 interface LpData {
   memberDetails: MemberDetailsRaw;
   pools: PoolDetailRaw[];
+}
+
+type LpDataState = 'ready' | 'empty' | 'error';
+
+function getStatusCode(message: string): number | null {
+  const match = message.match(/API error:\s*(\d{3})/i);
+  return match ? Number(match[1]) : null;
+}
+
+function getLpErrorState(error: unknown): { state: LpDataState; message?: string } {
+  if (!error) {
+    return { state: 'ready' };
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  const statusCode = getStatusCode(message);
+  const isMemberLookupFailure = message.includes('/v2/member/');
+
+  if (isMemberLookupFailure && statusCode === 404) {
+    return { state: 'empty' };
+  }
+
+  if (isMemberLookupFailure && statusCode && statusCode >= 500) {
+    return {
+      state: 'error',
+      message: 'Midgard could not load this address’s LP member record right now. This is an upstream failure, not confirmation that the address has no LP positions.',
+    };
+  }
+
+  if (statusCode && statusCode >= 500) {
+    return {
+      state: 'error',
+      message: 'Midgard LP data is temporarily unavailable right now. Try again shortly.',
+    };
+  }
+
+  if (statusCode && statusCode >= 400) {
+    return {
+      state: 'error',
+      message: 'Midgard could not load LP data for this address. Verify the address and try again.',
+    };
+  }
+
+  return {
+    state: 'error',
+    message: 'Unable to load LP data right now. Try again shortly.',
+  };
 }
 
 /**
@@ -39,11 +85,8 @@ const deriveHealthScore = (poolStatus: string | undefined): number => {
   }
 };
 
-export const useLpPositions = () => {
-  const searchParams = useSearchParams();
-  const address = searchParams.get('address');
-
-  const { data, error, isLoading } = useSWR<LpData>(
+export const useLpPositions = (address: string | null) => {
+  const { data, error, isLoading, mutate } = useSWR<LpData>(
     address ? address : null,
     async (addr) => {
       const [memberDetails, pools] = await Promise.all([
@@ -55,10 +98,11 @@ export const useLpPositions = () => {
     {
       refreshInterval: 30000,
       revalidateOnFocus: true,
+      shouldRetryOnError: false,
     }
   );
 
-  const isNotFound = error && String(error).includes('404');
+  const errorState = getLpErrorState(error);
 
   const positions: LpPosition[] = (data?.memberDetails?.pools || []).map((poolRaw) => {
     const poolData = data?.pools?.find((p) => p.asset === poolRaw.pool);
@@ -77,14 +121,22 @@ export const useLpPositions = () => {
     };
   });
 
-  const totalBondedRune = isNotFound ? '0' : positions.reduce((acc, pos) => acc + BigInt(pos.bondedRune), 0n).toString();
-  const totalRewards = isNotFound ? '0' : positions.reduce((acc, pos) => acc + BigInt(pos.rewards), 0n).toString();
+  const state = errorState.state !== 'ready'
+    ? errorState.state
+    : positions.length > 0
+      ? 'ready'
+      : 'empty';
+
+  const totalBondedRune = state !== 'ready' ? '0' : positions.reduce((acc, pos) => acc + BigInt(pos.bondedRune), 0n).toString();
+  const totalRewards = state !== 'ready' ? '0' : positions.reduce((acc, pos) => acc + BigInt(pos.rewards), 0n).toString();
 
   return {
     positions,
     isLoading,
-    error: isNotFound ? undefined : (error instanceof Error ? error.message : undefined),
+    state,
+    error: errorState.message,
     totalBondedRune,
     totalRewards,
+    retry: async () => mutate(),
   };
 };

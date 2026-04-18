@@ -255,8 +255,43 @@ export async function getTHORNameLookup(name: string): Promise<THORNameLookupRaw
 }
 
 export async function getTHORNameReverseLookup(address: string): Promise<THORNameLookupRaw> {
-  return fetchMidgard<THORNameLookupRaw>(`/v2/thorname/rlookup/${address}`);
+  // Existing function retains retry behavior for backward compatibility
+  try {
+    return await fetchMidgard<THORNameLookupRaw>(`/v2/thorname/rlookup/${address}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('404') || message.includes('502')) {
+      return { entry: null };
+    }
+    throw error;
+  }
 }
+
+/**
+ * Perform THORName reverse lookup without retrying on 5xx errors.
+ * This is used for optional UI enrichment where repeated retries cause spam.
+ */
+export async function getTHORNameReverseLookupNoRetry(address: string): Promise<THORNameLookupRaw> {
+  const url = `/v2/thorname/rlookup/${address}`;
+  try {
+    const res = await fetch(`/api/midgard${url}`, {
+      headers: { Accept: 'application/json' },
+      // Use Next.js revalidate but no custom retry logic
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) {
+      if (res.status === 404 || res.status === 502) {
+        return { entry: null };
+      }
+      throw new Error(`API error: ${res.status} ${res.statusText}`);
+    }
+    return (await res.json()) as THORNameLookupRaw;
+  } catch (error) {
+    // Network errors are treated as no result to avoid retries
+    return { entry: null };
+  }
+}
+
 
 export interface HealthRaw {
   lastThorNode: { height: number };
