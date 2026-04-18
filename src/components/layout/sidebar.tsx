@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Shield, Activity, BarChart3, AlertTriangle, ArrowRightLeft, Menu, X, ScrollText, Coins, Zap } from 'lucide-react';
 import { ThemeToggle } from './theme-toggle';
 import { cn } from '@/lib/utils';
@@ -12,13 +11,13 @@ const basePath = '/dashboard';
 const navItems = (addr: string | null) => {
   const addrParam = addr ? `?address=${addr}` : '';
   return [
-    { href: `${basePath}/overview${addrParam}`, label: 'Overview', icon: <Activity className="w-4 h-4" />, desc: 'Portfolio at a glance' },
-    { href: `${basePath}/nodes${addrParam}`, label: 'Nodes', icon: <Shield className="w-4 h-4" />, desc: 'Validator status' },
-    { href: `${basePath}/rewards${addrParam}`, label: 'Rewards', icon: <BarChart3 className="w-4 h-4" />, desc: 'Earnings & APY' },
-    { href: `${basePath}/risk${addrParam}`, label: 'Risk', icon: <AlertTriangle className="w-4 h-4" />, desc: 'Security metrics' },
-    { href: `${basePath}/transactions${addrParam}`, label: 'Transactions', icon: <ArrowRightLeft className="w-4 h-4" />, desc: 'Bond & unbond' },
-    { href: `${basePath}/lp${addrParam}`, label: 'LP Status', icon: <Coins className="w-4 h-4" />, desc: 'Liquidity positions' },
-    { href: `${basePath}/changelogs${addrParam}`, label: 'Changelogs', icon: <ScrollText className="w-4 h-4" />, desc: 'Version history' },
+    { path: `${basePath}/overview`, href: `${basePath}/overview${addrParam}`, label: 'Overview', icon: <Activity className="w-4 h-4" />, desc: 'Portfolio at a glance' },
+    { path: `${basePath}/nodes`, href: `${basePath}/nodes${addrParam}`, label: 'Nodes', icon: <Shield className="w-4 h-4" />, desc: 'Validator status' },
+    { path: `${basePath}/rewards`, href: `${basePath}/rewards${addrParam}`, label: 'Rewards', icon: <BarChart3 className="w-4 h-4" />, desc: 'Earnings & APY' },
+    { path: `${basePath}/risk`, href: `${basePath}/risk${addrParam}`, label: 'Risk', icon: <AlertTriangle className="w-4 h-4" />, desc: 'Security metrics' },
+    { path: `${basePath}/transactions`, href: `${basePath}/transactions${addrParam}`, label: 'Transactions', icon: <ArrowRightLeft className="w-4 h-4" />, desc: 'Bond & unbond' },
+    { path: `${basePath}/lp`, href: `${basePath}/lp${addrParam}`, label: 'LP Status', icon: <Coins className="w-4 h-4" />, desc: 'Liquidity positions' },
+    { path: `${basePath}/changelogs`, href: `${basePath}/changelogs${addrParam}`, label: 'Changelogs', icon: <ScrollText className="w-4 h-4" />, desc: 'Version history' },
   ];
 };
 
@@ -28,6 +27,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
   return (
@@ -72,32 +72,37 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           <p className="px-3 text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Navigation</p>
         </div>
         
-        {navItems(address).map((item, index) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onClose}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-              "text-zinc-600 dark:text-zinc-400",
-              "hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-100",
-              "group relative overflow-hidden",
-              index === 0 && "bg-zinc-100 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100"
-            )}
-            aria-label={`Navigate to ${item.label} page`}
-          >
-            <span className="relative z-10 flex items-center gap-3">
-              <span className={cn(
-                "transition-colors duration-200",
-                index === 0 ? "text-amber-500" : ""
-              )}>{item.icon}</span>
-              <span className="hidden md:inline">{item.label}</span>
-            </span>
-            <span className="hidden lg:flex items-center gap-1 text-[10px] text-zinc-400 dark:text-zinc-500 absolute right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-              {item.desc}
-            </span>
-          </Link>
-        ))}
+        {navItems(address).map((item) => {
+          const isActive = pathname === item.path;
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onClose}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                "text-zinc-600 dark:text-zinc-400",
+                "hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-100",
+                "group relative overflow-hidden",
+                isActive && "bg-zinc-100 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100"
+              )}
+              aria-label={`Navigate to ${item.label} page`}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              <span className="relative z-10 flex items-center gap-3">
+                <span className={cn(
+                  "transition-colors duration-200",
+                  isActive ? "text-amber-500" : ""
+                )}>{item.icon}</span>
+                <span className="hidden md:inline">{item.label}</span>
+              </span>
+              <span className="hidden lg:flex items-center gap-1 text-[10px] text-zinc-400 dark:text-zinc-500 absolute right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                {item.desc}
+              </span>
+            </Link>
+          );
+        })}
         
         <div className="absolute bottom-6 left-4 right-4">
           <div className="p-3 rounded-lg bg-gradient-to-br from-emerald-500/10 to-amber-500/10 dark:from-emerald-500/5 dark:to-amber-500/5 border border-zinc-200/60 dark:border-zinc-800/60">
