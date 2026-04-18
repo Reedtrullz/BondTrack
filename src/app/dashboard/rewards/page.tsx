@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { useRunePrice } from '@/lib/hooks/use-rune-price';
 import { PnLDashboard } from '@/components/dashboard/pnl-dashboard';
@@ -14,8 +14,10 @@ import { useMemo, useState, useEffect } from 'react';
 import { TrendingUp, Zap } from 'lucide-react';
 import { calculateWeightedApy } from '@/lib/utils/fee-calculations';
 import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
+import { Button } from '@/components/ui/button';
 
 export default function RewardsPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
   const { positions, isLoading } = useBondPositions(address);
@@ -32,6 +34,18 @@ export default function RewardsPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const handleOptimizeNow = () => {
+    const params = new URLSearchParams();
+
+    if (address) {
+      params.set('address', address);
+    }
+
+    params.set('action', 'optimize');
+
+    router.push(`/dashboard/transactions?${params.toString()}`);
+  };
 
   if (isLoading) {
     return (
@@ -114,9 +128,14 @@ export default function RewardsPage() {
               </p>
             </div>
           </div>
-          <button className="px-4 py-2 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-bold transition-all hover:scale-105 active:scale-95">
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleOptimizeNow}
+            className="min-w-[8.5rem]"
+          >
             Optimize Now
-          </button>
+          </Button>
         </div>
       </section>
 

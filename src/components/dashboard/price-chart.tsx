@@ -63,6 +63,13 @@ interface PriceChartProps {
   initialInterval?: IntervalOption;
 }
 
+const intervals: Array<{ value: IntervalOption; label: string; description: string }> = [
+  { value: 'day', label: '24H', description: 'Intraday price action' },
+  { value: 'week', label: '7D', description: 'Weekly price trend' },
+  { value: 'month', label: '30D', description: '30-day price trend' },
+  { value: 'year', label: '1Y', description: '1-year price trend' },
+];
+
 export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
   const [interval, setIntervalState] = useState<IntervalOption>(initialInterval);
   const [data, setData] = useState<PriceDataPoint[]>([]);
@@ -89,33 +96,34 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
   }, [interval]);
 
   const setIntervalValue = (value: IntervalOption) => {
+    if (value === interval) {
+      return;
+    }
+
     setIntervalState(value);
   };
 
-  const intervals: { value: IntervalOption; label: string }[] = [
-    { value: 'day', label: '24H' },
-    { value: 'week', label: '7D' },
-    { value: 'month', label: '30D, '},
-    { value: 'year', label: '1Y' },
-  ];
+  const activeInterval = intervals.find((item) => item.value === interval) ?? intervals[1];
 
   return (
     <div className="p-6 rounded-2xl bg-transparent border border-transparent shadow-none">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">RUNE Price</h3>
-          <p className="text-sm text-zinc-500">Current market valuation</p>
+          <p className="text-sm text-zinc-500">{loading ? `Loading ${activeInterval.label} range...` : activeInterval.description}</p>
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 rounded-full border border-zinc-200/80 bg-zinc-100/70 p-1 dark:border-zinc-800 dark:bg-zinc-900/80">
           {intervals.map((item) => (
             <button
               key={item.value}
               onClick={() => setIntervalValue(item.value)}
-              className={`px-3 py-1 text-[10px] rounded-full transition-colors ${
-                interval === item.value
-                  ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold'
-                  : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-              }`}
+              aria-label={`Show ${item.label} RUNE price trend`}
+              aria-pressed={interval === item.value}
+              className={`min-w-11 px-3 py-1 text-[10px] rounded-full border font-bold transition-all duration-200 ${
+                 interval === item.value
+                  ? 'border-zinc-900 bg-zinc-900 text-white shadow-sm dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
+                  : 'border-transparent text-zinc-500 hover:border-zinc-200 hover:bg-white hover:text-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+               }`}
             >
               {item.label}
             </button>
@@ -137,7 +145,7 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={160}>
-          <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+          <AreaChart key={interval} data={data} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
             <defs>
               <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
