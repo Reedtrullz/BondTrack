@@ -15,10 +15,39 @@ interface Transaction {
   status: string;
 }
 
+function getBondHistoryTxType(action: ActionRaw): 'bond' | 'unbond' | 'leave' | 'unstake' | null {
+  const metadataTxType = action.metadata?.refund?.txType;
+
+  if (metadataTxType === 'bond' || metadataTxType === 'unbond' || metadataTxType === 'leave' || metadataTxType === 'unstake') {
+    return metadataTxType;
+  }
+
+  if (action.type === 'bond' || action.type === 'unbond' || action.type === 'leave' || action.type === 'unstake') {
+    return action.type;
+  }
+
+  const memo = action.metadata?.bond?.memo || action.metadata?.refund?.memo || action.memo || '';
+
+  if (memo.startsWith('BOND:')) return 'bond';
+  if (memo.startsWith('UNBOND:')) return 'unbond';
+  if (memo.startsWith('LEAVE:')) return 'leave';
+
+  return null;
+}
+
+function getBondHistoryNodeAddress(action: ActionRaw): string {
+  const memo = action.metadata?.bond?.memo || action.metadata?.refund?.memo || action.memo || '';
+  const memoParts = memo.split(':');
+  const memoNodeAddress = memoParts[1] || '';
+
+  return action.metadata?.bond?.nodeAddress || memoNodeAddress || action.in?.[0]?.address || action.tx?.address || '';
+}
+
 function parseActions(actions: ActionRaw[]): Transaction[] {
   return actions
-    .filter((action) => action.type === 'bond' || action.type === 'unbond' || action.type === 'unstake' || action.type === 'leave' || action.type === 'addLiquidity')
-    .map((action): Transaction => {
+    .map((action) => ({ action, txType: getBondHistoryTxType(action) }))
+    .filter((entry): entry is { action: ActionRaw; txType: 'bond' | 'unbond' | 'leave' | 'unstake' } => entry.txType !== null)
+    .map(({ action, txType }): Transaction => {
       let amount = 0;
       
       if (action.in?.[0]?.coins) {
@@ -36,8 +65,8 @@ function parseActions(actions: ActionRaw[]): Transaction[] {
         if (outCoin) amount = parseFloat(outCoin.amount) / 1e8;
       }
       
-      const type = action.type === 'bond' || action.type === 'addLiquidity' ? 'BOND' : 'UNBOND';
-      const nodeAddress = action.metadata?.bond?.nodeAddress || action.in?.[0]?.address || action.tx?.address || '';
+      const type = txType === 'bond' ? 'BOND' : 'UNBOND';
+      const nodeAddress = getBondHistoryNodeAddress(action);
       const timestamp = action.date ? new Date(Number(action.date) / 1e9 * 1000) : new Date();
       
       return {
