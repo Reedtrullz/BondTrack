@@ -39,13 +39,15 @@ export function useRunePriceHistory(interval = 'day', count = 30) {
 
   const intervals: RunePriceInterval[] = data?.intervals?.map((i) => ({
     runePriceUSD: Number(i.runePriceUSD),
-    timestamp: new Date(Number(i.startTime) / 1e6),
+    timestamp: new Date(Number(i.startTime) * 1000),
   })) || [];
 
   const currentPrice = intervals.length > 0 ? intervals[intervals.length - 1].runePriceUSD : 0;
+  const oldestPrice = intervals.length > 0 ? intervals[0].runePriceUSD : 0;
 
   return {
     price: currentPrice,
+    oldestPrice,
     intervals,
     isLoading,
     error,

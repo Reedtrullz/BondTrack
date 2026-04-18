@@ -25,10 +25,12 @@ export default function RewardsPage() {
   const { data: networkData } = useNetworkMetrics();
   const { history: bondHistory } = useBondHistory(address);
   const { intervals: priceIntervals } = useRunePriceHistory('day', 365);
+  const { oldestPrice } = useRunePriceHistory('day', 1825);
   const entryRunePrice = useMemo(() => {
-    if (!bondHistory?.firstBondDate || !priceIntervals.length) return undefined;
-    return getClosestPriceAtDate(priceIntervals, bondHistory.firstBondDate);
-  }, [bondHistory, priceIntervals]);
+    if (!bondHistory?.firstBondDate || !priceIntervals.length) return oldestPrice || undefined;
+    const price = getClosestPriceAtDate(priceIntervals, bondHistory.firstBondDate);
+    return price > 0 ? price : oldestPrice;
+  }, [bondHistory, priceIntervals, oldestPrice]);
   const [mounted, setMounted] = useState(false);
   const safePositions = positions ?? [];
   const networkApy = networkData?.bondingAPY ? parseFloat(networkData.bondingAPY) : undefined;
