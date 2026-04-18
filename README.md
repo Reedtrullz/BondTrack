@@ -124,6 +124,20 @@ All API calls from frontend go through these proxies, bypassing browser CORS res
 - **THORNode**: Nodes, Network Constants, Supply
 - **Midgard**: Bonds, Earnings, History, Network, Actions (`txType` for bond/unbond/leave history)
 
+## Current Dev QA Findings
+
+The deployed staging/dev environment at `https://dev.thorchain.no` is the source of truth for user-facing QA. As of the latest live audit, these non-wallet issues are confirmed and under remediation:
+
+- THORName reverse lookup can return repeated 502s on dashboard routes
+- The LP Status route does not yet communicate upstream member lookup failures clearly enough
+- The notification prompt can block header controls and its `Enable` CTA does not visibly resolve the prompt
+- Changelog year navigation works, but changelog search, filters, and entry buttons do not behave correctly on the deployed dev site
+- Overview quick-action buttons do not preserve the intended transaction mode
+- The Transactions page still needs clearer UNBOND-mode behavior and visible copy-action feedback
+- Some Rewards page controls have dead or unclear deployed behavior, including the `30D,` label oddity
+
+Fixes are considered complete only after they are re-tested on `https://dev.thorchain.no`, not just locally.
+
 ## Contributing
 
 1. Fork the repository

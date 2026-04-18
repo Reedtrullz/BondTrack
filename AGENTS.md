@@ -26,6 +26,20 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 **Deployment method**: GitHub integration (auto-deploy on push to master)
 
+## LIVE DEV QA POLICY
+
+`https://dev.thorchain.no` is the verification target for user-facing fixes. For deployed regressions, do not stop at local validation.
+
+Required loop:
+1. reproduce on `dev.thorchain.no`
+2. fix locally
+3. run diagnostics/tests/build
+4. deploy to dev/staging
+5. re-test on `dev.thorchain.no`
+6. continue iterating until the confirmed bug or UX quirk is no longer reproducible
+
+Current live QA scope is focused on non-wallet user flows first. Browser wallet connectivity can be deferred when explicitly requested.
+
 ## STRUCTURE
 ```
 thornode-watcher/
@@ -112,6 +126,8 @@ thornode-watcher/
 **useSearchParams**: Must be wrapped in Suspense boundary. `dashboard/layout.tsx` provides this. Pages using it must be `'use client'`.
 
 **Midgard Proxy**: The proxy in `src/app/api/midgard/[...path]/route.ts` passes through 4xx errors from the upstream Midgard API. Ensure any new API client calls use the proxy to avoid CORS issues.
+
+**THORName reverse lookup**: Reverse lookup failures on the deployed dev site are currently a known live-QA concern. Treat "lookup unavailable" and "no THORName found" as degraded/non-fatal states in user-facing flows unless the feature explicitly requires a successful reverse lookup.
 
 **Midgard actions**: Use `txType` (not `type`) for bond/unbond/leave history queries to `/v2/actions`, and keep `limit <= 50` to stay within the documented API maximum. Reserve `type` for action categories like swap or addLiquidity.
 
@@ -206,7 +222,14 @@ The Risk page (`src/app/dashboard/risk/page.tsx`) shows portfolio risk assessmen
 - **EarningStatusSummary**: Quick view of Active (earning) vs Standby (not earning) vs Jailed
 
 ## KNOWN ISSUES
-- 6 pre-existing test failures in `use-watchlist.test.ts` and `use-bond-positions.test.ts`
+- Deployed dev QA still has confirmed non-wallet regressions under remediation:
+  - notification prompt can block header controls and its `Enable` CTA does not visibly resolve
+  - repeated THORName reverse-lookup 502s on dashboard routes
+  - LP Status needs a more honest degraded/error state when `/v2/member/{address}` fails
+  - changelog year buttons work, but search/filter/entry controls do not yet behave correctly on deployed dev
+  - overview quick actions do not preserve intended transaction mode
+  - transactions UNBOND/copy UX still needs deployed verification/fixes
+  - rewards controls still have dead/unclear deployed behavior, including the `30D,` label oddity
 
 ## COMMANDS
 ```bash
