@@ -4,7 +4,8 @@ export const dynamic = 'force-dynamic';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
-import { useRunePrice } from '@/lib/hooks/use-rune-price';
+import { useRunePrice, useRunePriceHistory, getClosestPriceAtDate } from '@/lib/hooks/use-rune-price';
+import { useBondHistory } from '@/lib/hooks/use-bond-history';
 import { PnLDashboard } from '@/components/dashboard/pnl-dashboard';
 import { PersonalFeeAudit } from '@/components/dashboard/fee-impact-tracker';
 import { AutoCompoundChart } from '@/components/dashboard/auto-compound-chart';
@@ -22,6 +23,12 @@ export default function RewardsPage() {
   const { positions, isLoading } = useBondPositions(address);
   const { price: runePrice } = useRunePrice();
   const { data: networkData } = useNetworkMetrics();
+  const { history: bondHistory } = useBondHistory(address);
+  const { intervals: priceIntervals } = useRunePriceHistory('day', 365);
+  const entryRunePrice = useMemo(() => {
+    if (!bondHistory?.firstBondDate || !priceIntervals.length) return undefined;
+    return getClosestPriceAtDate(priceIntervals, bondHistory.firstBondDate);
+  }, [bondHistory, priceIntervals]);
   const [mounted, setMounted] = useState(false);
   const safePositions = positions ?? [];
   const networkApy = networkData?.bondingAPY ? parseFloat(networkData.bondingAPY) : undefined;
@@ -80,6 +87,8 @@ export default function RewardsPage() {
           positions={safePositions} 
           currentRunePrice={runePrice || 0}
           address={address}
+          entryRunePrice={entryRunePrice}
+          bondHistory={bondHistory ?? undefined}
         />
       </section>
 

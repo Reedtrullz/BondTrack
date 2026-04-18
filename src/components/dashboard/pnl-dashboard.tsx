@@ -22,6 +22,7 @@ interface PnLDashboardProps {
     initialBond: number;
     currentBond: number;
     bondGrowth: number;
+    firstBondDate?: Date | null;
   } | null;
 }
 
@@ -97,6 +98,12 @@ export function PnLDashboard({
     (earningsHistory?.intervals?.length ? Number(earningsHistory.intervals[0].runePriceUSD) : currentRunePrice),
     [entryRunePrice, earningsHistory, currentRunePrice]
   );
+
+  const entryPriceDisplay = useMemo(() => {
+    if (entryRunePrice) return entryRunePrice;
+    if (earningsHistory?.intervals?.length) return Number(earningsHistory.intervals[0].runePriceUSD);
+    return currentRunePrice;
+  }, [entryRunePrice, earningsHistory, currentRunePrice]);
   
   const initialBondValueUSD = useMemo(() => effectiveInitialBond * effectiveEntryPrice, [effectiveInitialBond, effectiveEntryPrice]);
   const currentBondValueUSD = useMemo(() => currentBond * currentRunePrice, [currentBond, currentRunePrice]);
@@ -195,7 +202,7 @@ export function PnLDashboard({
           icon={<DollarSign className="w-4 h-4" />}
           label="Price PnL"
           value={`$${pricePnL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          subValue={`Entry: $${effectiveEntryPrice.toFixed(4)} → $${currentRunePrice.toFixed(4)}`}
+          subValue={`Entry: $${entryPriceDisplay.toFixed(4)} → $${currentRunePrice.toFixed(4)}`}
           positive={pricePnL >= 0}
         />
         <PnLCard
