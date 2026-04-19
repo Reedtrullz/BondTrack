@@ -43,7 +43,14 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
       <div className="mb-5 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Pool</p>
-          <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{position.pool}</p>
+          <a
+            href={`https://thorchain.net/pool/${position.pool}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-lg font-bold text-zinc-900 hover:text-blue-600 dark:text-zinc-100 dark:hover:text-blue-400 transition-colors"
+          >
+            {position.pool}
+          </a>
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Ownership {formatPercent(position?.ownershipPercent ?? 0)} · LP Units {formatLiquidityUnits(position.liquidityUnits)}</p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -85,7 +92,7 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
         {position.impermanentLossPercent !== undefined && (
           <div>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">Impermanent Loss</p>
-            <p className={`text-xl font-semibold ${position.impermanentLossPercent < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+            <p className={`text-xl font-semibold ${position.impermanentLossPercent < 0 ? 'text-red-600 dark:text-red-400' : position.impermanentLossPercent === 0 ? 'text-zinc-600 dark:text-zinc-400' : 'text-green-600 dark:text-green-400'}`}>
               {safeToFixed(position.impermanentLossPercent, 2)}%
             </p>
           </div>
