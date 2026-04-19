@@ -1,5 +1,6 @@
 import useSWR from 'swr';
 import { getMemberDetails, getPools, MemberDetailsRaw, PoolDetailRaw } from '../lib/api/midgard';
+import { getLiquidityProvider, LiquidityProviderRaw } from '../lib/api/thornode';
 import { LpPoolStatus, LpPosition } from '../lib/types/lp';
 import { calculateLpWithdrawableAmounts, calculateLpPnl, formatPnlDisplay } from '../lib/utils/calculations';
 import { runeToNumber } from '../lib/utils/formatters';
@@ -87,15 +88,36 @@ function deriveOwnershipPercent(memberLiquidityUnits: string, poolLiquidityUnits
   return (Number(memberUnits) / Number(poolUnits)) * 100;
 }
 
+interface LpDataWithThorNode {
+  memberDetails: MemberDetailsRaw;
+  pools: PoolDetailRaw[];
+  thorNodeLpData: Map<string, LiquidityProviderRaw>;
+}
+
 export const useLpPositions = (address: string | null) => {
-  const { data, error, isLoading, mutate } = useSWR<LpData>(
+  const { data, error, isLoading, mutate } = useSWR<LpDataWithThorNode>(
     address ? address : null,
     async (addr) => {
       const [memberDetails, pools] = await Promise.all([
         getMemberDetails(addr),
         getPools(),
       ]);
-      return { memberDetails, pools };
+
+      const thorNodeLpData = new Map<string, LiquidityProviderRaw>();
+      const memberPools = memberDetails?.pools || [];
+      
+      for (const pool of memberPools) {
+        try {
+          const lpData = await getLiquidityProvider(pool.pool, addr);
+          if (lpData) {
+            thorNodeLpData.set(pool.pool, lpData);
+          }
+        } catch {
+          // Continue without THORNode data for this pool
+        }
+      }
+
+      return { memberDetails, pools, thorNodeLpData };
     },
     {
       refreshInterval: 30000,
@@ -112,33 +134,45 @@ export const useLpPositions = (address: string | null) => {
     const parsedPoolApy = Number(poolData?.poolAPY ?? 0);
     const runePending = parseBigInt(poolRaw.runePending);
     const asset2Pending = parseBigInt(poolRaw.assetPending);
-    
-    const withdrawable = calculateLpWithdrawableAmounts(
-      poolRaw.runeDeposit,
-      poolRaw.assetDeposit,
-      poolData?.runeDepth ?? '0',
-      poolData?.assetDepth ?? '0',
-      poolRaw.runeAdded,
-      poolRaw.runeWithdrawn,
-      poolRaw.assetAdded,
-      poolRaw.assetWithdrawn,
-      deriveOwnershipPercent(poolRaw.liquidityUnits, poolData?.liquidityUnits)
-    );
-    
-    const runeEntryPrice = 1.0;
-    const asset2EntryPrice = 1.0;
-    const runeCurrentPrice = 1.0;
-    const asset2CurrentPrice = 1.0;
-    
+    const thorNodeLp = data?.thorNodeLpData?.get(poolRaw.pool);
+
+    let withdrawable: {
+      runeWithdrawable: string;
+      asset2Withdrawable: string;
+      runeDeposited: string;
+      asset2Deposited: string;
+    };
+
+    if (thorNodeLp) {
+      withdrawable = {
+        runeWithdrawable: thorNodeLp.rune_redeem_value,
+        asset2Withdrawable: thorNodeLp.asset_redeem_value,
+        runeDeposited: thorNodeLp.rune_deposit_value,
+        asset2Deposited: thorNodeLp.asset_deposit_value,
+      };
+    } else {
+      withdrawable = calculateLpWithdrawableAmounts(
+        poolRaw.runeDeposit,
+        poolRaw.assetDeposit,
+        poolData?.runeDepth ?? '0',
+        poolData?.assetDepth ?? '0',
+        poolRaw.runeAdded,
+        poolRaw.runeWithdrawn,
+        poolRaw.assetAdded,
+        poolRaw.assetWithdrawn,
+        deriveOwnershipPercent(poolRaw.liquidityUnits, poolData?.liquidityUnits)
+      );
+    }
+
     const pnl = calculateLpPnl(
-      poolRaw.runeDeposit,
-      poolRaw.assetDeposit,
+      withdrawable.runeDeposited,
+      withdrawable.asset2Deposited,
       withdrawable.runeWithdrawable,
       withdrawable.asset2Withdrawable,
-      runeEntryPrice,
-      asset2EntryPrice,
-      runeCurrentPrice,
-      asset2CurrentPrice
+      1.0,
+      1.0,
+      1.0,
+      1.0
     );
 
     return {
@@ -162,9 +196,9 @@ export const useLpPositions = (address: string | null) => {
       poolStatus,
       ownershipPercent: deriveOwnershipPercent(poolRaw.liquidityUnits, poolData?.liquidityUnits),
       hasPending: runePending > 0n || asset2Pending > 0n,
-      
-      runeDepositedValue: poolRaw.runeDeposit,
-      asset2DepositedValue: poolRaw.assetDeposit,
+
+      runeDepositedValue: withdrawable.runeDeposited,
+      asset2DepositedValue: withdrawable.asset2Deposited,
       runeWithdrawable: withdrawable.runeWithdrawable,
       asset2Withdrawable: withdrawable.asset2Withdrawable,
       netProfitLoss: formatPnlDisplay(pnl.pnl).text,
