@@ -9,6 +9,7 @@ import { Button } from '../../../components/ui/button';
 import { ErrorBoundary } from '../../../components/ui/error-boundary';
 import { useLpPositions } from '../../../hooks/use-lp-positions';
 import { formatRuneAmount } from '../../../lib/utils/formatters';
+import { LpPosition } from '../../../lib/types/lp';
 
 interface LpStatePanelProps {
   tone: 'empty' | 'error';
@@ -113,6 +114,53 @@ function formatMemberDate(raw: string): string {
   return new Date(timestamp * 1000).toLocaleDateString();
 }
 
+function formatRuneAsset2(positions: LpPosition[]): string {
+  const totalAsset2 = positions.reduce((sum, pos) => sum + BigInt(pos.asset2Deposit), 0n).toString();
+  return formatRuneAmount(totalAsset2);
+}
+
+function formatRuneAsset2Withdrawable(positions: LpPosition[]): string {
+  const totalWithdrawable = positions.reduce((sum, pos) => {
+    return sum + BigInt(pos.runeWithdrawable) + BigInt(pos.asset2Withdrawable);
+  }, 0n).toString();
+  return formatRuneAmount(totalWithdrawable);
+}
+
+function formatNetPnL(positions: LpPosition[]): string {
+  const totalPnL = positions.reduce((sum, pos) => {
+    const pnlPercent = pos.netProfitLossPercent;
+    const runeValue = BigInt(pos.runeDeposit);
+    const asset2Value = BigInt(pos.asset2Deposit);
+    const totalDeposited = runeValue + asset2Value;
+    const positionPnL = (totalDeposited * BigInt(Math.floor(pnlPercent * 100))) / 10000n;
+    return sum + positionPnL;
+  }, 0n);
+  
+  const absPnL = totalPnL < 0n ? -totalPnL : totalPnL;
+  const sign = totalPnL < 0n ? '-' : '+';
+  return `${sign}${formatRuneAmount(absPnL.toString())}`;
+}
+
+function formatAverageApy(positions: LpPosition[]): string {
+  if (positions.length === 0) return '0.00%';
+  
+  const totalWeightedApy = positions.reduce((sum, pos) => {
+    const runeValue = BigInt(pos.runeDeposit);
+    const asset2Value = BigInt(pos.asset2Deposit);
+    const totalValue = runeValue + asset2Value;
+    return sum + (totalValue * BigInt(Math.floor(pos.poolApy * 100)));
+  }, 0n);
+  
+  const totalDeposits = positions.reduce((sum, pos) => {
+    return sum + BigInt(pos.runeDeposit) + BigInt(pos.asset2Deposit);
+  }, 0n);
+  
+  if (totalDeposits === 0n) return '0.00%';
+  
+  const averageApy = Number(totalWeightedApy) / (Number(totalDeposits) / 100);
+  return `${averageApy.toFixed(2)}%`;
+}
+
 const DashboardContent = () => {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
@@ -189,8 +237,15 @@ const DashboardContent = () => {
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryMetricCard label="Positions" value={String(positions.length)} subValue="Active LP memberships found" />
         <SummaryMetricCard label="RUNE Deposit" value={formatRuneAmount(totalRuneDeposit)} subValue="Combined current RUNE-side deposit value" />
+        <SummaryMetricCard label="ASSET 2 Deposit" value={formatRuneAsset2(positions)} subValue="Combined current ASSET 2-side deposit value" />
         <SummaryMetricCard label="Earning Pools" value={String(earningPools)} subValue={`${pendingAdds} position${pendingAdds === 1 ? '' : 's'} with pending adds`} />
+      </section>
+      
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryMetricCard label="Total Withdrawable" value={formatRuneAsset2Withdrawable(positions)} subValue="Combined RUNE + ASSET 2 withdrawable amount" />
+        <SummaryMetricCard label="Net PnL" value={formatNetPnL(positions)} subValue="Combined profit/loss across all positions" />
         <SummaryMetricCard label="Last LP Activity" value={latestActivity > 0 ? formatMemberDate(String(latestActivity)) : '--'} subValue="Most recent add-liquidity timestamp" />
+        <SummaryMetricCard label="Average APY" value={formatAverageApy(positions)} subValue="Weighted average across all positions" />
       </section>
 
       <section className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
@@ -202,17 +257,18 @@ const DashboardContent = () => {
         </div>
         <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
           <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-800">
-            <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-950/60">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Pool</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Pool Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">RUNE Deposit Value</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Share</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Pool APY</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">24H Volume</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Activity</th>
-              </tr>
-            </thead>
+<thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-950/60">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Pool</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Pool Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Deposited</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Share</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Withdrawable</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Net PnL</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Pool APY</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Activity</th>
+                </tr>
+              </thead>
             <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-900/50">
               {positions.map((pos) => (
                 <LpNodeRow key={`${pos.pool}-${pos.address}`} position={pos} />

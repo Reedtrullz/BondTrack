@@ -107,18 +107,29 @@ describe('useLpPositions', () => {
       address: 'bc1member',
       pool: 'BTC.BTC',
       runeDeposit: '5000000000',
+      asset2Deposit: '250000000',
       liquidityUnits: '100',
       runeAdded: '100000000',
       runePending: '0',
       runeWithdrawn: '0',
+      asset2Added: '10000000',
+      asset2Pending: '0',
+      asset2Withdrawn: '0',
       volume24h: '0',
       runeDepth: '0',
+      asset2Depth: '0',
       dateFirstAdded: '0',
       dateLastAdded: '0',
       poolApy: 12.5,
       poolStatus: 'available',
       ownershipPercent: 0,
       hasPending: false,
+      runeDepositedValue: '5000000000',
+      asset2DepositedValue: '250000000',
+      runeWithdrawable: '0',
+      asset2Withdrawable: '0',
+      netProfitLoss: '-$52.50',
+      netProfitLossPercent: -100,
     });
     expect(midgard.getMemberDetails).toHaveBeenCalledTimes(2);
   });
@@ -173,6 +184,7 @@ describe('useLpPositions', () => {
         liquidityUnits: '1000',
         volume24h: '900000000',
         runeDepth: '250000000000',
+        assetDepth: '500000000000',
       },
     ] as never);
 
@@ -185,6 +197,7 @@ describe('useLpPositions', () => {
       hasPending: true,
       volume24h: '900000000',
       runeDepth: '250000000000',
+      asset2Depth: '500000000000',
       dateFirstAdded: '1700000000',
       dateLastAdded: '1700500000',
     });

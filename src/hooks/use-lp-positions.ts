@@ -1,6 +1,8 @@
 import useSWR from 'swr';
 import { getMemberDetails, getPools, MemberDetailsRaw, PoolDetailRaw } from '../lib/api/midgard';
 import { LpPoolStatus, LpPosition } from '../lib/types/lp';
+import { calculateLpWithdrawableAmounts, calculateLpPnl, formatPnlDisplay } from '../lib/utils/calculations';
+import { runeToNumber } from '../lib/utils/formatters';
 
 interface LpData {
   memberDetails: MemberDetailsRaw;
@@ -109,23 +111,64 @@ export const useLpPositions = (address: string | null) => {
     const poolStatus = normalizePoolStatus(poolData?.status);
     const parsedPoolApy = Number(poolData?.poolAPY ?? 0);
     const runePending = parseBigInt(poolRaw.runePending);
+    const asset2Pending = parseBigInt(poolRaw.assetPending);
+    
+    const withdrawable = calculateLpWithdrawableAmounts(
+      poolRaw.runeDeposit,
+      poolRaw.assetDeposit,
+      poolData?.runeDepth ?? '0',
+      poolData?.assetDepth ?? '0',
+      poolRaw.runeAdded,
+      poolRaw.runeWithdrawn,
+      poolRaw.assetAdded,
+      poolRaw.assetWithdrawn,
+      deriveOwnershipPercent(poolRaw.liquidityUnits, poolData?.liquidityUnits)
+    );
+    
+    const runeEntryPrice = 1.0;
+    const asset2EntryPrice = 1.0;
+    const runeCurrentPrice = 1.0;
+    const asset2CurrentPrice = 1.0;
+    
+    const pnl = calculateLpPnl(
+      poolRaw.runeDeposit,
+      poolRaw.assetDeposit,
+      withdrawable.runeWithdrawable,
+      withdrawable.asset2Withdrawable,
+      runeEntryPrice,
+      asset2EntryPrice,
+      runeCurrentPrice,
+      asset2CurrentPrice
+    );
 
     return {
       address: poolRaw.assetAddress,
       pool: poolRaw.pool,
       runeDeposit: poolRaw.runeDeposit,
+      asset2Deposit: poolRaw.assetDeposit,
       liquidityUnits: poolRaw.liquidityUnits,
       runeAdded: poolRaw.runeAdded,
       runePending: poolRaw.runePending,
       runeWithdrawn: poolRaw.runeWithdrawn,
+      asset2Added: poolRaw.assetAdded,
+      asset2Pending: poolRaw.assetPending,
+      asset2Withdrawn: poolRaw.assetWithdrawn,
       volume24h: poolData?.volume24h ?? '0',
       runeDepth: poolData?.runeDepth ?? '0',
+      asset2Depth: poolData?.assetDepth ?? '0',
       dateFirstAdded: poolRaw.dateFirstAdded,
       dateLastAdded: poolRaw.dateLastAdded,
       poolApy: Number.isFinite(parsedPoolApy) ? parsedPoolApy : 0,
       poolStatus,
       ownershipPercent: deriveOwnershipPercent(poolRaw.liquidityUnits, poolData?.liquidityUnits),
-      hasPending: runePending > 0n,
+      hasPending: runePending > 0n || asset2Pending > 0n,
+      
+      runeDepositedValue: poolRaw.runeDeposit,
+      asset2DepositedValue: poolRaw.assetDeposit,
+      runeWithdrawable: withdrawable.runeWithdrawable,
+      asset2Withdrawable: withdrawable.asset2Withdrawable,
+      netProfitLoss: formatPnlDisplay(pnl.pnl).text,
+      netProfitLossPercent: pnl.pnlPercent,
     };
   });
 

@@ -110,3 +110,75 @@ export function estimateNextChurn(currentHeight: number): { blocksRemaining: num
     estimatedSeconds: blocksRemaining * 6,
   };
 }
+
+export function calculateLpPnl(
+  runeDeposited: string,
+  asset2Deposited: string,
+  runeWithdrawable: string,
+  asset2Withdrawable: string,
+  runeEntryPrice: number,
+  asset2EntryPrice: number,
+  runeCurrentPrice: number,
+  asset2CurrentPrice: number
+): { pnl: number; pnlPercent: number; runePnl: number; asset2Pnl: number } {
+  const runeDepositedNum = runeToNumber(runeDeposited);
+  const asset2DepositedNum = runeToNumber(asset2Deposited);
+  const runeWithdrawableNum = runeToNumber(runeWithdrawable);
+  const asset2WithdrawableNum = runeToNumber(asset2Withdrawable);
+  
+  const runeDepositedValue = runeDepositedNum * runeEntryPrice;
+  const asset2DepositedValue = asset2DepositedNum * asset2EntryPrice;
+  const totalDepositedValue = runeDepositedValue + asset2DepositedValue;
+  
+  const runeCurrentValue = runeWithdrawableNum * runeCurrentPrice;
+  const asset2CurrentValue = asset2WithdrawableNum * asset2CurrentPrice;
+  const totalCurrentValue = runeCurrentValue + asset2CurrentValue;
+  
+  const totalPnl = totalCurrentValue - totalDepositedValue;
+  const pnlPercent = totalDepositedValue > 0 ? (totalPnl / totalDepositedValue) * 100 : 0;
+  
+  return {
+    pnl: totalPnl,
+    pnlPercent,
+    runePnl: runeCurrentValue - runeDepositedValue,
+    asset2Pnl: asset2CurrentValue - asset2DepositedValue,
+  };
+}
+
+export function calculateLpWithdrawableAmounts(
+  runeDeposit: string,
+  asset2Deposit: string,
+  runeDepth: string,
+  asset2Depth: string,
+  runeAdded: string,
+  runeWithdrawn: string,
+  asset2Added: string,
+  asset2Withdrawn: string,
+  ownershipPercent: number
+): { runeWithdrawable: string; asset2Withdrawable: string; runeDeposited: string; asset2Deposited: string } {
+  const runeDepositedNum = runeToNumber(runeDeposit);
+  const asset2DepositedNum = runeToNumber(asset2Deposit);
+  
+  const runeNetDeposited = runeDepositedNum + runeToNumber(runeAdded) - runeToNumber(runeWithdrawn);
+  const asset2NetDeposited = asset2DepositedNum + runeToNumber(asset2Added) - runeToNumber(asset2Withdrawn);
+  
+  const runeWithdrawable = (runeNetDeposited * ownershipPercent / 100).toString();
+  const asset2Withdrawable = (asset2NetDeposited * ownershipPercent / 100).toString();
+  
+  return {
+    runeWithdrawable,
+    asset2Withdrawable,
+    runeDeposited: runeDeposit,
+    asset2Deposited: asset2Deposit,
+  };
+}
+
+export function formatPnlDisplay(pnl: number): { text: string; color: string } {
+  if (pnl > 0) {
+    return { text: `+$${pnl.toFixed(2)}`, color: 'text-green-600 dark:text-green-400' };
+  } else if (pnl < 0) {
+    return { text: `-$${Math.abs(pnl).toFixed(2)}`, color: 'text-red-600 dark:text-red-400' };
+  } else {
+    return { text: '$0.00', color: 'text-zinc-600 dark:text-zinc-400' };
+  }
+}

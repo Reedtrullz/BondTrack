@@ -2,6 +2,7 @@ import React from 'react';
 import { LpPosition } from '../../lib/types/lp';
 import { formatRuneAmount } from '../../lib/utils/formatters';
 import { LpStatusBadge } from './lp-status-badge';
+import { formatPnlDisplay } from '../../lib/utils/calculations';
 
 function formatLiquidityUnits(raw: string): string {
   try {
@@ -27,6 +28,8 @@ function formatMemberDate(raw: string): string {
 }
 
 export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) => {
+  const pnlDisplay = formatPnlDisplay(position.netProfitLossPercent);
+  
   return (
     <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-md dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mb-5 flex items-start justify-between gap-3">
@@ -46,9 +49,32 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">RUNE Deposit Value</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">RUNE Deposited</p>
           <p className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneAmount(position.runeDeposit)}</p>
         </div>
+        <div>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">ASSET 2 Deposited</p>
+          <p className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneAmount(position.asset2Deposit)}</p>
+        </div>
+        
+        <div>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">RUNE Withdrawable</p>
+          <p className="text-xl font-semibold text-green-600 dark:text-green-400">{formatRuneAmount(position.runeWithdrawable)}</p>
+        </div>
+        <div>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">ASSET 2 Withdrawable</p>
+          <p className="text-xl font-semibold text-green-600 dark:text-green-400">{formatRuneAmount(position.asset2Withdrawable)}</p>
+        </div>
+        
+        <div>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Net Profit/Loss</p>
+          <p className={`text-xl font-semibold ${pnlDisplay.color}`}>{position.netProfitLoss}</p>
+        </div>
+        <div>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">PnL Percentage</p>
+          <p className={`text-xl font-semibold ${pnlDisplay.color}`}>{position.netProfitLossPercent.toFixed(2)}%</p>
+        </div>
+        
         <div>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Pool APY</p>
           <p className="text-xl font-semibold text-green-600 dark:text-green-400">{position.poolApy.toFixed(2)}%</p>
@@ -61,6 +87,7 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Pool Depth</p>
           <p className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneAmount(position.runeDepth)}</p>
         </div>
+        
         <div>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">RUNE Added</p>
           <p className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneAmount(position.runeAdded)}</p>
@@ -70,6 +97,15 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
           <p className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneAmount(position.runeWithdrawn)}</p>
         </div>
         <div>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">ASSET 2 Added</p>
+          <p className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneAmount(position.asset2Added)}</p>
+        </div>
+        <div>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">ASSET 2 Withdrawn</p>
+          <p className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneAmount(position.asset2Withdrawn)}</p>
+        </div>
+        
+        <div>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">First Added</p>
           <p className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{formatMemberDate(position.dateFirstAdded)}</p>
         </div>
@@ -78,8 +114,14 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
           <p className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{formatMemberDate(position.dateLastAdded)}</p>
         </div>
         <div>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Pending RUNE</p>
-          <p className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{position.hasPending ? formatRuneAmount(position.runePending) : '--'}</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Pending Amount</p>
+          <p className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+            {position.hasPending ? (
+              <span className="text-amber-600 dark:text-amber-400">
+                {formatRuneAmount(position.runePending)} + {formatRuneAmount(position.asset2Pending)}
+              </span>
+            ) : '--'}
+          </p>
         </div>
       </div>
     </div>

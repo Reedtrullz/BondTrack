@@ -2,6 +2,7 @@ import React from 'react';
 import { LpPosition } from '../../lib/types/lp';
 import { formatRuneAmount } from '../../lib/utils/formatters';
 import { LpStatusBadge } from './lp-status-badge';
+import { formatPnlDisplay } from '../../lib/utils/calculations';
 
 function formatLiquidityUnits(raw: string): string {
   try {
@@ -27,6 +28,8 @@ interface LpNodeRowProps {
 }
 
 export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
+  const pnlDisplay = formatPnlDisplay(position.netProfitLossPercent);
+  
   return (
     <tr className="border-b border-zinc-100 bg-white transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800/50">
       <td className="py-4 px-4">
@@ -41,22 +44,60 @@ export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
       <td className="py-4 px-4">
         <LpStatusBadge status={position.poolStatus} />
       </td>
-      <td className="py-4 px-4 font-medium text-zinc-900 dark:text-zinc-100">
-        {formatRuneAmount(position.runeDeposit)}
+      
+      <td className="py-4 px-4">
+        <div className="space-y-2">
+          <div className="font-medium text-zinc-900 dark:text-zinc-100">
+            RUNE: {formatRuneAmount(position.runeDeposit)}
+          </div>
+          <div className="font-medium text-zinc-900 dark:text-zinc-100">
+            ASSET: {formatRuneAmount(position.asset2Deposit)}
+          </div>
+        </div>
       </td>
+      
       <td className="py-4 px-4">
         <div className="font-semibold text-zinc-900 dark:text-zinc-100">{position.ownershipPercent.toFixed(2)}%</div>
         <div className="text-xs text-zinc-500 dark:text-zinc-400">{formatLiquidityUnits(position.liquidityUnits)} units</div>
       </td>
+      
       <td className="py-4 px-4">
-        <span className="font-semibold text-green-600 dark:text-green-400">{position.poolApy.toFixed(2)}%</span>
+        <div className="space-y-2">
+          <div className="font-semibold text-green-600 dark:text-green-400">
+            RUNE: {formatRuneAmount(position.runeWithdrawable)}
+          </div>
+          <div className="font-semibold text-green-600 dark:text-green-400">
+            ASSET: {formatRuneAmount(position.asset2Withdrawable)}
+          </div>
+        </div>
       </td>
-      <td className="py-4 px-4 font-medium text-zinc-900 dark:text-zinc-100">
-        {formatRuneAmount(position.volume24h)}
-      </td>
+      
       <td className="py-4 px-4">
-        <div className="text-sm text-zinc-900 dark:text-zinc-100">{formatMemberDate(position.dateFirstAdded)}</div>
-        <div className="text-xs text-zinc-500 dark:text-zinc-400">Last {formatMemberDate(position.dateLastAdded)}</div>
+        <div className="space-y-2">
+          <div className={`font-semibold ${pnlDisplay.color}`}>
+            {position.netProfitLoss}
+          </div>
+          <div className={`text-sm ${pnlDisplay.color}`}>
+            {position.netProfitLossPercent.toFixed(2)}%
+          </div>
+        </div>
+      </td>
+      
+      <td className="py-4 px-4">
+        <div className="space-y-2">
+          <div className="font-semibold text-green-600 dark:text-green-400">{position.poolApy.toFixed(2)}%</div>
+          <div className="text-sm text-zinc-500 dark:text-zinc-400">APY</div>
+        </div>
+      </td>
+      
+      <td className="py-4 px-4">
+        <div className="space-y-1">
+          <div className="text-sm text-zinc-900 dark:text-zinc-100">{formatMemberDate(position.dateFirstAdded)}</div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400">Last {formatMemberDate(position.dateLastAdded)}</div>
+          <div className="text-xs text-amber-600 dark:text-amber-400">
+            {position.hasPending ? 'Pending' : 'Active'}
+          </div>
+        </div>
       </td>
     </tr>
   );
