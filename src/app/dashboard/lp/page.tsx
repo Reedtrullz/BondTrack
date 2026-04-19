@@ -14,7 +14,6 @@ import {
 import { formatRuneAmount, runeToNumber } from '@/lib/utils/formatters';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, Waves } from 'lucide-react';
-import { LPData, MemberPoolRaw, PoolDetailsRaw, LiquidityProviderRaw } from './types/lp';
 
 interface LPPosition {
   address: string;
@@ -44,6 +43,8 @@ interface LPPosition {
   netProfitLoss: string;
   netProfitLossPercent: number;
 }
+
+import { LPData, MemberPoolRaw, PoolDetailsRaw, LiquidityProviderRaw } from './types/lp';
 
 export default function LPPage() {
   const searchParams = useSearchParams();

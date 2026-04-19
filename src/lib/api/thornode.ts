@@ -1,47 +1,21 @@
 import { fetchThornode } from './client';
 
-export interface PoolDetailsRaw {
-  asset: string;
-  status: 'available' | 'staged' | 'suspended' | 'unknown';
-  poolAPY: string;
-  volume24h: string;
-  runeDepth: string;
-  assetDepth: string;
-  liquidityUnits: string;
-}
-
-export interface MemberPoolRaw {
-  pool: string;
-  assetAddress: string;
-  runeDeposit: string;
-  assetDeposit: string;
-  runePending: string;
-  assetPending: string;
-  runeAdded: string;
-  runeWithdrawn: string;
-  assetAdded: string;
-  assetWithdrawn: string;
-  liquidityUnits: string;
-  dateFirstAdded: number;
-  dateLastAdded: number;
-}
-
 export interface MemberDetailsRaw {
-  pools: MemberPoolRaw[];
-}
-
-export interface LPData {
-  memberDetails: MemberDetailsRaw | null;
-  pools: PoolDetailsRaw[];
-  thorNodeLpData: Map<string, LiquidityProviderRaw>;
-  runePriceUSD: number;
-}
-
-export interface LiquidityProviderRaw {
-  rune_redeem_value: string;
-  asset_redeem_value: string;
-  rune_deposit_value: string;
-  asset_deposit_value: string;
+  pools: {
+    pool: string;
+    assetAddress: string;
+    runeDeposit: string;
+    assetDeposit: string;
+    runePending: string;
+    assetPending: string;
+    runeAdded: string;
+    runeWithdrawn: string;
+    assetAdded: string;
+    assetWithdrawn: string;
+    liquidityUnits: string;
+    dateFirstAdded: number;
+    dateLastAdded: number;
+  }[];
 }
 
 export async function getAllNodes(init?: RequestInit) {
@@ -70,6 +44,6 @@ export async function getMemberDetails(address: string): Promise<MemberDetailsRa
   return fetchThornode(`/thorchain/member/${address}`);
 }
 
-export async function getPools(): Promise<PoolDetailsRaw[]> {
+export async function getPools() {
   return fetchThornode('/thorchain/pools');
 }
