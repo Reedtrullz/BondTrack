@@ -156,25 +156,23 @@ export function calculateLpWithdrawableAmounts(
   asset2Withdrawn: string,
   ownershipPercent: number
 ): { runeWithdrawable: string; asset2Withdrawable: string; runeDeposited: string; asset2Deposited: string } {
-  const runeDepthRaw = BigInt(runeDepth || '0');
-  const asset2DepthRaw = BigInt(asset2Depth || '0');
-  const ownershipRaw = BigInt(Math.floor(ownershipPercent * 100));
-  
-  if (runeDepthRaw <= 0n || asset2DepthRaw <= 0n || ownershipRaw <= 0n) {
-    return {
-      runeWithdrawable: '0',
-      asset2Withdrawable: '0',
-      runeDeposited: runeDeposit,
-      asset2Deposited: asset2Deposit,
-    };
+  if (ownershipPercent <= 0) {
+    return { runeWithdrawable: '0', asset2Withdrawable: '0', runeDeposited: runeDeposit, asset2Deposited: asset2Deposit };
   }
   
-  const runeWithdrawable = (runeDepthRaw * ownershipRaw / 10000n).toString();
-  const asset2Withdrawable = (asset2DepthRaw * ownershipRaw / 10000n).toString();
+  const runeDepthNum = runeToNumber(runeDepth || '0');
+  const asset2DepthNum = runeToNumber(asset2Depth || '0');
+  
+  if (runeDepthNum <= 0 || asset2DepthNum <= 0) {
+    return { runeWithdrawable: runeDeposit, asset2Withdrawable: asset2Deposit, runeDeposited: runeDeposit, asset2Deposited: asset2Deposit };
+  }
+  
+  const runeWithdrawable = (runeDepthNum * ownershipPercent / 100);
+  const asset2Withdrawable = (asset2DepthNum * ownershipPercent / 100);
   
   return {
-    runeWithdrawable,
-    asset2Withdrawable,
+    runeWithdrawable: String(Math.floor(runeWithdrawable * 1e8)),
+    asset2Withdrawable: String(Math.floor(asset2Withdrawable * 1e8)),
     runeDeposited: runeDeposit,
     asset2Deposited: asset2Deposit,
   };
