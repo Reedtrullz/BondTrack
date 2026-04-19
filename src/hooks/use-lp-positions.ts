@@ -112,7 +112,7 @@ export const useLpPositions = (address: string | null) => {
       const thorNodeLpData = new Map<string, LiquidityProviderRaw>();
       const memberPools = memberDetails?.pools || [];
       
-      for (const pool of memberPools) {
+      const poolPromises = memberPools.map(async (pool) => {
         try {
           const lpData = await getLiquidityProvider(pool.pool, addr);
           if (lpData) {
@@ -121,7 +121,8 @@ export const useLpPositions = (address: string | null) => {
         } catch {
           // Continue without THORNode data for this pool
         }
-      }
+      });
+      await Promise.allSettled(poolPromises);
 
       return { memberDetails, pools, thorNodeLpData, runePriceUSD };
     },
