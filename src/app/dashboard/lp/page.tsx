@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AlertTriangle, RefreshCw, Waves, Download } from 'lucide-react';
@@ -54,7 +55,7 @@ function LpStatePanel({ tone, title, description, detail, address, action }: LpS
   );
 }
 
-function LpLoadingState({ loadingProgress }: { loadingProgress: number }) {
+function LpLoadingState({ loadingProgress = 0 }: { loadingProgress?: number }) {
   return (
     <div className="animate-pulse space-y-8">
       <section className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
