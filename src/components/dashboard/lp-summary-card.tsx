@@ -82,6 +82,14 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
           <p className="text-sm text-zinc-500 dark:text-zinc-400">PnL Percentage</p>
           <p className={`text-xl font-semibold ${pnlDisplay.color}`}>{safeToFixed(position?.netProfitLossPercent ?? 0, 2)}%</p>
         </div>
+        {position.impermanentLossPercent !== undefined && (
+          <div>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Impermanent Loss</p>
+            <p className={`text-xl font-semibold ${position.impermanentLossPercent < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+              {safeToFixed(position.impermanentLossPercent, 2)}%
+            </p>
+          </div>
+        )}
         
         <div>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Pool APY</p>
