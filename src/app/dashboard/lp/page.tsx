@@ -15,7 +15,7 @@ import {
 } from '@/lib/utils/calculations';
 import { formatRuneAmount, runeToNumber } from '@/lib/utils/formatters';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, RefreshCw, Waves } from 'lucide-react';
+import { AlertTriangle, Download, RefreshCw, Waves } from 'lucide-react';
 import { PoolStatusBadge } from './components/PoolStatusBadge';
 
 interface LPPosition {
