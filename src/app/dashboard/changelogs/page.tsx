@@ -354,7 +354,7 @@ export default function ChangelogsPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 space-y-6 dark:bg-[#0a0a0a]">
+<div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 space-y-6 bg-white dark:bg-[#0a0a0a]">
         <div className="h-24 rounded-xl animate-pulse bg-zinc-100 dark:bg-[#282c34]" />
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
