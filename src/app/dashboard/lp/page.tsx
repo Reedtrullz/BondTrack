@@ -43,6 +43,8 @@ interface LPPosition {
   asset2Withdrawable: string;
   netProfitLoss: string;
   netProfitLossPercent: number;
+  impermanentLossPercent: number;
+  impermanentLossValue: number;
 }
 
 import { LPData, MemberPoolRaw, PoolDetailsRaw, LiquidityProviderRaw } from './types/lp';
