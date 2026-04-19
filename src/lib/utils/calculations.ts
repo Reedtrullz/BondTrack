@@ -110,3 +110,40 @@ export function estimateNextChurn(currentHeight: number): { blocksRemaining: num
     estimatedSeconds: blocksRemaining * 6,
   };
 }
+
+/**
+ * Calculate impermanent loss for an LP position.
+ * 
+ * @param runeDeposit - RUNE amount deposited (in 1e8 units)
+ * @param assetDeposit - ASSET amount deposited (in 1e8 units)
+ * @param runeCurrentPrice - Current RUNE price in USD
+ * @param assetCurrentPrice - Current ASSET price in USD
+ * @param runeEntryPrice - RUNE price at time of deposit in USD
+ * @param assetEntryPrice - ASSET price at time of deposit in USD
+ * @returns Object with ilPercent (percentage) and ilValue (USD value)
+ */
+export function calculateImpermanentLoss(
+  runeDeposit: string,
+  assetDeposit: string,
+  runeCurrentPrice: number,
+  assetCurrentPrice: number,
+  runeEntryPrice: number,
+  assetEntryPrice: number
+): { ilPercent: number; ilValue: number } {
+  const runeDepositedValue = runeToNumber(runeDeposit) * runeEntryPrice;
+  const assetDepositedValue = runeToNumber(assetDeposit) * assetEntryPrice;
+  const totalDepositedValue = runeDepositedValue + assetDepositedValue;
+
+  const runeCurrentValue = runeToNumber(runeDeposit) * runeCurrentPrice;
+  const assetCurrentValue = runeToNumber(assetDeposit) * assetCurrentPrice;
+  const totalCurrentValue = runeCurrentValue + assetCurrentValue;
+
+  // HODL value if held separately
+  const hodlValue = runeDepositedValue * (runeCurrentPrice / runeEntryPrice) +
+                    assetDepositedValue * (assetCurrentPrice / assetEntryPrice);
+
+  const ilValue = totalCurrentValue - hodlValue;
+  const ilPercent = hodlValue > 0 ? (ilValue / hodlValue) * 100 : 0;
+
+  return { ilPercent, ilValue };
+}
