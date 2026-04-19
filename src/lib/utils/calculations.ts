@@ -156,14 +156,20 @@ export function calculateLpWithdrawableAmounts(
   asset2Withdrawn: string,
   ownershipPercent: number
 ): { runeWithdrawable: string; asset2Withdrawable: string; runeDeposited: string; asset2Deposited: string } {
-  const runeDepositedNum = runeToNumber(runeDeposit);
-  const asset2DepositedNum = runeToNumber(asset2Deposit);
+  const runeDepositedRaw = BigInt(runeDeposit || '0');
+  const runeAddedRaw = BigInt(runeAdded || '0');
+  const runeWithdrawnRaw = BigInt(runeWithdrawn || '0');
+  const asset2DepositedRaw = BigInt(asset2Deposit || '0');
+  const asset2AddedRaw = BigInt(asset2Added || '0');
+  const asset2WithdrawnRaw = BigInt(asset2Withdrawn || '0');
   
-  const runeNetDeposited = runeDepositedNum + runeToNumber(runeAdded) - runeToNumber(runeWithdrawn);
-  const asset2NetDeposited = asset2DepositedNum + runeToNumber(asset2Added) - runeToNumber(asset2Withdrawn);
+  const runeNetDeposited = runeDepositedRaw + runeAddedRaw - runeWithdrawnRaw;
+  const asset2NetDeposited = asset2DepositedRaw + asset2AddedRaw - asset2WithdrawnRaw;
   
-  const runeWithdrawable = (runeNetDeposited * ownershipPercent / 100).toString();
-  const asset2Withdrawable = (asset2NetDeposited * ownershipPercent / 100).toString();
+  const percentBigInt = BigInt(Math.floor(ownershipPercent * 100));
+  
+  const runeWithdrawable = (runeNetDeposited * percentBigInt / 10000n).toString();
+  const asset2Withdrawable = (asset2NetDeposited * percentBigInt / 10000n).toString();
   
   return {
     runeWithdrawable,
