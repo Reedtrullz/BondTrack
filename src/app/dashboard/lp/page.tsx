@@ -245,11 +245,22 @@ const DashboardContent = () => {
               Midgard returned {positions.length} liquidity {positions.length === 1 ? 'position' : 'positions'} for this address.
             </p>
           </div>
-          {address ? (
-            <p className="max-w-full truncate rounded-full border border-zinc-200 bg-zinc-100/80 px-4 py-2 font-mono text-xs text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-300">
-              {address}
-            </p>
-          ) : null}
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => void retry()}
+              variant="outline"
+              size="sm"
+              disabled={isLoading}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            {address ? (
+              <p className="max-w-full truncate rounded-full border border-zinc-200 bg-zinc-100/80 px-4 py-2 font-mono text-xs text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-300">
+                {address}
+              </p>
+            ) : null}
+          </div>
         </div>
         <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {positions.map((pos) => (
