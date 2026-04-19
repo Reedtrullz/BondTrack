@@ -115,13 +115,28 @@ function formatMemberDate(raw: string): string {
 }
 
 function formatRuneAsset2(positions: LpPosition[]): string {
-  const totalAsset2 = positions.reduce((sum, pos) => sum + BigInt(pos.asset2Deposit), 0n).toString();
+  const totalAsset2 = positions.reduce((sum, pos) => {
+    const value = pos.asset2Deposit;
+    if (!value || value === '0') return sum;
+    try {
+      return sum + BigInt(value);
+    } catch {
+      return sum;
+    }
+  }, 0n).toString();
   return formatRuneAmount(totalAsset2);
 }
 
 function formatRuneAsset2Withdrawable(positions: LpPosition[]): string {
   const totalWithdrawable = positions.reduce((sum, pos) => {
-    return sum + BigInt(pos.runeWithdrawable) + BigInt(pos.asset2Withdrawable);
+    let s = sum;
+    try {
+      s = sum + BigInt(pos.runeWithdrawable || '0');
+    } catch {}
+    try {
+      s = s + BigInt(pos.asset2Withdrawable || '0');
+    } catch {}
+    return s;
   }, 0n).toString();
   return formatRuneAmount(totalWithdrawable);
 }
@@ -129,11 +144,17 @@ function formatRuneAsset2Withdrawable(positions: LpPosition[]): string {
 function formatNetPnL(positions: LpPosition[]): string {
   const totalPnL = positions.reduce((sum, pos) => {
     const pnlPercent = pos.netProfitLossPercent;
-    const runeValue = BigInt(pos.runeDeposit);
-    const asset2Value = BigInt(pos.asset2Deposit);
+    if (!Number.isFinite(pnlPercent) || pnlPercent === 0) return sum;
+    const runeValue = BigInt(pos.runeDeposit || '0');
+    const asset2Value = BigInt(pos.asset2Deposit || '0');
     const totalDeposited = runeValue + asset2Value;
-    const positionPnL = (totalDeposited * BigInt(Math.floor(pnlPercent * 100))) / 10000n;
-    return sum + positionPnL;
+    if (totalDeposited === 0n) return sum;
+    try {
+      const positionPnL = (totalDeposited * BigInt(Math.floor(pnlPercent * 100))) / 10000n;
+      return sum + positionPnL;
+    } catch {
+      return sum;
+    }
   }, 0n);
   
   const absPnL = totalPnL < 0n ? -totalPnL : totalPnL;
@@ -145,19 +166,22 @@ function formatAverageApy(positions: LpPosition[]): string {
   if (positions.length === 0) return '0.00%';
   
   const totalWeightedApy = positions.reduce((sum, pos) => {
-    const runeValue = BigInt(pos.runeDeposit);
-    const asset2Value = BigInt(pos.asset2Deposit);
+    const runeValue = BigInt(pos.runeDeposit || '0');
+    const asset2Value = BigInt(pos.asset2Deposit || '0');
     const totalValue = runeValue + asset2Value;
-    return sum + (totalValue * BigInt(Math.floor(pos.poolApy * 100)));
+    const apy = pos.poolApy;
+    if (!Number.isFinite(apy)) return sum;
+    return sum + (totalValue * BigInt(Math.floor(apy * 100)));
   }, 0n);
   
   const totalDeposits = positions.reduce((sum, pos) => {
-    return sum + BigInt(pos.runeDeposit) + BigInt(pos.asset2Deposit);
+    return sum + BigInt(pos.runeDeposit || '0') + BigInt(pos.asset2Deposit || '0');
   }, 0n);
   
   if (totalDeposits === 0n) return '0.00%';
   
   const averageApy = Number(totalWeightedApy) / (Number(totalDeposits) / 100);
+  if (!Number.isFinite(averageApy) || Number.isNaN(averageApy)) return '0.00%';
   return `${averageApy.toFixed(2)}%`;
 }
 
@@ -166,7 +190,7 @@ const DashboardContent = () => {
   const address = searchParams.get('address');
   const { positions, isLoading, error, state, retry } = useLpPositions(address);
 
-  const totalRuneDeposit = positions.reduce((sum, position) => sum + BigInt(position.runeDeposit), 0n).toString();
+  const totalRuneDeposit = positions.reduce((sum, position) => sum + BigInt(position.runeDeposit || '0'), 0n).toString();
   const earningPools = positions.filter((position) => position.poolStatus === 'available').length;
   const pendingAdds = positions.filter((position) => position.hasPending).length;
   const latestActivity = positions.reduce((latest, position) => {

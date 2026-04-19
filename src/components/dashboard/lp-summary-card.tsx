@@ -13,6 +13,7 @@ function formatLiquidityUnits(raw: string): string {
 }
 
 function formatPercent(value: number): string {
+  if (!Number.isFinite(value)) return '0.00%';
   return `${value.toFixed(2)}%`;
 }
 
@@ -27,8 +28,13 @@ function formatMemberDate(raw: string): string {
   return new Date(timestamp * 1000).toLocaleDateString();
 }
 
+function safeToFixed(value: number, decimals: number): string {
+  if (!Number.isFinite(value)) return '0.00';
+  return value.toFixed(decimals);
+}
+
 export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) => {
-  const pnlDisplay = formatPnlDisplay(position.netProfitLossPercent);
+  const pnlDisplay = formatPnlDisplay(position?.netProfitLossPercent ?? 0);
   
   return (
     <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-md dark:border-zinc-800 dark:bg-zinc-900">
@@ -36,7 +42,7 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
         <div className="min-w-0">
           <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Pool</p>
           <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{position.pool}</p>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Ownership {formatPercent(position.ownershipPercent)} · LP Units {formatLiquidityUnits(position.liquidityUnits)}</p>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Ownership {formatPercent(position?.ownershipPercent ?? 0)} · LP Units {formatLiquidityUnits(position.liquidityUnits)}</p>
         </div>
         <div className="flex flex-col items-end gap-2">
           <LpStatusBadge status={position.poolStatus} />
@@ -72,12 +78,12 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
         </div>
         <div>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">PnL Percentage</p>
-          <p className={`text-xl font-semibold ${pnlDisplay.color}`}>{position.netProfitLossPercent.toFixed(2)}%</p>
+          <p className={`text-xl font-semibold ${pnlDisplay.color}`}>{safeToFixed(position?.netProfitLossPercent ?? 0, 2)}%</p>
         </div>
         
         <div>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Pool APY</p>
-          <p className="text-xl font-semibold text-green-600 dark:text-green-400">{position.poolApy.toFixed(2)}%</p>
+          <p className="text-xl font-semibold text-green-600 dark:text-green-400">{safeToFixed(position?.poolApy ?? 0, 2)}%</p>
         </div>
         <div>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">24H Volume</p>

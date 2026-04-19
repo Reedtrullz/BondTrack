@@ -27,15 +27,23 @@ interface LpNodeRowProps {
   position: LpPosition;
 }
 
+function safeToFixed(value: number, decimals: number): string {
+  if (!Number.isFinite(value)) return '0.00';
+  return value.toFixed(decimals);
+}
+
 export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
-  const pnlDisplay = formatPnlDisplay(position.netProfitLossPercent);
+  const pnlDisplay = formatPnlDisplay(position?.netProfitLossPercent ?? 0);
+  const safeAddress = position?.address ?? '';
+  const safeOwnership = position?.ownershipPercent ?? 0;
+  const safePoolApy = position?.poolApy ?? 0;
   
   return (
     <tr className="border-b border-zinc-100 bg-white transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800/50">
       <td className="py-4 px-4">
         <div className="flex flex-col">
           <span className="font-medium text-zinc-900 dark:text-zinc-100">{position.pool}</span>
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">{position.address.slice(0, 6)}...{position.address.slice(-4)}</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">{safeAddress.length >= 10 ? `${safeAddress.slice(0, 6)}...${safeAddress.slice(-4)}` : '--'}</span>
           {position.hasPending ? (
             <span className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-300">Pending add</span>
           ) : null}
@@ -57,7 +65,7 @@ export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
       </td>
       
       <td className="py-4 px-4">
-        <div className="font-semibold text-zinc-900 dark:text-zinc-100">{position.ownershipPercent.toFixed(2)}%</div>
+        <div className="font-semibold text-zinc-900 dark:text-zinc-100">{safeToFixed(safeOwnership, 2)}%</div>
         <div className="text-xs text-zinc-500 dark:text-zinc-400">{formatLiquidityUnits(position.liquidityUnits)} units</div>
       </td>
       
@@ -78,14 +86,14 @@ export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
             {position.netProfitLoss}
           </div>
           <div className={`text-sm ${pnlDisplay.color}`}>
-            {position.netProfitLossPercent.toFixed(2)}%
+            {safeToFixed(pnlDisplay.color ? position.netProfitLossPercent : 0, 2)}%
           </div>
         </div>
       </td>
       
       <td className="py-4 px-4">
         <div className="space-y-2">
-          <div className="font-semibold text-green-600 dark:text-green-400">{position.poolApy.toFixed(2)}%</div>
+          <div className="font-semibold text-green-600 dark:text-green-400">{safeToFixed(safePoolApy, 2)}%</div>
           <div className="text-sm text-zinc-500 dark:text-zinc-400">APY</div>
         </div>
       </td>
