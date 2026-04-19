@@ -11,6 +11,8 @@ import { useLpPositions } from '../../../hooks/use-lp-positions';
 import { formatRuneAmount } from '../../../lib/utils/formatters';
 import { LpPosition } from '../../../lib/types/lp';
 
+const NANOSECOND_THRESHOLD = 1e12;
+
 interface LpStatePanelProps {
   tone: 'empty' | 'error';
   title: string;
@@ -123,7 +125,7 @@ function formatMemberDate(raw: string): string {
     return '--';
   }
 
-  const timestamp = value > 1e12 ? value / 1e9 : value;
+  const timestamp = value > NANOSECOND_THRESHOLD ? value / 1e9 : value;
   return new Date(timestamp * 1000).toLocaleDateString();
 }
 
