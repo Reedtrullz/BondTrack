@@ -10,6 +10,7 @@ import {
   calculateAssetPrice,
   calculateOwnershipPercent,
   formatPnlDisplay,
+  calculateImpermanentLoss,
 } from '@/lib/utils/calculations';
 import { formatRuneAmount, runeToNumber } from '@/lib/utils/formatters';
 import { Button } from '@/components/ui/button';
@@ -180,6 +181,24 @@ export default function LPPage() {
       assetEntryPrice
     );
 
+    const il = calculateImpermanentLoss(
+      withdrawableData.runeDeposited,
+      withdrawableData.asset2Deposited,
+      runePriceUSD,
+      assetPriceUSD,
+      runeEntryPrice,
+      assetEntryPrice
+    );
+
+    const il = calculateImpermanentLoss(
+      withdrawableData.runeDeposited,
+      withdrawableData.asset2Deposited,
+      runePriceUSD,
+      assetPriceUSD,
+      runeEntryPrice,
+      assetEntryPrice
+    );
+
     return {
       address: pool.assetAddress,
       pool: pool.pool,
@@ -207,6 +226,8 @@ export default function LPPage() {
       asset2Withdrawable: withdrawableData.asset2Withdrawable,
       netProfitLoss: formatPnlDisplay(pnl.pnlPercent).text,
       netProfitLossPercent: pnl.pnlPercent,
+      impermanentLossPercent: il.ilPercent,
+      impermanentLossValue: il.ilValue,
     };
   });
 
@@ -557,6 +578,14 @@ function LPPositionCard({ position }: { position: LPPosition }) {
             {position.netProfitLossPercent.toFixed(2)}%
           </p>
         </div>
+        {position.impermanentLossPercent !== undefined && (
+          <div>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Impermanent Loss</p>
+            <p className={`text-xl font-semibold ${position.impermanentLossPercent < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+              {position.impermanentLossPercent.toFixed(2)}%
+            </p>
+          </div>
+        )}
         <div>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Pool APY</p>
           <p className="text-xl font-semibold text-green-600 dark:text-green-400">
