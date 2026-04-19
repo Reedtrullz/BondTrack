@@ -158,11 +158,19 @@ export function calculateLpWithdrawableAmounts(
 ): { runeWithdrawable: string; asset2Withdrawable: string; runeDeposited: string; asset2Deposited: string } {
   const runeDepthRaw = BigInt(runeDepth || '0');
   const asset2DepthRaw = BigInt(asset2Depth || '0');
+  const ownershipRaw = BigInt(Math.floor(ownershipPercent * 100));
   
-  const percentBigInt = BigInt(Math.floor(ownershipPercent * 100));
+  if (runeDepthRaw <= 0n || asset2DepthRaw <= 0n || ownershipRaw <= 0n) {
+    return {
+      runeWithdrawable: '0',
+      asset2Withdrawable: '0',
+      runeDeposited: runeDeposit,
+      asset2Deposited: asset2Deposit,
+    };
+  }
   
-  const runeWithdrawable = (runeDepthRaw * percentBigInt / 10000n).toString();
-  const asset2Withdrawable = (asset2DepthRaw * percentBigInt / 10000n).toString();
+  const runeWithdrawable = (runeDepthRaw * ownershipRaw / 10000n).toString();
+  const asset2Withdrawable = (asset2DepthRaw * ownershipRaw / 10000n).toString();
   
   return {
     runeWithdrawable,
