@@ -130,9 +130,12 @@ export function calculateImpermanentLoss(
   runeEntryPrice: number,
   assetEntryPrice: number
 ): { ilPercent: number; ilValue: number } {
+  if (runeEntryPrice === 0 || assetEntryPrice === 0) {
+    return { ilPercent: 0, ilValue: 0 };
+  }
+
   const runeDepositedValue = runeToNumber(runeDeposit) * runeEntryPrice;
   const assetDepositedValue = runeToNumber(assetDeposit) * assetEntryPrice;
-  const totalDepositedValue = runeDepositedValue + assetDepositedValue;
 
   const runeCurrentValue = runeToNumber(runeDeposit) * runeCurrentPrice;
   const assetCurrentValue = runeToNumber(assetDeposit) * assetCurrentPrice;
