@@ -1,70 +1,75 @@
 import { fetchThornode } from './client';
 
-export interface BondProviderRaw {
-  bond_address: string;
-  bond: string;
+export interface PoolDetailsRaw {
+  asset: string;
+  status: 'available' | 'staged' | 'suspended' | 'unknown';
+  poolAPY: string;
+  volume24h: string;
+  runeDepth: string;
+  assetDepth: string;
+  liquidityUnits: string;
 }
 
-export interface BondProvidersRaw {
-  node_operator_fee: string;
-  providers: BondProviderRaw[];
+export interface MemberPoolRaw {
+  pool: string;
+  assetAddress: string;
+  runeDeposit: string;
+  assetDeposit: string;
+  runePending: string;
+  assetPending: string;
+  runeAdded: string;
+  runeWithdrawn: string;
+  assetAdded: string;
+  assetWithdrawn: string;
+  liquidityUnits: string;
+  dateFirstAdded: number;
+  dateLastAdded: number;
 }
 
-export interface NodeRaw {
-  node_address: string;
-  status: string;
-  pub_key_set: {
-    secp256k1: string;
-    ed25519: string;
-  };
-  validator_cons_pub_key: string;
-  peer_id: string;
-  active_block_height: number;
-  status_since: number;
-  node_operator_address: string;
-  total_bond: string;
-  bond_providers: BondProvidersRaw;
-  signer_membership: string[] | null;
-  requested_to_leave: boolean;
-  forced_to_leave: boolean;
-  leave_height: number;
-  ip_address: string;
-  version: string;
-  slash_points: number;
-  jail: { release_height: number; reason: string } | Record<string, never>;
-  current_award: string;
-  observe_chains: { chain: string; height: number }[] | null;
-  preflight_status: { status: string; reason: string; code: number };
-  maintenance: boolean;
-  missing_blocks: number;
+export interface MemberDetailsRaw {
+  pools: MemberPoolRaw[];
 }
 
-export interface NetworkConstantsRaw {
-  int_64_values: Record<string, number>;
-  bool_values: Record<string, boolean>;
-  string_values: Record<string, string>;
+export interface LPData {
+  memberDetails: MemberDetailsRaw | null;
+  pools: PoolDetailsRaw[];
+  thorNodeLpData: Map<string, LiquidityProviderRaw>;
+  runePriceUSD: number;
 }
 
-export interface SupplyRaw {
-  circulating: number;
-  locked: {
-    reserve: number;
-  };
-  total: number;
+export interface LiquidityProviderRaw {
+  rune_redeem_value: string;
+  asset_redeem_value: string;
+  rune_deposit_value: string;
+  asset_deposit_value: string;
 }
 
-export async function getAllNodes(init?: RequestInit): Promise<NodeRaw[]> {
-  return fetchThornode<NodeRaw[]>('/thorchain/nodes', init);
+export async function getAllNodes(init?: RequestInit) {
+  return fetchThornode('/thorchain/nodes', init);
 }
 
-export async function getNode(address: string): Promise<NodeRaw> {
-  return fetchThornode<NodeRaw>(`/thorchain/node/${address}`);
+export async function getNetworkConstants(init?: RequestInit) {
+  return fetchThornode('/thorchain/constants', init);
 }
 
-export async function getNetworkConstants(init?: RequestInit): Promise<NetworkConstantsRaw> {
-  return fetchThornode<NetworkConstantsRaw>('/thorchain/constants', init);
+export async function getLiquidityProvider(pool: string, address: string) {
+  try {
+    return await fetchThornode(
+      `/thorchain/pool/${encodeURIComponent(pool)}/liquidity_provider/${encodeURIComponent(address)}`
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('404') || message.includes('not found') || message.includes('Not Implemented')) {
+      return null;
+    }
+    throw error;
+  }
 }
 
-export async function getSupply(): Promise<SupplyRaw> {
-  return fetchThornode<SupplyRaw>('/thorchain/supply');
+export async function getMemberDetails(address: string): Promise<MemberDetailsRaw> {
+  return fetchThornode(`/thorchain/member/${address}`);
+}
+
+export async function getPools(): Promise<PoolDetailsRaw[]> {
+  return fetchThornode('/thorchain/pools');
 }

@@ -14,6 +14,7 @@ import {
 import { formatRuneAmount, runeToNumber } from '@/lib/utils/formatters';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, Waves } from 'lucide-react';
+import { LPData, MemberPoolRaw, PoolDetailsRaw, LiquidityProviderRaw } from './types/lp';
 
 interface LPPosition {
   address: string;
@@ -42,13 +43,6 @@ interface LPPosition {
   asset2Withdrawable: string;
   netProfitLoss: string;
   netProfitLossPercent: number;
-}
-
-interface LPData {
-  memberDetails: any;
-  pools: any[];
-  thorNodeLpData: Map<string, any>;
-  runePriceUSD: number;
 }
 
 export default function LPPage() {
