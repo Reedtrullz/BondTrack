@@ -9,12 +9,21 @@ const statusClasses: Record<Exclude<Status, undefined>, string> = {
   'at-risk': 'bg-purple-500',
 };
 
+// Light mode needs dark text for contrast, dark mode uses white text
+const textContrastClasses: Record<Exclude<Status, undefined>, string> = {
+  active: 'text-white dark:text-white',
+  standby: 'text-zinc-900 dark:text-white',
+  jailed: 'text-white dark:text-white',
+  'at-risk': 'text-white dark:text-white',
+};
+
 export const LpStatusBadge: React.FC<{ status?: Status }> = ({ status }) => {
   if (!status) return null;
-  const className = statusClasses[status];
+  const bgClass = statusClasses[status];
+  const textClass = textContrastClasses[status];
   const label = status.replace('-', ' ');
   return (
-    <span className={`px-2 py-1 rounded text-sm font-medium text-white ${className}`}>
+    <span className={`rounded px-2 py-1 text-sm font-medium ${bgClass} ${textClass}`}>
       {label}
     </span>
   );
