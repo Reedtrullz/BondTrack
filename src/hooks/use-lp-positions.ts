@@ -1,9 +1,9 @@
 import useSWR from 'swr';
-import { getMemberDetails, getPools, MemberDetailsRaw, PoolDetailRaw } from '../lib/api/midgard';
+import { getMemberDetails, getPools, getRunePriceHistory, MemberDetailsRaw, PoolDetailRaw, RunePriceHistoryRaw } from '../lib/api/midgard';
 import { getLiquidityProvider, LiquidityProviderRaw } from '../lib/api/thornode';
 import { LpPoolStatus, LpPosition } from '../lib/types/lp';
 import { calculateLpWithdrawableAmounts, calculateLpPnl, formatPnlDisplay } from '../lib/utils/calculations';
-import { runeToNumber } from '../lib/utils/formatters';
+import { runeToNumber, formatRuneAmount } from '../lib/utils/formatters';
 
 interface LpData {
   memberDetails: MemberDetailsRaw;
@@ -92,16 +92,22 @@ interface LpDataWithThorNode {
   memberDetails: MemberDetailsRaw;
   pools: PoolDetailRaw[];
   thorNodeLpData: Map<string, LiquidityProviderRaw>;
+  runePriceUSD: number;
 }
 
 export const useLpPositions = (address: string | null) => {
   const { data, error, isLoading, mutate } = useSWR<LpDataWithThorNode>(
     address ? address : null,
     async (addr) => {
-      const [memberDetails, pools] = await Promise.all([
+      const [memberDetails, pools, runePriceHistory] = await Promise.all([
         getMemberDetails(addr),
         getPools(),
+        getRunePriceHistory('day', 1).catch(() => null)
       ]);
+
+      const runePriceUSD = runePriceHistory?.intervals?.length
+        ? Number(runePriceHistory.intervals[runePriceHistory.intervals.length - 1].runePriceUSD)
+        : 0;
 
       const thorNodeLpData = new Map<string, LiquidityProviderRaw>();
       const memberPools = memberDetails?.pools || [];
@@ -117,7 +123,7 @@ export const useLpPositions = (address: string | null) => {
         }
       }
 
-      return { memberDetails, pools, thorNodeLpData };
+      return { memberDetails, pools, thorNodeLpData, runePriceUSD };
     },
     {
       refreshInterval: 30000,
@@ -164,15 +170,17 @@ export const useLpPositions = (address: string | null) => {
       );
     }
 
+    const runePrice = data?.runePriceUSD ?? 0;
+    const assetPrice = runePrice;
     const pnl = calculateLpPnl(
       withdrawable.runeDeposited,
       withdrawable.asset2Deposited,
       withdrawable.runeWithdrawable,
       withdrawable.asset2Withdrawable,
-      1.0,
-      1.0,
-      1.0,
-      1.0
+      runePrice,
+      assetPrice,
+      runePrice,
+      assetPrice
     );
 
     return {
