@@ -1,6 +1,6 @@
 import useSWR from 'swr';
 import { getMemberDetails, getPools, MemberDetailsRaw, PoolDetailRaw } from '../lib/api/midgard';
-import { LpPosition } from '../lib/types/lp';
+import { LpPoolStatus, LpPosition } from '../lib/types/lp';
 
 interface LpData {
   memberDetails: MemberDetailsRaw;
@@ -54,36 +54,36 @@ function getLpErrorState(error: unknown): { state: LpDataState; message?: string
   };
 }
 
-/**
- * Maps Midgard pool status to LP UI status union.
- * available = pool is healthy and accepting LPs → active
- * staged = pool is not yet activated → standby
- */
-const mapPoolStatusToUi = (poolStatus: string | undefined): LpPosition['status'] => {
+const normalizePoolStatus = (poolStatus: string | undefined): LpPoolStatus => {
   switch (poolStatus) {
     case 'available':
-      return 'active';
     case 'staged':
-      return 'standby';
+    case 'suspended':
+      return poolStatus;
     default:
-      return 'standby'; // Default to standby for unknown statuses
+      return 'unknown';
   }
 };
 
-/**
- * Derives health score from pool status.
- * LP positions cannot be slashed like node bonds, so health is based on pool availability.
- */
-const deriveHealthScore = (poolStatus: string | undefined): number => {
-  switch (poolStatus) {
-    case 'available':
-      return 100; // Pool is healthy
-    case 'staged':
-      return 50; // Pool not yet fully active
-    default:
-      return 50; // Default to reduced health for unknown statuses
+function parseBigInt(raw: string | undefined): bigint {
+  if (!raw) return 0n;
+  try {
+    return BigInt(raw);
+  } catch {
+    return 0n;
   }
-};
+}
+
+function deriveOwnershipPercent(memberLiquidityUnits: string, poolLiquidityUnits: string | undefined): number {
+  const memberUnits = parseBigInt(memberLiquidityUnits);
+  const poolUnits = parseBigInt(poolLiquidityUnits);
+
+  if (memberUnits <= 0n || poolUnits <= 0n) {
+    return 0;
+  }
+
+  return (Number(memberUnits) / Number(poolUnits)) * 100;
+}
 
 export const useLpPositions = (address: string | null) => {
   const { data, error, isLoading, mutate } = useSWR<LpData>(
@@ -106,18 +106,26 @@ export const useLpPositions = (address: string | null) => {
 
   const positions: LpPosition[] = (data?.memberDetails?.pools || []).map((poolRaw) => {
     const poolData = data?.pools?.find((p) => p.asset === poolRaw.pool);
-    const poolStatus = poolData?.status;
-    
+    const poolStatus = normalizePoolStatus(poolData?.status);
+    const parsedPoolApy = Number(poolData?.poolAPY ?? 0);
+    const runePending = parseBigInt(poolRaw.runePending);
+
     return {
       address: poolRaw.assetAddress,
       pool: poolRaw.pool,
-      bondedRune: poolRaw.runeDeposit,
-      rewards: poolRaw.runeAdded,
-      apy: poolData ? parseFloat(poolData.poolAPY) : 0,
-      healthScore: deriveHealthScore(poolStatus),
-      slashRisk: 0,
-      status: mapPoolStatusToUi(poolStatus),
-      unbondWindowRemaining: 0,
+      runeDeposit: poolRaw.runeDeposit,
+      liquidityUnits: poolRaw.liquidityUnits,
+      runeAdded: poolRaw.runeAdded,
+      runePending: poolRaw.runePending,
+      runeWithdrawn: poolRaw.runeWithdrawn,
+      volume24h: poolData?.volume24h ?? '0',
+      runeDepth: poolData?.runeDepth ?? '0',
+      dateFirstAdded: poolRaw.dateFirstAdded,
+      dateLastAdded: poolRaw.dateLastAdded,
+      poolApy: Number.isFinite(parsedPoolApy) ? parsedPoolApy : 0,
+      poolStatus,
+      ownershipPercent: deriveOwnershipPercent(poolRaw.liquidityUnits, poolData?.liquidityUnits),
+      hasPending: runePending > 0n,
     };
   });
 
@@ -126,17 +134,11 @@ export const useLpPositions = (address: string | null) => {
     : positions.length > 0
       ? 'ready'
       : 'empty';
-
-  const totalBondedRune = state !== 'ready' ? '0' : positions.reduce((acc, pos) => acc + BigInt(pos.bondedRune), 0n).toString();
-  const totalRewards = state !== 'ready' ? '0' : positions.reduce((acc, pos) => acc + BigInt(pos.rewards), 0n).toString();
-
   return {
     positions,
     isLoading,
     state,
     error: errorState.message,
-    totalBondedRune,
-    totalRewards,
     retry: async () => mutate(),
   };
 };

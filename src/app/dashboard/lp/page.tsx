@@ -8,7 +8,7 @@ import { LpNodeRow } from '../../../components/dashboard/lp-node-row';
 import { Button } from '../../../components/ui/button';
 import { ErrorBoundary } from '../../../components/ui/error-boundary';
 import { useLpPositions } from '../../../hooks/use-lp-positions';
-import { LpPosition } from '../../../lib/types/lp';
+import { formatRuneAmount } from '../../../lib/utils/formatters';
 
 interface LpStatePanelProps {
   tone: 'empty' | 'error';
@@ -92,10 +92,39 @@ function LpErrorBoundaryFallback() {
   );
 }
 
+function SummaryMetricCard({ label, value, subValue }: { label: string; value: string; subValue?: string }) {
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white/90 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+      <p className="text-xs font-medium uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">{label}</p>
+      <p className="mt-2 text-2xl font-bold text-zinc-950 dark:text-zinc-50">{value}</p>
+      {subValue ? <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{subValue}</p> : null}
+    </div>
+  );
+}
+
+function formatMemberDate(raw: string): string {
+  const value = Number(raw);
+
+  if (!Number.isFinite(value) || value <= 0) {
+    return '--';
+  }
+
+  const timestamp = value > 1e12 ? value / 1e9 : value;
+  return new Date(timestamp * 1000).toLocaleDateString();
+}
+
 const DashboardContent = () => {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
   const { positions, isLoading, error, state, retry } = useLpPositions(address);
+
+  const totalRuneDeposit = positions.reduce((sum, position) => sum + BigInt(position.runeDeposit), 0n).toString();
+  const earningPools = positions.filter((position) => position.poolStatus === 'available').length;
+  const pendingAdds = positions.filter((position) => position.hasPending).length;
+  const latestActivity = positions.reduce((latest, position) => {
+    const next = Number(position.dateLastAdded);
+    return Number.isFinite(next) && next > latest ? next : latest;
+  }, 0);
 
   if (isLoading) {
     return <LpLoadingState />;
@@ -151,17 +180,24 @@ const DashboardContent = () => {
           ) : null}
         </div>
         <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {(positions as LpPosition[]).map((pos) => (
+          {positions.map((pos) => (
             <LpSummaryCard key={`${pos.pool}-${pos.address}`} position={pos} />
           ))}
         </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryMetricCard label="Positions" value={String(positions.length)} subValue="Active LP memberships found" />
+        <SummaryMetricCard label="RUNE Deposit" value={formatRuneAmount(totalRuneDeposit)} subValue="Combined current RUNE-side deposit value" />
+        <SummaryMetricCard label="Earning Pools" value={String(earningPools)} subValue={`${pendingAdds} position${pendingAdds === 1 ? '' : 's'} with pending adds`} />
+        <SummaryMetricCard label="Last LP Activity" value={latestActivity > 0 ? formatMemberDate(String(latestActivity)) : '--'} subValue="Most recent add-liquidity timestamp" />
       </section>
 
       <section className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-zinc-950 dark:text-zinc-50">Your Liquidity Positions</h2>
           <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-            Pool-level status, estimated yield, and health remain visible only after the LP member lookup succeeds.
+            Pool status, ownership share, and pool context remain visible only after the LP member lookup succeeds.
           </p>
         </div>
         <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
@@ -169,15 +205,16 @@ const DashboardContent = () => {
             <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-950/60">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Pool</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Bonded RUNE</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">APY</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Health</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Action</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Pool Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">RUNE Deposit Value</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Share</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Pool APY</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">24H Volume</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Activity</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-900/50">
-              {positions.map((pos: LpPosition) => (
+              {positions.map((pos) => (
                 <LpNodeRow key={`${pos.pool}-${pos.address}`} position={pos} />
               ))}
             </tbody>

@@ -1,30 +1,36 @@
 import React from 'react';
+import { LpPoolStatus } from '../../lib/types/lp';
 
-type Status = 'active' | 'standby' | 'jailed' | 'at-risk' | undefined;
+type Status = LpPoolStatus | undefined;
 
 const statusClasses: Record<Exclude<Status, undefined>, string> = {
-  active: 'bg-green-500',
-  standby: 'bg-yellow-500',
-  jailed: 'bg-red-500',
-  'at-risk': 'bg-purple-500',
+  available: 'bg-green-500',
+  staged: 'bg-yellow-500',
+  suspended: 'bg-red-500',
+  unknown: 'bg-zinc-500',
 };
 
-// Light mode needs dark text for contrast, dark mode uses white text
 const textContrastClasses: Record<Exclude<Status, undefined>, string> = {
-  active: 'text-white dark:text-white',
-  standby: 'text-zinc-900 dark:text-white',
-  jailed: 'text-white dark:text-white',
-  'at-risk': 'text-white dark:text-white',
+  available: 'text-white dark:text-white',
+  staged: 'text-zinc-900 dark:text-white',
+  suspended: 'text-white dark:text-white',
+  unknown: 'text-white dark:text-white',
+};
+
+const statusLabels: Record<Exclude<Status, undefined>, string> = {
+  available: 'Available',
+  staged: 'Staged',
+  suspended: 'Suspended',
+  unknown: 'Unknown',
 };
 
 export const LpStatusBadge: React.FC<{ status?: Status }> = ({ status }) => {
   if (!status) return null;
   const bgClass = statusClasses[status];
   const textClass = textContrastClasses[status];
-  const label = status.replace('-', ' ');
   return (
     <span className={`rounded px-2 py-1 text-sm font-medium ${bgClass} ${textClass}`}>
-      {label}
+      {statusLabels[status]}
     </span>
   );
 };
