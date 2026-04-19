@@ -188,6 +188,11 @@ export function formatPnlDisplay(pnl: number): { text: string; color: string } {
   }
 }
 
+/**
+ * Calculate impermanent loss for a liquidity provider position.
+ * Compares the value of holding assets vs providing liquidity.
+ * IL = LP Value - HODL Value
+ */
 export function calculateImpermanentLoss(
   runeDeposit: string,
   asset2Deposit: string,
@@ -196,6 +201,16 @@ export function calculateImpermanentLoss(
   runeEntryPrice: number,
   asset2EntryPrice: number
 ): { ilPercent: number; ilValue: number } {
+  // Validate prices are non-negative
+  if (runeCurrentPrice < 0 || asset2CurrentPrice < 0 || runeEntryPrice < 0 || asset2EntryPrice < 0) {
+    return { ilPercent: 0, ilValue: 0 };
+  }
+
+  // Validate entry prices are not zero to prevent division by zero
+  if (runeEntryPrice === 0 || asset2EntryPrice === 0) {
+    return { ilPercent: 0, ilValue: 0 };
+  }
+
   const runeDepositedValue = runeToNumber(runeDeposit) * runeEntryPrice;
   const assetDepositedValue = runeToNumber(asset2Deposit) * asset2EntryPrice;
   const totalDepositedValue = runeDepositedValue + assetDepositedValue;
