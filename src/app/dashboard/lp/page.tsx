@@ -133,6 +133,8 @@ export default function LPPage() {
     
     const thorNodeData = data?.thorNodeLpData?.get(pool.pool);
     
+    const ownershipPercent = calculateOwnershipPercent(pool.liquidityUnits, poolData?.liquidityUnits);
+    
     let withdrawableData;
     if (thorNodeData) {
       withdrawableData = {
@@ -142,7 +144,6 @@ export default function LPPage() {
         asset2Deposited: thorNodeData.asset_deposit_value,
       };
     } else {
-      const ownershipPercent = calculateOwnershipPercent(pool.liquidityUnits, poolData?.liquidityUnits);
       withdrawableData = calculateLpWithdrawableAmounts(
         pool.runeDeposit,
         pool.assetDeposit,
@@ -178,8 +179,6 @@ export default function LPPage() {
       runeEntryPrice,
       assetEntryPrice
     );
-
-    const ownershipPercent = calculateOwnershipPercent(pool.liquidityUnits, poolData?.liquidityUnits);
 
     return {
       address: pool.assetAddress,
