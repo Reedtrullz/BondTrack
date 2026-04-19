@@ -205,6 +205,30 @@ const DashboardContent = () => {
   const address = searchParams.get('address');
   const { positions, isLoading, error, state, retry, loadingProgress } = useLpPositions(address);
 
+  const [sortField, setSortField] = React.useState<'pool' | 'pnl' | 'apy' | 'date'>('pool');
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('asc');
+
+  const sortedPositions = React.useMemo(() => {
+    return [...positions].sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'pool':
+          comparison = a.pool.localeCompare(b.pool);
+          break;
+        case 'pnl':
+          comparison = a.netProfitLossPercent - b.netProfitLossPercent;
+          break;
+        case 'apy':
+          comparison = a.poolApy - b.poolApy;
+          break;
+        case 'date':
+          comparison = Number(a.dateLastAdded) - Number(b.dateLastAdded);
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [positions, sortField, sortDirection]);
+
   const totalRuneDeposit = positions.reduce((sum, position) => sum + BigInt(position.runeDeposit || '0'), 0n).toString();
   const earningPools = positions.filter((position) => position.poolStatus === 'available').length;
   const pendingAdds = positions.filter((position) => position.hasPending).length;
@@ -307,20 +331,52 @@ const DashboardContent = () => {
         </div>
         <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
           <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-800">
-<thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-950/60">
+              <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-950/60">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Pool</th>
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400 cursor-pointer hover:text-zinc-700 dark:hover:text-zinc-300"
+                    onClick={() => {
+                      if (sortField === 'pool') setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                      else setSortField('pool');
+                    }}
+                  >
+                    Pool {sortField === 'pool' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Pool Status</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Deposited</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Share</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Withdrawable</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Net PnL</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Pool APY</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Activity</th>
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400 cursor-pointer hover:text-zinc-700 dark:hover:text-zinc-300"
+                    onClick={() => {
+                      if (sortField === 'pnl') setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                      else setSortField('pnl');
+                    }}
+                  >
+                    Net PnL {sortField === 'pnl' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400 cursor-pointer hover:text-zinc-700 dark:hover:text-zinc-300"
+                    onClick={() => {
+                      if (sortField === 'apy') setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                      else setSortField('apy');
+                    }}
+                  >
+                    Pool APY {sortField === 'apy' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400 cursor-pointer hover:text-zinc-700 dark:hover:text-zinc-300"
+                    onClick={() => {
+                      if (sortField === 'date') setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                      else setSortField('date');
+                    }}
+                  >
+                    Activity {sortField === 'date' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
                 </tr>
               </thead>
             <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-900/50">
-              {positions.map((pos) => (
+              {sortedPositions.map((pos) => (
                 <LpNodeRow key={`${pos.pool}-${pos.address}`} position={pos} />
               ))}
             </tbody>
