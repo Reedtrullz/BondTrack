@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AlertTriangle, RefreshCw, Waves } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Waves, Download } from 'lucide-react';
 import { LpSummaryCard } from '../../../components/dashboard/lp-summary-card';
 import { LpNodeRow } from '../../../components/dashboard/lp-node-row';
 import { Button } from '../../../components/ui/button';
@@ -200,6 +200,31 @@ function formatAverageApy(positions: LpPosition[]): string {
   return `${averageApy.toFixed(2)}%`;
 }
 
+function exportLPData(positions: LpPosition[]) {
+  const headers = ['Pool', 'Status', 'RUNE Deposit', 'Asset Deposit', 'RUNE Withdrawable', 'Asset Withdrawable', 'PnL %', 'APY %', 'First Added', 'Last Added'];
+  const rows = positions.map(p => [
+    p.pool,
+    p.poolStatus,
+    p.runeDeposit,
+    p.asset2Deposit,
+    p.runeWithdrawable,
+    p.asset2Withdrawable,
+    p.netProfitLossPercent.toFixed(2),
+    p.poolApy.toFixed(2),
+    new Date(Number(p.dateFirstAdded) > 1e12 ? Number(p.dateFirstAdded) / 1e9 : Number(p.dateFirstAdded) * 1000).toISOString(),
+    new Date(Number(p.dateLastAdded) > 1e12 ? Number(p.dateLastAdded) / 1e9 : Number(p.dateLastAdded) * 1000).toISOString(),
+  ]);
+  
+  const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lp-positions-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 const DashboardContent = () => {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
@@ -293,6 +318,14 @@ const DashboardContent = () => {
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
+            </Button>
+            <Button
+              onClick={() => exportLPData(positions)}
+              variant="outline"
+              size="sm"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
             </Button>
             {address ? (
               <p className="max-w-full truncate rounded-full border border-zinc-200 bg-zinc-100/80 px-4 py-2 font-mono text-xs text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-300">
