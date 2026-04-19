@@ -115,20 +115,20 @@ function StatsBanner({ totalEntries, totalMonths }: { totalEntries: number; tota
             <Zap className="w-5 h-5 text-black" />
           </div>
           <div>
-            <p className="text-sm text-zinc-400">Protocol Updates</p>
-            <p className="text-xl font-bold text-white" style={{ fontFamily: 'Exo 2, sans-serif' }}>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Protocol Updates</p>
+            <p className="text-xl font-bold text-zinc-900 dark:text-white" style={{ fontFamily: 'Exo 2, sans-serif' }}>
               {totalEntries} changes across {totalMonths} months
             </p>
           </div>
         </div>
         <div className="flex items-center gap-6 text-right">
           <div>
-            <p className="text-xs text-zinc-500 uppercase tracking-wide">Latest</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wide">Latest</p>
             <p className="text-sm font-semibold text-[#00CCFF]">v3.16</p>
           </div>
           <div>
-            <p className="text-xs text-zinc-500 uppercase tracking-wide">Since</p>
-            <p className="text-sm font-semibold text-white">Aug 2022</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wide">Since</p>
+            <p className="text-sm font-semibold text-zinc-900 dark:text-white">Aug 2022</p>
           </div>
         </div>
       </div>
@@ -354,11 +354,11 @@ export default function ChangelogsPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 space-y-6">
-        <div className="h-24 rounded-xl animate-pulse" style={{ backgroundColor: '#282c34' }} />
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 space-y-6 dark:bg-[#0a0a0a]">
+        <div className="h-24 rounded-xl animate-pulse bg-zinc-100 dark:bg-[#282c34]" />
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-32 rounded-xl animate-pulse" style={{ backgroundColor: '#282c34' }} />
+            <div key={i} className="h-32 rounded-xl animate-pulse bg-zinc-100 dark:bg-[#282c34]" />
           ))}
         </div>
       </div>
@@ -366,7 +366,7 @@ export default function ChangelogsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 space-y-6 dark:bg-[#0a0a0a]">
       {/* Header */}
       <div className="flex items-center gap-3 mb-2">
         <div 
@@ -399,16 +399,12 @@ export default function ChangelogsPage() {
             placeholder="Search changelogs... (press /)"
             value={searchQuery}
             onChange={(e) => updateSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-3 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none transition-all"
-            style={{ 
-              backgroundColor: '#1a1d23',
-              border: '1px solid #3d4149',
-            }}
+            className="w-full pl-10 pr-10 py-3 rounded-lg text-white dark:text-white placeholder:text-zinc-500 dark:placeholder:text-zinc-500 focus:outline-none transition-all bg-white dark:bg-[#1a1d23] border border-zinc-200 dark:border-[#3d4149]"
           />
           {searchQuery && (
             <button
               onClick={() => updateSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-400 hover:text-zinc-600 dark:hover:text-white transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -427,11 +423,11 @@ export default function ChangelogsPage() {
                 className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 transition-all ${
                   isActive
                     ? 'text-black'
-                    : 'text-zinc-400 hover:text-white'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-white'
                 }`}
                 style={{
                   backgroundColor: isActive ? TC.blue : 'transparent',
-                  border: isActive ? 'none' : '1px solid #3d4149',
+                  border: isActive ? 'none' : '1px solid #e2e8f0',
                 }}
               >
                 {option.icon}
