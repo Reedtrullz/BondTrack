@@ -1,6 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
+import { useMemo } from 'react';
 import useSWR from 'swr';
 import { getMemberDetails, getPools, getLiquidityProvider } from '@/lib/api/thornode';
 import { getRunePriceHistory } from '@/lib/api/midgard';
@@ -116,8 +117,8 @@ export default function LPPage() {
 
   const state = getState();
 
-  // Process positions
-  const positions: LPPosition[] = (data?.memberDetails?.pools || []).map((pool: any) => {
+  // Process positions with memoization to prevent unnecessary recalculations
+  const positions: LPPosition[] = useMemo(() => (data?.memberDetails?.pools || []).map((pool: any) => {
     const poolData = data?.pools?.find((p: any) => p.asset === pool.pool);
     
     const poolStatus = (() => {
@@ -193,15 +194,6 @@ export default function LPPage() {
       assetEntryPrice
     );
 
-    const il = calculateImpermanentLoss(
-      withdrawableData.runeDeposited,
-      withdrawableData.asset2Deposited,
-      runePriceUSD,
-      assetPriceUSD,
-      runeEntryPrice,
-      assetEntryPrice
-    );
-
     return {
       address: pool.assetAddress,
       pool: pool.pool,
@@ -232,7 +224,7 @@ export default function LPPage() {
       impermanentLossPercent: il.ilPercent,
       impermanentLossValue: il.ilValue,
     };
-  });
+  }), [data?.memberDetails?.pools, data?.pools, data?.thorNodeLpData, data?.runePriceUSD]);
 
   const displayState = state !== 'ready' ? state : positions.length > 0 ? 'ready' : 'empty';
 
