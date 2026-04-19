@@ -1,3 +1,4 @@
+import React from 'react';
 import useSWR from 'swr';
 import { getMemberDetails, getPools, getRunePriceHistory, MemberDetailsRaw, PoolDetailRaw, RunePriceHistoryRaw } from '../lib/api/midgard';
 import { getLiquidityProvider, LiquidityProviderRaw } from '../lib/api/thornode';
@@ -96,6 +97,7 @@ interface LpDataWithThorNode {
 }
 
 export const useLpPositions = (address: string | null) => {
+  const [loadingProgress, setLoadingProgress] = React.useState(0);
   const { data, error, isLoading, mutate } = useSWR<LpDataWithThorNode>(
     address ? address : null,
     async (addr) => {
@@ -112,12 +114,13 @@ export const useLpPositions = (address: string | null) => {
       const thorNodeLpData = new Map<string, LiquidityProviderRaw>();
       const memberPools = memberDetails?.pools || [];
       
-      const poolPromises = memberPools.map(async (pool) => {
+      const poolPromises = memberPools.map(async (pool, index) => {
         try {
           const lpData = await getLiquidityProvider(pool.pool, addr);
           if (lpData) {
             thorNodeLpData.set(pool.pool, lpData);
           }
+          setLoadingProgress(((index + 1) / memberPools.length) * 100);
         } catch {
           // Continue without THORNode data for this pool
         }
@@ -185,8 +188,8 @@ export const useLpPositions = (address: string | null) => {
     );
 
     const il = calculateImpermanentLoss(
-      withdrawable.runeDeposited,
-      withdrawable.asset2Deposited,
+      withdrawable.runeWithdrawable,
+      withdrawable.asset2Withdrawable,
       runePrice,
       assetPrice,
       runePrice,
@@ -237,5 +240,6 @@ export const useLpPositions = (address: string | null) => {
     state,
     error: errorState.message,
     retry: async () => mutate(),
+    loadingProgress,
   };
 };

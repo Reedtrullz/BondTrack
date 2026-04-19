@@ -52,7 +52,7 @@ function LpStatePanel({ tone, title, description, detail, address, action }: LpS
   );
 }
 
-function LpLoadingState() {
+function LpLoadingState({ loadingProgress }: { loadingProgress: number }) {
   return (
     <div className="animate-pulse space-y-8">
       <section className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
@@ -72,6 +72,19 @@ function LpLoadingState() {
           ))}
         </div>
       </section>
+      {loadingProgress > 0 && (
+        <div className="mb-4">
+          <div className="h-2 w-full rounded-full bg-zinc-200 dark:bg-zinc-800">
+            <div
+              className="h-2 rounded-full bg-blue-500 transition-all duration-300"
+              style={{ width: `${loadingProgress}%` }}
+            />
+          </div>
+          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+            Loading pool data... {Math.round(loadingProgress)}%
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -188,7 +201,7 @@ function formatAverageApy(positions: LpPosition[]): string {
 const DashboardContent = () => {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
-  const { positions, isLoading, error, state, retry } = useLpPositions(address);
+  const { positions, isLoading, error, state, retry, loadingProgress } = useLpPositions(address);
 
   const totalRuneDeposit = positions.reduce((sum, position) => sum + BigInt(position.runeDeposit || '0'), 0n).toString();
   const earningPools = positions.filter((position) => position.poolStatus === 'available').length;
@@ -199,7 +212,7 @@ const DashboardContent = () => {
   }, 0);
 
   if (isLoading) {
-    return <LpLoadingState />;
+    return <LpLoadingState loadingProgress={loadingProgress} />;
   }
 
   if (state === 'error' && error) {
