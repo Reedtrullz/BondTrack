@@ -3,6 +3,7 @@ import { LpPosition } from '../../lib/types/lp';
 import { formatRuneAmount } from '../../lib/utils/formatters';
 import { LpStatusBadge } from './lp-status-badge';
 import { formatPnlDisplay } from '../../lib/utils/calculations';
+import { getAssetName } from '../../lib/utils/pool';
 
 function formatLiquidityUnits(raw: string): string {
   try {
@@ -35,6 +36,7 @@ function safeToFixed(value: number, decimals: number): string {
 
 export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) => {
   const pnlDisplay = formatPnlDisplay(position?.netProfitLossPercent ?? 0);
+  const { rune, asset } = getAssetName(position.pool);
   
   return (
     <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-md dark:border-zinc-800 dark:bg-zinc-900">
@@ -59,7 +61,7 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
           <p className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneAmount(position.runeDeposit)}</p>
         </div>
         <div>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">ASSET 2 Deposited</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{asset} Deposited</p>
           <p className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneAmount(position.asset2Deposit)}</p>
         </div>
         
@@ -68,7 +70,7 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
           <p className="text-xl font-semibold text-green-600 dark:text-green-400">{formatRuneAmount(position.runeWithdrawable)}</p>
         </div>
         <div>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">ASSET 2 Withdrawable</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{asset} Withdrawable</p>
           <p className="text-xl font-semibold text-green-600 dark:text-green-400">{formatRuneAmount(position.asset2Withdrawable)}</p>
         </div>
         
@@ -103,11 +105,11 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
           <p className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneAmount(position.runeWithdrawn)}</p>
         </div>
         <div>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">ASSET 2 Added</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{asset} Added</p>
           <p className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneAmount(position.asset2Added)}</p>
         </div>
         <div>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">ASSET 2 Withdrawn</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{asset} Withdrawn</p>
           <p className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneAmount(position.asset2Withdrawn)}</p>
         </div>
         
