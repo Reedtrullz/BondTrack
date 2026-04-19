@@ -28,4 +28,6 @@ export interface LpPosition {
   asset2Withdrawable: string;
   netProfitLoss: string;
   netProfitLossPercent: number;
+  impermanentLossPercent?: number;
+  impermanentLossValue?: number;
 }
