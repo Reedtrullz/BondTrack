@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { LpPosition } from '../../lib/types/lp';
 import { formatRuneAmount } from '../../lib/utils/formatters';
 import { LpStatusBadge } from './lp-status-badge';
@@ -35,8 +35,11 @@ function safeToFixed(value: number, decimals: number): string {
 }
 
 export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) => {
-  const pnlDisplay = formatPnlDisplay(position?.netProfitLossPercent ?? 0);
-  const { rune, asset } = getAssetName(position.pool);
+  const pnlDisplay = useMemo(() => 
+    formatPnlDisplay(position?.netProfitLossPercent ?? 0), 
+    [position?.netProfitLossPercent]
+  );
+  const { rune, asset } = useMemo(() => getAssetName(position.pool), [position.pool]);
   
   return (
     <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-md dark:border-zinc-800 dark:bg-zinc-900">
