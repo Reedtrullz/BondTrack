@@ -187,3 +187,28 @@ export function formatPnlDisplay(pnl: number): { text: string; color: string } {
     return { text: '$0.00', color: 'text-zinc-600 dark:text-zinc-400' };
   }
 }
+
+export function calculateImpermanentLoss(
+  runeDeposit: string,
+  asset2Deposit: string,
+  runeCurrentPrice: number,
+  asset2CurrentPrice: number,
+  runeEntryPrice: number,
+  asset2EntryPrice: number
+): { ilPercent: number; ilValue: number } {
+  const runeDepositedValue = runeToNumber(runeDeposit) * runeEntryPrice;
+  const assetDepositedValue = runeToNumber(asset2Deposit) * asset2EntryPrice;
+  const totalDepositedValue = runeDepositedValue + assetDepositedValue;
+
+  const runeCurrentValue = runeToNumber(runeDeposit) * runeCurrentPrice;
+  const assetCurrentValue = runeToNumber(asset2Deposit) * asset2CurrentPrice;
+  const totalCurrentValue = runeCurrentValue + assetCurrentValue;
+
+  const hodlValue = runeDepositedValue * (runeCurrentPrice / runeEntryPrice) +
+                    assetDepositedValue * (asset2CurrentPrice / asset2EntryPrice);
+
+  const ilValue = totalCurrentValue - hodlValue;
+  const ilPercent = hodlValue > 0 ? (ilValue / hodlValue) * 100 : 0;
+
+  return { ilPercent, ilValue };
+}
