@@ -37,16 +37,12 @@ function parseTypeFilter(value: string | null): FilterType {
   return FILTER_OPTIONS.some(option => option.value === value) ? (value as FilterType) : 'all';
 }
 
-// THORChain brand colors
 const TC = {
   blue: '#00CCFF',
   orange: '#F3BA2F',
   green: '#33FF99',
   red: '#FF4954',
   turquoise: '#23DDC8',
-  dark: '#1a1d23',
-  border: '#3d4149',
-  muted: '#6b7280',
 };
 
 function extractYears(changelogs: ChangelogItem[]): number[] {
@@ -84,10 +80,9 @@ function HighlightText({ text, highlight }: { text: string; highlight: string })
     <>
       {parts.map((part, i) => 
         part.toLowerCase() === highlight.toLowerCase() ? (
-          <mark 
-            key={i} 
-            className="bg-[#F3BA2F]/30 text-white rounded px-0.5 font-semibold"
-            style={{ backgroundColor: 'rgba(243, 186, 47, 0.3)' }}
+          <mark
+            key={i}
+            className="rounded px-0.5 font-semibold bg-amber-200/80 text-zinc-900 dark:bg-amber-400/30 dark:text-white"
           >
             {part}
           </mark>
@@ -101,12 +96,11 @@ function HighlightText({ text, highlight }: { text: string; highlight: string })
 
 function StatsBanner({ totalEntries, totalMonths }: { totalEntries: number; totalMonths: number }) {
   return (
-    <div 
-      className="relative overflow-hidden rounded-xl p-4 mb-6"
-      style={{ backgroundColor: 'rgba(0, 204, 255, 0.1)', border: '1px solid rgba(0, 204, 255, 0.2)' }}
+    <div
+      className="relative mb-6 overflow-hidden rounded-xl border border-cyan-200/80 bg-cyan-50/80 p-4 dark:border-cyan-500/20 dark:bg-cyan-500/10"
     >
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#00CCFF]/5 to-transparent" />
-      <div className="relative flex items-center justify-between">
+      <div className="relative flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div 
             className="w-10 h-10 rounded-lg flex items-center justify-center"
@@ -354,11 +348,11 @@ export default function ChangelogsPage() {
 
   if (isLoading) {
     return (
-<div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 space-y-6 bg-white dark:bg-[#0a0a0a]">
-        <div className="h-24 rounded-xl animate-pulse bg-zinc-100 dark:bg-[#282c34]" />
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 space-y-6 bg-white dark:bg-zinc-950">
+        <div className="h-24 rounded-xl animate-pulse bg-zinc-200 dark:bg-zinc-800" />
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-32 rounded-xl animate-pulse bg-zinc-100 dark:bg-[#282c34]" />
+            <div key={i} className="h-32 rounded-xl animate-pulse bg-zinc-200 dark:bg-zinc-800" />
           ))}
         </div>
       </div>
@@ -366,7 +360,7 @@ export default function ChangelogsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 space-y-6 dark:bg-[#0a0a0a]">
+    <div className="max-w-4xl mx-auto space-y-6 bg-white px-4 py-4 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 sm:px-6">
       {/* Header */}
       <div className="flex items-center gap-3 mb-2">
         <div 
@@ -377,12 +371,12 @@ export default function ChangelogsPage() {
         </div>
         <div>
           <h1 
-            className="text-2xl font-bold text-white"
+            className="text-2xl font-bold text-zinc-900 dark:text-white"
             style={{ fontFamily: 'Exo 2, sans-serif' }}
           >
             THORChain Changelogs
           </h1>
-          <p className="text-sm text-zinc-500">Protocol updates and changes</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Protocol updates and changes</p>
         </div>
       </div>
 
@@ -399,12 +393,12 @@ export default function ChangelogsPage() {
             placeholder="Search changelogs... (press /)"
             value={searchQuery}
             onChange={(e) => updateSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-3 rounded-lg text-white dark:text-white placeholder:text-zinc-500 dark:placeholder:text-zinc-500 focus:outline-none transition-all bg-white dark:bg-[#1a1d23] border border-zinc-200 dark:border-[#3d4149]"
+            className="w-full rounded-lg border border-zinc-200 bg-white py-3 pl-10 pr-10 text-zinc-900 placeholder:text-zinc-400 transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500"
           />
           {searchQuery && (
             <button
               onClick={() => updateSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-400 hover:text-zinc-600 dark:hover:text-white transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-white"
             >
               <X className="w-4 h-4" />
             </button>
@@ -420,23 +414,22 @@ export default function ChangelogsPage() {
               <button
                 key={option.value}
                 onClick={() => updateTypeFilter(option.value)}
-                className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 transition-all ${
+                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
                   isActive
                     ? 'text-black'
-                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-white'
+                    : 'border border-zinc-200 bg-white text-zinc-600 hover:text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:text-white'
                 }`}
                 style={{
                   backgroundColor: isActive ? TC.blue : 'transparent',
-                  border: isActive ? 'none' : '1px solid #e2e8f0',
                 }}
               >
                 {option.icon}
                 {option.label}
                 {hasCount && (
                   <span 
-                    className="px-1.5 py-0.5 text-xs rounded-full"
+                    className="rounded-full px-1.5 py-0.5 text-xs text-zinc-700 dark:text-zinc-300"
                     style={{ 
-                      backgroundColor: isActive ? 'rgba(0,0,0,0.2)' : '#1a1d23',
+                      backgroundColor: isActive ? 'rgba(0,0,0,0.2)' : 'rgba(113,113,122,0.12)',
                     }}
                   >
                     {typeBreakdown[option.value]}
@@ -449,13 +442,12 @@ export default function ChangelogsPage() {
         
         {hasActiveFilters && (
           <div className="flex items-center justify-between text-sm">
-            <span className="text-zinc-500">
+            <span className="text-zinc-500 dark:text-zinc-400">
               Showing {totalEntries} {totalEntries === 1 ? 'entry' : 'entries'} of {changelogs.reduce((a, c) => a + c.content.length, 0)} total
             </span>
             <button
               onClick={clearFilters}
-              className="flex items-center gap-1 hover:text-white transition-colors"
-              style={{ color: TC.blue }}
+              className="flex items-center gap-1 text-cyan-600 transition-colors hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-white"
             >
               <X className="w-3 h-3" /> Clear filters
             </button>
@@ -465,21 +457,15 @@ export default function ChangelogsPage() {
 
       {/* Year Quick Nav */}
       {years.length > 1 && (
-        <div 
-          className="sticky top-0 z-10 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 backdrop-blur-sm"
-          style={{ backgroundColor: 'rgba(26, 29, 35, 0.9)', borderBottom: '1px solid #3d4149' }}
+        <div
+          className="sticky top-0 z-10 -mx-4 border-b border-zinc-200 bg-white/90 px-4 py-3 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/90 sm:-mx-6 sm:px-6"
         >
           <div className="flex flex-wrap gap-2">
             {years.map((year) => (
               <button
                 key={year}
                 onClick={() => scrollToYear(String(year))}
-                className="px-4 py-1.5 text-sm font-semibold rounded-lg transition-all hover:text-black"
-                style={{
-                  backgroundColor: '#1a1d23',
-                  border: '1px solid #3d4149',
-                  color: '#6b7280',
-                }}
+                className="rounded-lg border border-zinc-200 bg-zinc-100 px-4 py-1.5 text-sm font-semibold text-zinc-600 transition-all hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:text-white"
               >
                 {year}
               </button>
@@ -500,25 +486,23 @@ export default function ChangelogsPage() {
         
         <div className="space-y-6">
           {filteredChangelogs.length === 0 ? (
-            <div 
-              className="text-center py-16 rounded-xl"
-              style={{ backgroundColor: '#1a1d23', border: '1px solid #3d4149' }}
+            <div
+              className="rounded-xl border border-zinc-200 bg-zinc-50 py-16 text-center dark:border-zinc-800 dark:bg-zinc-900"
             >
-              <SearchX className="w-16 h-16 mx-auto mb-4" style={{ color: '#3d4149' }} />
-              <h3 className="text-lg font-semibold text-white mb-2" style={{ fontFamily: 'Exo 2, sans-serif' }}>
+              <SearchX className="mx-auto mb-4 h-16 w-16 text-zinc-300 dark:text-zinc-600" />
+              <h3 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-white" style={{ fontFamily: 'Exo 2, sans-serif' }}>
                 No results found
               </h3>
-              <p className="text-zinc-500 mb-4">
+              <p className="mb-4 text-zinc-500 dark:text-zinc-400">
                 {searchQuery 
                   ? `No entries matching "${searchQuery}"`
                   : 'No entries match your current filters'}
               </p>
               {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="hover:underline"
-                  style={{ color: TC.blue }}
-                >
+                  <button
+                    onClick={clearFilters}
+                    className="text-cyan-600 hover:underline dark:text-cyan-400"
+                  >
                   Clear all filters
                 </button>
               )}
@@ -550,27 +534,26 @@ export default function ChangelogsPage() {
                   </div>
 
                   {/* Card */}
-                  <div 
-                    className="rounded-xl overflow-hidden transition-all duration-300 hover:translate-y-[-2px]"
+                  <div
+                    className="overflow-hidden rounded-xl border border-zinc-200 bg-white transition-all duration-300 hover:translate-y-[-2px] dark:border-zinc-800 dark:bg-zinc-900"
                     style={{ 
-                      backgroundColor: '#1a1d23', 
-                      border: '1px solid #3d4149',
                       boxShadow: isExpanded ? `0 0 20px rgba(0, 204, 255, 0.1)` : 'none',
                     }}
                   >
                     <button
                       onClick={() => toggleExpand(item.id)}
-                      className="w-full px-6 py-4 flex items-center justify-between transition-colors hover:bg-white/5"
-                      style={{ borderBottom: isExpanded ? 'none' : '1px solid #3d4149' }}
+                      className={`flex w-full items-center justify-between px-6 py-4 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${
+                        isExpanded ? '' : 'border-b border-zinc-200 dark:border-zinc-800'
+                      }`}
                     >
                       <div className="flex items-center gap-4 text-left">
                         <h2 
-                          className="text-lg font-bold text-white"
+                          className="text-lg font-bold text-zinc-900 dark:text-white"
                           style={{ fontFamily: 'Exo 2, sans-serif' }}
                         >
                           <HighlightText text={item.title} highlight={searchQuery} />
                         </h2>
-                        <span className="text-sm" style={{ color: '#6b7280' }}>{item.date}</span>
+                        <span className="text-sm text-zinc-500 dark:text-zinc-400">{item.date}</span>
                       </div>
                       <ChevronDown 
                         className={`w-5 h-5 transition-transform duration-300 ${
@@ -590,7 +573,7 @@ export default function ChangelogsPage() {
                         {item.content.map((entry, entryIndex) => (
                           <div 
                             key={entryIndex} 
-                            className="relative pl-4 transition-colors hover:bg-white/5 rounded-lg p-3"
+                            className="relative rounded-lg p-3 pl-4 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
                             style={{ borderLeft: `2px solid ${getTypeBadgeStyle(entry.type).text}` }}
                           >
                             <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -605,13 +588,13 @@ export default function ChangelogsPage() {
                                 {getTypeIcon(entry.type)} {getTypeLabel(entry.type)}
                               </span>
                               <h3 
-                                className="font-semibold text-white"
+                                className="font-semibold text-zinc-900 dark:text-white"
                                 style={{ fontFamily: 'Exo 2, sans-serif' }}
                               >
                                 <HighlightText text={entry.title} highlight={searchQuery} />
                               </h3>
                             </div>
-                            <p className="text-sm leading-relaxed" style={{ color: '#9ca3af' }}>
+                            <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                               <HighlightText text={entry.description} highlight={searchQuery} />
                             </p>
                             {entry.links && entry.links.length > 0 && (
@@ -622,8 +605,7 @@ export default function ChangelogsPage() {
                                     href={link.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-xs hover:underline transition-colors"
-                                    style={{ color: TC.blue }}
+                                    className="inline-flex items-center gap-1 text-xs text-cyan-600 transition-colors hover:underline dark:text-cyan-400"
                                   >
                                     {link.text} <Link className="w-3 h-3" />
                                   </a>
@@ -643,18 +625,16 @@ export default function ChangelogsPage() {
       </div>
 
       {/* Footer */}
-      <div 
-        className="mt-12 p-4 rounded-lg"
-        style={{ backgroundColor: '#1a1d23', border: '1px solid #3d4149' }}
+      <div
+        className="mt-12 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900"
       >
-        <p className="text-sm" style={{ color: '#6b7280' }}>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
           Data sourced from{' '}
           <a 
             href="https://tcupdates.medium.com" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="hover:underline inline-flex items-center gap-1 transition-colors"
-            style={{ color: TC.blue }}
+            className="inline-flex items-center gap-1 text-cyan-600 transition-colors hover:underline dark:text-cyan-400"
           >
             TCC Cross-Chain Updates <Link className="w-3 h-3" />
           </a>
