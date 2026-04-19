@@ -2,7 +2,7 @@ import useSWR from 'swr';
 import { getMemberDetails, getPools, getRunePriceHistory, MemberDetailsRaw, PoolDetailRaw, RunePriceHistoryRaw } from '../lib/api/midgard';
 import { getLiquidityProvider, LiquidityProviderRaw } from '../lib/api/thornode';
 import { LpPoolStatus, LpPosition } from '../lib/types/lp';
-import { calculateLpWithdrawableAmounts, calculateLpPnl, formatPnlDisplay } from '../lib/utils/calculations';
+import { calculateLpWithdrawableAmounts, calculateLpPnl, calculateImpermanentLoss, formatPnlDisplay } from '../lib/utils/calculations';
 import { runeToNumber, formatRuneAmount } from '../lib/utils/formatters';
 
 interface LpData {
@@ -184,6 +184,15 @@ export const useLpPositions = (address: string | null) => {
       assetPrice
     );
 
+    const il = calculateImpermanentLoss(
+      withdrawable.runeDeposited,
+      withdrawable.asset2Deposited,
+      runePrice,
+      assetPrice,
+      runePrice,
+      assetPrice
+    );
+
     return {
       address: poolRaw.assetAddress,
       pool: poolRaw.pool,
@@ -212,6 +221,8 @@ export const useLpPositions = (address: string | null) => {
       asset2Withdrawable: withdrawable.asset2Withdrawable,
       netProfitLoss: formatPnlDisplay(pnl.pnl).text,
       netProfitLossPercent: pnl.pnlPercent,
+      impermanentLossPercent: il.ilPercent,
+      impermanentLossValue: il.ilValue,
     };
   });
 
