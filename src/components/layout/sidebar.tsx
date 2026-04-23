@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Eye, Shield, Activity, BarChart3, AlertTriangle, ArrowRightLeft, Menu, X, ScrollText, Coins, Zap } from 'lucide-react';
+import { Eye, Shield, Activity, BarChart3, AlertTriangle, ArrowRightLeft, Menu, X, ScrollText, Coins } from 'lucide-react';
 import { ThemeToggle } from './theme-toggle';
 import { BifrostStatus } from './bifrost-status';
 import { cn } from '@/lib/utils';
