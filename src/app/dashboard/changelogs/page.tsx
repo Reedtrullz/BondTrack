@@ -2,7 +2,7 @@
 
 import { useChangelogs, getTypeLabel, getTypeIcon, getTypeBadgeStyle, ChangelogItem, ChangelogEntry } from '@/lib/hooks/use-changelogs';
 import { Search, ChevronDown, X, SearchX, Zap, FileText, Link, Rocket, Wrench, ScrollText, Eye } from 'lucide-react';
-import { useState, useMemo, useRef, useEffect, useCallback, useTransition } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
 type FilterType = 'all' | ChangelogEntry['type'];
@@ -140,12 +140,15 @@ export default function ChangelogsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const [isPending, startTransition] = useTransition();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const yearRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
   const urlSearchQuery = searchParams.get('q') || '';
   const urlTypeFilter = parseTypeFilter(searchParams.get('type'));
+
+  useEffect(() => {
+    console.log('[Heimdall] URL State Sync:', { q: urlSearchQuery, type: urlTypeFilter });
+  }, [urlSearchQuery, urlTypeFilter]);
 
   const [searchBuffer, setSearchBuffer] = useState(urlSearchQuery);
   const [hasResolvedExpandedPreference, setHasResolvedExpandedPreference] = useState(false);
@@ -212,6 +215,7 @@ export default function ChangelogsPage() {
   const years = useMemo(() => extractYears(changelogs), [changelogs]);
   
   const filteredChangelogs = useMemo(() => {
+    console.log('[Heimdall] Recomputing filtered list:', { q: urlSearchQuery, type: urlTypeFilter });
     if (!urlSearchQuery.trim() && urlTypeFilter === 'all') {
       return changelogs;
     }
@@ -260,31 +264,25 @@ export default function ChangelogsPage() {
   }, []);
   
   const clearFilters = useCallback(() => {
-    startTransition(() => {
-      const currentParams = new URLSearchParams(window.location.search);
-      const nextUrl = `${pathname}${buildChangelogQuery(currentParams, '', 'all')}`;
-      console.log('[Heimdall] Clearing filters:', nextUrl);
-      router.replace(nextUrl, { scroll: false });
-    });
+    const currentParams = new URLSearchParams(window.location.search);
+    const nextUrl = `${pathname}${buildChangelogQuery(currentParams, '', 'all')}`;
+    console.log('[Heimdall] Navigating (Clear):', nextUrl);
+    router.push(nextUrl, { scroll: false });
   }, [router, pathname]);
 
   const updateSearchQuery = useCallback((nextSearchQuery: string) => {
     setSearchBuffer(nextSearchQuery);
-    startTransition(() => {
-      const currentParams = new URLSearchParams(window.location.search);
-      const nextUrl = `${pathname}${buildChangelogQuery(currentParams, nextSearchQuery, urlTypeFilter)}`;
-      console.log('[Heimdall] Updating search:', nextUrl);
-      router.replace(nextUrl, { scroll: false });
-    });
+    const currentParams = new URLSearchParams(window.location.search);
+    const nextUrl = `${pathname}${buildChangelogQuery(currentParams, nextSearchQuery, urlTypeFilter)}`;
+    console.log('[Heimdall] Navigating (Search):', nextUrl);
+    router.push(nextUrl, { scroll: false });
   }, [router, urlTypeFilter, pathname]);
 
   const updateTypeFilter = useCallback((nextTypeFilter: FilterType) => {
-    startTransition(() => {
-      const currentParams = new URLSearchParams(window.location.search);
-      const nextUrl = `${pathname}${buildChangelogQuery(currentParams, urlSearchQuery, nextTypeFilter)}`;
-      console.log('[Heimdall] Updating type filter:', nextUrl);
-      router.replace(nextUrl, { scroll: false });
-    });
+    const currentParams = new URLSearchParams(window.location.search);
+    const nextUrl = `${pathname}${buildChangelogQuery(currentParams, urlSearchQuery, nextTypeFilter)}`;
+    console.log('[Heimdall] Navigating (Type):', nextUrl);
+    router.push(nextUrl, { scroll: false });
   }, [router, urlSearchQuery, pathname]);
 
   useEffect(() => {
@@ -303,10 +301,8 @@ export default function ChangelogsPage() {
           const currentParams = new URLSearchParams(window.location.search);
           const nextUrl = `${pathname}${buildChangelogQuery(currentParams, nextSearchQuery, nextTypeFilter)}`;
 
-          console.log('[Heimdall] Resetting via Escape:', nextUrl);
-          startTransition(() => {
-            router.replace(nextUrl, { scroll: false });
-          });
+          console.log('[Heimdall] Navigating (Escape):', nextUrl);
+          router.push(nextUrl, { scroll: false });
         }
       }
     };
