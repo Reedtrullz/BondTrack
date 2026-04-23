@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+// Re-triggering deployment after temporary git provider 500 error
 import { Exo_2, Open_Sans } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Analytics } from "@vercel/analytics/next";
