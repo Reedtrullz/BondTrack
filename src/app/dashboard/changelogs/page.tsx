@@ -100,41 +100,7 @@ function HighlightText({ text, highlight }: { text: string; highlight: string })
   );
 }
 
-function StatsBanner({ totalEntries, totalMonths }: { totalEntries: number; totalMonths: number }) {
-  return (
-    <div
-      className="relative mb-6 overflow-hidden rounded-xl border border-cyan-200/80 bg-cyan-50/80 p-4 dark:border-cyan-500/20 dark:bg-cyan-500/10"
-    >
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#00CCFF]/5 to-transparent" />
-      <div className="relative flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div 
-            className="w-10 h-10 rounded-lg flex items-center justify-center"
-            style={{ backgroundColor: TC.blue }}
-          >
-            <Zap className="w-5 h-5 text-black" />
-          </div>
-          <div>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">Protocol Updates</p>
-            <p className="text-xl font-bold text-zinc-900 dark:text-white" style={{ fontFamily: 'Exo 2, sans-serif' }}>
-              {totalEntries} changes across {totalMonths} months
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-6 text-right">
-          <div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wide">Latest</p>
-            <p className="text-sm font-semibold text-[#00CCFF]">v3.16</p>
-          </div>
-          <div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wide">Since</p>
-            <p className="text-sm font-semibold text-zinc-900 dark:text-white">Aug 2022</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+
 
 export default function ChangelogsPage() {
   const { changelogs, isLoading } = useChangelogs();
@@ -333,7 +299,7 @@ export default function ChangelogsPage() {
           >
             Odin's Journal
           </h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">A chronicle of the All-Father's network evolution</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">Historical timeline of THORChain protocol evolution</p>
         </div>
       </div>
 
@@ -348,15 +314,15 @@ export default function ChangelogsPage() {
               <Eye className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Chronicle Wisdom</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Protocol Statistics</p>
               <p className="text-lg font-bold text-zinc-900 dark:text-white">
-                {changelogs.reduce((a, c) => a + c.content.length, 0)} recorded eddas across {totalMonths} moon cycles
+                {changelogs.reduce((a, c) => a + c.content.length, 0)} protocol updates across {totalMonths} months
               </p>
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-6 text-right">
             <div>
-              <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase tracking-widest">Latest Eon</p>
+              <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase tracking-widest">Latest Release</p>
               <p className="text-sm font-bold text-amber-600 dark:text-amber-500">v3.16</p>
             </div>
             <div>
