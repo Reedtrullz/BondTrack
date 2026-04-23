@@ -117,7 +117,7 @@ export default function ChangelogsPage() {
   const [hasResolvedExpandedPreference, setHasResolvedExpandedPreference] = useState(false);
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const [expandedEntryIds, setExpandedEntryIds] = useState<Record<string, Set<string>>>({});
+  const [expandedEntryIds, setExpandedEntryIds] = useState<Record<string, string[]>>({});
 
   // Sync search buffer with URL when URL changes externally (e.g., back navigation)
   useEffect(() => {
@@ -144,14 +144,13 @@ export default function ChangelogsPage() {
 
   const toggleEntryExpand = useCallback((changelogId: string, entryIndex: number) => {
     setExpandedEntryIds(prev => {
-      const changelogEntries = prev[changelogId] || new Set();
-      const nextEntries = new Set(changelogEntries);
-
-      if (nextEntries.has(String(entryIndex))) {
-        nextEntries.delete(String(entryIndex));
-      } else {
-        nextEntries.add(String(entryIndex));
-      }
+      const changelogEntries = prev[changelogId] || [];
+      const indexStr = String(entryIndex);
+      const isExpanded = changelogEntries.includes(indexStr);
+      
+      const nextEntries = isExpanded 
+        ? changelogEntries.filter(id => id !== indexStr)
+        : [...changelogEntries, indexStr];
 
       const next = { ...prev, [changelogId]: nextEntries };
       if (typeof window !== 'undefined') {
@@ -542,7 +541,7 @@ export default function ChangelogsPage() {
                     >
                       <div className="p-6 space-y-4">
                         {item.content.map((entry, entryIndex) => {
-                          const isEntryExpanded = (expandedEntryIds[item.id] && expandedEntryIds[item.id].has(String(entryIndex))) || urlSearchQuery.length > 0;
+                          const isEntryExpanded = (expandedEntryIds[item.id] && expandedEntryIds[item.id].includes(String(entryIndex))) || urlSearchQuery.length > 0;
                           
                           return (
                             <div 
