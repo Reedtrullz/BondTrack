@@ -140,43 +140,34 @@ export default function ChangelogsPage() {
   const urlSearchQuery = searchParams.get('q') || '';
   const urlTypeFilter = parseTypeFilter(searchParams.get('type'));
 
-  const [searchQuery, setSearchQuery] = useState(urlSearchQuery);
-  const [typeFilter, setTypeFilter] = useState<FilterType>(urlTypeFilter);
-  const [hasResolvedExpandedPreference, setHasResolvedExpandedPreference] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(STORAGE_KEY) !== null;
-    }
+  const [searchBuffer, setSearchBuffer] = useState(urlSearchQuery);
+  const [hasResolvedExpandedPreference, setHasResolvedExpandedPreference] = useState(false);
 
-    return false;
-  });
-  const lastSyncedUrlRef = useRef(buildChangelogQuery(urlSearchQuery, urlTypeFilter));
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [expandedEntryIds, setExpandedEntryIds] = useState<Record<string, Set<string>>>({});
 
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
+  // Sync search buffer with URL when URL changes externally (e.g., back navigation)
+  useEffect(() => {
+    setSearchBuffer(urlSearchQuery);
+  }, [urlSearchQuery]);
+
+  // Handle local state initialization on mount
+  useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
+      const savedExp = localStorage.getItem(STORAGE_KEY);
+      if (savedExp) {
         try {
-          return new Set(JSON.parse(saved));
-        } catch {
-          return new Set();
-        }
+          setExpandedIds(new Set(JSON.parse(savedExp)));
+        } catch {}
+      }
+      const savedEntries = localStorage.getItem(`${STORAGE_KEY}-entries`);
+      if (savedEntries) {
+        try {
+          setExpandedEntryIds(JSON.parse(savedEntries));
+        } catch {}
       }
     }
-    return new Set();
-  });
-  const [expandedEntryIds, setExpandedEntryIds] = useState<Record<string, Set<string>>>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${STORAGE_KEY}-entries`);
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {
-          return {};
-        }
-      }
-    }
-    return {};
-  });
+  }, []);
 
   const toggleEntryExpand = useCallback((changelogId: string, entryIndex: number) => {
     setExpandedEntryIds(prev => {
@@ -190,44 +181,23 @@ export default function ChangelogsPage() {
       }
 
       const next = { ...prev, [changelogId]: nextEntries };
-
-      if (typeof window !== 'undefined' && hasResolvedExpandedPreference) {
+      if (typeof window !== 'undefined') {
         localStorage.setItem(`${STORAGE_KEY}-entries`, JSON.stringify(next));
       }
-
       return next;
     });
-  }, [hasResolvedExpandedPreference]);
+  }, []);
 
   useEffect(() => {
-    const nextUrl = buildChangelogQuery(urlSearchQuery, urlTypeFilter);
-
-    if (nextUrl === lastSyncedUrlRef.current) {
-      return;
-    }
-
-    lastSyncedUrlRef.current = nextUrl;
-
-    if (searchQuery !== urlSearchQuery) {
-      setSearchQuery(urlSearchQuery);
-    }
-
-    if (typeFilter !== urlTypeFilter) {
-      setTypeFilter(urlTypeFilter);
-    }
-  }, [searchQuery, typeFilter, urlSearchQuery, urlTypeFilter]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && hasResolvedExpandedPreference) {
+    if (typeof window !== 'undefined' && expandedIds.size > 0) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify([...expandedIds]));
     }
-  }, [expandedIds, hasResolvedExpandedPreference]);
+  }, [expandedIds]);
 
   useEffect(() => {
     if (hasResolvedExpandedPreference || changelogs.length === 0) {
       return;
     }
-
     setExpandedIds(new Set(changelogs.map(c => c.id)));
     setHasResolvedExpandedPreference(true);
   }, [changelogs, hasResolvedExpandedPreference]);
@@ -235,15 +205,15 @@ export default function ChangelogsPage() {
   const years = useMemo(() => extractYears(changelogs), [changelogs]);
   
   const filteredChangelogs = useMemo(() => {
-    if (!searchQuery.trim() && typeFilter === 'all') {
+    if (!urlSearchQuery.trim() && urlTypeFilter === 'all') {
       return changelogs;
     }
     
     return changelogs.map(item => ({
       ...item,
-      content: item.content.filter(entry => matchesFilter(entry, searchQuery, typeFilter))
+      content: item.content.filter(entry => matchesFilter(entry, urlSearchQuery, urlTypeFilter))
     })).filter(item => item.content.length > 0);
-  }, [changelogs, searchQuery, typeFilter]);
+  }, [changelogs, urlSearchQuery, urlTypeFilter]);
 
   const totalEntries = useMemo(() => {
     return filteredChangelogs.reduce((acc, item) => acc + item.content.length, 0);
@@ -283,40 +253,17 @@ export default function ChangelogsPage() {
   }, []);
   
   const clearFilters = useCallback(() => {
-    const nextSearchQuery = '';
-    const nextTypeFilter: FilterType = 'all';
-    const nextUrl = buildChangelogQuery(nextSearchQuery, nextTypeFilter);
-
-    setSearchQuery(nextSearchQuery);
-    setTypeFilter(nextTypeFilter);
-    router.replace(nextUrl, { scroll: false });
+    router.replace(buildChangelogQuery('', 'all'), { scroll: false });
   }, [router]);
 
   const updateSearchQuery = useCallback((nextSearchQuery: string) => {
-    const nextUrl = buildChangelogQuery(nextSearchQuery, typeFilter);
-
-    setSearchQuery(nextSearchQuery);
-    router.replace(nextUrl, { scroll: false });
-  }, [router, typeFilter]);
+    setSearchBuffer(nextSearchQuery);
+    router.replace(buildChangelogQuery(nextSearchQuery, urlTypeFilter), { scroll: false });
+  }, [router, urlTypeFilter]);
 
   const updateTypeFilter = useCallback((nextTypeFilter: FilterType) => {
-    const nextUrl = buildChangelogQuery(searchQuery, nextTypeFilter);
-
-    setTypeFilter(nextTypeFilter);
-    router.replace(nextUrl, { scroll: false });
-  }, [router, searchQuery]);
-
-  useEffect(() => {
-    const handleUrlChange = () => {
-      const currentUrl = buildChangelogQuery(searchQuery, typeFilter);
-      if (currentUrl !== lastSyncedUrlRef.current) {
-        lastSyncedUrlRef.current = currentUrl;
-        router.replace(currentUrl, { scroll: false });
-      }
-    };
-
-    handleUrlChange();
-  }, [searchQuery, typeFilter, router]);
+    router.replace(buildChangelogQuery(urlSearchQuery, nextTypeFilter), { scroll: false });
+  }, [router, urlSearchQuery]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -416,11 +363,11 @@ export default function ChangelogsPage() {
             ref={searchInputRef}
             type="text"
             placeholder="Search changelogs... (press /)"
-            value={searchQuery}
+            value={searchBuffer}
             onChange={(e) => updateSearchQuery(e.target.value)}
             className="w-full rounded-lg border border-zinc-200 bg-white py-3 pl-10 pr-10 text-zinc-900 placeholder:text-zinc-400 transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500"
           />
-          {searchQuery && (
+          {searchBuffer && (
             <button
               onClick={() => updateSearchQuery('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-white"
@@ -432,7 +379,7 @@ export default function ChangelogsPage() {
         
         <div className="flex flex-wrap gap-2">
           {FILTER_OPTIONS.map((option) => {
-            const isActive = typeFilter === option.value;
+            const isActive = urlTypeFilter === option.value;
             const hasCount = option.value !== 'all' && typeBreakdown[option.value] > 0;
             
             return (
@@ -573,10 +520,9 @@ export default function ChangelogsPage() {
                     >
                       <div className="flex items-center gap-4 text-left">
                         <h2 
-                          className="text-lg font-bold text-zinc-900 dark:text-white"
-                          style={{ fontFamily: 'Exo 2, sans-serif' }}
+                          className="text-lg font-bold text-zinc-900 dark:text-white font-serif italic"
                         >
-                          <HighlightText text={item.title} highlight={searchQuery} />
+                          <HighlightText text={item.title} highlight={urlSearchQuery} />
                         </h2>
                         <span className="text-sm text-zinc-500 dark:text-zinc-400">{item.date}</span>
                       </div>
@@ -613,14 +559,13 @@ export default function ChangelogsPage() {
                                 {getTypeIcon(entry.type)} {getTypeLabel(entry.type)}
                               </span>
                               <h3 
-                                className="font-semibold text-zinc-900 dark:text-white"
-                                style={{ fontFamily: 'Exo 2, sans-serif' }}
+                                className="font-semibold text-zinc-900 dark:text-white font-serif italic"
                               >
-                                <HighlightText text={entry.title} highlight={searchQuery} />
+                                <HighlightText text={entry.title} highlight={urlSearchQuery} />
                               </h3>
                             </div>
                             <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                              <HighlightText text={entry.description} highlight={searchQuery} />
+                              <HighlightText text={entry.description} highlight={urlSearchQuery} />
                             </p>
                             {entry.links && entry.links.length > 0 && (
                               <div className="mt-3 flex flex-wrap gap-3">
