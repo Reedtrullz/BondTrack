@@ -123,14 +123,14 @@ export function RewardProjections({
                     <div className="flex justify-between items-center">
                       <div className="text-xs text-zinc-500">Net Reward</div>
                       <div className="text-sm font-semibold font-mono text-emerald-600 dark:text-emerald-400">
-                        +ᚱ {formatProjectionAmount(proj.netRuneReward, proj.timeframe)}
+                        +ᚱ{formatProjectionAmount(proj.netRuneReward, proj.timeframe)}
                       </div>
                     </div>
 
                     <div className="flex justify-between items-center">
                       <div className="text-xs text-zinc-400">Fee Leakage</div>
                       <div className="text-xs font-mono text-zinc-500">
-                        -ᚱ {formatProjectionAmount(proj.feeLeakage, proj.timeframe)}
+                        -ᚱ{formatProjectionAmount(proj.feeLeakage, proj.timeframe)}
                       </div>
                     </div>
 
