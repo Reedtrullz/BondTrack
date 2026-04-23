@@ -1,7 +1,7 @@
 'use client';
 
 import { useChangelogs, getTypeLabel, getTypeIcon, getTypeBadgeStyle, ChangelogItem, ChangelogEntry } from '@/lib/hooks/use-changelogs';
-import { Search, ChevronDown, X, SearchX, Zap, FileText, Link, Rocket, Wrench } from 'lucide-react';
+import { Search, ChevronDown, X, SearchX, Zap, FileText, Link, Rocket, Wrench, ScrollText, Eye } from 'lucide-react';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
@@ -275,13 +275,11 @@ export default function ChangelogsPage() {
         if (document.activeElement === searchInputRef.current) {
           searchInputRef.current?.blur();
         }
-        if (searchQuery || typeFilter !== 'all') {
+        if (urlSearchQuery || urlTypeFilter !== 'all') {
           const nextSearchQuery = '';
           const nextTypeFilter: FilterType = 'all';
           const nextUrl = buildChangelogQuery(nextSearchQuery, nextTypeFilter);
 
-          setSearchQuery(nextSearchQuery);
-          setTypeFilter(nextTypeFilter);
           router.replace(nextUrl, { scroll: false });
         }
       }
@@ -289,9 +287,9 @@ export default function ChangelogsPage() {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [router, searchQuery, typeFilter]);
+  }, [router, urlSearchQuery, urlTypeFilter]);
   
-  const hasActiveFilters = searchQuery.trim() || typeFilter !== 'all';
+  const hasActiveFilters = urlSearchQuery.trim() || urlTypeFilter !== 'all';
 
   if (isLoading) {
     return (
@@ -462,12 +460,12 @@ export default function ChangelogsPage() {
               className="rounded-xl border border-zinc-200 bg-zinc-50 py-16 text-center dark:border-zinc-800 dark:bg-zinc-900"
             >
               <SearchX className="mx-auto mb-4 h-16 w-16 text-zinc-300 dark:text-zinc-600" />
-              <h3 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-white" style={{ fontFamily: 'Exo 2, sans-serif' }}>
+              <h3 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-white font-serif italic">
                 No results found
               </h3>
               <p className="mb-4 text-zinc-500 dark:text-zinc-400">
-                {searchQuery 
-                  ? `No entries matching "${searchQuery}"`
+                {searchBuffer 
+                  ? `No entries matching "${searchBuffer}"`
                   : 'No entries match your current filters'}
               </p>
               {hasActiveFilters && (
