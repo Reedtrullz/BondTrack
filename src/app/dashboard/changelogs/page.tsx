@@ -499,16 +499,35 @@ export default function ChangelogsPage() {
                         isExpanded ? '' : 'border-b border-zinc-200 dark:border-zinc-800'
                       }`}
                     >
-                      <div className="flex items-center gap-4 text-left">
-                        <h2 
-                          className="text-lg font-bold text-zinc-900 dark:text-white font-serif italic"
-                        >
-                          <HighlightText text={item.title} highlight={urlSearchQuery} />
-                        </h2>
-                        <span className="text-sm text-zinc-500 dark:text-zinc-400">{item.date}</span>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-left">
+                        <div className="flex items-center gap-3">
+                          <h2 
+                            className="text-lg font-bold text-zinc-900 dark:text-white font-serif italic"
+                          >
+                            <HighlightText text={item.title} highlight={urlSearchQuery} />
+                          </h2>
+                          <span className="text-sm text-zinc-500 dark:text-zinc-400 whitespace-nowrap">{item.date}</span>
+                        </div>
+                        
+                        {!isExpanded && (
+                          <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                            {Array.from(new Set(item.content.map(e => e.type))).map(type => {
+                              const count = item.content.filter(e => e.type === type).length;
+                              return (
+                                <span 
+                                  key={type}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50"
+                                  style={{ color: getTypeBadgeStyle(type).text }}
+                                >
+                                  {getTypeIcon(type)} {count}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                       <ChevronDown 
-                        className={`w-5 h-5 transition-transform duration-300 ${
+                        className={`w-5 h-5 transition-transform duration-300 flex-shrink-0 ${
                           isExpanded ? 'rotate-180' : ''
                         }`}
                         style={{ color: TC.blue }}
@@ -522,49 +541,73 @@ export default function ChangelogsPage() {
                       }`}
                     >
                       <div className="p-6 space-y-4">
-                        {item.content.map((entry, entryIndex) => (
-                          <div 
-                            key={entryIndex} 
-                            className="relative rounded-lg p-3 pl-4 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-                            style={{ borderLeft: `2px solid ${getTypeBadgeStyle(entry.type).text}` }}
-                          >
-                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                              <span 
-                                className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border"
-                                style={{ 
-                                  backgroundColor: getTypeBadgeStyle(entry.type).bg,
-                                  borderColor: getTypeBadgeStyle(entry.type).border,
-                                  color: getTypeBadgeStyle(entry.type).text,
-                                }}
+                        {item.content.map((entry, entryIndex) => {
+                          const isEntryExpanded = (expandedEntryIds[item.id] && expandedEntryIds[item.id].has(String(entryIndex))) || urlSearchQuery.length > 0;
+                          
+                          return (
+                            <div 
+                              key={entryIndex} 
+                              className="relative rounded-lg transition-all duration-200"
+                            >
+                              <button
+                                onClick={() => toggleEntryExpand(item.id, entryIndex)}
+                                className={`w-full text-left group flex items-start gap-4 p-3 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/30 transition-colors ${
+                                  isEntryExpanded ? 'bg-zinc-50 dark:bg-zinc-900/40 shadow-sm border border-zinc-100 dark:border-zinc-800/50' : ''
+                                }`}
+                                style={{ borderLeft: `3px solid ${getTypeBadgeStyle(entry.type).text}` }}
                               >
-                                {getTypeIcon(entry.type)} {getTypeLabel(entry.type)}
-                              </span>
-                              <h3 
-                                className="font-semibold text-zinc-900 dark:text-white font-serif italic"
-                              >
-                                <HighlightText text={entry.title} highlight={urlSearchQuery} />
-                              </h3>
+                                <div className="flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span 
+                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border border-zinc-200/50 dark:border-zinc-800/50"
+                                      style={{ 
+                                        backgroundColor: getTypeBadgeStyle(entry.type).bg,
+                                        color: getTypeBadgeStyle(entry.type).text,
+                                      }}
+                                    >
+                                      {getTypeIcon(entry.type)} {getTypeLabel(entry.type)}
+                                    </span>
+                                    <h3 
+                                      className="font-bold text-zinc-900 dark:text-white font-serif italic leading-tight"
+                                    >
+                                      <HighlightText text={entry.title} highlight={urlSearchQuery} />
+                                    </h3>
+                                  </div>
+                                  
+                                  {isEntryExpanded ? (
+                                    <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                                      <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                        <HighlightText text={entry.description} highlight={urlSearchQuery} />
+                                      </p>
+                                      {entry.links && entry.links.length > 0 && (
+                                        <div className="flex flex-wrap gap-3 pt-1">
+                                          {entry.links.map((link, linkIndex) => (
+                                            <a
+                                              key={linkIndex}
+                                              href={link.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center gap-1 text-xs text-cyan-600 transition-colors hover:underline dark:text-cyan-400 font-medium"
+                                            >
+                                              {link.text} <LinkIcon className="w-3 h-3" />
+                                            </a>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <p className="mt-1 text-xs text-zinc-400 line-clamp-1 opacity-70">
+                                      {entry.description}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className={`flex-shrink-0 transition-transform duration-200 ${isEntryExpanded ? 'rotate-180' : 'opacity-0 group-hover:opacity-100'}`}>
+                                  <ChevronDown className="w-4 h-4 text-zinc-400" />
+                                </div>
+                              </button>
                             </div>
-                            <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                              <HighlightText text={entry.description} highlight={urlSearchQuery} />
-                            </p>
-                            {entry.links && entry.links.length > 0 && (
-                              <div className="mt-3 flex flex-wrap gap-3">
-                                {entry.links.map((link, linkIndex) => (
-                                  <a
-                                    key={linkIndex}
-                                    href={link.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-xs text-cyan-600 transition-colors hover:underline dark:text-cyan-400"
-                                  >
-                                    {link.text} <LinkIcon className="w-3 h-3" />
-                                  </a>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
