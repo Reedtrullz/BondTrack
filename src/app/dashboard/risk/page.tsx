@@ -11,6 +11,7 @@ import { SlashMonitor } from '@/components/dashboard/slash-monitor';
 import { ChurnOutRisk } from '@/components/dashboard/churn-out-risk';
 import { NetworkSecurityMetrics } from '@/components/dashboard/network-security-metrics';
 import { UnbondWindowTracker } from '@/components/dashboard/unbond-window-tracker';
+import { RiskRadar } from '@/components/dashboard/risk-radar';
 import type { YieldGuardFlag, BondPosition } from '@/lib/types/node';
 import { useState } from 'react';
 import { generatePortfolioAlerts } from '@/lib/utils/portfolio-alerts';
@@ -464,12 +465,22 @@ export default function RiskPage() {
 
       <RiskSummaryBanner positions={positions} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
           <RiskKPIs positions={positions} />
+          <div className="mt-4">
+            <IncentivePendulum />
+          </div>
         </div>
-        <div>
-          <IncentivePendulum />
+        <div className="lg:col-span-1 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2 font-serif italic">Shield Analysis</h3>
+          {positions.length > 0 ? (
+            <RiskRadar position={positions[0]} />
+          ) : (
+            <div className="h-[240px] flex items-center justify-center text-zinc-500 text-xs italic">
+              Awaiting node signal...
+            </div>
+          )}
         </div>
       </div>
 

@@ -364,24 +364,49 @@ export default function ChangelogsPage() {
       {/* Header */}
       <div className="flex items-center gap-3 mb-2">
         <div 
-          className="w-12 h-12 rounded-xl flex items-center justify-center"
-          style={{ backgroundColor: TC.blue }}
+          className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-amber-500/80 to-amber-600/80 shadow-lg shadow-amber-500/20 border border-amber-500/20"
         >
-          <Zap className="w-6 h-6 text-black" />
+          <ScrollText className="w-6 h-6 text-white" />
         </div>
         <div>
           <h1 
-            className="text-2xl font-bold text-zinc-900 dark:text-white"
-            style={{ fontFamily: 'Exo 2, sans-serif' }}
+            className="text-2xl font-bold text-zinc-900 dark:text-white font-serif italic uppercase"
           >
-            THORChain Changelogs
+            Odin's Journal
           </h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Protocol updates and changes</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">A chronicle of the All-Father's network evolution</p>
         </div>
       </div>
 
-      {/* Stats Banner */}
-      <StatsBanner totalEntries={changelogs.reduce((a, c) => a + c.content.length, 0)} totalMonths={totalMonths} />
+      {/* Chronicle Wisdom (Stats) */}
+      <div
+        className="relative mb-6 overflow-hidden rounded-xl border border-amber-200/80 bg-amber-50/80 p-4 dark:border-amber-500/20 dark:bg-amber-500/5 shadow-inner"
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/5 to-transparent" />
+        <div className="relative flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-zinc-900 dark:bg-zinc-800 text-amber-500">
+              <Eye className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Chronicle Wisdom</p>
+              <p className="text-lg font-bold text-zinc-900 dark:text-white">
+                {changelogs.reduce((a, c) => a + c.content.length, 0)} recorded eddas across {totalMonths} moon cycles
+              </p>
+            </div>
+          </div>
+          <div className="hidden sm:flex items-center gap-6 text-right">
+            <div>
+              <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase tracking-widest">Latest Eon</p>
+              <p className="text-sm font-bold text-amber-600 dark:text-amber-500">v3.16</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase tracking-widest">Established</p>
+              <p className="text-sm font-bold text-zinc-900 dark:text-white">Aug 2022</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Search & Filters */}
       <div className="space-y-4">

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Eye, Shield, Activity, BarChart3, AlertTriangle, ArrowRightLeft, Menu, X, ScrollText, Coins, Zap } from 'lucide-react';
 import { ThemeToggle } from './theme-toggle';
+import { BifrostStatus } from './bifrost-status';
 import { cn } from '@/lib/utils';
 
 const basePath = '/dashboard';
@@ -104,14 +105,11 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           );
         })}
         
-        <div className="absolute bottom-6 left-4 right-4">
+        <div className="absolute bottom-6 left-4 right-4 space-y-3">
+          <BifrostStatus />
           <div className="p-3 rounded-lg bg-gradient-to-br from-emerald-500/10 to-amber-500/10 dark:from-emerald-500/5 dark:to-amber-500/5 border border-zinc-200/60 dark:border-zinc-800/60">
-            <div className="flex items-center gap-2 mb-1">
-              <Zap className="w-3.5 h-3.5 text-amber-500" />
-              <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Live Data</span>
-            </div>
-            <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
-              Real-time node health, rewards, and network metrics
+            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">
+              Heimdall stands watch. Real-time node health and network metrics are synchronized.
             </p>
           </div>
         </div>
