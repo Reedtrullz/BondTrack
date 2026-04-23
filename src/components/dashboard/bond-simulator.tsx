@@ -28,16 +28,19 @@ function simulateBond(
   const feeDecimal = operatorFeeBps / 10000;
   const effectiveApy = apyDecimal * (1 - feeDecimal);
 
-  const annualReward = bondAmount * effectiveApy;
-  const dailyReward = annualReward / 365;
+  // Use compound interest to match reward-projections.tsx
+  const dailyRate = Math.pow(1 + effectiveApy, 1 / 365) - 1;
+  const compoundFactor = Math.pow(1 + dailyRate, lockDays);
+  const totalAfterLock = bondAmount * compoundFactor;
+  const totalReward = totalAfterLock - bondAmount;
+  const dailyReward = totalReward / lockDays;
   const perChurnReward = dailyReward * 2.5;
-  const totalReward = dailyReward * lockDays;
 
   return {
     dailyReward,
     perChurnReward,
     totalReward,
-    totalAfterLock: bondAmount + totalReward,
+    totalAfterLock,
     apy: effectiveApy * 100,
     churns,
     lockDays,
@@ -199,7 +202,15 @@ export function BondSimulator() {
           </div>
 
           {/* Projection table */}
-          <div className="overflow-x-auto">
+          <div className="block md:hidden space-y-2">
+            <ProjectionRowMobile days={7} result={result} bondAmount={bondAmount} />
+            <ProjectionRowMobile days={30} result={result} bondAmount={bondAmount} />
+            <ProjectionRowMobile days={90} result={result} bondAmount={bondAmount} />
+            <ProjectionRowMobile days={180} result={result} bondAmount={bondAmount} />
+            <ProjectionRowMobile days={365} result={result} bondAmount={bondAmount} />
+          </div>
+
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-zinc-500 border-b border-zinc-200 dark:border-zinc-700">
@@ -268,5 +279,27 @@ function ProjectionRow({
       <td className="py-1.5 text-right">{formatReward(rewards)}</td>
       <td className="py-1.5 text-right">{formatReward(total)}</td>
     </tr>
+  );
+}
+
+function ProjectionRowMobile({
+  days,
+  result,
+  bondAmount,
+}: {
+  days: number;
+  result: SimulationResult;
+  bondAmount: number;
+}) {
+  const dailyRate = result.totalReward / result.lockDays;
+  const rewards = dailyRate * days;
+  const total = bondAmount + rewards;
+
+  return (
+    <div className="flex items-center justify-between p-2 rounded bg-zinc-50 dark:bg-zinc-800/50">
+      <span className="text-sm text-zinc-600 dark:text-zinc-400">{days}d</span>
+      <span className="font-mono text-sm text-zinc-900 dark:text-zinc-100">{formatReward(rewards)}</span>
+      <span className="font-mono text-sm font-semibold text-zinc-900 dark:text-zinc-100">{formatReward(total)}</span>
+    </div>
   );
 }

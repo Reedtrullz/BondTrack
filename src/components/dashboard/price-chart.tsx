@@ -2,16 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  CartesianGrid,
 } from 'recharts';
 import { getRunePriceHistory, type RunePriceHistoryRaw } from '@/lib/api/midgard';
 
-type IntervalOption = 'day' | 'week' | 'month';
+type IntervalOption = 'day' | 'week' | 'month' | 'year';
 
 interface PriceDataPoint {
   date: string;
@@ -31,15 +32,14 @@ function formatPrice(value: number): string {
   })}`;
 }
 
-function parsePriceData(raw: RunePriceHistoryRaw): PriceDataPoint[] {
-  return raw.intervals.map((interval) => {
-    const date = new Date(Number(interval.startTime) / 1e9);
+function parsePriceData(raw: RunePriceHistoryRaw, isHourly: boolean): PriceDataPoint[] {
+  return raw.intervals.map((item) => {
+    const date = new Date(Number(item.startTime) * 1000);
     return {
-      date: date.toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-      }),
-      price: Number(interval.runePriceUSD),
+      date: isHourly
+        ? date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+        : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      price: Number(item.runePriceUSD),
     };
   });
 }
@@ -47,9 +47,9 @@ function parsePriceData(raw: RunePriceHistoryRaw): PriceDataPoint[] {
 function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-zinc-900 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-3 shadow-lg">
+      <div className="bg-zinc-900 dark:bg-zinc-800 border border-zinc-700 dark:border-zinc-700 rounded-lg p-3 shadow-lg">
         <p className="text-xs text-zinc-400 mb-1">{label}</p>
-        <p className="text-sm font-semibold text-zinc-100">
+        <p className="text-sm font-bold text-white">
           {formatPrice(payload[0].value)}
         </p>
       </div>
@@ -62,6 +62,13 @@ interface PriceChartProps {
   initialInterval?: IntervalOption;
 }
 
+const intervals: Array<{ value: IntervalOption; label: string; description: string }> = [
+  { value: 'day', label: '24H', description: 'Intraday price action' },
+  { value: 'week', label: '7D', description: 'Weekly price trend' },
+  { value: 'month', label: '30D', description: '30-day price trend' },
+  { value: 'year', label: '1Y', description: '1-year price trend' },
+];
+
 export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
   const [interval, setIntervalState] = useState<IntervalOption>(initialInterval);
   const [data, setData] = useState<PriceDataPoint[]>([]);
@@ -73,9 +80,11 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
       setLoading(true);
       setError(null);
       try {
-        const count = interval === 'day' ? 24 : interval === 'week' ? 7 : 30;
-        const raw = await getRunePriceHistory(interval, count);
-        setData(parsePriceData(raw));
+        const apiInterval = interval === 'day' ? 'hour' : (interval === 'week' ? 'day' : (interval === 'month' ? 'day' : 'day'));
+        const count = interval === 'day' ? 24 : interval === 'week' ? 7 : interval === 'month' ? 30 : 365;
+        const isHourly = interval === 'day';
+        const raw = await getRunePriceHistory(apiInterval, count);
+        setData(parsePriceData(raw, isHourly));
       } catch (err) {
         setError('Failed to load price data');
         console.error(err);
@@ -86,32 +95,35 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
     fetchData();
   }, [interval]);
 
-  const setInterval = (value: IntervalOption) => {
+  const setIntervalValue = (value: IntervalOption) => {
+    if (value === interval) {
+      return;
+    }
+
     setIntervalState(value);
   };
 
-  const intervals: { value: IntervalOption; label: string }[] = [
-    { value: 'day', label: '24H' },
-    { value: 'week', label: '7D' },
-    { value: 'month', label: '30D' },
-  ];
+  const activeInterval = intervals.find((item) => item.value === interval) ?? intervals[1];
 
   return (
-    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-          RUNE Price
-        </h3>
-        <div className="flex gap-1">
+    <div className="p-6 rounded-2xl bg-transparent border border-transparent shadow-none">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">RUNE Price</h3>
+          <p className="text-sm text-zinc-500">{loading ? `Loading ${activeInterval.label} range...` : activeInterval.description}</p>
+        </div>
+        <div className="flex gap-1 rounded-full border border-zinc-200/80 bg-zinc-100/70 p-1 dark:border-zinc-800 dark:bg-zinc-900/80">
           {intervals.map((item) => (
             <button
               key={item.value}
-              onClick={() => setInterval(item.value)}
-              className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                interval === item.value
-                  ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
-                  : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-              }`}
+              onClick={() => setIntervalValue(item.value)}
+              aria-label={`Show ${item.label} RUNE price trend`}
+              aria-pressed={interval === item.value}
+              className={`min-w-11 px-3 py-1 text-[10px] rounded-full border font-bold transition-all duration-200 ${
+                 interval === item.value
+                  ? 'border-zinc-900 bg-zinc-900 text-white shadow-sm dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
+                  : 'border-transparent text-zinc-500 hover:border-zinc-200 hover:bg-white hover:text-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+               }`}
             >
               {item.label}
             </button>
@@ -133,7 +145,14 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={160}>
-          <LineChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+          <AreaChart key={interval} data={data} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+            <defs>
+              <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" opacity={0.05} vertical={false} />
             <XAxis
               dataKey="date"
               axisLine={false}
@@ -146,21 +165,23 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#71717a', fontSize: 10 }}
-              tickFormatter={(value) => `$${value.toFixed(0)}`}
+              tickFormatter={(value) => `$${value.toFixed(2)}`}
               dx={-5}
-              width={40}
-              domain={['dataMin - 0.1', 'dataMax + 0.1']}
+              width={55}
+              domain={['dataMin - 0.05', 'dataMax + 0.05']}
+              interval="preserveStartEnd"
             />
             <Tooltip content={<CustomTooltip />} />
-            <Line
+            <Area
               type="monotone"
               dataKey="price"
               stroke="#3b82f6"
               strokeWidth={2}
+              fill="url(#priceGradient)"
               dot={false}
               activeDot={{ r: 4, fill: '#3b82f6' }}
             />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       )}
     </div>

@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 const MOCK_ADDRESS = 'thor1test123456789abcdefghijklmnop';
 
-async function clickWalletButton(page) {
+async function clickWalletButton(page: Page) {
   await page.evaluate(() => {
     const buttons = Array.from(document.querySelectorAll('button'));
     const walletBtn = buttons.find(b => b.textContent.includes('Connect Wallet'));
@@ -11,8 +12,8 @@ async function clickWalletButton(page) {
   await page.waitForTimeout(500);
 }
 
-async function clickWalletOption(page, name) {
-  await page.evaluate((walletName) => {
+async function clickWalletOption(page: Page, name: string) {
+  await page.evaluate((walletName: string) => {
     const buttons = Array.from(document.querySelectorAll('button'));
     const option = buttons.find(b => b.textContent.includes(walletName));
     if (option) {
@@ -22,8 +23,8 @@ async function clickWalletOption(page, name) {
   await page.waitForTimeout(500);
 }
 
-async function clickDropdownItem(page, name) {
-  await page.evaluate((n) => {
+async function clickDropdownItem(page: Page, name: string) {
+  await page.evaluate((n: string) => {
     const buttons = Array.from(document.querySelectorAll('button'));
     const btn = buttons.find(b => b.textContent.includes(n));
     if (btn) btn.click();

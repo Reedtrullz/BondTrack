@@ -1,206 +1,171 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+export const dynamic = 'force-dynamic';
+
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
-import { useRunePrice } from '@/lib/hooks/use-rune-price';
-import { useEarningsHistory } from '@/lib/hooks/use-earnings';
-import { calculatePerChurnReward, calculateOperatorFeePaid } from '@/lib/utils/calculations';
-import { formatRuneAmount, runeToNumber } from '@/lib/utils/formatters';
+import { useRunePrice, useRunePriceHistory, getClosestPriceAtDate } from '@/lib/hooks/use-rune-price';
+import { useBondHistory } from '@/lib/hooks/use-bond-history';
+import { useCoinApiRunePrice } from '@/lib/hooks/use-coinapi-price';
 import { PnLDashboard } from '@/components/dashboard/pnl-dashboard';
-import { FeeImpactTracker } from '@/components/dashboard/fee-impact-tracker';
+import { PersonalFeeAudit } from '@/components/dashboard/fee-impact-tracker';
 import { AutoCompoundChart } from '@/components/dashboard/auto-compound-chart';
+import { PriceChart } from '@/components/dashboard/price-chart';
+import { useMemo, useState, useEffect } from 'react';
+import { TrendingUp, Zap } from 'lucide-react';
+import { calculateWeightedApy } from '@/lib/utils/fee-calculations';
+import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
+import { Button } from '@/components/ui/button';
 
 export default function RewardsPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
-  const { positions, isLoading: isLoadingPositions } = useBondPositions(address);
-  const { price } = useRunePrice();
-  const { earnings, isLoading: isLoadingEarnings } = useEarningsHistory('day', 30);
+  const { positions, isLoading } = useBondPositions(address);
+  const { price: runePrice } = useRunePrice();
+  const { data: networkData } = useNetworkMetrics();
+  const { history: bondHistory } = useBondHistory(address);
+  const { oldestPrice, intervals: priceIntervals } = useRunePriceHistory('day', 1825);
+  const { price: coinApiPrice, isLoading: coinApiLoading } = useCoinApiRunePrice(bondHistory?.firstBondDate || null);
+  
+  const entryRunePrice = useMemo(() => {
+    if (!bondHistory?.firstBondDate) return undefined;
+    if (priceIntervals.length) {
+      const midgardPrice = getClosestPriceAtDate(priceIntervals, bondHistory.firstBondDate);
+      if (midgardPrice > 0.5) return midgardPrice;
+    }
+    if (coinApiPrice && coinApiPrice > 0.5) return coinApiPrice;
+    return oldestPrice || undefined;
+  }, [bondHistory, priceIntervals, oldestPrice, coinApiPrice]);
+  const [mounted, setMounted] = useState(false);
+  const safePositions = positions ?? [];
+  const networkApy = networkData?.bondingAPY ? parseFloat(networkData.bondingAPY) : undefined;
+  const weightedApy = useMemo(() => {
+    if (!networkApy) return 0;
+    return calculateWeightedApy(safePositions, networkApy);
+  }, [safePositions, networkApy]);
 
-  const isLoading = isLoadingPositions || isLoadingEarnings;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleOptimizeNow = () => {
+    const params = new URLSearchParams();
+
+    if (address) {
+      params.set('address', address);
+    }
+
+    params.set('action', 'optimize');
+
+    router.push(`/dashboard/transactions?${params.toString()}`);
+  };
 
   if (isLoading) {
-    return <div className="animate-pulse h-64 rounded-lg bg-zinc-200 dark:bg-zinc-800" />;
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+      </div>
+    );
   }
 
-  const currentAward = earnings?.meta?.blockRewards || '0';
-  const positionsWithRewards = positions.map((pos) => {
-    const perChurnReward = calculatePerChurnReward(
-      pos.bondSharePercent,
-      currentAward,
-      pos.operatorFee
+  if (!address || safePositions.length === 0) {
+    return (
+      <div className="p-8 text-center bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 max-w-2xl mx-auto mt-12">
+        <h2 className="text-xl font-semibold mb-2">No Bond Positions Found</h2>
+        <p className="text-zinc-500">Please enter a valid THORChain address to view reward metrics.</p>
+      </div>
     );
-    const operatorFeePaid = calculateOperatorFeePaid(perChurnReward, pos.operatorFee);
-    return {
-      ...pos,
-      perChurnReward,
-      operatorFeePaid,
-      usdValue: perChurnReward * price,
-    };
-  });
+  }
 
-  const totalPerChurnReward = positionsWithRewards.reduce((sum, pos) => sum + pos.perChurnReward, 0);
-  const totalOperatorFee = positionsWithRewards.reduce((sum, pos) => sum + pos.operatorFeePaid, 0);
+  if (!mounted) {
+    return <div className="p-8 flex items-center justify-center min-h-[400px]" />;
+  }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Rewards & PnL</h2>
-
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-          <div className="text-sm text-zinc-500">Per-Churn Reward (est.)</div>
-          <div className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mt-1 font-mono">
-            {totalPerChurnReward.toFixed(4)} RUNE
+    <div className="space-y-12 pb-20">
+      <section className="relative">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">PnL Performance</h2>
+          <div className="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold">
+            Live Metrics
           </div>
         </div>
-        <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-          <div className="text-sm text-zinc-500">Operator Fees (per churn)</div>
-          <div className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mt-1 font-mono">
-            {totalOperatorFee.toFixed(4)} RUNE
-          </div>
-        </div>
-        <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-          <div className="text-sm text-zinc-500">RUNE Price</div>
-          <div className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mt-1 font-mono">
-            ${price.toFixed(4)}
-          </div>
-        </div>
-        <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-          <div className="text-sm text-zinc-500">USD Value Per Churn</div>
-          <div className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mt-1 font-mono">
-            ${(totalPerChurnReward * price).toFixed(2)}
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
-        <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
-          <h3 className="font-medium text-zinc-900 dark:text-zinc-100">Earnings History</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-zinc-50 dark:bg-zinc-800/50">
-              <tr>
-                <th className="px-4 py-2 text-left text-zinc-500 font-medium">Date</th>
-                <th className="px-4 py-2 text-right text-zinc-500 font-medium">Bonding Earnings</th>
-                <th className="px-4 py-2 text-right text-zinc-500 font-medium">Block Rewards</th>
-                <th className="px-4 py-2 text-right text-zinc-500 font-medium">Total Earnings</th>
-                <th className="px-4 py-2 text-right text-zinc-500 font-medium">RUNE Price</th>
-                <th className="px-4 py-2 text-right text-zinc-500 font-medium">Avg Nodes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {earnings?.intervals?.slice(0, 15).map((interval, idx) => {
-                const startDate = new Date(Number(interval.startTime)).toLocaleDateString();
-                const endDate = new Date(Number(interval.endTime)).toLocaleDateString();
-                return (
-                  <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                    <td className="px-4 py-2 text-zinc-900 dark:text-zinc-100">
-                      {startDate} - {endDate}
-                    </td>
-                    <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
-                      {formatRuneAmount(interval.bondingEarnings, 2)} RUNE
-                    </td>
-                    <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
-                      {formatRuneAmount(interval.blockRewards, 2)} RUNE
-                    </td>
-                    <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
-                      {formatRuneAmount(interval.earnings, 2)} RUNE
-                    </td>
-                    <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
-                      ${Number(interval.runePriceUSD).toFixed(4)}
-                    </td>
-                    <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
-                      {interval.avgNodeCount}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="space-y-6">
-        <PnLDashboard
-          positions={positions}
-          currentRunePrice={price}
-          earningsHistory={earnings}
+        <PnLDashboard 
+          positions={safePositions} 
+          currentRunePrice={runePrice || 0}
+          address={address}
+          entryRunePrice={entryRunePrice}
+          bondHistory={bondHistory ?? undefined}
         />
+      </section>
 
-        <FeeImpactTracker
-          earningsHistory={earnings}
-          positions={positions}
-        />
-
-        <AutoCompoundChart
-          earningsHistory={earnings}
-          initialBond={positions.reduce((sum, pos) => sum + pos.bondAmount, 0)}
-        />
-      </div>
-
-      {positionsWithRewards.length > 0 && (
-        <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
-          <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
-            <h3 className="font-medium text-zinc-900 dark:text-zinc-100">Per-Churn Reward Breakdown</h3>
+      <section className="space-y-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            <Zap className="w-4 h-4" />
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-zinc-50 dark:bg-zinc-800/50">
-                <tr>
-                  <th className="px-4 py-2 text-left text-zinc-500 font-medium">Node</th>
-                  <th className="px-4 py-2 text-right text-zinc-500 font-medium">Bond Amount</th>
-                  <th className="px-4 py-2 text-right text-zinc-500 font-medium">Bond Share</th>
-                  <th className="px-4 py-2 text-right text-zinc-500 font-medium">Operator Fee</th>
-                  <th className="px-4 py-2 text-right text-zinc-500 font-medium">Reward (RUNE)</th>
-                  <th className="px-4 py-2 text-right text-zinc-500 font-medium">Fee Paid (RUNE)</th>
-                  <th className="px-4 py-2 text-right text-zinc-500 font-medium">Net (RUNE)</th>
-                  <th className="px-4 py-2 text-right text-zinc-500 font-medium">USD Value</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {positionsWithRewards.map((pos) => (
-                  <tr key={pos.nodeAddress} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                    <td className="px-4 py-2 text-zinc-900 dark:text-zinc-100 font-mono text-xs">
-                      {pos.nodeAddress.slice(0, 8)}...
-                    </td>
-                    <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
-                      {pos.bondAmount.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
-                      {pos.bondSharePercent.toFixed(2)}%
-                    </td>
-                    <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
-                      {pos.operatorFeeFormatted}
-                    </td>
-                    <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
-                      {(
-                        (runeToNumber(currentAward) * pos.bondSharePercent) /
-                        100
-                      ).toFixed(4)}
-                    </td>
-                    <td className="px-4 py-2 text-right text-red-600 dark:text-red-400 font-mono">
-                      -{pos.operatorFeePaid.toFixed(4)}
-                    </td>
-                    <td className="px-4 py-2 text-right text-green-600 dark:text-green-400 font-mono">
-                      {pos.perChurnReward.toFixed(4)}
-                    </td>
-                    <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-100 font-mono">
-                      ${pos.usdValue.toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div>
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-widest">
+              Yield Optimization
+            </h3>
+            <p className="text-xs text-zinc-500">Reduce leakage and maximize future growth</p>
           </div>
         </div>
-      )}
-
-      {positionsWithRewards.length === 0 && (
-        <div className="text-sm text-zinc-500 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800">
-          No bond positions found. Connect your wallet to see rewards breakdown.
+        
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-4">
+            <PersonalFeeAudit positions={safePositions} networkApy={networkApy} />
+          </div>
+          
+          <div className="lg:col-span-8">
+            {weightedApy > 0 ? (
+              <AutoCompoundChart 
+                positions={safePositions} 
+                weightedApy={weightedApy} 
+              />
+            ) : (
+              <div className="p-8 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm flex items-center justify-center min-h-[300px]">
+                <p className="text-zinc-500">Loading APY data...</p>
+              </div>
+            )}
+          </div>
         </div>
-      )}
+
+        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-8 bg-emerald-500 rounded-full" />
+            <div>
+              <div className="text-xs font-bold text-zinc-400 uppercase tracking-tight">Strategic Insight</div>
+              <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                {safePositions.length === 1 
+                  ? "Your portfolio is concentrated in a single node. Consider diversifying to reduce operator fee exposure."
+                  : "Your weighted APY is stable. Compounding your rewards monthly could increase your end-of-year balance."}
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleOptimizeNow}
+            className="min-w-[8.5rem]"
+          >
+            Optimize Now
+          </Button>
+        </div>
+      </section>
+
+      <section className="space-y-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+            <TrendingUp className="w-4 h-4" />
+          </div>
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-widest">
+            Market Context
+          </h3>
+        </div>
+        <PriceChart />
+      </section>
     </div>
   );
 }

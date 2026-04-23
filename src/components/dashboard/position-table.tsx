@@ -1,11 +1,70 @@
-import { useMemo } from 'react';
-import type { BondPosition } from '@/lib/types/node';
-import { ExportButton } from '@/components/shared/export-button';
+'use client';
+
+import { useMemo, Fragment } from 'react';
+import type { BondPosition, YieldGuardFlag } from '@/lib/types/node';
 import { formatRuneAmount, formatRuneWithUnit } from '@/lib/utils/formatters';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { Badge } from '@/components/shared/badge';
+import { PooledNodeDetails } from './pooled-node-details';
+import { AlertTriangle, TrendingDown, Clock, UserMinus, Gauge } from 'lucide-react';
 
 interface PositionTableProps {
   positions: BondPosition[];
+}
+
+const YIELD_GUARD_LABELS: Record<YieldGuardFlag, { label: string; icon: React.ReactNode; color: string; tooltip: string }> = {
+  overbonded: {
+    label: 'Overbonded',
+    icon: <Gauge className="w-3 h-3" />,
+    color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+    tooltip: 'Node is at or above optimal bond - no additional yield',
+  },
+  highest_slash: {
+    label: 'High Slash',
+    icon: <AlertTriangle className="w-3 h-3" />,
+    color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    tooltip: 'Highest slash points in network - may churn soon',
+  },
+  lowest_bond: {
+    label: 'Lowest Bond',
+    icon: <TrendingDown className="w-3 h-3" />,
+    color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+    tooltip: 'Lowest bond in active set - likely next to churn',
+  },
+  oldest: {
+    label: 'Oldest',
+    icon: <Clock className="w-3 h-3" />,
+    color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+    tooltip: 'Longest time in active set - expected to rotate out',
+  },
+  leaving: {
+    label: 'Leaving',
+    icon: <UserMinus className="w-3 h-3" />,
+    color: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400',
+    tooltip: 'Node operator requested to leave network',
+  },
+};
+
+function YieldGuardBadge({ flags }: { flags: YieldGuardFlag[] }) {
+  if (flags.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-1 mt-1">
+      {flags.map((flag) => {
+        const config = YIELD_GUARD_LABELS[flag];
+        return (
+          <Badge
+            key={flag}
+            className={config.color}
+            icon={config.icon}
+            title={config.tooltip}
+          >
+            {config.label}
+          </Badge>
+        );
+      })}
+    </div>
+  );
 }
 
 export function PositionTable({ positions }: PositionTableProps) {
@@ -25,25 +84,76 @@ export function PositionTable({ positions }: PositionTableProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-        Bonded Positions
-      </h2>
-      <div className="flex items-center justify-between">
-        <div className="flex gap-4">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+          Bonded Positions
+        </h2>
+        <div className="flex items-center gap-4">
           <span className="text-sm text-zinc-500">
             {positions.length} node{positions.length !== 1 ? 's' : ''} · {totalBonded.toFixed(2)} RUNE total
           </span>
-          <ExportButton bondPositions={positions} />
         </div>
       </div>
+
+      <div className="block md:hidden space-y-3">
+        {positions.map((pos) => (
+          <div key={pos.nodeAddress} className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm space-y-3">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                  {pos.nodeAddress.slice(0, 12)}...{pos.nodeAddress.slice(-8)}
+                </div>
+                <div className="text-xs text-zinc-400">v{pos.version}</div>
+                {pos.yieldGuardFlags && pos.yieldGuardFlags.length > 0 && (
+                  <YieldGuardBadge flags={pos.yieldGuardFlags} />
+                )}
+              </div>
+              <StatusBadge status={pos.status} isJailed={pos.isJailed} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-3">
+                <div className="text-xs text-zinc-500">Bond</div>
+                <div className="font-mono text-sm text-zinc-900 dark:text-zinc-100">
+                  {pos.bondAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-3">
+                <div className="text-xs text-zinc-500">Share</div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm text-zinc-600 dark:text-zinc-400">
+                    {pos.bondSharePercent.toFixed(2)}%
+                  </span>
+                  <div className="w-12 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                      style={{ width: `${Math.min(pos.bondSharePercent, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-xs text-zinc-500">Fee</div>
+                <div className="font-mono text-sm text-zinc-600 dark:text-zinc-400">
+                  {pos.operatorFeeFormatted}
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-3">
+                <div className="text-xs text-zinc-500">Est. APY</div>
+                <div className="font-mono text-sm font-medium text-emerald-600">
+                  {pos.netAPY.toFixed(2)}%
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+      <div className="hidden md:block overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
         <table className="w-full text-sm min-w-[640px]">
-          <thead className="bg-zinc-50 dark:bg-zinc-900">
-            <tr>
+          <thead className="bg-zinc-50 dark:bg-zinc-900 sticky top-0">
+            <tr className="border-b border-zinc-200 dark:border-zinc-800">
               <th className="px-3 py-3 text-left font-medium text-zinc-500 whitespace-nowrap">Node</th>
               <th className="px-3 py-3 text-left font-medium text-zinc-500 whitespace-nowrap">Status</th>
+              <th className="px-3 py-3 text-left font-medium text-zinc-500 whitespace-nowrap">Pooled</th>
               <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap">Bond</th>
               <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap">Share</th>
               <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap">Fee</th>
@@ -52,26 +162,46 @@ export function PositionTable({ positions }: PositionTableProps) {
           </thead>
           <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {positions.map((pos) => (
-              <tr key={pos.nodeAddress} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
-                <td className="px-3 py-3 whitespace-nowrap">
+              <tr key={pos.nodeAddress} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                <td className="px-3 py-3 whitespace-nowrap align-middle">
                   <div className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
                     {pos.nodeAddress.slice(0, 12)}...{pos.nodeAddress.slice(-8)}
                   </div>
                   <div className="text-xs text-zinc-400">v{pos.version}</div>
+                  {pos.yieldGuardFlags && pos.yieldGuardFlags.length > 0 && (
+                    <YieldGuardBadge flags={pos.yieldGuardFlags} />
+                  )}
                 </td>
-                <td className="px-3 py-3 whitespace-nowrap">
+                <td className="px-3 py-3 whitespace-nowrap align-middle">
                   <StatusBadge status={pos.status} isJailed={pos.isJailed} />
                 </td>
-                <td className="px-3 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
+                <td className="px-3 py-3 whitespace-nowrap align-middle">
+                  {pos.pooledNodeData?.isPooled && (
+                    <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                      Pooled
+                    </Badge>
+                  )}
+                </td>
+                <td className="px-3 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100 whitespace-nowrap align-middle">
                   {pos.bondAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </td>
-                <td className="px-3 py-3 text-right text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
-                  {pos.bondSharePercent.toFixed(2)}%
+                <td className="px-3 py-3 text-right whitespace-nowrap align-middle">
+                  <div className="flex items-center justify-end gap-3">
+                    <span className="font-mono text-sm text-zinc-600 dark:text-zinc-400">
+                      {pos.bondSharePercent.toFixed(2)}%
+                    </span>
+                    <div className="w-16 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(pos.bondSharePercent, 100)}%` }}
+                      />
+                    </div>
+                  </div>
                 </td>
-                <td className="px-3 py-3 text-right text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
+                <td className="px-3 py-3 text-right text-zinc-600 dark:text-zinc-400 whitespace-nowrap align-middle">
                   {pos.operatorFeeFormatted}
                 </td>
-                <td className="px-3 py-3 text-right font-medium text-emerald-600 whitespace-nowrap">
+                <td className="px-3 py-3 text-right font-medium text-emerald-600 whitespace-nowrap align-middle">
                   {pos.netAPY.toFixed(2)}%
                 </td>
               </tr>

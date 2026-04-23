@@ -79,12 +79,31 @@ export interface RunePriceHistoryRaw {
 }
 
 export interface NetworkRaw {
-  totalPools: string;
-  totalLiquidityRune: string;
-  totalBondsRune: string;
+  activeBonds: string[];
+  activeNodeCount: string;
+  standbyBonds: string[];
+  standbyNodeCount: string;
+  totalPooledRune: string;
   totalReserve: string;
-  runePriceUSD: string;
-  runePriceBTC: string;
+  bondMetrics: {
+    totalActiveBond: string;
+    totalStandbyBond: string;
+    averageActiveBond: string;
+    averageStandbyBond: string;
+    medianActiveBond: string;
+    minimumActiveBond: string;
+    maximumActiveBond: string;
+    bondHardCap: string;
+  };
+  bondingAPY: string;
+  liquidityAPY: string;
+  blockRewards: {
+    blockReward: string;
+    bondReward: string;
+    poolReward: string;
+  };
+  nextChurnHeight: string;
+  poolActivationCountdown: string;
 }
 
 export interface ActionRaw {
@@ -102,6 +121,79 @@ export interface ActionRaw {
     fromAddress: string;
   };
   status: string;
+  in?: {
+    address: string;
+    coins: { asset: string; amount: string }[];
+    txID: string;
+  }[];
+  out?: {
+    address: string;
+    coins: { asset: string; amount: string }[];
+    txID: string;
+  }[];
+  metadata?: {
+    bond?: {
+      memo: string;
+      nodeAddress: string;
+    };
+    refund?: {
+      memo: string;
+      txType: string;
+      reason?: string;
+    };
+    send?: {
+      memo: string;
+    };
+  };
+}
+
+export interface MemberDetailsRaw {
+  pools: MemberPoolRaw[];
+}
+
+export interface MemberPoolRaw {
+  pool: string;
+  runeAddress: string;
+  assetAddress: string;
+  liquidityUnits: string;
+  runeDeposit: string;
+  assetDeposit: string;
+  runeAdded: string;
+  assetAdded: string;
+  runePending: string;
+  assetPending: string;
+  runeWithdrawn: string;
+  assetWithdrawn: string;
+  dateFirstAdded: string;
+  dateLastAdded: string;
+}
+
+export interface PoolDetailRaw {
+  asset: string;
+  volume24h: string;
+  assetDepth: string;
+  runeDepth: string;
+  assetPrice: string;
+  assetPriceUSD: string;
+  annualPercentageRate: string;
+  poolAPY: string;
+  earnings: string;
+  earningsAnnualAsPercentOfDepth: string;
+  lpLuvi: string;
+  saversAPR: string;
+  status: string;
+  liquidityUnits: string;
+  synthUnits: string;
+  synthSupply: string;
+  units: string;
+  nativeDecimal: string;
+  saversUnits: string;
+  saversDepth: string;
+  totalCollateral: string;
+  totalDebtTor: string;
+  saversYieldShare: string;
+  depthPlus2Percent: string;
+  depthMinus2Percent: string;
 }
 
 export interface ActionsResponseRaw {
@@ -129,12 +221,109 @@ export async function getRunePriceHistory(interval = 'day', count = 30): Promise
   return fetchMidgard<RunePriceHistoryRaw>(`/v2/history/rune?interval=${interval}&count=${count}`);
 }
 
+const MIN_HISTORY_DAYS = 30;
+const HISTORY_BUFFER_DAYS = 7;
+const HISTORY_COVERAGE_TOLERANCE_SECONDS = 86400;
+
+function normalizeHistoryTimestampValue(timestamp: number | string): number {
+  const numericTimestamp = Number(timestamp);
+
+  if (!Number.isFinite(numericTimestamp) || numericTimestamp <= 0) {
+    return Number.NaN;
+  }
+
+  return numericTimestamp > 1e12 ? numericTimestamp / 1e9 : numericTimestamp;
+}
+
+function getHistoryCountForTimestamp(timestamp: number): number {
+  const normalizedTimestamp = normalizeHistoryTimestampValue(timestamp);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const secondsBack = Math.max(0, nowSeconds - normalizedTimestamp);
+  const daysBack = Math.ceil(secondsBack / 86400) + HISTORY_BUFFER_DAYS;
+  return Math.max(MIN_HISTORY_DAYS, daysBack);
+}
+
+function hasHistoryCoverage(timestamps: Array<number | string>, requestedTimestamp: number): boolean {
+  const normalizedRequestedTimestamp = normalizeHistoryTimestampValue(requestedTimestamp);
+  const finiteTimestamps = timestamps
+    .map((timestamp) => normalizeHistoryTimestampValue(timestamp))
+    .filter(Number.isFinite);
+
+  if (!Number.isFinite(normalizedRequestedTimestamp) || finiteTimestamps.length === 0) {
+    return false;
+  }
+
+  const earliestTimestamp = Math.min(...finiteTimestamps);
+  const latestTimestamp = Math.max(...finiteTimestamps);
+
+  return normalizedRequestedTimestamp >= earliestTimestamp - HISTORY_COVERAGE_TOLERANCE_SECONDS
+    && normalizedRequestedTimestamp <= latestTimestamp + HISTORY_COVERAGE_TOLERANCE_SECONDS;
+}
+
+export async function getHistoricalRunePrice(timestamp: number): Promise<number | null> {
+  try {
+    const normalizedTimestamp = normalizeHistoryTimestampValue(timestamp);
+    const history = await getRunePriceHistory('day', getHistoryCountForTimestamp(timestamp));
+
+    if (!history.intervals.length) {
+      return null;
+    }
+
+    const intervalStartTimes = history.intervals.map((interval) => interval.startTime);
+
+    if (!hasHistoryCoverage(intervalStartTimes, timestamp)) {
+      return null;
+    }
+
+    const containingInterval = history.intervals.find((interval) => {
+      const intervalStart = normalizeHistoryTimestampValue(interval.startTime);
+      const intervalEnd = normalizeHistoryTimestampValue(interval.endTime);
+      return Number.isFinite(intervalStart)
+        && Number.isFinite(intervalEnd)
+        && normalizedTimestamp >= intervalStart
+        && normalizedTimestamp < intervalEnd;
+    });
+
+    if (containingInterval) {
+      const runePriceUsd = Number.parseFloat(containingInterval.runePriceUSD);
+      return Number.isFinite(runePriceUsd) && runePriceUsd > 0 ? runePriceUsd : null;
+    }
+
+    let closestInterval = history.intervals[0];
+    let minDiff = Math.abs(normalizeHistoryTimestampValue(closestInterval.startTime) - normalizedTimestamp);
+
+    for (const interval of history.intervals) {
+      const intervalTimestamp = normalizeHistoryTimestampValue(interval.startTime);
+      const diff = Math.abs(intervalTimestamp - normalizedTimestamp);
+      if (Number.isFinite(intervalTimestamp) && diff < minDiff) {
+        minDiff = diff;
+        closestInterval = interval;
+      }
+    }
+
+    const runePriceUsd = Number.parseFloat(closestInterval.runePriceUSD);
+    return Number.isFinite(runePriceUsd) && runePriceUsd > 0 ? runePriceUsd : null;
+  } catch (error) {
+    console.error('Error fetching historical RUNE price:', error);
+    return null;
+  }
+}
+
 export async function getNetwork(): Promise<NetworkRaw> {
   return fetchMidgard<NetworkRaw>('/v2/network');
 }
 
-export async function getActions(address: string, count = 50): Promise<ActionsResponseRaw> {
-  return fetchMidgard<ActionsResponseRaw>(`/v2/actions?address=${address}&count=${count}`);
+export async function getActions(address: string, limit = 50, actionTypes?: string, typeParam = 'txType'): Promise<ActionsResponseRaw> {
+  const params = new URLSearchParams();
+  params.set('address', address);
+  params.set('limit', String(limit));
+  if (actionTypes) params.set(typeParam, actionTypes);
+  const qs = params.toString();
+  return fetchMidgard<ActionsResponseRaw>(`/v2/actions${qs ? `?${qs}` : ''}`);
+}
+
+export async function getPools(): Promise<PoolDetailRaw[]> {
+  return fetchMidgard<PoolDetailRaw[]>('/v2/pools');
 }
 
 export interface THORNameAliasRaw {
@@ -156,4 +345,143 @@ export interface THORNameLookupRaw {
 
 export async function getTHORNameLookup(name: string): Promise<THORNameLookupRaw> {
   return fetchMidgard<THORNameLookupRaw>(`/v2/thorname/lookup/${name}`);
+}
+
+export async function getTHORNameReverseLookup(address: string): Promise<THORNameLookupRaw> {
+  // Existing function retains retry behavior for backward compatibility
+  try {
+    return await fetchMidgard<THORNameLookupRaw>(`/v2/thorname/rlookup/${address}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('404') || message.includes('502')) {
+      return { entry: null };
+    }
+    throw error;
+  }
+}
+
+/**
+ * Perform THORName reverse lookup without retrying on 5xx errors.
+ * This is used for optional UI enrichment where repeated retries cause spam.
+ */
+export async function getTHORNameReverseLookupNoRetry(address: string): Promise<THORNameLookupRaw> {
+  const url = `/v2/thorname/rlookup/${address}`;
+  try {
+    const res = await fetch(`/api/midgard${url}`, {
+      headers: { Accept: 'application/json' },
+      // Use Next.js revalidate but no custom retry logic
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) {
+      if (res.status === 404 || res.status === 502) {
+        return { entry: null };
+      }
+      throw new Error(`API error: ${res.status} ${res.statusText}`);
+    }
+    return (await res.json()) as THORNameLookupRaw;
+  } catch {
+    // Network errors are treated as no result to avoid retries
+    return { entry: null };
+  }
+}
+
+
+export interface HealthRaw {
+  lastThorNode: { height: number };
+}
+
+export interface PoolHistoryRaw {
+  intervals: {
+    startTime: string;
+    endTime: string;
+    runeDepth: string;
+    assetDepth: string;
+    synthSupply: string;
+    synthDepth: string;
+    liquidityUnits: string;
+    lpUnits: string;
+    membersCount: string;
+    status: string;
+  }[];
+}
+
+export async function getPoolHistory(pool: string, interval = 'day', count = 90): Promise<PoolHistoryRaw> {
+  return fetchMidgard<PoolHistoryRaw>(`/v2/pools/${pool}/history?interval=${interval}&count=${count}`);
+}
+
+export interface PoolHistoryEntry {
+  timestamp: number;
+  runeDepth: string;
+  assetDepth: string;
+  liquidityUnits: string;
+}
+
+export async function getPoolHistoryAtTimestamp(pool: string, timestamp: number): Promise<PoolHistoryEntry | null> {
+  try {
+    const normalizedTimestamp = normalizeHistoryTimestampValue(timestamp);
+    const history = await getPoolHistory(pool, 'day', getHistoryCountForTimestamp(timestamp));
+
+    if (!history.intervals.length) {
+      return null;
+    }
+
+    const intervalStartTimes = history.intervals.map((interval) => interval.startTime);
+
+    if (!hasHistoryCoverage(intervalStartTimes, timestamp)) {
+      return null;
+    }
+
+    const containingInterval = history.intervals.find((interval) => {
+      const intervalStart = normalizeHistoryTimestampValue(interval.startTime);
+      const intervalEnd = normalizeHistoryTimestampValue(interval.endTime);
+      return Number.isFinite(intervalStart)
+        && Number.isFinite(intervalEnd)
+        && normalizedTimestamp >= intervalStart
+        && normalizedTimestamp < intervalEnd;
+    });
+
+    if (containingInterval) {
+      return {
+        timestamp: normalizeHistoryTimestampValue(containingInterval.startTime),
+        runeDepth: containingInterval.runeDepth,
+        assetDepth: containingInterval.assetDepth,
+        liquidityUnits: containingInterval.liquidityUnits,
+      };
+    }
+
+    let closestEntry: PoolHistoryEntry | null = null;
+    let minDiff = Infinity;
+
+    for (const interval of history.intervals) {
+      const intervalTimestamp = normalizeHistoryTimestampValue(interval.startTime);
+      if (!Number.isFinite(intervalTimestamp)) {
+        continue;
+      }
+
+      const diff = Math.abs(intervalTimestamp - normalizedTimestamp);
+
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestEntry = {
+          timestamp: intervalTimestamp,
+          runeDepth: interval.runeDepth,
+          assetDepth: interval.assetDepth,
+          liquidityUnits: interval.liquidityUnits,
+        };
+      }
+    }
+
+    return closestEntry;
+  } catch (error) {
+    console.error(`Failed to fetch pool history for ${pool} at ${timestamp}:`, error);
+    return null;
+  }
+}
+
+export async function getHealth(): Promise<HealthRaw> {
+  return fetchMidgard<HealthRaw>('/v2/health');
+}
+
+export async function getMemberDetails(address: string): Promise<MemberDetailsRaw> {
+  return fetchMidgard<MemberDetailsRaw>(`/v2/member/${address}`);
 }

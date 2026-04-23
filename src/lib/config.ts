@@ -1,8 +1,9 @@
 export const ENDPOINTS = {
   thornode: process.env.NEXT_PUBLIC_THORNODE_API || 'https://gateway.liquify.com/chain/thorchain_api',
   midgard: process.env.NEXT_PUBLIC_MIDGARD_API || 'https://gateway.liquify.com/chain/thorchain_midgard',
-  rpc: process.env.NEXT_PUBLIC_THORCHAIN_RPC || 'https://gateway.liquify.com/chain/thorchain_rpc',
+  rpc: process.env.NEXT_PUBLIC_THORCHAIN_RPC || 'https://rpc.thorchain.info',
   track: process.env.NEXT_PUBLIC_TRACK_API || 'https://track.thorchain.org/',
+  fallbackMidgard: process.env.NEXT_PUBLIC_MIDGARD_FALLBACK || 'https://midgard.thorchain.network',
 } as const;
 
 export const NETWORK = {
@@ -14,3 +15,4 @@ export const NETWORK = {
   DESIRED_VALIDATOR_SET: 100,
   MAX_BOND_PROVIDERS: 6,
 } as const;
+// Triggering fresh Vercel build

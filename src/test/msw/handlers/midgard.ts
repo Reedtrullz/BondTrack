@@ -173,12 +173,31 @@ const mockRunePriceHistory: RunePriceHistoryRaw = {
 };
 
 const mockNetwork: NetworkRaw = {
-  totalPools: '285',
-  totalLiquidityRune: '850000000000000',
-  totalBondsRune: '125000000000000',
+  activeBonds: ['100000000000000', '110000000000000'],
+  activeNodeCount: '2',
+  standbyBonds: ['50000000000000'],
+  standbyNodeCount: '1',
+  totalPooledRune: '850000000000000',
   totalReserve: '45000000000000',
-  runePriceUSD: '5.25',
-  runePriceBTC: '0.0001150',
+  bondMetrics: {
+    totalActiveBond: '125000000000000',
+    totalStandbyBond: '50000000000000',
+    averageActiveBond: '105000000000000',
+    averageStandbyBond: '50000000000000',
+    medianActiveBond: '105000000000000',
+    minimumActiveBond: '100000000000000',
+    maximumActiveBond: '110000000000000',
+    bondHardCap: '110000000000000',
+  },
+  bondingAPY: '0.25',
+  liquidityAPY: '0.15',
+  blockRewards: {
+    blockReward: '14000',
+    bondReward: '14000',
+    poolReward: '0',
+  },
+  nextChurnHeight: '25700000',
+  poolActivationCountdown: '28800',
 };
 
 export const midgardHandlers = [

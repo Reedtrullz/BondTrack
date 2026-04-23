@@ -1,6 +1,11 @@
 import useSWR from 'swr';
 import { getRunePriceHistory, type RunePriceHistoryRaw } from '@/lib/api/midgard';
 
+export interface RunePriceInterval {
+  runePriceUSD: number;
+  timestamp: Date;
+}
+
 export function useRunePrice() {
   const { data, error, isLoading } = useSWR<RunePriceHistoryRaw>(
     'rune-price',
@@ -20,4 +25,49 @@ export function useRunePrice() {
     isLoading,
     error,
   };
+}
+
+export function useRunePriceHistory(interval = 'day', count = 30) {
+  const { data, error, isLoading } = useSWR<RunePriceHistoryRaw>(
+    count > 1 ? ['rune-price-history', interval, count] : null,
+    () => getRunePriceHistory(interval, count),
+    { 
+      refreshInterval: 300_000,
+      errorRetryInterval: 5000,
+    }
+  );
+
+  const intervals: RunePriceInterval[] = data?.intervals?.map((i) => ({
+    runePriceUSD: Number(i.runePriceUSD),
+    timestamp: new Date(Number(i.startTime) * 1000),
+  })) || [];
+
+  const currentPrice = intervals.length > 0 ? intervals[intervals.length - 1].runePriceUSD : 0;
+  const oldestPrice = intervals.length > 0 ? intervals[0].runePriceUSD : 0;
+
+  return {
+    price: currentPrice,
+    oldestPrice,
+    intervals,
+    isLoading,
+    error,
+  };
+}
+
+export function getClosestPriceAtDate(intervals: RunePriceInterval[], targetDate: Date): number {
+  if (!intervals.length) return 0;
+  
+  const targetTime = targetDate.getTime();
+  let closest = intervals[0];
+  let minDiff = Math.abs(intervals[0].timestamp.getTime() - targetTime);
+
+  for (const interval of intervals) {
+    const diff = Math.abs(interval.timestamp.getTime() - targetTime);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = interval;
+    }
+  }
+
+  return closest.runePriceUSD;
 }

@@ -5,8 +5,8 @@ import { runeToNumber } from './formatters';
  * Calculate a bond provider's share of a node's total bond.
  */
 export function calculateBondShare(providerBond: string, totalBond: string): number {
-  const provider = BigInt(providerBond);
-  const total = BigInt(totalBond);
+  const provider = BigInt(providerBond || '0');
+  const total = BigInt(totalBond || '0');
   if (total === 0n) return 0;
   return Number((provider * 10000n) / total) / 100; // 2 decimal precision
 }
@@ -68,9 +68,7 @@ export function calculateTotalReturn(
   entryPrice: number,
   currentPrice: number
 ): number {
-  const bondGrowth = currentBond - initialBond;
-  const pricePnL = initialBond * (currentPrice - entryPrice);
-  return bondGrowth + pricePnL;
+  return (currentBond * currentPrice) - (initialBond * entryPrice);
 }
 
 /**
@@ -81,8 +79,8 @@ export function calculateBondRank(
   allActiveNodes: { node_address: string; total_bond: string }[]
 ): { rank: number; total: number; percentile: number } {
   const sorted = [...allActiveNodes].sort((a, b) => {
-    const bondA = BigInt(a.total_bond);
-    const bondB = BigInt(b.total_bond);
+    const bondA = BigInt(a.total_bond || '0');
+    const bondB = BigInt(b.total_bond || '0');
     return bondA > bondB ? -1 : bondA < bondB ? 1 : 0;
   });
 
@@ -109,4 +107,99 @@ export function estimateNextChurn(currentHeight: number): { blocksRemaining: num
     blocksRemaining,
     estimatedSeconds: blocksRemaining * 6,
   };
+}
+
+export function calculateLpPnl(
+  runeDeposited: string,
+  asset2Deposited: string,
+  runeWithdrawable: string,
+  asset2Withdrawable: string,
+  runeEntryPrice: number,
+  asset2EntryPrice: number,
+  runeCurrentPrice: number,
+  asset2CurrentPrice: number
+): { pnl: number; pnlPercent: number; runePnl: number; asset2Pnl: number } {
+  const runeDepositedNum = runeToNumber(runeDeposited);
+  const asset2DepositedNum = runeToNumber(asset2Deposited);
+  const runeWithdrawableNum = runeToNumber(runeWithdrawable);
+  const asset2WithdrawableNum = runeToNumber(asset2Withdrawable);
+  
+  const runeDepositedValue = runeDepositedNum * runeEntryPrice;
+  const asset2DepositedValue = asset2DepositedNum * asset2EntryPrice;
+  const totalDepositedValue = runeDepositedValue + asset2DepositedValue;
+  
+  const runeCurrentValue = runeWithdrawableNum * runeCurrentPrice;
+  const asset2CurrentValue = asset2WithdrawableNum * asset2CurrentPrice;
+  const totalCurrentValue = runeCurrentValue + asset2CurrentValue;
+  
+  const totalPnl = totalCurrentValue - totalDepositedValue;
+  const pnlPercent = totalDepositedValue > 0 ? (totalPnl / totalDepositedValue) * 100 : 0;
+  
+  return {
+    pnl: totalPnl,
+    pnlPercent,
+    runePnl: runeCurrentValue - runeDepositedValue,
+    asset2Pnl: asset2CurrentValue - asset2DepositedValue,
+  };
+}
+
+export function calculateLpWithdrawableAmounts(
+  runeDeposit: string,
+  asset2Deposit: string,
+  runeDepth: string,
+  asset2Depth: string,
+  runeAdded: string,
+  runeWithdrawn: string,
+  asset2Added: string,
+  asset2Withdrawn: string,
+  ownershipPercent: number
+): { runeWithdrawable: string; asset2Withdrawable: string; runeDeposited: string; asset2Deposited: string } {
+  if (ownershipPercent <= 0) {
+    return { runeWithdrawable: '0', asset2Withdrawable: '0', runeDeposited: runeDeposit, asset2Deposited: asset2Deposit };
+  }
+  
+  const runeDepthNum = runeToNumber(runeDepth || '0');
+  const asset2DepthNum = runeToNumber(asset2Depth || '0');
+  
+  if (runeDepthNum <= 0 || asset2DepthNum <= 0) {
+    return { runeWithdrawable: runeDeposit, asset2Withdrawable: asset2Deposit, runeDeposited: runeDeposit, asset2Deposited: asset2Deposit };
+  }
+  
+  const runeWithdrawable = (runeDepthNum * ownershipPercent / 100);
+  const asset2Withdrawable = (asset2DepthNum * ownershipPercent / 100);
+  
+  return {
+    runeWithdrawable: String(Math.floor(runeWithdrawable * 1e8)),
+    asset2Withdrawable: String(Math.floor(asset2Withdrawable * 1e8)),
+    runeDeposited: runeDeposit,
+    asset2Deposited: asset2Deposit,
+  };
+}
+
+export function formatPnlDisplay(pnl: number): { text: string; color: string } {
+  if (pnl > 0) {
+    return { text: `+$${pnl.toFixed(2)}`, color: 'text-green-600 dark:text-green-400' };
+  } else if (pnl < 0) {
+    return { text: `-$${Math.abs(pnl).toFixed(2)}`, color: 'text-red-600 dark:text-red-400' };
+  } else {
+    return { text: '$0.00', color: 'text-zinc-600 dark:text-zinc-400' };
+  }
+}
+
+
+/**
+ * Calculate asset price from pool depth and RUNE price.
+ * Asset Price = (RUNE Depth × RUNE Price) / Asset Depth
+ */
+export function calculateAssetPriceFromPoolDepth(
+  runeDepth: string,
+  assetDepth: string,
+  runePrice: number
+): number {
+  const runeDepthNum = runeToNumber(runeDepth);
+  const assetDepthNum = runeToNumber(assetDepth);
+  
+  if (assetDepthNum === 0) return 0;
+  
+  return (runeDepthNum * runePrice) / assetDepthNum;
 }

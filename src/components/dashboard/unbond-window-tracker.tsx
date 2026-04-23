@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { getAllNodes } from '@/lib/api/thornode';
+import { useAllNodes } from '@/lib/hooks/use-all-nodes';
+import { useNetworkConstants } from '@/lib/hooks/use-network-constants';
 import { estimateNextChurn } from '@/lib/utils/calculations';
 import { StatusBadge } from '@/components/shared/status-badge';
+import type { BondPosition } from '@/lib/types/node';
 import { Clock, Unlock, Lock, AlertCircle } from 'lucide-react';
-import type { NodeRaw } from '@/lib/api/thornode';
 
 interface NodeUnbondStatus {
   nodeAddress: string;
@@ -26,36 +26,16 @@ function formatTimeRemaining(blocks: number): string {
   return `${minutes}m`;
 }
 
-export function UnbondWindowTracker() {
-  const [nodes, setNodes] = useState<NodeRaw[]>([]);
-  const [currentBlockHeight, setCurrentBlockHeight] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function UnbondWindowTracker({ positions }: { positions: BondPosition[] }) {
+  const { data: nodes, error: nodesError, isLoading: nodesLoading } = useAllNodes();
+  const { constants, isLoading: constantsLoading, error: constantsError } = useNetworkConstants();
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [nodesData, constantsData] = await Promise.all([
-          getAllNodes(),
-          fetch('https://gateway.liquify.com/chain/thorchain_api/thorchain/constants').then(r => r.json())
-        ]);
-        setNodes(nodesData);
-        const blockHeight = constantsData?.int_64_values?.last_observed_height || constantsData?.int_64_values?.block_height || 0;
-        setCurrentBlockHeight(blockHeight);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch node data');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  const isLoadingFull = nodesLoading || constantsLoading;
+  const error = nodesError?.message || constantsError?.message || null;
 
-  if (isLoading) {
+  if (isLoadingFull) {
     return (
-      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
         <div className="animate-pulse h-48 bg-zinc-200 dark:bg-zinc-800 rounded" />
       </div>
     );
@@ -63,21 +43,58 @@ export function UnbondWindowTracker() {
 
   if (error) {
     return (
-      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
         <div className="text-red-500 text-sm">Error: {error}</div>
       </div>
     );
   }
 
-  const bondedNodes = nodes.filter(n => n.status === 'Active' || n.status === 'Standby');
+  if (!positions || positions.length === 0) {
+    return (
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Unbond Window</h3>
+          <div className="flex items-center gap-1 text-xs text-zinc-500">
+            <Clock className="w-3.5 h-3.5" />
+            <span>--</span>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <Lock className="w-8 h-8 text-zinc-300 dark:text-zinc-600 mb-3" />
+          <p className="text-zinc-600 dark:text-zinc-400 text-sm font-medium">No active bond positions</p>
+          <p className="text-zinc-500 dark:text-zinc-500 text-xs max-w-[200px] mt-1">
+            Bond RUNE to a Node Operator to start earning rewards and track your unbond window.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!nodes) {
+    return (
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
+        <div className="animate-pulse h-48 bg-zinc-200 dark:bg-zinc-800 rounded" />
+      </div>
+    );
+  }
+
+  const currentBlockHeight = constants?.last_observed_height || constants?.block_height || 0;
+
+  const nodeSignerMap = new Map<string, string[] | null>();
+  nodes.forEach(node => {
+    nodeSignerMap.set(node.node_address, node.signer_membership);
+  });
+
+  const bondedPositions = positions.filter(p => p.status === 'Active' || p.status === 'Standby');
   
-  const nodesWithUnbondStatus: NodeUnbondStatus[] = bondedNodes.map(node => {
-    const isSigning = !!(node.signer_membership && node.signer_membership.length > 0);
-    const canUnbond = node.status === 'Standby' && isSigning;
+  const nodesWithUnbondStatus: NodeUnbondStatus[] = bondedPositions.map(pos => {
+    const signerMembership = nodeSignerMap.get(pos.nodeAddress) ?? null;
+    const isSigning = !!(signerMembership && signerMembership.length > 0);
+    const canUnbond = pos.status === 'Standby' && isSigning;
     return {
-      nodeAddress: node.node_address,
-      status: node.status,
-      signerMembership: node.signer_membership,
+      nodeAddress: pos.nodeAddress,
+      status: pos.status,
+      signerMembership,
       isSigning,
       canUnbond,
     };
@@ -92,7 +109,7 @@ export function UnbondWindowTracker() {
   const nextChurn = estimateNextChurn(currentBlockHeight);
 
   return (
-    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Unbond Window</h3>
         <div className="flex items-center gap-1 text-xs text-zinc-500">

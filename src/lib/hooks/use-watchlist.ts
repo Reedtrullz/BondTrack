@@ -31,7 +31,9 @@ function getInitialAddresses(): string[] {
       const parsed = JSON.parse(stored);
       return sanitizeAddresses(parsed);
     }
-  } catch {}
+  } catch (error) {
+    console.error('Storage error while loading watchlist addresses:', error);
+  }
   return [];
 }
 
@@ -42,7 +44,9 @@ export function useWatchlist() {
   const saveToStorage = useCallback((newAddresses: string[]) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newAddresses));
-    } catch {}
+    } catch (error) {
+      console.error('Storage error while saving watchlist addresses:', error);
+    }
   }, []);
 
   const addAddress = useCallback((address: string) => {

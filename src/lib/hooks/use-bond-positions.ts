@@ -1,9 +1,58 @@
 import useSWR from 'swr';
 import { getAllNodes, type NodeRaw } from '@/lib/api/thornode';
+import { getNetworkConstants } from '@/lib/api/thornode';
 import { extractBondPositions, type BondPosition } from '@/lib/types/node';
+import { getHealth } from '@/lib/api/midgard';
+
+export type YieldGuardFlag = 'overbonded' | 'highest_slash' | 'lowest_bond' | 'oldest' | 'leaving';
+
+function getYieldGuardFlags(
+  positions: BondPosition[],
+  allNodes: NodeRaw[],
+  optimalBond: number | null
+): Map<string, YieldGuardFlag[]> {
+  const flags = new Map<string, YieldGuardFlag[]>();
+  if (positions.length === 0 || allNodes.length === 0) return flags;
+
+  const activeNodes = allNodes.filter(n => n.status === 'Active');
+  if (activeNodes.length === 0) return flags;
+
+  const maxSlash = Math.max(...activeNodes.map(n => n.slash_points));
+  const minBond = Math.min(...activeNodes.map(n => Number(n.total_bond)));
+  const oldestStatusSince = Math.min(...activeNodes.map(n => n.status_since));
+
+  for (const pos of positions) {
+    const nodeFlags: YieldGuardFlag[] = [];
+    const node = allNodes.find(n => n.node_address === pos.nodeAddress);
+    if (!node || node.status !== 'Active') continue;
+
+    const totalBond = Number(node.total_bond);
+    if (optimalBond && totalBond >= optimalBond) {
+      nodeFlags.push('overbonded');
+    }
+    if (node.slash_points >= maxSlash && maxSlash > 0) {
+      nodeFlags.push('highest_slash');
+    }
+    if (totalBond <= minBond) {
+      nodeFlags.push('lowest_bond');
+    }
+    if (node.status_since <= oldestStatusSince) {
+      nodeFlags.push('oldest');
+    }
+    if (node.requested_to_leave) {
+      nodeFlags.push('leaving');
+    }
+
+    if (nodeFlags.length > 0) {
+      flags.set(pos.nodeAddress, nodeFlags);
+    }
+  }
+
+  return flags;
+}
 
 export function useBondPositions(address: string | null) {
-  const { data, error, isLoading, mutate } = useSWR<NodeRaw[]>(
+  const { data: nodes, error, isLoading, mutate } = useSWR<NodeRaw[]>(
     'nodes',
     () => getAllNodes(),
     { 
@@ -12,12 +61,37 @@ export function useBondPositions(address: string | null) {
     }
   );
 
-  const positions: BondPosition[] = data && address
-    ? extractBondPositions(data, address)
+  const { data: constants } = useSWR(
+    address ? 'network-constants' : null,
+    () => getNetworkConstants(),
+    { revalidateOnFocus: false, refreshInterval: 300_000 }
+  );
+
+  const { data: healthData } = useSWR(
+    'health',
+    () => getHealth(),
+    { refreshInterval: 30_000 }
+  );
+
+  const currentBlockHeight = healthData?.lastThorNode?.height ?? nodes?.[0]?.active_block_height ?? 0;
+
+  const positions: BondPosition[] = nodes && address
+    ? extractBondPositions(nodes, address, currentBlockHeight)
     : [];
 
+  const optimalBond = constants?.int_64_values?.OptimalBondD
+    ? Number(constants.int_64_values.OptimalBondD)
+    : null;
+
+  const yieldGuardFlags = getYieldGuardFlags(positions, nodes || [], optimalBond);
+
+  const positionsWithFlags = positions.map(pos => ({
+    ...pos,
+    yieldGuardFlags: yieldGuardFlags.get(pos.nodeAddress) || [],
+  }));
+
   return {
-    positions,
+    positions: positionsWithFlags,
     isLoading,
     error,
     mutate,

@@ -2,6 +2,15 @@ import { NodeRaw } from '@/lib/api/thornode';
 import { runeToNumber, formatRuneAmount, formatBasisPoints } from '@/lib/utils/formatters';
 import { calculateBondShare, calculateAPY } from '@/lib/utils/calculations';
 
+export type YieldGuardFlag = 'overbonded' | 'highest_slash' | 'lowest_bond' | 'oldest' | 'leaving';
+
+export interface PooledNodeData {
+  isPooled: boolean;
+  totalProviders: number;
+  otherProviders: { address: string; bond: number; sharePercent: number }[];
+  yourSharePercent: number;
+}
+
 export interface BondPosition {
   nodeAddress: string;
   nodeOperatorAddress: string;
@@ -14,14 +23,18 @@ export interface BondPosition {
   totalBond: number;
   slashPoints: number;
   isJailed: boolean;
+  jailReleaseHeight: number;
   jailReason?: string;
   version: string;
   requestedToLeave: boolean;
+  yieldGuardFlags?: YieldGuardFlag[];
+  pooledNodeData?: PooledNodeData;
 }
 
 export function extractBondPositions(
   nodes: NodeRaw[],
-  address: string
+  address: string,
+  currentBlockHeight: number
 ): BondPosition[] {
   return nodes
     .map((node) => {
@@ -31,11 +44,41 @@ export function extractBondPositions(
 
       if (!provider) return null;
 
+      const jail = node.jail as { release_height?: number; reason?: string } | Record<string, never>;
+      const jailReleaseHeight = typeof jail?.release_height === 'number' ? jail.release_height : 0;
+      const hasJailReason = typeof jail?.reason === 'string';
+      const isJailed = jailReleaseHeight > currentBlockHeight;
+      const jailReason = isJailed && hasJailReason ? jail?.reason : undefined;
+
       const bondAmount = runeToNumber(provider.bond);
       const bondSharePercent = calculateBondShare(provider.bond, node.total_bond);
       const operatorFee = Number(node.bond_providers.node_operator_fee);
       const netAPY = calculateAPY(bondSharePercent, node.current_award, operatorFee, provider.bond);
-      const isJailed = Object.keys(node.jail).length > 0;
+      const providers = node.bond_providers?.providers ?? [];
+      const isPooled = providers.length > 1;
+
+      let pooledNodeData: PooledNodeData | undefined;
+      if (isPooled) {
+        const totalBond = runeToNumber(node.total_bond);
+        const otherProviders = providers
+          .filter((p) => p.bond_address !== address)
+          .map((p) => {
+            const bond = runeToNumber(p.bond);
+            const sharePercent = calculateBondShare(p.bond, node.total_bond);
+            const addr = p.bond_address;
+            const anonymized = addr.length > 12
+              ? `${addr.slice(0, 8)}...${addr.slice(-4)}`
+              : addr;
+            return { address: anonymized, bond, sharePercent };
+          });
+
+        pooledNodeData = {
+          isPooled: true,
+          totalProviders: providers.length,
+          otherProviders,
+          yourSharePercent: bondSharePercent,
+        };
+      }
 
       return {
         nodeAddress: node.node_address,
@@ -49,9 +92,11 @@ export function extractBondPositions(
         totalBond: runeToNumber(node.total_bond),
         slashPoints: node.slash_points,
         isJailed,
-        jailReason: isJailed ? (node.jail as { reason?: string }).reason : undefined,
+        jailReleaseHeight,
+        jailReason,
         version: node.version,
         requestedToLeave: node.requested_to_leave,
+        pooledNodeData,
       };
     })
     .filter((p): p is NonNullable<typeof p> => p !== null);
