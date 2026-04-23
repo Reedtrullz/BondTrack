@@ -18,19 +18,23 @@ const FILTER_OPTIONS: { value: FilterType; label: string; icon: React.ReactNode 
 
 const STORAGE_KEY = 'changelogs-expanded';
 
-function buildChangelogQuery(searchQuery: string, typeFilter: FilterType): string {
-  const params = new URLSearchParams();
+function buildChangelogQuery(currentParams: URLSearchParams, searchQuery: string, typeFilter: FilterType): string {
+  const params = new URLSearchParams(currentParams.toString());
 
   if (searchQuery.trim()) {
     params.set('q', searchQuery);
+  } else {
+    params.delete('q');
   }
 
   if (typeFilter !== 'all') {
     params.set('type', typeFilter);
+  } else {
+    params.delete('type');
   }
 
   const queryString = params.toString();
-  return queryString ? `?${queryString}` : '?' ;
+  return queryString ? `?${queryString}` : '';
 }
 
 function parseTypeFilter(value: string | null): FilterType {
@@ -253,17 +257,17 @@ export default function ChangelogsPage() {
   }, []);
   
   const clearFilters = useCallback(() => {
-    router.replace(buildChangelogQuery('', 'all'), { scroll: false });
-  }, [router]);
+    router.replace(buildChangelogQuery(searchParams, '', 'all'), { scroll: false });
+  }, [router, searchParams]);
 
   const updateSearchQuery = useCallback((nextSearchQuery: string) => {
     setSearchBuffer(nextSearchQuery);
-    router.replace(buildChangelogQuery(nextSearchQuery, urlTypeFilter), { scroll: false });
-  }, [router, urlTypeFilter]);
+    router.replace(buildChangelogQuery(searchParams, nextSearchQuery, urlTypeFilter), { scroll: false });
+  }, [router, urlTypeFilter, searchParams]);
 
   const updateTypeFilter = useCallback((nextTypeFilter: FilterType) => {
-    router.replace(buildChangelogQuery(urlSearchQuery, nextTypeFilter), { scroll: false });
-  }, [router, urlSearchQuery]);
+    router.replace(buildChangelogQuery(searchParams, urlSearchQuery, nextTypeFilter), { scroll: false });
+  }, [router, urlSearchQuery, searchParams]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -278,7 +282,7 @@ export default function ChangelogsPage() {
         if (urlSearchQuery || urlTypeFilter !== 'all') {
           const nextSearchQuery = '';
           const nextTypeFilter: FilterType = 'all';
-          const nextUrl = buildChangelogQuery(nextSearchQuery, nextTypeFilter);
+          const nextUrl = buildChangelogQuery(searchParams, nextSearchQuery, nextTypeFilter);
 
           router.replace(nextUrl, { scroll: false });
         }
