@@ -1,9 +1,10 @@
 'use client';
 
 import { useChangelogs, getTypeLabel, getTypeIcon, getTypeBadgeStyle, ChangelogItem, ChangelogEntry } from '@/lib/hooks/use-changelogs';
-import { Search, ChevronDown, X, SearchX, Zap, FileText, Link, Rocket, Wrench, ScrollText, Eye } from 'lucide-react';
+import { Search, ChevronDown, X, SearchX, Zap, FileText, Link as LinkIcon, Rocket, Wrench, ScrollText, Eye } from 'lucide-react';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 
 type FilterType = 'all' | ChangelogEntry['type'];
 
@@ -11,7 +12,7 @@ const FILTER_OPTIONS: { value: FilterType; label: string; icon: React.ReactNode 
   { value: 'all', label: 'All', icon: <Zap className="w-3 h-3" /> },
   { value: 'update', label: 'Update', icon: <Zap className="w-3 h-3" /> },
   { value: 'adr', label: 'ADR', icon: <FileText className="w-3 h-3" /> },
-  { value: 'chain', label: 'Chain', icon: <Link className="w-3 h-3" /> },
+  { value: 'chain', label: 'Chain', icon: <LinkIcon className="w-3 h-3" /> },
   { value: 'feature', label: 'Feature', icon: <Rocket className="w-3 h-3" /> },
   { value: 'bug', label: 'Bug', icon: <Wrench className="w-3 h-3" /> },
 ];
@@ -392,11 +393,13 @@ export default function ChangelogsPage() {
           {FILTER_OPTIONS.map((option) => {
             const isActive = urlTypeFilter === option.value;
             const hasCount = option.value !== 'all' && typeBreakdown[option.value] > 0;
+            const href = `${pathname}${buildChangelogQuery(searchParams, urlSearchQuery, option.value)}`;
             
             return (
-              <button
+              <Link
                 key={option.value}
-                onClick={() => updateTypeFilter(option.value)}
+                href={href}
+                scroll={false}
                 className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
                   isActive
                     ? 'text-black'
@@ -418,7 +421,7 @@ export default function ChangelogsPage() {
                     {typeBreakdown[option.value]}
                   </span>
                 )}
-              </button>
+              </Link>
             );
           })}
         </div>
@@ -428,12 +431,13 @@ export default function ChangelogsPage() {
             <span className="text-zinc-500 dark:text-zinc-400">
               Showing {totalEntries} {totalEntries === 1 ? 'entry' : 'entries'} of {changelogs.reduce((a, c) => a + c.content.length, 0)} total
             </span>
-            <button
-              onClick={clearFilters}
+            <Link
+              href={`${pathname}${buildChangelogQuery(searchParams, '', 'all')}`}
+              scroll={false}
               className="flex items-center gap-1 text-cyan-600 transition-colors hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-white"
             >
               <X className="w-3 h-3" /> Clear filters
-            </button>
+            </Link>
           </div>
         )}
       </div>
@@ -588,7 +592,7 @@ export default function ChangelogsPage() {
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-1 text-xs text-cyan-600 transition-colors hover:underline dark:text-cyan-400"
                                   >
-                                    {link.text} <Link className="w-3 h-3" />
+                                    {link.text} <LinkIcon className="w-3 h-3" />
                                   </a>
                                 ))}
                               </div>
@@ -617,7 +621,7 @@ export default function ChangelogsPage() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-cyan-600 transition-colors hover:underline dark:text-cyan-400"
           >
-            TCC Cross-Chain Updates <Link className="w-3 h-3" />
+            TCC Cross-Chain Updates <LinkIcon className="w-3 h-3" />
           </a>
           {' '}— THORChain community Medium publication
         </p>
