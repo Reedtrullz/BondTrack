@@ -16,8 +16,8 @@ const openSans = Open_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "BondTrack",
-  description: "Monitor your THORChain bond provider positions",
+  title: "Heimdall | THORChain Watcher",
+  description: "The all-seeing guardian of your THORChain node infrastructure.",
 };
 
 export default function RootLayout({

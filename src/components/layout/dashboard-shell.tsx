@@ -7,6 +7,7 @@ import { RefreshCw, Clock, Wifi } from 'lucide-react';
 import { Sidebar, MobileMenuButton } from '@/components/layout/sidebar';
 import { WalletConnect } from '@/components/wallet/wallet-connect';
 import { Button } from '@/components/ui/button';
+import { Breadcrumbs } from '@/components/shared/breadcrumbs';
 import { getTHORNameReverseLookupNoRetry as getTHORNameReverseLookup } from '@/lib/api/midgard';
 
 const THORNAME_CACHE_PREFIX = 'thorname-rlookup:';
@@ -132,6 +133,7 @@ export function DashboardShell({
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <MobileMenuButton onClick={() => setSidebarOpen(true)} />
             <div className="min-w-0">
+              <Breadcrumbs />
               <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
                 Dashboard
               </h1>

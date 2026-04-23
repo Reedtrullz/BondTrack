@@ -27,7 +27,7 @@ export async function GET(
       const response = await fetch(targetUrl, {
         headers: { 
           'Accept': 'application/json',
-          'User-Agent': 'BondTrack/1.0',
+          'User-Agent': 'Heimdall/1.0',
         },
         cache: 'no-store',
         signal: controller.signal,

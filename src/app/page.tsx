@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AddressInput } from '@/components/shared/address-input';
 import { RecentAddresses } from '@/components/shared/recent-addresses';
-import { Shield, Activity, BarChart3, TrendingUp, Zap, Globe, Lock, Wallet, Bell, ChevronRight } from 'lucide-react';
+import { Eye, Activity, BarChart3, TrendingUp, Zap, Globe, Lock, Wallet, Bell, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 const LAST_ADDRESS_KEY = 'thornode-watcher-last-address';
@@ -33,14 +33,14 @@ export default function Home() {
       
       <main className="relative z-10 flex flex-1 w-full max-w-4xl flex-col items-center justify-center py-20 px-4 sm:px-8">
         <div className="text-center mb-10 animate-fade-in-up">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 mb-6 shadow-xl shadow-amber-500/30">
-            <Shield className="w-10 h-10 text-white" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500/80 to-amber-600/80 mb-6 shadow-xl shadow-amber-500/20 border border-amber-500/20">
+            <Eye className="w-10 h-10 text-amber-500" />
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 tracking-tight">
-            BondTrack
+          <h1 className="text-4xl sm:text-5xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 tracking-tight font-serif italic uppercase">
+            Heimdall
           </h1>
           <p className="text-lg text-zinc-600 dark:text-zinc-400 max-w-lg mx-auto">
-            Command your THORChain positions. Real-time node health, rewards tracking, and risk monitoring for bonded RUNE.
+            The all-seeing guardian of THORChain nodes. Real-time health monitoring, rewards tracking, and risk analysis for the decentralized web.
           </p>
         </div>
 

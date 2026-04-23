@@ -12,7 +12,7 @@ interface AlertToastProps {
   onRequestPermission: () => Promise<boolean>;
 }
 
-const NOTIFICATION_PROMPT_DISMISSED_KEY = 'bondtrack-notification-prompt-dismissed';
+const NOTIFICATION_PROMPT_DISMISSED_KEY = 'heimdall-notification-prompt-dismissed';
 
 function getAlertIcon(type: AlertType) {
   switch (type) {

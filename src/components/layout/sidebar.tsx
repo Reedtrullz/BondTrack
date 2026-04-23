@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Shield, Activity, BarChart3, AlertTriangle, ArrowRightLeft, Menu, X, ScrollText, Coins, Zap } from 'lucide-react';
+import { Eye, Shield, Activity, BarChart3, AlertTriangle, ArrowRightLeft, Menu, X, ScrollText, Coins, Zap } from 'lucide-react';
 import { ThemeToggle } from './theme-toggle';
 import { cn } from '@/lib/utils';
 
@@ -57,11 +57,11 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         </button>
 
         <Link href="/" className="flex items-center gap-3 px-3 py-3 mb-4 font-bold text-zinc-900 dark:text-zinc-100 group">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/30 group-hover:shadow-amber-500/50 transition-all duration-300">
-            <Shield className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500/80 to-amber-600/80 flex items-center justify-center shadow-lg shadow-amber-500/10 group-hover:shadow-amber-500/20 transition-all duration-300 border border-amber-500/20">
+            <Eye className="w-5 h-5 text-amber-500" />
           </div>
-          <span className="hidden md:inline text-lg tracking-tight">BondTrack</span>
-          <span className="md:hidden">Bond</span>
+          <span className="hidden md:inline text-lg tracking-tight font-serif italic uppercase">Heimdall</span>
+          <span className="md:hidden">H</span>
         </Link>
         
         <div className="px-3 py-2">

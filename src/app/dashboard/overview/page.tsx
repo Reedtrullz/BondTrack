@@ -10,10 +10,10 @@ import { PortfolioSummary } from '@/components/dashboard/portfolio-summary';
 import { PositionTable } from '@/components/dashboard/position-table';
 import { RewardProjections } from '@/components/dashboard/reward-projections';
 import { ActionableAlerts } from '@/components/dashboard/actionable-alerts';
-import { BondOptimizer } from '@/components/dashboard/bond-optimizer';
+import { IntelligenceFeed } from '@/components/dashboard/intelligence-feed';
 import { Button } from '@/components/ui/button';
 import { ExportButton } from '@/components/shared/export-button';
-import { Plus, Minus, Sparkles, BrainCircuit, TrendingUp } from 'lucide-react';
+import { Plus, Minus, Sparkles, Eye, TrendingUp } from 'lucide-react';
 
 type TransactionAction = 'bond' | 'unbond';
 
@@ -116,12 +116,12 @@ export default function OverviewPage() {
         </div>
 
         <div className="lg:col-span-1 space-y-4">
-          <div className="flex items-center gap-2 mb-3 text-zinc-500 dark:text-zinc-400">
-            <BrainCircuit className="w-4 h-4" />
-            <span className="text-xs font-bold uppercase tracking-widest">Intelligence</span>
+          <div className="flex items-center gap-2 mb-3 text-amber-600/80 dark:text-amber-500/80">
+            <Eye className="w-4 h-4" />
+            <span className="text-xs font-bold uppercase tracking-widest font-serif italic">Heimdall's Sight</span>
           </div>
           
-          <BondOptimizer 
+          <IntelligenceFeed 
             positions={positions} 
             benchmarks={benchmarks} 
             allNodes={allNodes || []}

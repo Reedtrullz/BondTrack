@@ -13,8 +13,8 @@ const buttonVariants = cva(
         glow:
           'bg-amber-500 text-white shadow-lg shadow-amber-500/30 hover:shadow-xl hover:shadow-amber-500/40 hover:bg-amber-600 focus-visible:ring-amber-500',
         success:
-          'bg-emerald-500 text-white shadow-md shadow-emerald-500/25 hover:bg-emerald-600 hover:shadow-xl hover:shadow-emerald-500/30 focus-visible:ring-emerald-500',
-        destructive: 'bg-red-500 text-white shadow-md shadow-red-500/25 hover:bg-red-600 hover:shadow-xl hover:shadow-red-500/30 focus-visible:ring-red-500',
+          'bg-emerald-600/90 text-white shadow-md shadow-emerald-600/10 hover:bg-emerald-500/90 hover:shadow-lg hover:shadow-emerald-500/20 focus-visible:ring-emerald-500 border border-emerald-400/20',
+        destructive: 'bg-rose-600/90 text-white shadow-md shadow-rose-600/10 hover:bg-rose-500/90 hover:shadow-lg hover:shadow-rose-500/20 focus-visible:ring-rose-500 border border-rose-400/20',
         outline:
           'border border-zinc-200 bg-transparent text-zinc-900 dark:text-zinc-100 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800 focus-visible:ring-zinc-500',
         glass:

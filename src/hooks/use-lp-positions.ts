@@ -150,68 +150,80 @@ export const useLpPositions = (address: string | null) => {
       });
       await Promise.allSettled(poolPromises);
 
-      // Fetch historical entry prices for all pools
+      // Fetch historical entry prices for all pools in parallel to avoid 502/504 timeouts
       const historicalPrices = new Map<string, HistoricalPriceSnapshot>();
-      for (const pool of memberPools) {
+      const pricePromises = memberPools.map(async (pool) => {
         const firstAddedTimestamp = normalizeHistoryTimestamp(pool.dateFirstAdded);
         if (firstAddedTimestamp > 0) {
-          const runeEntryPrice = await getHistoricalRunePrice(firstAddedTimestamp);
-          const poolHistory = await getPoolHistoryAtTimestamp(pool.pool, firstAddedTimestamp);
+          try {
+            const [runeEntryPrice, poolHistory] = await Promise.all([
+              getHistoricalRunePrice(firstAddedTimestamp),
+              getPoolHistoryAtTimestamp(pool.pool, firstAddedTimestamp)
+            ]);
 
-          if (runeEntryPrice === null) {
-            historicalPrices.set(pool.pool, {
-              entryRunePriceUsd: null,
-              entryAssetPriceUsd: null,
-              pricingSource: 'current-only',
-            });
-            continue;
-          }
-
-          if (!poolHistory?.runeDepth || !poolHistory?.assetDepth) {
-            // Fallback: Assume symmetric (50/50) deposit on Day 1 to estimate asset price
-            const runeDep = Number(pool.runeDeposit);
-            const assetDep = Number(pool.assetDeposit);
-
-            if (runeDep > 0 && assetDep > 0) {
-              const estimatedAssetEntryPrice = (runeDep * runeEntryPrice) / assetDep;
+            if (runeEntryPrice === null) {
               historicalPrices.set(pool.pool, {
-                entryRunePriceUsd: runeEntryPrice,
-                entryAssetPriceUsd: estimatedAssetEntryPrice,
-                pricingSource: 'estimated',
+                entryRunePriceUsd: null,
+                entryAssetPriceUsd: null,
+                pricingSource: 'current-only',
               });
-              continue;
+              return;
+            }
+
+            if (!poolHistory?.runeDepth || !poolHistory?.assetDepth) {
+              // Fallback: Assume symmetric (50/50) deposit on Day 1 to estimate asset price
+              const runeDep = Number(pool.runeDeposit);
+              const assetDep = Number(pool.assetDeposit);
+
+              if (runeDep > 0 && assetDep > 0) {
+                const estimatedAssetEntryPrice = (runeDep * runeEntryPrice) / assetDep;
+                historicalPrices.set(pool.pool, {
+                  entryRunePriceUsd: runeEntryPrice,
+                  entryAssetPriceUsd: estimatedAssetEntryPrice,
+                  pricingSource: 'estimated',
+                });
+              } else {
+                historicalPrices.set(pool.pool, {
+                  entryRunePriceUsd: runeEntryPrice,
+                  entryAssetPriceUsd: null,
+                  pricingSource: 'current-only',
+                });
+              }
+              return;
+            }
+
+            const asset2EntryPrice = calculateAssetPriceFromPoolDepth(
+              poolHistory.runeDepth,
+              poolHistory.assetDepth,
+              runeEntryPrice
+            );
+
+            if (!Number.isFinite(asset2EntryPrice) || asset2EntryPrice <= 0) {
+              historicalPrices.set(pool.pool, {
+                entryRunePriceUsd: null,
+                entryAssetPriceUsd: null,
+                pricingSource: 'current-only',
+              });
+              return;
             }
 
             historicalPrices.set(pool.pool, {
-              entryRunePriceUsd: null,
-              entryAssetPriceUsd: null,
-              pricingSource: 'current-only',
+              entryRunePriceUsd: runeEntryPrice,
+              entryAssetPriceUsd: asset2EntryPrice,
+              pricingSource: 'historical',
             });
-            continue;
-          }
-
-          const asset2EntryPrice = calculateAssetPriceFromPoolDepth(
-            poolHistory.runeDepth,
-            poolHistory.assetDepth,
-            runeEntryPrice
-          );
-
-          if (!Number.isFinite(asset2EntryPrice) || asset2EntryPrice <= 0) {
+          } catch (err) {
+            console.error(`Error fetching historical data for ${pool.pool}:`, err);
             historicalPrices.set(pool.pool, {
               entryRunePriceUsd: null,
               entryAssetPriceUsd: null,
               pricingSource: 'current-only',
             });
-            continue;
           }
-
-          historicalPrices.set(pool.pool, {
-            entryRunePriceUsd: runeEntryPrice,
-            entryAssetPriceUsd: asset2EntryPrice,
-            pricingSource: 'historical',
-          });
         }
-      }
+      });
+
+      await Promise.allSettled(pricePromises);
 
       return { memberDetails, pools, thorNodeLpData, runePriceUSD, historicalPrices };
     },
