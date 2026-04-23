@@ -3,7 +3,7 @@
 import { useChangelogs, getTypeLabel, getTypeIcon, getTypeBadgeStyle, ChangelogItem, ChangelogEntry } from '@/lib/hooks/use-changelogs';
 import { Search, ChevronDown, X, SearchX, Zap, FileText, Link, Rocket, Wrench, ScrollText, Eye } from 'lucide-react';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
 type FilterType = 'all' | ChangelogEntry['type'];
 
@@ -38,7 +38,8 @@ function buildChangelogQuery(currentParams: URLSearchParams, searchQuery: string
 }
 
 function parseTypeFilter(value: string | null): FilterType {
-  return FILTER_OPTIONS.some(option => option.value === value) ? (value as FilterType) : 'all';
+  const normalizedValue = value?.toLowerCase();
+  return FILTER_OPTIONS.some(option => option.value === normalizedValue) ? (normalizedValue as FilterType) : 'all';
 }
 
 const TC = {
@@ -138,6 +139,7 @@ export default function ChangelogsPage() {
   const { changelogs, isLoading } = useChangelogs();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const yearRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
@@ -257,17 +259,17 @@ export default function ChangelogsPage() {
   }, []);
   
   const clearFilters = useCallback(() => {
-    router.replace(buildChangelogQuery(searchParams, '', 'all'), { scroll: false });
-  }, [router, searchParams]);
+    router.replace(`${pathname}${buildChangelogQuery(searchParams, '', 'all')}`, { scroll: false });
+  }, [router, searchParams, pathname]);
 
   const updateSearchQuery = useCallback((nextSearchQuery: string) => {
     setSearchBuffer(nextSearchQuery);
-    router.replace(buildChangelogQuery(searchParams, nextSearchQuery, urlTypeFilter), { scroll: false });
-  }, [router, urlTypeFilter, searchParams]);
+    router.replace(`${pathname}${buildChangelogQuery(searchParams, nextSearchQuery, urlTypeFilter)}`, { scroll: false });
+  }, [router, urlTypeFilter, searchParams, pathname]);
 
   const updateTypeFilter = useCallback((nextTypeFilter: FilterType) => {
-    router.replace(buildChangelogQuery(searchParams, urlSearchQuery, nextTypeFilter), { scroll: false });
-  }, [router, urlSearchQuery, searchParams]);
+    router.replace(`${pathname}${buildChangelogQuery(searchParams, urlSearchQuery, nextTypeFilter)}`, { scroll: false });
+  }, [router, urlSearchQuery, searchParams, pathname]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
