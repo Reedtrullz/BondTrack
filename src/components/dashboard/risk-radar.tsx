@@ -13,7 +13,7 @@ export function RiskRadar({ position }: RiskRadarProps) {
   const data = [
     {
       subject: 'Uptime',
-      value: 100 - (position.slashPoints / 10), // Heuristic: 1000 pts = 0% uptime
+      value: Math.max(0, 100 - (position.slashPoints / 10)), // Heuristic: 1000 pts = 0% uptime, clamped at 0
       fullMark: 100,
     },
     {
