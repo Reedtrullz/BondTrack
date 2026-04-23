@@ -136,7 +136,17 @@ export default function ChangelogsPage() {
       const savedEntries = localStorage.getItem(`${STORAGE_KEY}-entries`);
       if (savedEntries) {
         try {
-          setExpandedEntryIds(JSON.parse(savedEntries));
+          const parsed = JSON.parse(savedEntries);
+          if (parsed && typeof parsed === 'object') {
+            // Clean up malformed data (from previous Set-based version)
+            const cleaned: Record<string, string[]> = {};
+            Object.entries(parsed).forEach(([key, value]) => {
+              if (Array.isArray(value)) {
+                cleaned[key] = value;
+              }
+            });
+            setExpandedEntryIds(cleaned);
+          }
         } catch {}
       }
     }
@@ -541,7 +551,7 @@ export default function ChangelogsPage() {
                     >
                       <div className="p-6 space-y-4">
                         {item.content.map((entry, entryIndex) => {
-                          const isEntryExpanded = (expandedEntryIds[item.id] && expandedEntryIds[item.id].includes(String(entryIndex))) || urlSearchQuery.length > 0;
+                          const isEntryExpanded = (Array.isArray(expandedEntryIds[item.id]) && expandedEntryIds[item.id].includes(String(entryIndex))) || urlSearchQuery.length > 0;
                           
                           return (
                             <div 
