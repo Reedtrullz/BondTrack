@@ -233,8 +233,6 @@ describe('calculateLpPositionValuation', () => {
     expect(result.depositedTotalValueUsd).toBe(40);
     expect(result.netProfitLossUsd).toBe(0);
     expect(result.hasHistoricalPricing).toBe(false);
-    // IL: asset side lost 1 unit (-$4), rune side gained 2 units (+$4). 
-    // Repo convention returns the negative shortfall as a signal even if total matches.
     expect(result.impermanentLossUsd).toBe(-4);
   });
 
@@ -254,6 +252,7 @@ describe('calculateLpPositionValuation', () => {
     expect(result.depositedTotalValueUsd).toBe(40);
     expect(result.netProfitLossUsd).toBe(0);
     expect(result.hasHistoricalPricing).toBe(false);
+    expect(result.impermanentLossUsd).toBe(-4);
   });
 
   it('computes LP yield fallback when historical entry pricing is zero', () => {
@@ -272,5 +271,6 @@ describe('calculateLpPositionValuation', () => {
     expect(result.depositedTotalValueUsd).toBe(40);
     expect(result.netProfitLossUsd).toBe(0);
     expect(result.hasHistoricalPricing).toBe(false);
+    expect(result.impermanentLossUsd).toBe(-4);
   });
 });

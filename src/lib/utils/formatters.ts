@@ -3,30 +3,39 @@ import { NETWORK } from '../config';
 const RUNE_DIVISOR = BigInt(10 ** NETWORK.RUNE_DECIMALS);
 
 /**
- * Convert a raw API amount string (1e8 units) to a human-readable RUNE number.
- * All THORChain API amounts are strings representing integer satoshis (1e8).
+ * Generic numeric formatter for crypto amounts with thousands separators.
  */
-export function formatRuneAmount(raw: string | number | undefined, decimals = 2): string {
+export function formatAmount(raw: string | number | undefined, decimals = 2): string {
   try {
-    if (!raw) {
-      return '0'.repeat(decimals + 1).replace('.', '').slice(0, decimals) || '0';
-    }
+    if (raw === undefined || raw === null) return '0.00';
+    
     let bigIntAmount: bigint;
     if (typeof raw === 'string') {
       bigIntAmount = BigInt(raw);
     } else if (typeof raw === 'number' && isFinite(raw)) {
       bigIntAmount = BigInt(Math.round(raw));
     } else {
-      return '0'.repeat(decimals + 1).replace('.', '').slice(0, decimals) || '0';
+      return '0.00';
     }
+
     const whole = bigIntAmount / RUNE_DIVISOR;
     const fraction = bigIntAmount % RUNE_DIVISOR;
     const fractionStr = fraction.toString().padStart(8, '0').slice(0, decimals);
-    if (decimals === 0) return whole.toString();
-    return `${whole}.${fractionStr}`;
+    
+    const wholeStr = whole.toLocaleString('en-US');
+    
+    if (decimals === 0) return wholeStr;
+    return `${wholeStr}.${fractionStr}`;
   } catch {
-    return '0'.repeat(decimals + 1).replace('.', '').slice(0, decimals) || '0';
+    return '0.00';
   }
+}
+
+/**
+ * Format a RUNE amount with the ᚱ symbol prefix.
+ */
+export function formatRuneAmount(raw: string | number | undefined, decimals = 2): string {
+  return `ᚱ${formatAmount(raw, decimals)}`;
 }
 
 export function runeToNumber(raw: string | number | undefined): number {
@@ -46,17 +55,12 @@ export function runeToNumber(raw: string | number | undefined): number {
 
 /**
  * Convert a RUNE number to raw API format (1e8 units as string).
- * NOTE: Precision is limited by JavaScript's Number.MAX_SAFE_INTEGER (~90M RUNE).
  */
 export function numberToRune(num: number): string {
   if (typeof num !== 'number' || isNaN(num)) return '0';
   return String(BigInt(Math.round(num * Number(RUNE_DIVISOR))));
 }
 
-/**
- * Formats a RUNE decimal number as a formatted string.
- * Uses numberToRune internally to ensure consistent satoshi-based formatting.
- */
 export function formatRuneFromNumber(num: number, decimals = 2): string {
   return formatRuneAmount(numberToRune(num), decimals);
 }
@@ -65,7 +69,7 @@ export function formatRuneFromNumber(num: number, decimals = 2): string {
  * Format RUNE amount with unit suffix.
  */
 export function formatRuneWithUnit(raw: string, decimals = 2): string {
-  return `${formatRuneAmount(raw, decimals)} RUNE`;
+  return formatRuneAmount(raw, decimals);
 }
 
 /**

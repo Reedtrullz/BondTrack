@@ -2,7 +2,7 @@
 
 import { useMemo, Fragment } from 'react';
 import type { BondPosition, YieldGuardFlag } from '@/lib/types/node';
-import { formatRuneAmount, formatRuneWithUnit } from '@/lib/utils/formatters';
+import { formatRuneAmount, formatRuneWithUnit, numberToRune } from '@/lib/utils/formatters';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Badge } from '@/components/shared/badge';
 import { PooledNodeDetails } from './pooled-node-details';
@@ -89,7 +89,7 @@ export function PositionTable({ positions }: PositionTableProps) {
         </h2>
         <div className="flex items-center gap-4">
           <span className="text-sm text-zinc-500">
-            {positions.length} node{positions.length !== 1 ? 's' : ''} · {totalBonded.toFixed(2)} RUNE total
+            {positions.length} node{positions.length !== 1 ? 's' : ''} · {formatRuneAmount(numberToRune(totalBonded))} total
           </span>
         </div>
       </div>

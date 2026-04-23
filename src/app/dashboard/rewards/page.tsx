@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
-import { useRunePrice, useRunePriceHistory, getClosestPriceAtDate } from '@/lib/hooks/use-rune-price';
+import { useRunePrice, useRunePriceHistory, useHistoricalRunePrice } from '@/lib/hooks/use-rune-price';
 import { useBondHistory } from '@/lib/hooks/use-bond-history';
 import { useCoinApiRunePrice } from '@/lib/hooks/use-coinapi-price';
 import { PnLDashboard } from '@/components/dashboard/pnl-dashboard';
@@ -25,18 +25,8 @@ export default function RewardsPage() {
   const { price: runePrice } = useRunePrice();
   const { data: networkData } = useNetworkMetrics();
   const { history: bondHistory } = useBondHistory(address);
-  const { oldestPrice, intervals: priceIntervals } = useRunePriceHistory('day', 1825);
-  const { price: coinApiPrice, isLoading: coinApiLoading } = useCoinApiRunePrice(bondHistory?.firstBondDate || null);
+  const { price: entryRunePrice } = useHistoricalRunePrice(bondHistory?.firstBondDate || null);
   
-  const entryRunePrice = useMemo(() => {
-    if (!bondHistory?.firstBondDate) return undefined;
-    if (priceIntervals.length) {
-      const midgardPrice = getClosestPriceAtDate(priceIntervals, bondHistory.firstBondDate);
-      if (midgardPrice > 0.5) return midgardPrice;
-    }
-    if (coinApiPrice && coinApiPrice > 0.5) return coinApiPrice;
-    return oldestPrice || undefined;
-  }, [bondHistory, priceIntervals, oldestPrice, coinApiPrice]);
   const [mounted, setMounted] = useState(false);
   const safePositions = positions ?? [];
   const networkApy = networkData?.bondingAPY ? parseFloat(networkData.bondingAPY) : undefined;
@@ -95,7 +85,7 @@ export default function RewardsPage() {
           positions={safePositions} 
           currentRunePrice={runePrice || 0}
           address={address}
-          entryRunePrice={entryRunePrice}
+          entryRunePrice={entryRunePrice || undefined}
           bondHistory={bondHistory ?? undefined}
         />
       </section>

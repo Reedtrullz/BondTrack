@@ -1,6 +1,6 @@
 import React from 'react';
 import type { LpPosition } from '../../lib/types/lp';
-import { formatPercent, formatRuneAmount, formatUsd } from '../../lib/utils/formatters';
+import { formatPercent, formatRuneAmount, formatUsd, formatAmount } from '../../lib/utils/formatters';
 import { LpStatusBadge } from './lp-status-badge';
 
 function getSignedTone(value: number | null | undefined): string {
@@ -39,6 +39,25 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
   const pnlTone = getSignedTone(position.netProfitLossUsd);
   const ilTone = getImpermanentLossTone(position.impermanentLossPercent);
 
+  // Calculate Time in Pool
+  const firstAddedTs = Number(position.dateFirstAdded);
+  let timeInPool = 'Unknown';
+  if (Number.isFinite(firstAddedTs) && firstAddedTs > 0) {
+    const ts = firstAddedTs > 1e12 ? firstAddedTs / 1000 : firstAddedTs * 1000;
+    const days = Math.floor((Date.now() - ts) / (1000 * 60 * 60 * 24));
+    if (days < 1) {
+      timeInPool = '< 1 day';
+    } else if (days < 30) {
+      timeInPool = `${days} day${days === 1 ? '' : 's'}`;
+    } else {
+      const months = Math.floor(days / 30);
+      const remainingDays = days % 30;
+      timeInPool = months > 0 
+        ? `${months} mo ${remainingDays}d`
+        : `${days}d`;
+    }
+  }
+
   return (
     <div className="rounded-xl border border-zinc-200 bg-white/80 p-6 shadow-md backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-glow dark:border-zinc-800 dark:bg-zinc-900/80 dark:shadow-none">
       <div className="mb-5 flex items-start justify-between gap-3">
@@ -73,8 +92,20 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
           value={formatUsd(position.netProfitLossUsd ?? 0, 0)}
           detail={position.pricingSource === 'current-only'
             ? `${formatPercent(position.netProfitLossPercent)} · LP yield`
-            : formatPercent(position.netProfitLossPercent)}
+            : position.pricingSource === 'estimated'
+              ? `${formatPercent(position.netProfitLossPercent)} · estimated entry`
+              : formatPercent(position.netProfitLossPercent)}
           valueClassName={pnlTone}
+        />
+        <MetricCard 
+          label="Claimable RUNE" 
+          value={formatRuneAmount(position.runeWithdrawable)} 
+          valueClassName="text-[var(--color-success)]"
+        />
+        <MetricCard 
+          label={`Claimable ${position.assetSymbol}`} 
+          value={formatAmount(position.asset2Withdrawable)} 
+          valueClassName="text-[var(--color-success)]"
         />
         <MetricCard
           label="Impermanent Loss"
@@ -82,7 +113,11 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
           detail={formatPercent(position.impermanentLossPercent)}
           valueClassName={ilTone}
         />
-        <MetricCard label="Pool APY" value={formatPercent(position.poolApy)} valueClassName="text-[var(--color-success)]" />
+        <MetricCard 
+          label="Time in Pool" 
+          value={timeInPool} 
+          detail={`Started ${new Date(firstAddedTs * 1000).toLocaleDateString()}`}
+        />
       </div>
     </div>
   );

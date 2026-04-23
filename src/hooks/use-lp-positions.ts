@@ -158,7 +158,30 @@ export const useLpPositions = (address: string | null) => {
           const runeEntryPrice = await getHistoricalRunePrice(firstAddedTimestamp);
           const poolHistory = await getPoolHistoryAtTimestamp(pool.pool, firstAddedTimestamp);
 
-          if (runeEntryPrice === null || !poolHistory?.runeDepth || !poolHistory?.assetDepth) {
+          if (runeEntryPrice === null) {
+            historicalPrices.set(pool.pool, {
+              entryRunePriceUsd: null,
+              entryAssetPriceUsd: null,
+              pricingSource: 'current-only',
+            });
+            continue;
+          }
+
+          if (!poolHistory?.runeDepth || !poolHistory?.assetDepth) {
+            // Fallback: Assume symmetric (50/50) deposit on Day 1 to estimate asset price
+            const runeDep = Number(pool.runeDeposit);
+            const assetDep = Number(pool.assetDeposit);
+
+            if (runeDep > 0 && assetDep > 0) {
+              const estimatedAssetEntryPrice = (runeDep * runeEntryPrice) / assetDep;
+              historicalPrices.set(pool.pool, {
+                entryRunePriceUsd: runeEntryPrice,
+                entryAssetPriceUsd: estimatedAssetEntryPrice,
+                pricingSource: 'estimated',
+              });
+              continue;
+            }
+
             historicalPrices.set(pool.pool, {
               entryRunePriceUsd: null,
               entryAssetPriceUsd: null,
@@ -249,7 +272,7 @@ export const useLpPositions = (address: string | null) => {
 
     const historicalEntryPrices = data?.historicalPrices?.get(poolRaw.pool);
     const pricingSource = historicalEntryPrices?.pricingSource ?? 'current-only';
-    const hasHistoricalPricing = pricingSource === 'historical';
+    const hasHistoricalPricing = pricingSource === 'historical' || pricingSource === 'estimated';
     const currentRunePriceUsd = rawCurrentRunePriceUsd;
     const currentAssetPriceUsd = rawCurrentAssetPriceUsd;
     const entryRunePriceUsd = hasHistoricalPricing

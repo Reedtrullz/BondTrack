@@ -1,5 +1,5 @@
 import useSWR from 'swr';
-import { getRunePriceHistory, type RunePriceHistoryRaw } from '@/lib/api/midgard';
+import { getRunePriceHistory, getHistoricalRunePrice, type RunePriceHistoryRaw } from '@/lib/api/midgard';
 
 export interface RunePriceInterval {
   runePriceUSD: number;
@@ -70,4 +70,23 @@ export function getClosestPriceAtDate(intervals: RunePriceInterval[], targetDate
   }
 
   return closest.runePriceUSD;
+}
+export function useHistoricalRunePrice(date: Date | null) {
+  const timestamp = date ? Math.floor(date.getTime() / 1000) : null;
+  
+  const { data, error, isLoading } = useSWR(
+    timestamp ? ['historical-rune-price', timestamp] : null,
+    () => getHistoricalRunePrice(timestamp!),
+    { 
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 3600000, // 1 hour
+    }
+  );
+
+  return {
+    price: data ?? null,
+    isLoading,
+    error,
+  };
 }

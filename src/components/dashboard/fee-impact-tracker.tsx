@@ -48,17 +48,17 @@ export function PersonalFeeAudit({ positions, networkApy }: PersonalFeeAuditProp
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="flex-1 w-full text-center md:text-left">
+      <div className="flex flex-col items-center gap-8">
+        <div className="w-full text-center">
           <div className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Gross Rewards</div>
-          <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 font-mono">
+          <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 font-mono">
             {formatRuneFromNumber(audit.grossReward)}
           </div>
           <div className="text-xs text-zinc-500">RUNE / mo</div>
         </div>
 
         <div className="flex flex-col items-center justify-center gap-2">
-          <div className="hidden md:block w-12 h-px bg-zinc-200 dark:bg-zinc-800" />
+          <div className="w-24 h-px bg-zinc-200 dark:bg-zinc-800" />
           <div className={cn(
             "flex items-center gap-1 px-3 py-1 rounded-full border text-[10px] font-bold uppercase",
             hasRewards 
@@ -68,12 +68,12 @@ export function PersonalFeeAudit({ positions, networkApy }: PersonalFeeAuditProp
             {hasRewards ? <TrendingDown className="w-3 h-3" /> : <Info className="w-3 h-3" />}
             <span>{hasRewards ? 'Leakage' : 'No Activity'}</span>
           </div>
-          <div className="hidden md:block w-12 h-px bg-zinc-200 dark:bg-zinc-800" />
+          <div className="w-24 h-px bg-zinc-200 dark:bg-zinc-800" />
         </div>
 
-        <div className="flex-1 w-full text-center md:text-right">
+        <div className="w-full text-center">
           <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-1">Net Take-home</div>
-          <div className="text-3xl font-bold text-emerald-700 dark:text-emerald-300 font-mono">
+          <div className="text-4xl font-bold text-emerald-700 dark:text-emerald-300 font-mono">
             {formatRuneFromNumber(audit.netTakeHome)}
           </div>
           <div className="text-xs text-emerald-600/70">RUNE / mo</div>

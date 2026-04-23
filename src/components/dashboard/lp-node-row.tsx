@@ -1,6 +1,6 @@
 import React from 'react';
 import type { LpPosition } from '../../lib/types/lp';
-import { formatPercent, formatRuneAmount } from '../../lib/utils/formatters';
+import { formatPercent, formatRuneAmount, formatAmount } from '../../lib/utils/formatters';
 import { LpStatusBadge } from './lp-status-badge';
 import { formatPnlDisplay } from '../../lib/utils/calculations';
 
@@ -52,7 +52,7 @@ export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
             RUNE: {formatRuneAmount(position.runeDeposit)}
           </div>
           <div className="font-medium text-zinc-900 dark:text-zinc-100">
-            {position.assetSymbol}: {formatRuneAmount(position.asset2Deposit)}
+            {position.assetSymbol}: {formatAmount(position.asset2Deposit)}
           </div>
         </div>
       </td>
@@ -68,7 +68,7 @@ export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
             RUNE: {formatRuneAmount(position.runeWithdrawable)}
           </div>
           <div className="font-semibold text-green-600 dark:text-green-400">
-            {position.assetSymbol}: {formatRuneAmount(position.asset2Withdrawable)}
+            {position.assetSymbol}: {formatAmount(position.asset2Withdrawable)}
           </div>
         </div>
       </td>

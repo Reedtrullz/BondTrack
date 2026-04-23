@@ -1,4 +1,5 @@
 import { fetchMidgard } from './client';
+import { getCoingeckoRunePrice } from './coingecko';
 
 export interface BondDetailsRaw {
   address: string;
@@ -217,8 +218,14 @@ export async function getEarningsHistory(interval?: string, count?: number): Pro
   return fetchMidgard<EarningsHistoryRaw>(`/v2/history/earnings${qs ? `?${qs}` : ''}`);
 }
 
-export async function getRunePriceHistory(interval = 'day', count = 30): Promise<RunePriceHistoryRaw> {
-  return fetchMidgard<RunePriceHistoryRaw>(`/v2/history/rune?interval=${interval}&count=${count}`);
+export async function getRunePriceHistory(interval = 'day', count?: number, from?: number, to?: number): Promise<RunePriceHistoryRaw> {
+  const params = new URLSearchParams();
+  params.set('interval', interval);
+  if (count !== undefined) params.set('count', String(count));
+  if (from !== undefined) params.set('from', String(from));
+  if (to !== undefined) params.set('to', String(to));
+  const qs = params.toString();
+  return fetchMidgard<RunePriceHistoryRaw>(`/v2/history/rune?${qs}`);
 }
 
 const MIN_HISTORY_DAYS = 30;
@@ -262,16 +269,16 @@ function hasHistoryCoverage(timestamps: Array<number | string>, requestedTimesta
 
 export async function getHistoricalRunePrice(timestamp: number): Promise<number | null> {
   try {
-    const normalizedTimestamp = normalizeHistoryTimestampValue(timestamp);
-    const history = await getRunePriceHistory('day', getHistoryCountForTimestamp(timestamp));
+    const normalizedTimestamp = Math.floor(normalizeHistoryTimestampValue(timestamp));
+    if (!Number.isFinite(normalizedTimestamp)) return null;
+
+    // Use a narrow 2-day window instead of a large 'count' to prevent Midgard 502s
+    const from = normalizedTimestamp - 86400;
+    const to = normalizedTimestamp + 86400;
+
+    const history = await getRunePriceHistory('day', undefined, from, to);
 
     if (!history.intervals.length) {
-      return null;
-    }
-
-    const intervalStartTimes = history.intervals.map((interval) => interval.startTime);
-
-    if (!hasHistoryCoverage(intervalStartTimes, timestamp)) {
       return null;
     }
 
@@ -286,23 +293,33 @@ export async function getHistoricalRunePrice(timestamp: number): Promise<number 
 
     if (containingInterval) {
       const runePriceUsd = Number.parseFloat(containingInterval.runePriceUSD);
-      return Number.isFinite(runePriceUsd) && runePriceUsd > 0 ? runePriceUsd : null;
-    }
-
-    let closestInterval = history.intervals[0];
-    let minDiff = Math.abs(normalizeHistoryTimestampValue(closestInterval.startTime) - normalizedTimestamp);
-
-    for (const interval of history.intervals) {
-      const intervalTimestamp = normalizeHistoryTimestampValue(interval.startTime);
-      const diff = Math.abs(intervalTimestamp - normalizedTimestamp);
-      if (Number.isFinite(intervalTimestamp) && diff < minDiff) {
-        minDiff = diff;
-        closestInterval = interval;
+      if (Number.isFinite(runePriceUsd) && runePriceUsd > 0) {
+        return runePriceUsd;
       }
     }
 
-    const runePriceUsd = Number.parseFloat(closestInterval.runePriceUSD);
-    return Number.isFinite(runePriceUsd) && runePriceUsd > 0 ? runePriceUsd : null;
+    // Fallback 1: Try finding the closest interval in the Midgard response
+    if (history.intervals.length > 0) {
+      let closestInterval = history.intervals[0];
+      let minDiff = Math.abs(normalizeHistoryTimestampValue(closestInterval.startTime) - normalizedTimestamp);
+
+      for (const interval of history.intervals) {
+        const intervalTimestamp = normalizeHistoryTimestampValue(interval.startTime);
+        const diff = Math.abs(intervalTimestamp - normalizedTimestamp);
+        if (Number.isFinite(intervalTimestamp) && diff < minDiff) {
+          minDiff = diff;
+          closestInterval = interval;
+        }
+      }
+
+      const runePriceUsd = Number.parseFloat(closestInterval.runePriceUSD);
+      if (Number.isFinite(runePriceUsd) && runePriceUsd > 0) {
+        return runePriceUsd;
+      }
+    }
+
+    // Fallback 2: Try CoinGecko if Midgard has no data for this range
+    return getCoingeckoRunePrice(normalizedTimestamp);
   } catch (error) {
     console.error('Error fetching historical RUNE price:', error);
     return null;
@@ -405,8 +422,14 @@ export interface PoolHistoryRaw {
   }[];
 }
 
-export async function getPoolHistory(pool: string, interval = 'day', count = 90): Promise<PoolHistoryRaw> {
-  return fetchMidgard<PoolHistoryRaw>(`/v2/pools/${pool}/history?interval=${interval}&count=${count}`);
+export async function getPoolHistory(pool: string, interval = 'day', count?: number, from?: number, to?: number): Promise<PoolHistoryRaw> {
+  const params = new URLSearchParams();
+  params.set('interval', interval);
+  if (count !== undefined) params.set('count', String(count));
+  if (from !== undefined) params.set('from', String(from));
+  if (to !== undefined) params.set('to', String(to));
+  const qs = params.toString();
+  return fetchMidgard<PoolHistoryRaw>(`/v2/pools/${pool}/history?${qs}`);
 }
 
 export interface PoolHistoryEntry {
@@ -418,16 +441,16 @@ export interface PoolHistoryEntry {
 
 export async function getPoolHistoryAtTimestamp(pool: string, timestamp: number): Promise<PoolHistoryEntry | null> {
   try {
-    const normalizedTimestamp = normalizeHistoryTimestampValue(timestamp);
-    const history = await getPoolHistory(pool, 'day', getHistoryCountForTimestamp(timestamp));
+    const normalizedTimestamp = Math.floor(normalizeHistoryTimestampValue(timestamp));
+    if (!Number.isFinite(normalizedTimestamp)) return null;
+
+    // Use a narrow 2-day window instead of a large 'count' to prevent Midgard 502s
+    const from = normalizedTimestamp - 86400;
+    const to = normalizedTimestamp + 86400;
+
+    const history = await getPoolHistory(pool, 'day', undefined, from, to);
 
     if (!history.intervals.length) {
-      return null;
-    }
-
-    const intervalStartTimes = history.intervals.map((interval) => interval.startTime);
-
-    if (!hasHistoryCoverage(intervalStartTimes, timestamp)) {
       return null;
     }
 

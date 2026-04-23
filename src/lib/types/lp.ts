@@ -1,5 +1,5 @@
 export type LpPoolStatus = 'available' | 'staged' | 'suspended' | 'unknown';
-export type LpPricingSource = 'historical' | 'current-only';
+export type LpPricingSource = 'historical' | 'current-only' | 'estimated';
 
 export interface LpPosition {
   address: string;
