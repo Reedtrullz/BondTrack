@@ -42,7 +42,9 @@ The proxy tries liquify first (`gateway.liquify.com`), then falls back to `midga
 
 **Midgard timestamps**: All timestamps are nanosecond strings. Divide by `1e9` for seconds.
 
-**Midgard actions**: `getActions()` uses the `txType` query parameter for bond/unbond/leave history lookups. Keep `limit <= 50` because Midgard documents 50 as the maximum for `/v2/actions`.
+**Midgard actions**: `getActions()` uses the `type` query parameter for bond/unbond/leave history lookups. Keep `limit <= 50` because Midgard documents 50 as the maximum for `/v2/actions`.
+
+**Action type detection**: When parsing action responses, check `metadata.refund.txType` first (most reliable), then `action.type`, then memo prefixes (`BOND:`, `UNBOND:`, `LEAVE:`). Do not rely solely on `action.type`.
 
 **THORName reverse lookup**: Any Midgard reverse-lookup endpoint used for THORName display should be treated as optional UX enrichment, not a hard dependency for dashboard rendering. On the deployed dev site, reverse lookup has produced repeated 502s; callers should document and handle that as a degraded non-fatal path.
 
@@ -65,7 +67,7 @@ The proxy tries liquify first (`gateway.liquify.com`), then falls back to `midga
 - `getNetwork()` → `/v2/network`
 - `getNetworkSecurityMetrics()` → `/v2/network` (derived from `getNetwork()`)
 - `getFeeRevenue()` → `/v2/history/earnings` (aggregates 30-day fee data)
-- `getActions(address, limit, txType?)` → `/v2/actions` — use `txType` for `bond`, `unbond`, `leave`; reserve `type` for action categories like `swap` or `addLiquidity`
+- `getActions(address, limit, type?)` → `/v2/actions` — use `type` for `bond`, `unbond`, `leave`; reserve `txType` for action categories like `swap` or `addLiquidity`
 
 **CoinAPI** (called server-side or via `/api/coinapi/rune-price`):
 - `getCurrentRunePrice()` → `/exchangerate/RUNE/USD`

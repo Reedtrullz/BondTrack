@@ -82,7 +82,9 @@ interface ChangelogEntry {
 
 **useBondPositions**: Fetches ALL nodes then filters by address via `extractBondPositions()`. Returns derived `BondPosition[]` with `yieldGuardFlags: YieldGuardFlag[]` property. Fetches network constants (OptimalBondD) for Yield Guard calculation — skips when address is null. Uses Midgard health for current block height to correctly determine jail status.
 
-**useBondHistory**: Fetches bond details via Midgard `/v2/bonds/{address}` and action history via `/v2/actions?txType=bond,unbond,leave&limit=50`. Returns `history: BondHistory` (initialBond, currentBond, bondGrowth, dates) and `bondActions: BondAction[]` where bond/addLiquidity events map to `BOND` and exit events (`unbond`, `unstake`, `leave`) map to `UNBOND`.
+**useBondHistory**: Fetches bond details via Midgard `/v2/bonds/{address}` and action history via `/v2/actions?type=bond,unbond,leave&limit=50`. Returns `history: BondHistory` (initialBond, currentBond, bondGrowth, dates) and `bondActions: BondAction[]` where bond/addLiquidity events map to `BOND` and exit events (`unbond`, `unstake`, `leave`) map to `UNBOND`.
+
+Bond action detection uses a fallback chain: `metadata.refund.txType` → `action.type` → `metadata.bond` → `memo.startsWith('BOND:')`. This matches the robust parser in `transaction-history.tsx`.
 
 **useWatchlist**: Client-only (`'use client'`). Uses localStorage. Returns `addAddress`, `removeAddress`, `getAddresses`, `isAddressSaved`, plus `isLoaded` flag for hydration safety.
 

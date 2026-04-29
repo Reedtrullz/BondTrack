@@ -37,7 +37,7 @@
 | Component | Purpose |
 |-----------|---------|
 | `transaction-composer.tsx` | BOND/UNBOND memo generator with copy-to-clipboard |
-| `transaction-history.tsx` | Past BOND/UNBOND exit events from Midgard `/v2/actions` using `txType=bond,unbond,leave` |
+| `transaction-history.tsx` | Past BOND/UNBOND exit events from Midgard `/v2/actions` using `type=bond,unbond,leave` |
 
 ## CURRENT DEPLOYED QA NOTES
 

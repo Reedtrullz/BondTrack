@@ -57,8 +57,8 @@ thornode-watcher/
 │   │   ├── page.tsx            # Landing — address input
 │   │   ├── layout.tsx          # Root — ThemeProvider wrapper
 │   │   └── dashboard/          # All dashboard pages (requires ?address= param)
-│   │       ├── layout.tsx      # Suspense + DashboardShell wrapper
-│   │       ├── page.tsx        # Redirects to /dashboard/overview (passes address)
+│   │   ├── layout.tsx      # Suspense + DashboardShell wrapper
+│   │   ├── page.tsx        # Redirects to /dashboard/portfolio (passes address)
 │   │       ├── portfolio/      # Unified Bond + LP portfolio dashboard
 │   │       ├── overview/       # Portfolio summary + position table + fee revenue + market overview
 │   │       ├── nodes/          # Node health detail
@@ -91,6 +91,7 @@ thornode-watcher/
 - **Portfolio Health Score (0-100)**: Calculated based on slash points, jail status, and churn risk.
 - **Bond Optimizer**: AI-driven suggestions for re-bonding to optimize yield vs risk.
 - **Liquidity Provider (LP) Dashboard**: Monitor LP positions, rewards, and pool-specific metrics.
+- **Performance Summary**: Live 7d/24h RUNE price impact, weighted APY, operator fees, estimated daily earnings.
 - Manual initial bond input with localStorage persistence (`pnl-dashboard.tsx`)
 
 **Risk Defense Center**:
@@ -176,6 +177,8 @@ thornode-watcher/
 
 **Midgard bond history**: Use `type=` (not `txType=`) for bond history. The `txType` filter is deprecated/unreliable. The API function `getActions()` accepts a `typeParam` argument for this.
 
+**Address persistence**: Unified `BONDTRACK_ADDRESS` localStorage key. Dashboard layout restores last address on load. Old keys (`dashboard-address`, `thornode-watcher-last-address`) are migrated and deleted automatically.
+
 **Address prop**: Dashboard pages get address from `useSearchParams().get('address')`. The `/dashboard` redirect passes it through.
 
 **API client**: `src/lib/api/client.ts` provides `fetchThornode<T>()` and `fetchMidgard<T>()`. Next.js `fetch` with `next: { revalidate: 60 }` for caching. All calls go through server-side proxy routes to bypass CORS.
@@ -231,30 +234,22 @@ The Risk page (`src/app/dashboard/risk/page.tsx`) shows portfolio risk assessmen
 **Formatting**: Network values need special handling - `runeToNumber()` divides by 1e8, so only multiply back before `formatRuneAmount()` when you still have a numeric RUNE value. If you already have a formatted string from `formatRuneFromNumber()`, render it directly instead of wrapping it in `formatRuneAmount()` again. Use `--` when value is 0 or undefined to indicate missing data.
 
 ## RECENT CHANGES
+- **Performance Summary live**: Portfolio Performance Summary now shows real 7d/24h RUNE price impact, weighted APY, avg operator fee, active positions, and estimated daily earnings. Replaced the old placeholder.
+- **use-bond-history parsing fix**: Bond action detection now uses metadata.txType → action.type → memo fallback, matching the robust parser in transaction-history.tsx. Removed the broken retry loop that re-called getActions with identical params.
+- **Unified address key**: All address persistence now uses `BONDTRACK_ADDRESS` localStorage key. Old keys are migrated and deleted.
+- **Portfolio is canonical dashboard**: `/dashboard` and `/dashboard/overview` both redirect to `/dashboard/portfolio`. Overview nav item removed from sidebar.
 - **LP trust rebuild**: `/dashboard/lp` now uses typed USD valuation data, a USD portfolio hero, investor-language LP cards/rows, an honest missing-address state, and a pricing-confidence banner when historical entry pricing is unavailable.
-- **LP live caveat**: the deployed dev site still sees upstream Midgard pool-history `502` responses for some long-lookback positions, but the route now degrades to `current-only` instead of showing fake precision.
-- **LP verification note**: dashboard layout restores the last viewed address from `sessionStorage` key `dashboard-address`, so validating the true no-address LP state in-browser may require clearing that value first.
-- **Transaction history fix**: Fetch bond history using `type=bond` instead of deprecated `txType` - the proxy returns empty for `txType` but works with `type`.
-- **RUNE price chart axis fix**: Y-axis now shows dollar amounts with 2 decimals instead of "$0,$0,$0,$0,$1".
-- **24H price chart fix**: X-axis shows time (e.g., "10 AM") instead of repeating dates for hourly data.
-- **Removed confusing APY chart**: Removed Estimated Network APY chart from Rewards page - it was confusing and added no value.
-- **Risk page redesign**: Streamlined layout with health score banner, compact KPIs, always-visible nodes list, and collapsible details section
+- **Transaction history fix**: Fetch bond history using `type=bond` filter. Fixed amount display by multiplying parsed amounts by 1e8 before passing to `formatRuneAmount()`. Fixed timestamp parsing (divide by 1e9).
+- **Removed confusing APY chart**: Removed Estimated Network APY chart from Rewards page.
+- **Risk page redesign**: Streamlined layout with health score banner, compact KPIs, always-visible nodes list, and collapsible details section.
 - **Incentive Pendulum fix**: Show Node/LP amounts (not user's share), use network data, and keep both pendulum surfaces aligned (`LP Favored` below `1.5x`, `Node Favored` above `2.5x`).
-- **Risk TVL fix**: Risk Summary Banner now renders the already-formatted network liquidity string directly, avoiding the old double-format/double-divide bug.
-- **Transaction history fix**: Midgard action history now uses `txType=bond,unbond,leave` with `limit=50`, so bond history and the Transactions page surface unbond/leave exits without 502s.
-- **Dashboard freshness fix**: `DashboardShell` now derives the freshness label from tick state instead of calling `Date.now()` during render.
-- **LP status/health fix**: `use-lp-positions.ts` maps live Midgard pool statuses (`available`, `staged`) to LP UI status/health instead of hardcoded placeholders.
-- **Formatting fix**: Show '--' instead of '00' when values are 0 or undefined
-- **Real APY benchmarks**: Calculate actual network percentiles from node data instead of hardcoded values
-- **Transaction history fix**: Fixed amount display (0.00 → correct amounts) by multiplying parsed amounts by 1e8 before passing to `formatRuneAmount()`. Also fixed timestamp parsing.
+- **Formatting fix**: Show '--' instead of '00' when values are 0 or undefined.
+- **Real APY benchmarks**: Calculate actual network percentiles from node data instead of hardcoded values.
 - **CORS workaround**: Created server-side API proxy routes at `/api/midgard/[...path]` and `/api/thorchain/[...path]` to bypass browser CORS restrictions.
-- `risk/page.tsx`: Added YourNodesAtRisk card, improved Your All Positions section
-- `rewards/page.tsx`: Fixed bond history empty states, timestamps divide by 1e9
-- `pnl-dashboard.tsx`: Manual initial bond input with localStorage
-- **Risk dashboard overhaul**: Refactor all components to show user's nodes only (not network-wide)
-- **useNodeRankings hook**: Computes user's node rank in active set, percentile, at-risk status
-- **Incentive Pendulum card**: Shows Node/LP reward split, effective security, bond-to-pool ratio
-- **EarningStatusSummary**: Quick view of Active (earning) vs Standby (not earning) vs Jailed
+- **Risk dashboard overhaul**: Refactor all components to show user's nodes only (not network-wide).
+- **useNodeRankings hook**: Computes user's node rank in active set, percentile, at-risk status.
+- **Incentive Pendulum card**: Shows Node/LP reward split, effective security, bond-to-pool ratio.
+- **EarningStatusSummary**: Quick view of Active (earning) vs Standby (not earning) vs Jailed.
 
 ## KNOWN ISSUES
 - Deployed dev QA still has confirmed non-wallet regressions under remediation:

@@ -18,7 +18,7 @@ src/app/
 │   └── tax-report/         # Tax CSV export (server-side aggregation)
 └── dashboard/
     ├── layout.tsx          # Suspense + DashboardShell + address restore
-    ├── page.tsx            # Redirects to /dashboard/overview
+    ├── page.tsx            # Redirects to /dashboard/portfolio
     ├── portfolio/          # Unified Bond + LP portfolio view
     ├── overview/           # Portfolio summary + fee revenue + market overview
     ├── nodes/
@@ -46,7 +46,7 @@ src/app/
 
 **API routes**: All proxies use `export const dynamic = 'force-dynamic'`. Forward to external APIs with CORS headers. Custom endpoints (address, pools) aggregate Midgard data server-side.
 
-**Address persistence**: `sessionStorage` key `dashboard-address`. Dashboard layout restores last address on load.
+**Address persistence**: Unified `BONDTRACK_ADDRESS` localStorage key. Dashboard layout restores last address on load. Old keys (`dashboard-address`, `thornode-watcher-last-address`) are migrated and deleted automatically.
 
 ## ANTI-PATTERNS
 - Never use `useSearchParams()` outside a `Suspense` boundary
