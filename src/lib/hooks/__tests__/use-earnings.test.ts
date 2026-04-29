@@ -57,7 +57,7 @@ describe('useEarningsHistory', () => {
   });
 
   it('fetches earnings with default parameters', async () => {
-    vi.mocked(midgard.getEarningsHistory).mockResolvedValueOnce(mockEarnings as any);
+    vi.mocked(midgard.getEarningsHistory).mockResolvedValueOnce(mockEarnings as unknown as midgard.EarningsHistoryRaw);
 
     const { result } = renderHook(() => useEarningsHistory(), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -67,7 +67,7 @@ describe('useEarningsHistory', () => {
   });
 
   it('passes custom interval and count parameters', async () => {
-    vi.mocked(midgard.getEarningsHistory).mockResolvedValueOnce(mockEarnings as any);
+    vi.mocked(midgard.getEarningsHistory).mockResolvedValueOnce(mockEarnings as unknown as midgard.EarningsHistoryRaw);
 
     const { result } = renderHook(() => useEarningsHistory('week', 12), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));

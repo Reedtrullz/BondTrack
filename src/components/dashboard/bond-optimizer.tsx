@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { BondPosition } from '@/lib/types/node';
+import { BondPosition, NodeRaw } from '@/lib/types/node';
 import { YieldBenchmarks } from '@/lib/utils/yield-benchmarks';
 import { analyzeBondOptimization, type OptimizationSuggestion } from '@/lib/utils/bond-optimizer';
 import { TrendingUp, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -10,7 +10,7 @@ import Link from 'next/link';
 interface BondOptimizerProps {
   positions: BondPosition[];
   benchmarks: YieldBenchmarks | undefined;
-  allNodes: any[];
+  allNodes: NodeRaw[];
   providerAddress: string | null;
   isLoading?: boolean;
 }

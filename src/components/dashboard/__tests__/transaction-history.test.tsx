@@ -16,7 +16,7 @@ describe('TransactionHistory', () => {
   });
 
   it('resyncs local address state when the prop changes', async () => {
-    vi.mocked(midgard.getActions).mockResolvedValue({ actions: [] } as any);
+    vi.mocked(midgard.getActions).mockResolvedValue({ actions: [] } as unknown as midgard.ActionsResponseRaw);
 
     const { rerender } = render(<TransactionHistory address="ADDR_ONE" />, { wrapper });
 
@@ -34,7 +34,7 @@ describe('TransactionHistory', () => {
   });
 
   it('handles null address prop correctly', async () => {
-    vi.mocked(midgard.getActions).mockResolvedValue({ actions: [] } as any);
+    vi.mocked(midgard.getActions).mockResolvedValue({ actions: [] } as unknown as midgard.ActionsResponseRaw);
 
     const { rerender } = render(<TransactionHistory address={null} />, { wrapper });
 
@@ -51,7 +51,7 @@ describe('TransactionHistory', () => {
   });
 
   it('updates SWR key when address changes via input', async () => {
-    vi.mocked(midgard.getActions).mockResolvedValue({ actions: [] } as any);
+    vi.mocked(midgard.getActions).mockResolvedValue({ actions: [] } as unknown as midgard.ActionsResponseRaw);
 
     render(<TransactionHistory address="ADDR_ONE" />, { wrapper });
 
@@ -69,7 +69,7 @@ describe('TransactionHistory', () => {
   });
 
   it('handles empty string address prop correctly', async () => {
-    vi.mocked(midgard.getActions).mockResolvedValue({ actions: [] } as any);
+    vi.mocked(midgard.getActions).mockResolvedValue({ actions: [] } as unknown as midgard.ActionsResponseRaw);
 
     const { rerender } = render(<TransactionHistory address="" />, { wrapper });
 
@@ -127,7 +127,7 @@ describe('TransactionHistory', () => {
         },
       ],
       count: '1',
-    } as any);
+    } as unknown as midgard.ActionsResponseRaw);
 
     render(<TransactionHistory address="thor1xekke0x6qu8w7vyhxy99puzu049d3k0pexpr30" />, { wrapper });
 

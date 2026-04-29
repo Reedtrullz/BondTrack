@@ -1,5 +1,6 @@
 import { BondPosition } from '@/lib/types/node';
 import { YieldBenchmarks } from '@/lib/utils/yield-benchmarks';
+import type { NodeRaw } from '@/lib/api/thornode';
 
 export interface OptimizationSuggestion {
   currentNodeAddress: string;
@@ -17,7 +18,7 @@ export interface OptimizationSuggestion {
 export function analyzeBondOptimization(
   positions: BondPosition[],
   benchmarks: YieldBenchmarks,
-  allNodes: any[] // NodeRaw[]
+  allNodes: NodeRaw[]
 ): OptimizationSuggestion[] {
   if (positions.length === 0) return [];
 

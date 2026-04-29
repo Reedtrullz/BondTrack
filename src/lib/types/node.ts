@@ -1,4 +1,5 @@
 import { NodeRaw } from '@/lib/api/thornode';
+export type { NodeRaw };
 import { runeToNumber, formatRuneAmount, formatBasisPoints } from '@/lib/utils/formatters';
 import { calculateBondShare, calculateAPY } from '@/lib/utils/calculations';
 

@@ -12,7 +12,7 @@ describe('useNetworkConstants refreshInterval', () => {
     vi.mocked(thornode.getNetworkConstants).mockReset();
     vi.mocked(thornode.getNetworkConstants).mockResolvedValue({
       int_64_values: { ChurnInterval: 43200 },
-    } as any);
+    } as unknown as thornode.NetworkConstantsRaw);
   });
 
   afterEach(() => {

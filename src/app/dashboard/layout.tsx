@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useSyncExternalStore } from 'react';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { LoadingSkeleton } from '@/components/shared/loading-skeleton';
@@ -16,29 +16,32 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const urlAddress = searchParams.get('address');
-  const [initialized, setInitialized] = useState(false);
   const { alerts, dismissAlert, permission, requestPermission } = useAlerts();
   const { currentVersion, latestVersion, hasUpgrade } = useProtocolVersion();
+  const savedAddress = useSyncExternalStore(
+    () => () => undefined,
+    () => (typeof window === 'undefined' ? null : sessionStorage.getItem(ADDRESS_STORAGE_KEY)),
+    () => null
+  );
+  const effectiveAddress = urlAddress ?? savedAddress;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
+
     if (!urlAddress) {
-      const saved = sessionStorage.getItem(ADDRESS_STORAGE_KEY);
-      if (saved) {
-        router.replace(`?address=${saved}`);
+      if (savedAddress) {
+        router.replace(`?address=${savedAddress}`);
         return;
       }
     }
-    setInitialized(true);
-  }, [urlAddress, router]);
+  }, [urlAddress, router, savedAddress]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !urlAddress) return;
     sessionStorage.setItem(ADDRESS_STORAGE_KEY, urlAddress);
   }, [urlAddress]);
 
-  if (!initialized) {
+  if (!effectiveAddress && !urlAddress) {
     return (
       <div className="flex min-h-screen">
         <main className="flex-1 p-4 md:p-6">
@@ -50,7 +53,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   return (
     <ErrorBoundary>
-      <DashboardShell requireAddress={!!urlAddress}>
+      <DashboardShell requireAddress={!!effectiveAddress}>
         {hasUpgrade && currentVersion && (
           <UpgradeAlertBanner
             currentVersion={currentVersion}

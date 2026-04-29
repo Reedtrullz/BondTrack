@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { LpPosition } from '../../lib/types/lp';
 import { formatPercent, formatRuneAmount, formatUsd, formatAmount } from '../../lib/utils/formatters';
 import { LpStatusBadge } from './lp-status-badge';
@@ -40,23 +40,25 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
   const ilTone = getImpermanentLossTone(position.impermanentLossPercent);
 
   // Calculate Time in Pool
-  const firstAddedTs = Number(position.dateFirstAdded);
-  let timeInPool = 'Unknown';
-  if (Number.isFinite(firstAddedTs) && firstAddedTs > 0) {
+  const [timeInPool] = useState(() => {
+    const firstAddedTs = Number(position.dateFirstAdded);
+    if (!Number.isFinite(firstAddedTs) || firstAddedTs <= 0) {
+      return 'Unknown';
+    }
     const ts = firstAddedTs > 1e12 ? firstAddedTs / 1000 : firstAddedTs * 1000;
     const days = Math.floor((Date.now() - ts) / (1000 * 60 * 60 * 24));
     if (days < 1) {
-      timeInPool = '< 1 day';
+      return '< 1 day';
     } else if (days < 30) {
-      timeInPool = `${days} day${days === 1 ? '' : 's'}`;
+      return `${days} day${days === 1 ? '' : 's'}`;
     } else {
       const months = Math.floor(days / 30);
       const remainingDays = days % 30;
-      timeInPool = months > 0 
+      return months > 0 
         ? `${months} mo ${remainingDays}d`
         : `${days}d`;
     }
-  }
+  });
 
   return (
     <div className="rounded-xl border border-zinc-200 bg-white/80 p-6 shadow-md backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-glow dark:border-zinc-800 dark:bg-zinc-900/80 dark:shadow-none">
@@ -128,7 +130,7 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
         <MetricCard 
           label="Time in Pool" 
           value={timeInPool} 
-          detail={`Started ${new Date(firstAddedTs * 1000).toLocaleDateString()}`}
+          detail={`Added ${new Date(Number(position.dateFirstAdded) > 1e12 ? Number(position.dateFirstAdded) / 1000 : Number(position.dateFirstAdded) * 1000).toLocaleDateString()}`}
         />
       </div>
     </div>

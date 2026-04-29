@@ -65,7 +65,7 @@ test.describe('Wallet Connection', () => {
         value: class { static permission = 'granted'; static requestPermission = async () => 'granted'; },
         writable: true,
       });
-      (window as any).keplr = {
+      (window as unknown as Record<string, unknown>).keplr = {
         enable: async () => { throw new Error('User rejected'); },
       };
     });
@@ -86,7 +86,7 @@ test.describe('Wallet Connection', () => {
         value: class { static permission = 'granted'; static requestPermission = async () => 'granted'; },
         writable: true,
       });
-      (window as any).keplr = {
+      (window as unknown as Record<string, unknown>).keplr = {
         enable: async () => {},
         getChainId: async () => 'thorchain-mainnet-v1',
         getKey: async () => ({ bech32Address: address }),
@@ -105,7 +105,7 @@ test.describe('Wallet Connection', () => {
         value: class { static permission = 'granted'; static requestPermission = async () => 'granted'; },
         writable: true,
       });
-      (window as any).keplr = {
+      (window as unknown as Record<string, unknown>).keplr = {
         enable: async () => {},
         getChainId: async () => 'thorchain-mainnet-v1',
         getKey: async () => ({ bech32Address: address }),
@@ -136,7 +136,7 @@ test.describe('Wallet Connection', () => {
         value: class { static permission = 'granted'; static requestPermission = async () => 'granted'; },
         writable: true,
       });
-      (window as any).xfi = {
+      (window as unknown as Record<string, unknown>).xfi = {
         thorchain: {
           request: async ({ method }: { method: string }) => {
             if (method === 'connect') return address;
@@ -158,7 +158,7 @@ test.describe('Wallet Connection', () => {
         value: class { static permission = 'granted'; static requestPermission = async () => 'granted'; },
         writable: true,
       });
-      (window as any).vultisig = {
+      (window as unknown as Record<string, unknown>).vultisig = {
         thorchain: {
           request: async ({ method }: { method: string }) => {
             if (method === 'connect') return address;
@@ -180,7 +180,7 @@ test.describe('Wallet Connection', () => {
         value: class { static permission = 'granted'; static requestPermission = async () => 'granted'; },
         writable: true,
       });
-      (window as any).keplr = {
+      (window as unknown as Record<string, unknown>).keplr = {
         enable: async () => {},
         getChainId: async () => 'thorchain-mainnet-v1',
         getKey: async () => ({ bech32Address: address }),
@@ -209,7 +209,7 @@ test.describe('Wallet Connection', () => {
         value: class { static permission = 'granted'; static requestPermission = async () => 'granted'; },
         writable: true,
       });
-      (window as any).xfi = {
+      (window as unknown as Record<string, unknown>).xfi = {
         thorchain: {
           request: async ({ method }: { method: string }) => {
             if (method === 'connect') return address;
@@ -241,7 +241,7 @@ test.describe('Wallet Connection', () => {
         value: class { static permission = 'granted'; static requestPermission = async () => 'granted'; },
         writable: true,
       });
-      (window as any).vultisig = {
+      (window as unknown as Record<string, unknown>).vultisig = {
         thorchain: {
           request: async ({ method }: { method: string }) => {
             if (method === 'connect') return address;

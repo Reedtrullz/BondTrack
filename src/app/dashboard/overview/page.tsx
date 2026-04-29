@@ -76,8 +76,6 @@ export default function OverviewPage() {
     let active = true;
 
     async function loadMarketOverview() {
-      setMarketLoading(true);
-
       const [poolsResult, networkResult] = await Promise.allSettled([getPools(), getNetwork()]);
 
       if (!active) {
@@ -100,7 +98,6 @@ export default function OverviewPage() {
     }
 
     async function loadFeeRevenue() {
-      setFeeRevenueLoading(true);
       setFeeRevenueError(null);
 
       try {
@@ -234,7 +231,7 @@ export default function OverviewPage() {
         <div className="lg:col-span-1 space-y-4">
           <div className="flex items-center gap-2 mb-3 text-amber-600/80 dark:text-amber-500/80">
             <Eye className="w-4 h-4" />
-            <span className="text-xs font-bold uppercase tracking-widest font-serif italic">Heimdall's Sight</span>
+            <span className="text-xs font-bold uppercase tracking-widest font-serif italic">Heimdall&apos;s Sight</span>
           </div>
           
           <IntelligenceFeed 

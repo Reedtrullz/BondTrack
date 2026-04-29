@@ -18,7 +18,7 @@ describe('useRunePrice', () => {
   it('returns 0 for empty intervals', async () => {
     vi.mocked(midgard.getRunePriceHistory).mockResolvedValueOnce({
       intervals: [],
-    } as any);
+    } as unknown as midgard.RunePriceHistoryRaw);
 
     const { result } = renderHook(() => useRunePrice(), { wrapper });
     await waitFor(() => expect(result.current.price).toBe(0));

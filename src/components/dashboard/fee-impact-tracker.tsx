@@ -14,7 +14,9 @@ interface PersonalFeeAuditProps {
 
 export function PersonalFeeAudit({ positions, networkApy }: PersonalFeeAuditProps) {
   const safePositions = positions ?? [];
-  
+  const audit = useMemo(() => calculatePersonalFeeLeakage(safePositions, 'monthly', networkApy), [safePositions, networkApy]);
+  const hasRewards = audit.grossReward > 0;
+
   if (safePositions.length === 0) {
     return (
       <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col items-center justify-center text-center h-full min-h-[200px]">
@@ -23,10 +25,6 @@ export function PersonalFeeAudit({ positions, networkApy }: PersonalFeeAuditProp
       </div>
     );
   }
-  
-  const audit = useMemo(() => calculatePersonalFeeLeakage(safePositions, 'monthly', networkApy), [safePositions, networkApy]);
-  
-  const hasRewards = audit.grossReward > 0;
 
   return (
     <div className="p-8 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm">

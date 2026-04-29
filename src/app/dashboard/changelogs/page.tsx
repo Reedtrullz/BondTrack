@@ -322,7 +322,7 @@ export default function ChangelogsPage() {
           <h1 
             className="text-2xl font-bold text-zinc-900 dark:text-white font-serif italic uppercase"
           >
-            Odin's Journal
+            Odin&apos;s Journal
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">Historical timeline of THORChain protocol evolution</p>
         </div>

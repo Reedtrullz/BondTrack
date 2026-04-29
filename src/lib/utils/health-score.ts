@@ -22,7 +22,7 @@ export function calculatePortfolioHealth(positions: BondPosition[]): HealthScore
   }
 
   let totalPoints = 100;
-  let criticalIssues = [];
+  const criticalIssues = [];
 
   // 1. Check for Jailed Nodes (Immediate Criticality)
   const jailedNodes = positions.filter(p => p.isJailed);

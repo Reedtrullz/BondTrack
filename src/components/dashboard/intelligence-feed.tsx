@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { BondPosition } from '@/lib/types/node';
+import { BondPosition, NodeRaw } from '@/lib/types/node';
 import { YieldBenchmarks } from '@/lib/utils/yield-benchmarks';
 import { analyzeBondOptimization } from '@/lib/utils/bond-optimizer';
 import { generatePortfolioAlerts } from '@/lib/utils/portfolio-alerts';
@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 interface IntelligenceFeedProps {
   positions: BondPosition[];
   benchmarks: YieldBenchmarks | undefined;
-  allNodes: any[];
+  allNodes: NodeRaw[];
   providerAddress: string | null;
   isLoading?: boolean;
 }
