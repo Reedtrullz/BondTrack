@@ -26,17 +26,7 @@ export function useBondHistory(address: string | null) {
 
   const { data: actions, isLoading: isLoadingActions, error: actionsError } = useSWR<ActionsResponseRaw>(
     address ? ['actions-bond-v2', address] : null,
-    async () => {
-      // Fetch bond/unbond/leave actions via txType for history lookup.
-      try {
-        return await getActions(address!, 50, 'bond,unbond,leave');
-      } catch (err) {
-        // Fallback to a smaller limit if Midgard is struggling.
-        return {
-          ...(await getActions(address!, 50, 'bond,unbond,leave')),
-        };
-      }
-    },
+    () => getActions(address!, 50, 'bond,unbond,leave'),
     { refreshInterval: 60_000 }
   );
 
