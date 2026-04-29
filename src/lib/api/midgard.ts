@@ -1,5 +1,7 @@
 import { fetchMidgard } from './client';
 import { getCoingeckoRunePrice } from './coingecko';
+import { calculateNetworkSecurityState } from '../utils/calculations';
+import { runeToNumber } from '../utils/formatters';
 
 export interface BondDetailsRaw {
   address: string;
@@ -63,6 +65,28 @@ export interface EarningsHistoryRaw {
   intervals: EarningsIntervalRaw[];
 }
 
+export interface FeeRevenueDailyRaw {
+  date: string;
+  totalFees: string;
+  bondRewards: string;
+  poolRewards: string;
+  runePriceUSD: string;
+}
+
+export interface FeeRevenueSummaryRaw {
+  total24h: string;
+  total7d: string;
+  total30d: string;
+  total24hUsd: number;
+  total7dUsd: number;
+  total30dUsd: number;
+}
+
+export interface FeeRevenueRaw {
+  daily: FeeRevenueDailyRaw[];
+  summary: FeeRevenueSummaryRaw;
+}
+
 export interface RunePriceIntervalRaw {
   startTime: string;
   endTime: string;
@@ -105,6 +129,12 @@ export interface NetworkRaw {
   };
   nextChurnHeight: string;
   poolActivationCountdown: string;
+}
+
+export interface NetworkSecurityMetricsRaw {
+  bondToPoolRatio: number;
+  securityHealth: 'healthy' | 'warning' | 'at-risk';
+  solvencyStatus: string;
 }
 
 export interface ActionRaw {
@@ -218,6 +248,69 @@ export async function getEarningsHistory(interval?: string, count?: number): Pro
   return fetchMidgard<EarningsHistoryRaw>(`/v2/history/earnings${qs ? `?${qs}` : ''}`);
 }
 
+function parseRuneAmount(raw: string | undefined): bigint {
+  try {
+    if (!raw) return 0n;
+    return BigInt(raw);
+  } catch {
+    return 0n;
+  }
+}
+
+function formatFeeRevenueDate(timestamp: string): string {
+  const date = new Date(Number(timestamp) * 1000);
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function sumRuneAmounts(values: string[]): string {
+  return values.reduce((sum, value) => sum + parseRuneAmount(value), 0n).toString();
+}
+
+function runeAmountToUsd(raw: string, priceUSD: string): number {
+  const runeAmount = Number(parseRuneAmount(raw)) / 1e8;
+  const runePrice = Number.parseFloat(priceUSD);
+  if (!Number.isFinite(runeAmount) || !Number.isFinite(runePrice)) {
+    return 0;
+  }
+
+  return runeAmount * runePrice;
+}
+
+export async function getFeeRevenue(): Promise<FeeRevenueRaw> {
+  const earningsHistory = await getEarningsHistory('day', 30);
+  const daily = [...(earningsHistory.intervals ?? [])]
+    .sort((a, b) => Number(a.startTime) - Number(b.startTime))
+    .map((interval) => {
+      const totalFees = (parseRuneAmount(interval.liquidityFees) + parseRuneAmount(interval.blockRewards)).toString();
+      const bondRewards = interval.bondingEarnings || '0';
+      const poolRewards = interval.liquidityEarnings || '0';
+
+      return {
+        date: formatFeeRevenueDate(interval.startTime),
+        totalFees,
+        bondRewards,
+        poolRewards,
+        runePriceUSD: interval.runePriceUSD,
+      } satisfies FeeRevenueDailyRaw;
+    });
+
+  const last24h = daily.length > 0 ? daily[daily.length - 1] : null;
+  const last7d = daily.slice(-7);
+  const last30d = daily.slice(-30);
+
+  return {
+    daily,
+    summary: {
+      total24h: last24h?.totalFees ?? '0',
+      total7d: sumRuneAmounts(last7d.map((entry) => entry.totalFees)),
+      total30d: sumRuneAmounts(last30d.map((entry) => entry.totalFees)),
+      total24hUsd: last24h ? runeAmountToUsd(last24h.totalFees, last24h.runePriceUSD) : 0,
+      total7dUsd: last7d.reduce((sum, entry) => sum + runeAmountToUsd(entry.totalFees, entry.runePriceUSD), 0),
+      total30dUsd: last30d.reduce((sum, entry) => sum + runeAmountToUsd(entry.totalFees, entry.runePriceUSD), 0),
+    },
+  };
+}
+
 export async function getRunePriceHistory(interval = 'day', count?: number, from?: number, to?: number): Promise<RunePriceHistoryRaw> {
   const params = new URLSearchParams();
   params.set('interval', interval);
@@ -282,6 +375,13 @@ export async function getHistoricalRunePrice(timestamp: number): Promise<number 
       return null;
     }
 
+    if (!hasHistoryCoverage(
+      history.intervals.flatMap((interval) => [interval.startTime, interval.endTime]),
+      normalizedTimestamp
+    )) {
+      return null;
+    }
+
     const containingInterval = history.intervals.find((interval) => {
       const intervalStart = normalizeHistoryTimestampValue(interval.startTime);
       const intervalEnd = normalizeHistoryTimestampValue(interval.endTime);
@@ -328,6 +428,20 @@ export async function getHistoricalRunePrice(timestamp: number): Promise<number 
 
 export async function getNetwork(): Promise<NetworkRaw> {
   return fetchMidgard<NetworkRaw>('/v2/network');
+}
+
+export async function getNetworkSecurityMetrics(): Promise<NetworkSecurityMetricsRaw> {
+  const network = await getNetwork();
+  const totalActiveBond = runeToNumber(network.bondMetrics?.totalActiveBond || '0');
+  const totalPooledRune = runeToNumber(network.totalPooledRune || '0');
+  const bondToPoolRatio = totalPooledRune > 0 ? totalActiveBond / totalPooledRune : 0;
+  const { securityHealth, solvencyStatus } = calculateNetworkSecurityState(bondToPoolRatio);
+
+  return {
+    bondToPoolRatio,
+    securityHealth,
+    solvencyStatus,
+  };
 }
 
 export async function getActions(address: string, limit = 50, actionTypes?: string, typeParam = 'txType'): Promise<ActionsResponseRaw> {

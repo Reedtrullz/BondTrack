@@ -27,27 +27,13 @@ export function useBondHistory(address: string | null) {
   const { data: actions, isLoading: isLoadingActions, error: actionsError } = useSWR<ActionsResponseRaw>(
     address ? ['actions-bond-v2', address] : null,
     async () => {
-      // Fetch bond and unbond actions separately to avoid 502s from combined queries
+      // Fetch bond/unbond/leave actions via txType for history lookup.
       try {
-        const [bondActions, unbondActions] = await Promise.all([
-          getActions(address!, 100, 'bond', 'type'),
-          getActions(address!, 100, 'unbond', 'type')
-        ]);
-        
-        return {
-          actions: [...(bondActions.actions || []), ...(unbondActions.actions || [])],
-          count: String((Number(bondActions.count) || 0) + (Number(unbondActions.count) || 0))
-        };
+        return await getActions(address!, 50, 'bond,unbond,leave');
       } catch (err) {
-        // Fallback to a smaller limit if 100 is too much for Midgard right now
-        const [bondActions, unbondActions] = await Promise.all([
-          getActions(address!, 50, 'bond', 'type'),
-          getActions(address!, 50, 'unbond', 'type')
-        ]);
-        
+        // Fallback to a smaller limit if Midgard is struggling.
         return {
-          actions: [...(bondActions.actions || []), ...(unbondActions.actions || [])],
-          count: String((Number(bondActions.count) || 0) + (Number(unbondActions.count) || 0))
+          ...(await getActions(address!, 25, 'bond,unbond,leave')),
         };
       }
     },

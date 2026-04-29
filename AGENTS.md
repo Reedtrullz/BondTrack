@@ -22,9 +22,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - bond-track-pi.vercel.app (auto-created)
 - dev.thorchain.no (Staging/Development)
 
-**Observability**: No drains (Hobby plan), no analytics/speed insights installed
+**Observability**: Vercel Analytics + Speed Insights installed. No log drains (Hobby plan).
 
 **Deployment method**: GitHub integration (auto-deploy on push to master)
+**CI**: GitHub Actions (`.github/workflows/test.yml`) runs test, coverage, e2e, and build on Node 22.
 
 ## LIVE DEV QA POLICY
 
@@ -47,7 +48,11 @@ thornode-watcher/
 │   ├── app/                    # Next.js App Router pages
 │   │   ├── api/                # Server-side API proxy routes
 │   │   │   ├── midgard/[...path]/route.ts  # Midgard proxy (bypasses CORS)
-│   │   │   └── thorchain/[...path]/route.ts # THORNode proxy (bypasses CORS)
+│   │   │   ├── thorchain/[...path]/route.ts # THORNode proxy (bypasses CORS)
+│   │   │   ├── coingecko/[...path]/route.ts # CoinGecko proxy
+│   │   │   ├── coinapi/rune-price/route.ts  # RUNE price endpoint
+│   │   │   ├── address/[address]/route.ts   # Address aggregation
+│   │   │   └── pools/[pool]/route.ts        # Pool analytics
 │   │   ├── page.tsx            # Landing — address input
 │   │   ├── layout.tsx          # Root — ThemeProvider wrapper
 │   │   └── dashboard/          # All dashboard pages (requires ?address= param)
@@ -57,7 +62,9 @@ thornode-watcher/
 │   │       ├── nodes/          # Node health detail
 │   │       ├── rewards/        # Earnings, APY, PnL, fee impact, auto-compound
 │   │       ├── risk/           # Slash monitor, churn-out risk, unbond tracker
-│   │       └── transactions/   # BOND/UNBOND composer, tx history, watchlist, recent addresses
+│   │       ├── transactions/   # BOND/UNBOND composer, tx history, watchlist, recent addresses
+│   │       ├── lp/             # Liquidity Provider positions and metrics
+│   │       └── changelogs/     # THORChain changelog browser
 │   ├── components/
 │   │   ├── dashboard/          # 18 domain components (charts, tables, monitors, network comparison)
 │   │   ├── layout/             # sidebar, dashboard-shell, theme-toggle
@@ -116,6 +123,12 @@ thornode-watcher/
 | Change API URLs | `src/lib/config.ts` — env vars override defaults |
 | Wallet integration | `src/lib/hooks/use-wallet.ts` + `src/lib/types/wallet.ts` |
 | Transaction signing | `src/lib/transactions/bond.ts` |
+| CoinGecko price lookup | `src/lib/api/coingecko.ts` |
+| RUNE price (CoinAPI) | `src/lib/api/coinapi.ts` |
+| Address aggregation API | `src/app/api/address/[address]/route.ts` |
+| Pool analytics API | `src/app/api/pools/[pool]/route.ts` |
+| CI/CD config | `.github/workflows/test.yml` |
+| E2E tests | `e2e/*.spec.ts` |
 
 ## CONVENTIONS
 
@@ -140,6 +153,8 @@ thornode-watcher/
 **Dark mode**: Uses next-themes with `attribute="class"`. All components use `dark:` Tailwind variants.
 
 **Charts**: Recharts with ResponsiveContainer. Data from Midgard history endpoints. Timestamps are nanoseconds — divide by 1e9. For hourly data (24H), format axis as time; for daily data, format as dates.
+
+**Testing**: Vitest uses `src/setupTests.ts`. `src/test/setup.ts` exists but is not wired into vitest.config.ts. MSW scaffolding exists under `src/test/msw/` but is not globally wired into tests.
 
 ## WALLET INTEGRATION
 
@@ -221,8 +236,11 @@ The Risk page (`src/app/dashboard/risk/page.tsx`) shows portfolio risk assessmen
 
 ## COMMANDS
 ```bash
-npm run dev     # Next.js dev (Turbopack)
-npm run build   # Production build + type check
-npm run start   # Production server
-npx tsc --noEmit  # Type check only
+npm run dev          # Next.js dev (Turbopack)
+npm run build        # Production build + type check
+npm run start        # Production server
+npm run test         # Vitest unit tests
+npm run test:coverage # Vitest with coverage
+npm run e2e          # Playwright e2e tests
+npx tsc --noEmit     # Type check only
 ```

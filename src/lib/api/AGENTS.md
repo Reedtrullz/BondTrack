@@ -1,6 +1,6 @@
 # API Layer — THORNode + Midgard
 
-**3 files**: `client.ts` (base fetch), `thornode.ts` (THORNode API), `midgard.ts` (Midgard API)
+**5 files**: `client.ts` (base fetch), `thornode.ts` (THORNode API), `midgard.ts` (Midgard API), `coinapi.ts` (RUNE price), `coingecko.ts` (RUNE price fallback)
 **2 API proxy routes**: `/api/midgard/[...path]`, `/api/thorchain/[...path]`
 
 ## WHERE TO LOOK
@@ -11,6 +11,8 @@
 | Change caching/retry | `client.ts` — `next: { revalidate: 60 }` |
 | Base URLs | `src/lib/config.ts` — `ENDPOINTS` object |
 | API proxy config | `src/app/api/midgard/` and `src/app/api/thorchain/` routes |
+| RUNE price (CoinAPI) | `coinapi.ts` — `getRunePriceAtDate()`, `getRunePriceRange()` |
+| RUNE price (CoinGecko) | `coingecko.ts` — `getCoingeckoRunePrice()` |
 
 ## API PROXY (CORS Workaround)
 
@@ -60,6 +62,14 @@ The proxy tries liquify first (`gateway.liquify.com`), then falls back to `midga
 - `getRunePriceHistory(interval, count)` → `/v2/history/rune`
 - `getNetwork()` → `/v2/network`
 - `getActions(address, limit, txType?)` → `/v2/actions` — use `txType` for `bond`, `unbond`, `leave`; reserve `type` for action categories like `swap` or `addLiquidity`
+
+**CoinAPI** (called server-side or via `/api/coinapi/rune-price`):
+- `getCurrentRunePrice()` → `/exchangerate/RUNE/USD`
+- `getRunePriceAtDate(date)` → historical close price for a date
+- `getRunePriceRange(start, end)` → daily time series
+
+**CoinGecko** (called via `/api/coingecko` proxy):
+- `getCoingeckoRunePrice(timestamp)` → closest price in a 4h window
 
 ## ANTI-PATTERNS
 - Never modify `client.ts` when adding endpoints — only add to `thornode.ts` or `midgard.ts`

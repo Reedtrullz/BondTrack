@@ -10,13 +10,14 @@ import { calculatePortfolioHealth } from '@/lib/utils/health-score';
 import { SlashMonitor } from '@/components/dashboard/slash-monitor';
 import { ChurnOutRisk } from '@/components/dashboard/churn-out-risk';
 import { NetworkSecurityMetrics } from '@/components/dashboard/network-security-metrics';
+import { NetworkSecurityCard } from '@/components/dashboard/network-security-card';
 import { UnbondWindowTracker } from '@/components/dashboard/unbond-window-tracker';
 import { RiskRadar } from '@/components/dashboard/risk-radar';
 import type { YieldGuardFlag, BondPosition } from '@/lib/types/node';
 import { useState } from 'react';
 import { generatePortfolioAlerts } from '@/lib/utils/portfolio-alerts';
 import { cn } from '@/lib/utils';
-import { estimateNextChurn } from '@/lib/utils/calculations';
+import { calculateNetworkSecurityState, estimateNextChurn } from '@/lib/utils/calculations';
 import { runeToNumber, formatCompactNumber, formatRuneFromNumber } from '@/lib/utils/formatters';
 
 function formatRuneValue(value: number): string {
@@ -449,7 +450,13 @@ export default function RiskPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
   const { positions } = useBondPositions(address);
+  const { data: network, isLoading: networkLoading } = useNetworkMetrics();
   const [showDetails, setShowDetails] = useState(false);
+
+  const totalActiveBond = runeToNumber(network?.bondMetrics?.totalActiveBond || '0');
+  const totalPooledRune = runeToNumber(network?.totalPooledRune || '0');
+  const bondToPoolRatio = totalPooledRune > 0 ? totalActiveBond / totalPooledRune : 0;
+  const securityState = calculateNetworkSecurityState(bondToPoolRatio);
 
   return (
     <div className="space-y-4">
@@ -470,6 +477,19 @@ export default function RiskPage() {
           <RiskKPIs positions={positions} />
           <div className="mt-4">
             <IncentivePendulum />
+          </div>
+          <div className="mt-4">
+            {networkLoading ? (
+              <div className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+                <div className="animate-pulse h-28 rounded-xl bg-zinc-200 dark:bg-zinc-800" />
+              </div>
+            ) : (
+              <NetworkSecurityCard
+                ratio={bondToPoolRatio}
+                health={securityState.securityHealth}
+                status={securityState.solvencyStatus}
+              />
+            )}
           </div>
         </div>
         <div className="lg:col-span-1 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">

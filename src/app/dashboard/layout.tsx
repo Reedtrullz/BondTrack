@@ -7,6 +7,8 @@ import { LoadingSkeleton } from '@/components/shared/loading-skeleton';
 import { AlertToast } from '@/components/alerts/alert-toast';
 import { useAlerts } from '@/lib/hooks/use-alerts';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useProtocolVersion } from '@/lib/hooks/use-protocol-version';
+import { UpgradeAlertBanner } from '@/components/dashboard/upgrade-alert-banner';
 
 const ADDRESS_STORAGE_KEY = 'dashboard-address';
 
@@ -16,6 +18,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const urlAddress = searchParams.get('address');
   const [initialized, setInitialized] = useState(false);
   const { alerts, dismissAlert, permission, requestPermission } = useAlerts();
+  const { currentVersion, latestVersion, hasUpgrade } = useProtocolVersion();
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -47,7 +50,16 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   return (
     <ErrorBoundary>
-      <DashboardShell requireAddress={!!urlAddress}>{children}</DashboardShell>
+      <DashboardShell requireAddress={!!urlAddress}>
+        {hasUpgrade && currentVersion && (
+          <UpgradeAlertBanner
+            currentVersion={currentVersion}
+            latestVersion={latestVersion}
+            onDismiss={() => undefined}
+          />
+        )}
+        {children}
+      </DashboardShell>
       <AlertToast 
         alerts={alerts} 
         onDismiss={dismissAlert}

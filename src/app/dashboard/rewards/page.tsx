@@ -12,7 +12,7 @@ import { PersonalFeeAudit } from '@/components/dashboard/fee-impact-tracker';
 import { AutoCompoundChart } from '@/components/dashboard/auto-compound-chart';
 import { PriceChart } from '@/components/dashboard/price-chart';
 import { useMemo, useState, useEffect } from 'react';
-import { TrendingUp, Zap } from 'lucide-react';
+import { TrendingUp, Zap, Download } from 'lucide-react';
 import { calculateWeightedApy } from '@/lib/utils/fee-calculations';
 import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,10 @@ export default function RewardsPage() {
   const { price: entryRunePrice } = useHistoricalRunePrice(bondHistory?.firstBondDate || null);
   
   const [mounted, setMounted] = useState(false);
+  const [showTaxModal, setShowTaxModal] = useState(false);
+  const [taxStartDate, setTaxStartDate] = useState('');
+  const [taxEndDate, setTaxEndDate] = useState('');
+  const [taxExportLoading, setTaxExportLoading] = useState(false);
   const safePositions = positions ?? [];
   const networkApy = networkData?.bondingAPY ? parseFloat(networkData.bondingAPY) : undefined;
   const weightedApy = useMemo(() => {
@@ -49,6 +53,37 @@ export default function RewardsPage() {
     params.set('action', 'optimize');
 
     router.push(`/dashboard/transactions?${params.toString()}`);
+  };
+
+  const handleExportTaxReport = async () => {
+    if (!taxStartDate || !taxEndDate || !address) return;
+
+    setTaxExportLoading(true);
+    try {
+      const response = await fetch('/api/tax-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address, startDate: taxStartDate, endDate: taxEndDate }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate tax report');
+      }
+
+      const csv = await response.text();
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `tax-report-${address.slice(0, 8)}-${taxStartDate}-to-${taxEndDate}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setShowTaxModal(false);
+    } catch (error) {
+      console.error('Tax export failed:', error);
+    } finally {
+      setTaxExportLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -81,13 +116,24 @@ export default function RewardsPage() {
             Live Metrics
           </div>
         </div>
-        <PnLDashboard 
-          positions={safePositions} 
+        <PnLDashboard
+          positions={safePositions}
           currentRunePrice={runePrice || 0}
           address={address}
           entryRunePrice={entryRunePrice || undefined}
           bondHistory={bondHistory ?? undefined}
         />
+        <div className="mt-4 flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowTaxModal(true)}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export Tax Report
+          </Button>
+        </div>
       </section>
 
       <section className="space-y-6">
@@ -156,6 +202,60 @@ export default function RewardsPage() {
         </div>
         <PriceChart />
       </section>
+
+      {showTaxModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg dark:bg-zinc-900">
+            <h3 className="mb-4 text-lg font-bold text-zinc-900 dark:text-zinc-100">Export Tax Report</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Start Date</label>
+                <input
+                  type="date"
+                  value={taxStartDate}
+                  onChange={(e) => setTaxStartDate(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">End Date</label>
+                <input
+                  type="date"
+                  value={taxEndDate}
+                  onChange={(e) => setTaxEndDate(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowTaxModal(false)}
+                  disabled={taxExportLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-1"
+                  onClick={handleExportTaxReport}
+                  disabled={!taxStartDate || !taxEndDate || taxExportLoading}
+                >
+                  {taxExportLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      Generating...
+                    </span>
+                  ) : (
+                    'Download CSV'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

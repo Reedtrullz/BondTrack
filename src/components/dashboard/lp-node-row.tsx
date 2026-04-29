@@ -89,6 +89,26 @@ export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
 
       <td className="px-4 py-4">
         <div className="space-y-2">
+          {position.impermanentLossPercent !== null && Number.isFinite(position.impermanentLossPercent) ? (
+            <div
+              className={`font-semibold ${
+                position.impermanentLossPercent >= 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-red-600 dark:text-red-400'
+              }`}
+            >
+              {position.impermanentLossPercent >= 0 ? '+' : ''}
+              {position.impermanentLossPercent.toFixed(2)}%
+            </div>
+          ) : (
+            <div className="font-semibold text-zinc-500 dark:text-zinc-400">--</div>
+          )}
+          <div className="text-sm text-zinc-500 dark:text-zinc-400">IL</div>
+        </div>
+      </td>
+
+      <td className="px-4 py-4">
+        <div className="space-y-2">
           <div className="font-semibold text-green-600 dark:text-green-400">{formatPercent(position.poolApy)}</div>
           <div className="text-sm text-zinc-500 dark:text-zinc-400">APY</div>
         </div>

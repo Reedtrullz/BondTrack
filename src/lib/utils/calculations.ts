@@ -109,6 +109,32 @@ export function estimateNextChurn(currentHeight: number): { blocksRemaining: num
   };
 }
 
+export type NetworkSecurityHealth = 'healthy' | 'warning' | 'at-risk';
+
+export function calculateNetworkSecurityState(bondToPoolRatio: number): {
+  securityHealth: NetworkSecurityHealth;
+  solvencyStatus: string;
+} {
+  if (bondToPoolRatio >= 2) {
+    return {
+      securityHealth: 'healthy',
+      solvencyStatus: 'Economically Secure',
+    };
+  }
+
+  if (bondToPoolRatio >= 1.5) {
+    return {
+      securityHealth: 'warning',
+      solvencyStatus: 'Monitor Closely',
+    };
+  }
+
+  return {
+    securityHealth: 'at-risk',
+    solvencyStatus: 'Undercapitalized',
+  };
+}
+
 export function calculateLpPnl(
   runeDeposited: string,
   asset2Deposited: string,

@@ -12,6 +12,8 @@ import { ErrorBoundary } from '../../../components/ui/error-boundary';
 import { useLpPositions } from '../../../hooks/use-lp-positions';
 import type { LpPosition } from '../../../lib/types/lp';
 import { calculateLpPortfolioSummary } from '../../../lib/utils/lp-analytics';
+import { calculateIL } from '../../../lib/utils/il-calculator';
+import { getPoolHistoryAtTimestamp } from '../../../lib/api/midgard';
 
 interface LpStatePanelProps {
   tone: 'empty' | 'error';
@@ -147,8 +149,54 @@ function exportLPData(positions: LpPosition[]) {
 function DashboardContentWithAddress({ address }: { address: string }) {
   const { positions, isLoading, error, state, retry, loadingProgress } = useLpPositions(address);
 
-  const [sortField, setSortField] = React.useState<'pool' | 'pnl' | 'apy' | 'date'>('pool');
+  const [sortField, setSortField] = React.useState<'pool' | 'pnl' | 'il' | 'apy' | 'date'>('pool');
   const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('asc');
+  const [ilMap, setIlMap] = React.useState<Map<string, number>>(new Map());
+
+  React.useEffect(() => {
+    if (positions.length === 0) return;
+
+    let cancelled = false;
+
+    async function computeILs() {
+      const results = new Map<string, number>();
+
+      await Promise.all(
+        positions.map(async (position) => {
+          const rawTimestamp = Number(position.dateFirstAdded);
+          if (!Number.isFinite(rawTimestamp) || rawTimestamp <= 0) {
+            return;
+          }
+
+          const normalizedTimestamp = rawTimestamp > 1e12 ? Math.floor(rawTimestamp / 1e9) : rawTimestamp;
+
+          try {
+            const history = await getPoolHistoryAtTimestamp(position.pool, normalizedTimestamp);
+            if (history?.runeDepth && history?.assetDepth) {
+              const il = calculateIL(
+                history.runeDepth,
+                history.assetDepth,
+                position.runeDepth,
+                position.asset2Depth
+              );
+              results.set(`${position.pool}-${position.address}`, il);
+            }
+          } catch {
+          }
+        })
+      );
+
+      if (!cancelled) {
+        setIlMap(results);
+      }
+    }
+
+    computeILs();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [positions]);
 
   const sortedPositions = React.useMemo(() => {
     return [...positions].sort((left, right) => {
@@ -162,6 +210,12 @@ function DashboardContentWithAddress({ address }: { address: string }) {
           const leftPnl = left.netProfitLossPercent ?? Number.NEGATIVE_INFINITY;
           const rightPnl = right.netProfitLossPercent ?? Number.NEGATIVE_INFINITY;
           comparison = leftPnl - rightPnl;
+          break;
+        }
+        case 'il': {
+          const leftIl = ilMap.get(`${left.pool}-${left.address}`) ?? left.impermanentLossPercent ?? Number.NEGATIVE_INFINITY;
+          const rightIl = ilMap.get(`${right.pool}-${right.address}`) ?? right.impermanentLossPercent ?? Number.NEGATIVE_INFINITY;
+          comparison = leftIl - rightIl;
           break;
         }
         case 'apy':
@@ -305,6 +359,18 @@ function DashboardContentWithAddress({ address }: { address: string }) {
                   }}
                 >
                   Net PnL {sortField === 'pnl' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th
+                  className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
+                  onClick={() => {
+                    if (sortField === 'il') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortField('il');
+                    }
+                  }}
+                >
+                  IL % {sortField === 'il' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
                 <th
                   className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"

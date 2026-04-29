@@ -15,4 +15,6 @@ export const NETWORK = {
   DESIRED_VALIDATOR_SET: 100,
   MAX_BOND_PROVIDERS: 6,
 } as const;
+
+export const LATEST_THORNODE_VERSION = '1.135.0';
 // Triggering fresh Vercel build

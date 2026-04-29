@@ -95,11 +95,11 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
     setInputAddress(address || '');
   }, [address]);
 
-  // Use type=bond only - comma-separated causes 502 on proxy
+  // Use txType for bond/unbond/leave history lookups.
   const { data, error, isLoading } = useSWR(
     selectedAddress ? ['actions', selectedAddress] : null,
     async () => {
-      const result = await getActions(selectedAddress, 50, 'bond', 'type');
+      const result = await getActions(selectedAddress, 50, 'bond,unbond,leave');
       return result;
     },
     { 

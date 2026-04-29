@@ -75,6 +75,18 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
         </div>
         <div className="flex flex-col items-end gap-2">
           <LpStatusBadge status={position.poolStatus} />
+          {position.impermanentLossPercent !== null && Number.isFinite(position.impermanentLossPercent) ? (
+            <span
+              className={`rounded-full px-2 py-1 text-xs font-medium ${
+                position.impermanentLossPercent >= 0
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                  : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+              }`}
+            >
+              IL {position.impermanentLossPercent >= 0 ? '+' : ''}
+              {position.impermanentLossPercent.toFixed(2)}%
+            </span>
+          ) : null}
           {position.hasPending ? (
             <span className="rounded-full bg-[var(--color-warning)]/20 px-2 py-1 text-xs font-medium text-[var(--color-warning)]">
               Pending Add
