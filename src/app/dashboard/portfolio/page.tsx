@@ -285,10 +285,73 @@ export default function PortfolioPage() {
         </DashboardCard>
 
         <DashboardCard title="Performance Summary">
-          <div className="h-[200px] flex flex-col items-center justify-center text-zinc-500 dark:text-zinc-400">
-            <BarChart3 className="w-8 h-8 mb-3 text-zinc-300 dark:text-zinc-600" />
-            <p className="text-sm">Historical performance tracking coming soon</p>
-            <p className="text-xs text-zinc-400 mt-1">Track your 7d, 30d, and YTD returns</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">7d Portfolio Impact</p>
+              <p
+                className={cn(
+                  'text-lg font-bold font-mono',
+                  runePriceChange7d != null && runePriceChange7d >= 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-red-600 dark:text-red-400'
+                )}
+              >
+                {runePriceChange7d != null
+                  ? `${runePriceChange7d >= 0 ? '+' : ''}${runePriceChange7d.toFixed(2)}%`
+                  : '--'}
+              </p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
+                {runePriceChange7d != null && totalBondedValueUsd > 0
+                  ? formatUsd(totalBondedValueUsd * (runePriceChange7d / 100), 2)
+                  : '--'}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">24h Portfolio Impact</p>
+              <p
+                className={cn(
+                  'text-lg font-bold font-mono',
+                  runePriceChange24h != null && runePriceChange24h >= 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-red-600 dark:text-red-400'
+                )}
+              >
+                {runePriceChange24h != null
+                  ? `${runePriceChange24h >= 0 ? '+' : ''}${runePriceChange24h.toFixed(2)}%`
+                  : '--'}
+              </p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
+                {runePriceChange24h != null && totalBondedValueUsd > 0
+                  ? formatUsd(totalBondedValueUsd * (runePriceChange24h / 100), 2)
+                  : '--'}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Weighted APY</p>
+              <p className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                {weightedAPY > 0 ? `${(weightedAPY * 100).toFixed(2)}%` : '--'}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Avg Operator Fee</p>
+              <p className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                {averageFeeBps > 0 ? `${(averageFeeBps / 100).toFixed(2)}%` : '--'}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Active Positions</p>
+              <p className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                {bondPositions.length + lpPositions.length}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Est. Daily Earnings</p>
+              <p className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                {totalBondedRune > 0 && weightedAPY > 0
+                  ? formatUsd((totalBondedRune * weightedAPY / 365) * runePrice, 2)
+                  : '--'}
+              </p>
+            </div>
           </div>
         </DashboardCard>
       </div>

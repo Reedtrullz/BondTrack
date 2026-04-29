@@ -37,21 +37,30 @@ export function useBondHistory(address: string | null) {
       const inCoin = action.in?.[0]?.coins?.find((c) => c.asset === 'THOR.RUNE' || c.asset === 'THOR');
       const txCoin = action.tx?.coins?.find((c) => c.asset === 'THOR.RUNE' || c.asset === 'THOR');
       const outCoin = action.out?.find((o) => o.address === address)?.coins?.find((c) => c.asset === 'THOR.RUNE' || c.asset === 'THOR');
-      
-      const amount = inCoin 
-        ? parseFloat(inCoin.amount) / 1e8 
+
+      const amount = inCoin
+        ? parseFloat(inCoin.amount) / 1e8
         : outCoin
           ? parseFloat(outCoin.amount) / 1e8
-          : txCoin 
-            ? parseFloat(txCoin.amount) / 1e8 
+          : txCoin
+            ? parseFloat(txCoin.amount) / 1e8
             : 0;
-      
-      const isBondAction = action.type === 'bond' || action.type === 'addLiquidity';
+
+      const metadataTxType = action.metadata?.refund?.txType;
+      const memo = action.metadata?.bond?.memo || action.metadata?.refund?.memo || action.memo || '';
+
+      const isBondAction =
+        metadataTxType === 'bond' ||
+        action.type === 'bond' ||
+        action.type === 'addLiquidity' ||
+        action.metadata?.bond != null ||
+        memo.startsWith('BOND:');
+
       const type: 'BOND' | 'UNBOND' = isBondAction ? 'BOND' : 'UNBOND';
-      
+
       const rawDate = action.date || '0';
       const date = new Date(Number(BigInt(rawDate) / BigInt(1000000))); // ms precision
-      
+
       return {
         type,
         amount,
