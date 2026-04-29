@@ -1,13 +1,15 @@
 # API Layer — THORNode + Midgard
 
 **5 files**: `client.ts` (base fetch), `thornode.ts` (THORNode API), `midgard.ts` (Midgard API), `coinapi.ts` (RUNE price), `coingecko.ts` (RUNE price fallback)
-**2 API proxy routes**: `/api/midgard/[...path]`, `/api/thorchain/[...path]`
+**3 API proxy routes**: `/api/midgard/[...path]`, `/api/thorchain/[...path]`, `/api/tax-report` (custom endpoint for tax CSV export)
 
 ## WHERE TO LOOK
 | Need | File |
 |------|------|
 | Add new THORNode endpoint | `thornode.ts` — add interface + function using `fetchThornode<T>()` |
 | Add new Midgard endpoint | `midgard.ts` — add interface + function using `fetchMidgard<T>()` |
+| Add network security metrics | `midgard.ts` — `getNetworkSecurityMetrics()` |
+| Add fee revenue aggregation | `midgard.ts` — `getFeeRevenue()` |
 | Change caching/retry | `client.ts` — `next: { revalidate: 60 }` |
 | Base URLs | `src/lib/config.ts` — `ENDPOINTS` object |
 | API proxy config | `src/app/api/midgard/` and `src/app/api/thorchain/` routes |
@@ -61,6 +63,8 @@ The proxy tries liquify first (`gateway.liquify.com`), then falls back to `midga
 - `getEarningsHistory(interval?, count?)` → `/v2/history/earnings`
 - `getRunePriceHistory(interval, count)` → `/v2/history/rune`
 - `getNetwork()` → `/v2/network`
+- `getNetworkSecurityMetrics()` → `/v2/network` (derived from `getNetwork()`)
+- `getFeeRevenue()` → `/v2/history/earnings` (aggregates 30-day fee data)
 - `getActions(address, limit, txType?)` → `/v2/actions` — use `txType` for `bond`, `unbond`, `leave`; reserve `type` for action categories like `swap` or `addLiquidity`
 
 **CoinAPI** (called server-side or via `/api/coinapi/rune-price`):

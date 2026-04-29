@@ -14,16 +14,18 @@ src/app/
 │   ├── coingecko/[...path]/
 │   ├── coinapi/rune-price/
 │   ├── address/[address]/
-│   └── pools/[pool]/
+│   ├── pools/[pool]/
+│   └── tax-report/         # Tax CSV export (server-side aggregation)
 └── dashboard/
     ├── layout.tsx          # Suspense + DashboardShell + address restore
     ├── page.tsx            # Redirects to /dashboard/overview
-    ├── overview/
+    ├── portfolio/          # Unified Bond + LP portfolio view
+    ├── overview/           # Portfolio summary + fee revenue + market overview
     ├── nodes/
-    ├── rewards/
-    ├── risk/
+    ├── rewards/            # PnL + tax export button
+    ├── risk/               # Network security gauge
     ├── transactions/
-    ├── lp/
+    ├── lp/                 # IL calculator column
     └── changelogs/
 ```
 
@@ -31,9 +33,12 @@ src/app/
 | Task | Location |
 |------|----------|
 | Add dashboard page | `src/app/dashboard/<page>/page.tsx` |
+| Add portfolio page | `src/app/dashboard/portfolio/page.tsx` |
 | Add API route | `src/app/api/<name>/route.ts` |
+| Add tax export route | `src/app/api/tax-report/route.ts` |
 | Root layout changes | `src/app/layout.tsx` |
 | Address state logic | `src/app/dashboard/layout.tsx` |
+| Upgrade alert banner | `src/app/dashboard/layout.tsx` (injected in dashboard shell) |
 
 ## CONVENTIONS
 

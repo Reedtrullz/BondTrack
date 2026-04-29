@@ -1,6 +1,6 @@
 # SWR Hooks — Data Fetching Layer
 
-**13 hooks**: `use-bond-positions`, `use-bond-history`, `use-earnings`, `use-network-constants`, `use-rune-price`, `use-watchlist`, `use-wallet`, `use-all-nodes`, `use-churn-countdown`, `use-network-metrics`, `use-current-block-height`, `use-node-rankings`, `use-changelogs`
+**14 hooks**: `use-bond-positions`, `use-bond-history`, `use-earnings`, `use-network-constants`, `use-rune-price`, `use-watchlist`, `use-wallet`, `use-all-nodes`, `use-churn-countdown`, `use-network-metrics`, `use-current-block-height`, `use-node-rankings`, `use-changelogs`, `use-protocol-version`
 
 ## WHERE TO LOOK
 | Need | File |
@@ -17,6 +17,7 @@
 | Network metrics | `use-network-metrics.ts` — returns TVL, bond-to-pool ratio, total bond |
 | Current block height | `use-current-block-height.ts` — returns real-time block height from Midgard `/v2/health` |
 | Node rankings | `use-node-rankings.ts` — computes user's node rank in active set, percentile, at-risk status |
+| Protocol version | `use-protocol-version.ts` — compares current THORNode version vs latest known, triggers upgrade alert |
 | Changelogs | `use-changelogs.ts` — returns sorted changelog entries from TCC/TCU Medium publication |
 
 ## useChangelogs

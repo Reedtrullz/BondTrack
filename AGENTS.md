@@ -52,21 +52,23 @@ thornode-watcher/
 │   │   │   ├── coingecko/[...path]/route.ts # CoinGecko proxy
 │   │   │   ├── coinapi/rune-price/route.ts  # RUNE price endpoint
 │   │   │   ├── address/[address]/route.ts   # Address aggregation
-│   │   │   └── pools/[pool]/route.ts        # Pool analytics
+│   │   │   ├── pools/[pool]/route.ts        # Pool analytics
+│   │   │   └── tax-report/route.ts          # Tax CSV export (server-side)
 │   │   ├── page.tsx            # Landing — address input
 │   │   ├── layout.tsx          # Root — ThemeProvider wrapper
 │   │   └── dashboard/          # All dashboard pages (requires ?address= param)
 │   │       ├── layout.tsx      # Suspense + DashboardShell wrapper
 │   │       ├── page.tsx        # Redirects to /dashboard/overview (passes address)
-│   │       ├── overview/       # Portfolio summary + position table
+│   │       ├── portfolio/      # Unified Bond + LP portfolio dashboard
+│   │       ├── overview/       # Portfolio summary + position table + fee revenue + market overview
 │   │       ├── nodes/          # Node health detail
-│   │       ├── rewards/        # Earnings, APY, PnL, fee impact, auto-compound
-│   │       ├── risk/           # Slash monitor, churn-out risk, unbond tracker
+│   │       ├── rewards/        # Earnings, APY, PnL, fee impact, auto-compound, tax export
+│   │       ├── risk/           # Slash monitor, churn-out risk, unbond tracker, network security
 │   │       ├── transactions/   # BOND/UNBOND composer, tx history, watchlist, recent addresses
-│   │       ├── lp/             # Liquidity Provider positions and metrics
+│   │       ├── lp/             # Liquidity Provider positions and metrics + IL calculator
 │   │       └── changelogs/     # THORChain changelog browser
 │   ├── components/
-│   │   ├── dashboard/          # 18 domain components (charts, tables, monitors, network comparison)
+│   │   ├── dashboard/          # 25+ domain components (charts, tables, monitors, network comparison, revenue, alerts)
 │   │   ├── layout/             # sidebar, dashboard-shell, theme-toggle
 │   │   ├── wallet/             # wallet-connect, transaction-preview
 │   │   ├── alerts/             # alert-toast, alert hooks
@@ -104,6 +106,28 @@ thornode-watcher/
 - **Earnings Projections**: Dynamic short and long-term projections with auto-compounding.
 - **Net Earnings Transparency**: Clear breakdown of operator fee impact on total returns.
 
+**Unified Portfolio Dashboard**:
+- **Total AUM**: Combined Bond + LP value in USD with asset allocation pie chart
+- **Performance Summary**: 7d / 30d / YTD return placeholders with quick action links
+- **Live data**: Fetches bond positions, LP positions, and RUNE price in real-time
+
+**Protocol Revenue & Market Context**:
+- **Fee Revenue Tracker**: 30-day protocol fee trend (Recharts area chart) + 24h/7d/30d KPI cards
+- **User Earnings Share**: Estimated daily share based on bond proportion of total active bond
+- **Market Overview Widget**: 24h swap volume, top 5 pools by volume, RUNE price (24h + 7d change), protocol TVL
+
+**LP Intelligence**:
+- **Impermanent Loss Calculator**: XYK formula-based IL % per position
+- **IL Display**: Badge on LP cards and sortable column in LP table
+
+**Tax & Compliance**:
+- **Tax Export Suite**: CSV export with FIFO cost basis for bond rewards + LP income
+- **Server-side aggregation**: `/api/tax-report` route avoids CORS and handles date-range filtering
+
+**Protocol Alerts**:
+- **Upgrade Alert Banner**: Detects THORNode version changes, dismissible per-version with localStorage persistence
+- **Changelog Link**: Direct navigation to changelogs page from alert
+
 **Strategic Control Room**:
 - **Guided Bonding**: Strategic presets for common bond amounts and targets.
 - **Impact Preview**: Real-time simulation of how a bond move affects Health Score and APY.
@@ -118,8 +142,15 @@ thornode-watcher/
 | Add dashboard page | `src/app/dashboard/<name>/page.tsx` — must be 'use client' if using useSearchParams |
 | Add new chart component | `src/components/dashboard/` — use Recharts ResponsiveContainer |
 | Add LP dashboard page | `src/app/dashboard/lp/page.tsx` |
+| Add portfolio dashboard | `src/app/dashboard/portfolio/page.tsx` |
+| Add protocol revenue chart | `src/components/dashboard/fee-revenue-chart.tsx` |
+| Add market overview widget | `src/components/dashboard/market-overview.tsx` |
+| Add network security gauge | `src/components/dashboard/network-security-card.tsx` |
+| Add upgrade alert banner | `src/components/dashboard/upgrade-alert-banner.tsx` |
 | New calculation | `src/lib/utils/calculations.ts` |
+| New IL calculation | `src/lib/utils/il-calculator.ts` |
 | New formatter | `src/lib/utils/formatters.ts` |
+| Tax export utility | `src/lib/utils/tax-export.ts` |
 | Change API URLs | `src/lib/config.ts` — env vars override defaults |
 | Wallet integration | `src/lib/hooks/use-wallet.ts` + `src/lib/types/wallet.ts` |
 | Transaction signing | `src/lib/transactions/bond.ts` |
@@ -127,6 +158,7 @@ thornode-watcher/
 | RUNE price (CoinAPI) | `src/lib/api/coinapi.ts` |
 | Address aggregation API | `src/app/api/address/[address]/route.ts` |
 | Pool analytics API | `src/app/api/pools/[pool]/route.ts` |
+| Tax report API | `src/app/api/tax-report/route.ts` |
 | CI/CD config | `.github/workflows/test.yml` |
 | E2E tests | `e2e/*.spec.ts` |
 
