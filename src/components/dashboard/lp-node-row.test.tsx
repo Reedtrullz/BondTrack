@@ -58,9 +58,9 @@ describe('LpNodeRow', () => {
     );
 
     expect(screen.getByText('GAIA.ATOM')).toBeInTheDocument();
-    expect(screen.getByText('RUNE: 50.00')).toBeInTheDocument();
+    expect(screen.getByText((_content, element) => element?.textContent === 'RUNE: ᚱ50.00')).toBeInTheDocument();
     expect(screen.getByText('ATOM: 2.50')).toBeInTheDocument();
-    expect(screen.getByText('No history')).toBeInTheDocument();
+    expect(screen.getByText(/LP yield/)).toBeInTheDocument();
     expect(screen.queryByText('ASSET: 2.50')).not.toBeInTheDocument();
     expect(screen.getByText('Pending add')).toBeInTheDocument();
     expect(screen.getByText('Staged')).toBeInTheDocument();

@@ -85,6 +85,6 @@ describe('LpSummaryCard', () => {
     );
 
     expect(screen.getByText('Pending Add')).toBeInTheDocument();
-    expect(screen.getByText('No history')).toBeInTheDocument();
+    expect(screen.getByText(/LP yield/)).toBeInTheDocument();
   });
 });

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { getActions, type ActionRaw } from '@/lib/api/midgard';
-import { formatRuneAmount } from '@/lib/utils/formatters';
 import { ExternalLink } from 'lucide-react';
 
 interface Transaction {
@@ -95,7 +94,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
     setInputAddress(address || '');
   }, [address]);
 
-  // Use txType for bond/unbond/leave history lookups.
+  // Use type for bond/unbond/leave history lookups.
   const { data, error, isLoading } = useSWR(
     selectedAddress ? ['actions', selectedAddress] : null,
     async () => {
@@ -186,7 +185,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
                 <div>
                 <div className="text-xs text-zinc-500">Amount</div>
                 <div className="font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                  {formatRuneAmount(String(Math.floor(tx.amount * 1e8)))}
+                  {tx.amount.toFixed(2)}
                 </div>
               </div>
               <div>
@@ -248,7 +247,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
                     </span>
                   </td>
                   <td className="px-3 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
-                    {formatRuneAmount(String(Math.floor(tx.amount * 1e8)))}
+                    {tx.amount.toFixed(2)}
                   </td>
                   <td className="px-3 py-3 font-mono text-xs text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
                     {tx.nodeAddress.length > 20

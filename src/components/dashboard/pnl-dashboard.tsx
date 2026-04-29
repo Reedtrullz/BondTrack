@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { BondPosition } from '@/lib/types/node';
 import { calculatePricePnL, calculateTotalReturn } from '@/lib/utils/calculations';
-import { formatRuneAmount } from '@/lib/utils/formatters';
 import { TrendingUp, DollarSign, Percent, Wallet, Edit3, Check, X } from 'lucide-react';
 
 interface PnLDashboardProps {
@@ -28,11 +27,21 @@ interface PnLDashboardProps {
 
 function getStorageKey(address: string | null): string | null {
   if (!address) return null;
-  return `heimdall-initial-bond-${address}`;
+  return `bondtrack-initial-bond-${address}`;
 }
 
 function getEntryPriceKey(address: string | null): string {
   if (!address) return '';
+  return `bondtrack-entry-price-${address}`;
+}
+
+function getLegacyStorageKey(address: string | null): string | null {
+  if (!address) return null;
+  return `heimdall-initial-bond-${address}`;
+}
+
+function getLegacyEntryPriceKey(address: string | null): string | null {
+  if (!address) return null;
   return `heimdall-entry-price-${address}`;
 }
 
@@ -62,11 +71,12 @@ export function PnLDashboard({
       return;
     }
 
-    const saved = localStorage.getItem(storageKey);
+    const saved = localStorage.getItem(storageKey) ?? (getLegacyStorageKey(address) ? localStorage.getItem(getLegacyStorageKey(address)!) : null);
     if (saved) {
       const parsed = parseFloat(saved);
       if (!isNaN(parsed) && parsed > 0) {
         setManualInitialBond(parsed);
+        localStorage.setItem(storageKey, parsed.toString());
       }
     }
   }, [storageKey]);
@@ -81,11 +91,12 @@ export function PnLDashboard({
       return;
     }
 
-    const saved = localStorage.getItem(entryPriceKey);
+    const saved = localStorage.getItem(entryPriceKey) ?? (getLegacyEntryPriceKey(address) ? localStorage.getItem(getLegacyEntryPriceKey(address)!) : null);
     if (saved) {
       const parsed = parseFloat(saved);
       if (!isNaN(parsed) && parsed > 0) {
         setManualEntryPrice(parsed);
+        localStorage.setItem(entryPriceKey, parsed.toString());
       }
     }
   }, [entryPriceKey]);
@@ -134,14 +145,7 @@ export function PnLDashboard({
     setIsEditingPrice(false);
   };
 
-  const clearEntryPrice = () => {
-    if (entryPriceKey) {
-      localStorage.removeItem(entryPriceKey);
-    }
-    setManualEntryPrice(null);
-    setIsEditingPrice(false);
-  };
-
+  // Reset value display from current position totals when no manual override exists.
   const totalCurrentBond = positions?.reduce((sum, pos) => sum + pos.bondAmount, 0) ?? 0;
   const currentBond = bondHistory?.currentBond ?? totalCurrentBond;
 
@@ -237,7 +241,7 @@ export function PnLDashboard({
                 step="0.01"
               />
             ) : (
-              formatRuneAmount(String(Math.round(effectiveInitialBond * 1e8)), 2)
+              effectiveInitialBond.toFixed(2)
             )
           }
           subValue={`$${initialBondValueUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${manualInitialBond !== null ? ' (manual)' : ''}`}
@@ -245,13 +249,13 @@ export function PnLDashboard({
         <PnLCard
           icon={<TrendingUp className="w-4 h-4" />}
           label="Current Bond"
-          value={formatRuneAmount(String(Math.round(currentBond * 1e8)), 2)}
+          value={currentBond.toFixed(2)}
           subValue={`$${currentBondValueUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
         />
         <PnLCard
           icon={<DollarSign className="w-4 h-4" />}
           label="Bond Growth"
-          value={hasHistoricalInitialBond ? formatRuneAmount(String(Math.round(bondGrowth * 1e8)), 2) : 'N/A'}
+          value={hasHistoricalInitialBond ? bondGrowth.toFixed(2) : 'N/A'}
           subValue={hasHistoricalInitialBond ? `+${bondGrowthPercent.toFixed(1)}%` : 'Set initial bond to track'}
           positive={hasHistoricalInitialBond ? bondGrowth >= 0 : undefined}
         />

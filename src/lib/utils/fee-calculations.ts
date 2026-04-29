@@ -17,6 +17,14 @@ function getBondAmount(pos: BondPosition): number {
   return pos.bondAmount;
 }
 
+export function normalizeApy(raw: number | string | undefined): number {
+  if (raw === undefined || raw === null) return 0;
+  const num = typeof raw === 'string' ? Number(raw) : raw;
+  if (!Number.isFinite(num)) return 0;
+  if (num > 1) return num / 100;
+  return num;
+}
+
 export function calculatePersonalFeeLeakage(
   positions: BondPosition[], 
   period: 'daily' | 'monthly' = 'monthly',
@@ -38,8 +46,7 @@ export function calculatePersonalFeeLeakage(
   const totalBond = safePositions.reduce((sum, p) => sum + getBondAmount(p), 0);
   
   const isApyEstimated = networkApy === undefined;
-  const rawApy = networkApy ?? 0.20;
-  const apy = rawApy > 1 ? rawApy / 100 : rawApy;
+  const apy = normalizeApy(networkApy ?? 0.20);
   
   // Fee Estimation
   let operatorFeeMissing = false;

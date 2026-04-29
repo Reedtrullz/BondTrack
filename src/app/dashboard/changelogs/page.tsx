@@ -3,8 +3,7 @@
 import { useChangelogs, getTypeLabel, getTypeIcon, getTypeBadgeStyle, ChangelogItem, ChangelogEntry } from '@/lib/hooks/use-changelogs';
 import { Search, ChevronDown, X, SearchX, Zap, FileText, Link as LinkIcon, Rocket, Wrench, ScrollText, Eye } from 'lucide-react';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 type FilterType = 'all' | ChangelogEntry['type'];
 
@@ -106,7 +105,6 @@ export default function ChangelogsPage() {
   const { changelogs, isLoading } = useChangelogs();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const pathname = usePathname();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const yearRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
@@ -114,9 +112,24 @@ export default function ChangelogsPage() {
   const urlTypeFilter = parseTypeFilter(searchParams.get('type'));
 
   const [searchBuffer, setSearchBuffer] = useState(urlSearchQuery);
-  const [hasResolvedExpandedPreference, setHasResolvedExpandedPreference] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<FilterType>(urlTypeFilter);
+  const [hasResolvedExpandedPreference, setHasResolvedExpandedPreference] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem(STORAGE_KEY) !== null;
+  });
 
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+
+    const savedExp = localStorage.getItem(STORAGE_KEY);
+    if (!savedExp) return new Set();
+
+    try {
+      return new Set(JSON.parse(savedExp));
+    } catch {
+      return new Set();
+    }
+  });
   const [expandedEntryIds, setExpandedEntryIds] = useState<Record<string, string[]>>({});
 
   // Sync search buffer with URL when URL changes externally (e.g., back navigation)
@@ -124,15 +137,13 @@ export default function ChangelogsPage() {
     setSearchBuffer(urlSearchQuery);
   }, [urlSearchQuery]);
 
+  useEffect(() => {
+    setTypeFilter(urlTypeFilter);
+  }, [urlTypeFilter]);
+
   // Handle local state initialization on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedExp = localStorage.getItem(STORAGE_KEY);
-      if (savedExp) {
-        try {
-          setExpandedIds(new Set(JSON.parse(savedExp)));
-        } catch {}
-      }
       const savedEntries = localStorage.getItem(`${STORAGE_KEY}-entries`);
       if (savedEntries) {
         try {
@@ -187,15 +198,15 @@ export default function ChangelogsPage() {
   const years = useMemo(() => extractYears(changelogs), [changelogs]);
   
   const filteredChangelogs = useMemo(() => {
-    if (!urlSearchQuery.trim() && urlTypeFilter === 'all') {
+    if (!searchBuffer.trim() && typeFilter === 'all') {
       return changelogs;
     }
     
     return changelogs.map(item => ({
       ...item,
-      content: item.content.filter(entry => matchesFilter(entry, urlSearchQuery, urlTypeFilter))
+      content: item.content.filter(entry => matchesFilter(entry, searchBuffer, typeFilter))
     })).filter(item => item.content.length > 0);
-  }, [changelogs, urlSearchQuery, urlTypeFilter]);
+  }, [changelogs, searchBuffer, typeFilter]);
 
   const totalEntries = useMemo(() => {
     return filteredChangelogs.reduce((acc, item) => acc + item.content.length, 0);
@@ -236,22 +247,25 @@ export default function ChangelogsPage() {
   
   const clearFilters = useCallback(() => {
     const currentParams = new URLSearchParams(window.location.search);
-    const nextUrl = `${pathname}${buildChangelogQuery(currentParams, '', 'all')}`;
-    router.push(nextUrl, { scroll: false });
-  }, [router, pathname]);
+    const nextUrl = buildChangelogQuery(currentParams, '', 'all');
+    setSearchBuffer('');
+    setTypeFilter('all');
+    router.replace(nextUrl, { scroll: false });
+  }, [router]);
 
   const updateSearchQuery = useCallback((nextSearchQuery: string) => {
     setSearchBuffer(nextSearchQuery);
     const currentParams = new URLSearchParams(window.location.search);
-    const nextUrl = `${pathname}${buildChangelogQuery(currentParams, nextSearchQuery, urlTypeFilter)}`;
-    router.push(nextUrl, { scroll: false });
-  }, [router, urlTypeFilter, pathname]);
+    const nextUrl = buildChangelogQuery(currentParams, nextSearchQuery, typeFilter);
+    router.replace(nextUrl, { scroll: false });
+  }, [router, typeFilter]);
 
   const updateTypeFilter = useCallback((nextTypeFilter: FilterType) => {
+    setTypeFilter(nextTypeFilter);
     const currentParams = new URLSearchParams(window.location.search);
-    const nextUrl = `${pathname}${buildChangelogQuery(currentParams, urlSearchQuery, nextTypeFilter)}`;
-    router.push(nextUrl, { scroll: false });
-  }, [router, urlSearchQuery, pathname]);
+    const nextUrl = buildChangelogQuery(currentParams, searchBuffer, nextTypeFilter);
+    router.replace(nextUrl, { scroll: false });
+  }, [router, searchBuffer]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -263,22 +277,24 @@ export default function ChangelogsPage() {
         if (document.activeElement === searchInputRef.current) {
           searchInputRef.current?.blur();
         }
-        if (urlSearchQuery || urlTypeFilter !== 'all') {
+        if (searchBuffer || typeFilter !== 'all') {
           const nextSearchQuery = '';
           const nextTypeFilter: FilterType = 'all';
           const currentParams = new URLSearchParams(window.location.search);
-          const nextUrl = `${pathname}${buildChangelogQuery(currentParams, nextSearchQuery, nextTypeFilter)}`;
+          const nextUrl = buildChangelogQuery(currentParams, nextSearchQuery, nextTypeFilter);
 
-          router.push(nextUrl, { scroll: false });
+          setSearchBuffer('');
+          setTypeFilter('all');
+          router.replace(nextUrl, { scroll: false });
         }
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [router, urlSearchQuery, urlTypeFilter]);
+  }, [router, searchBuffer, typeFilter]);
   
-  const hasActiveFilters = urlSearchQuery.trim() || urlTypeFilter !== 'all';
+  const hasActiveFilters = searchBuffer.trim() || typeFilter !== 'all';
 
   if (isLoading) {
     return (
@@ -366,15 +382,14 @@ export default function ChangelogsPage() {
         
         <div className="flex flex-wrap gap-2">
           {FILTER_OPTIONS.map((option) => {
-            const isActive = urlTypeFilter === option.value;
+            const isActive = typeFilter === option.value;
             const hasCount = option.value !== 'all' && typeBreakdown[option.value] > 0;
-            const href = `${pathname}${buildChangelogQuery(searchParams, urlSearchQuery, option.value)}`;
             
             return (
-              <Link
+              <button
                 key={option.value}
-                href={href}
-                scroll={false}
+                type="button"
+                onClick={() => updateTypeFilter(option.value)}
                 className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
                   isActive
                     ? 'text-black'
@@ -396,7 +411,7 @@ export default function ChangelogsPage() {
                     {typeBreakdown[option.value]}
                   </span>
                 )}
-              </Link>
+              </button>
             );
           })}
         </div>
@@ -406,13 +421,13 @@ export default function ChangelogsPage() {
             <span className="text-zinc-500 dark:text-zinc-400">
               Showing {totalEntries} {totalEntries === 1 ? 'entry' : 'entries'} of {changelogs.reduce((a, c) => a + c.content.length, 0)} total
             </span>
-            <Link
-              href={`${pathname}${buildChangelogQuery(searchParams, '', 'all')}`}
-              scroll={false}
+            <button
+              type="button"
+              onClick={clearFilters}
               className="flex items-center gap-1 text-cyan-600 transition-colors hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-white"
             >
               <X className="w-3 h-3" /> Clear filters
-            </Link>
+            </button>
           </div>
         )}
       </div>
@@ -470,7 +485,7 @@ export default function ChangelogsPage() {
               )}
             </div>
           ) : (
-            filteredChangelogs.map((item, index) => {
+            filteredChangelogs.map((item) => {
               const year = item.sortDate ? item.sortDate.split('-')[0] : '';
               const isExpanded = expandedIds.has(item.id);
               
@@ -551,7 +566,7 @@ export default function ChangelogsPage() {
                     >
                       <div className="p-6 space-y-4">
                         {item.content.map((entry, entryIndex) => {
-                          const isEntryExpanded = (Array.isArray(expandedEntryIds[item.id]) && expandedEntryIds[item.id].includes(String(entryIndex))) || urlSearchQuery.length > 0;
+                  const isEntryExpanded = (Array.isArray(expandedEntryIds[item.id]) && expandedEntryIds[item.id].includes(String(entryIndex))) || searchBuffer.length > 0;
                           
                           return (
                             <div 
@@ -560,6 +575,7 @@ export default function ChangelogsPage() {
                             >
                               <button
                                 onClick={() => toggleEntryExpand(item.id, entryIndex)}
+                                aria-label={entry.title}
                                 className={`w-full text-left group flex items-start gap-4 p-3 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/30 transition-colors ${
                                   isEntryExpanded ? 'bg-zinc-50 dark:bg-zinc-900/40 shadow-sm border border-zinc-100 dark:border-zinc-800/50' : ''
                                 }`}

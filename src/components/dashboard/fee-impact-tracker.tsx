@@ -85,7 +85,7 @@ export function PersonalFeeAudit({ positions, networkApy }: PersonalFeeAuditProp
           <span className="text-zinc-500">Monthly Leakage</span>
           <div className="flex items-center gap-2">
             <span className="font-mono text-red-600 dark:text-red-400">
-              -{formatRuneFromNumber(audit.feeLeakage)} RUNE
+              -{audit.feeLeakage.toFixed(2)} RUNE
             </span>
             <span className="text-zinc-400">|</span>
             <span className="font-mono text-zinc-600 dark:text-zinc-400">

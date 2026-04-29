@@ -4,6 +4,7 @@ import { getMemberDetails, getPools, getRunePriceHistory, getHistoricalRunePrice
 import { getLiquidityProvider, LiquidityProviderRaw } from '../lib/api/thornode';
 import { LpPoolStatus, LpPosition, LpPricingSource } from '../lib/types/lp';
 import { calculateLpWithdrawableAmounts, formatPnlDisplay, calculateAssetPriceFromPoolDepth } from '../lib/utils/calculations';
+import { normalizeApy } from '../lib/utils/fee-calculations';
 import { calculateLpPositionValuation, getCurrentAssetPriceUsd, getLpAssetSymbol } from '../lib/utils/lp-analytics';
 
 type LpDataState = 'ready' | 'empty' | 'error';
@@ -323,10 +324,9 @@ export const useLpPositions = (address: string | null) => {
       dateFirstAdded: poolRaw.dateFirstAdded,
       dateLastAdded: poolRaw.dateLastAdded,
       poolApy: (() => {
-        const fromApy = Number(poolData?.poolAPY);
-        if (Number.isFinite(fromApy) && fromApy > 0) return fromApy;
-        const fromApr = Number(poolData?.annualPercentageRate);
-        return Number.isFinite(fromApr) && fromApr > 0 ? fromApr * 100 : 0;
+        const fromApy = normalizeApy(poolData?.poolAPY);
+        if (fromApy > 0) return fromApy;
+        return normalizeApy(poolData?.annualPercentageRate);
       })(),
       poolStatus,
       ownershipPercent: deriveOwnershipPercent(poolRaw.liquidityUnits, poolData?.liquidityUnits),

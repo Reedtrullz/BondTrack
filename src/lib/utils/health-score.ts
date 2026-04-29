@@ -61,7 +61,7 @@ export function calculatePortfolioHealth(positions: BondPosition[]): HealthScore
     grade,
     score: finalScore,
     reason: criticalIssues.length > 0 ? criticalIssues.join(', ') : 'All positions healthy',
-    isCritical: finalScore < 60 || jailedNodes.length > 0
+    isCritical: finalScore < 60 || jailedNodes.length > 0 || highSlashNodes.length > 0
   };
 }
 

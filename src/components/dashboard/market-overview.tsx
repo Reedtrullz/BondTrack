@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { BarChart3, Coins, DollarSign, TrendingUp } from 'lucide-react';
 import type { NetworkRaw, PoolDetailRaw } from '@/lib/api/midgard';
 import { formatPercent, formatRuneAmount, formatUsd, runeToNumber } from '@/lib/utils/formatters';
+import { normalizeApy } from '@/lib/utils/fee-calculations';
 
 interface MarketOverviewProps {
   pools: PoolDetailRaw[];
@@ -170,11 +171,11 @@ function formatChange(value: number | null | undefined): string {
 }
 
 function getPoolApy(pool: PoolDetailRaw): number {
-  const fromApy = Number(pool.poolAPY);
-  if (Number.isFinite(fromApy) && fromApy > 0) return fromApy;
+  const fromApy = normalizeApy(pool.poolAPY);
+  if (fromApy > 0) return fromApy;
 
-  const fromApr = Number(pool.annualPercentageRate);
-  if (Number.isFinite(fromApr) && fromApr > 0) return fromApr * 100;
+  const fromApr = normalizeApy(pool.annualPercentageRate);
+  if (fromApr > 0) return fromApr;
 
   return 0;
 }
