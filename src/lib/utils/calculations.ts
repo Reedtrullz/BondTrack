@@ -115,17 +115,24 @@ export function calculateNetworkSecurityState(bondToPoolRatio: number): {
   securityHealth: NetworkSecurityHealth;
   solvencyStatus: string;
 } {
-  if (bondToPoolRatio >= 2) {
+  if (bondToPoolRatio >= 2.5) {
     return {
       securityHealth: 'healthy',
-      solvencyStatus: 'Economically Secure',
+      solvencyStatus: 'Well Secured',
     };
   }
 
   if (bondToPoolRatio >= 1.5) {
     return {
+      securityHealth: 'healthy',
+      solvencyStatus: 'Healthy',
+    };
+  }
+
+  if (bondToPoolRatio >= 1.0) {
+    return {
       securityHealth: 'warning',
-      solvencyStatus: 'Monitor Closely',
+      solvencyStatus: 'Building',
     };
   }
 

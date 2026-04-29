@@ -458,8 +458,10 @@ export default function RiskPage() {
   const [showDetails, setShowDetails] = useState(false);
 
   const totalActiveBond = runeToNumber(network?.bondMetrics?.totalActiveBond || '0');
+  const totalStandbyBond = runeToNumber(network?.bondMetrics?.totalStandbyBond || '0');
   const totalPooledRune = runeToNumber(network?.totalPooledRune || '0');
-  const bondToPoolRatio = totalPooledRune > 0 ? totalActiveBond / totalPooledRune : 0;
+  const totalBonds = totalActiveBond + totalStandbyBond;
+  const bondToPoolRatio = totalPooledRune > 0 ? totalBonds / totalPooledRune : 0;
   const securityState = calculateNetworkSecurityState(bondToPoolRatio);
 
   return (
