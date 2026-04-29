@@ -9,7 +9,6 @@ interface FeeRevenueSummaryProps {
   error?: string | null;
   userBond?: number;
   totalActiveBond?: number;
-  bondingEarnings?: string;
   runePrice?: number;
 }
 
@@ -23,10 +22,11 @@ function SummaryCard({ label, runeValue, usdValue }: { label: string; runeValue:
   );
 }
 
-export function FeeRevenueSummary({ summary, isLoading, error, userBond = 0, totalActiveBond = 0, bondingEarnings, runePrice = 0 }: FeeRevenueSummaryProps) {
+export function FeeRevenueSummary({ summary, isLoading, error, userBond = 0, totalActiveBond = 0, runePrice = 0 }: FeeRevenueSummaryProps) {
   const showUserShareCard = userBond > 0;
+  const dailyRevenue = summary?.total24h ?? '0';
   const userEstimatedDailyShare = showUserShareCard && totalActiveBond > 0
-    ? (userBond / totalActiveBond) * runeToNumber(bondingEarnings || '0')
+    ? (userBond / totalActiveBond) * runeToNumber(dailyRevenue)
     : 0;
 
   return (

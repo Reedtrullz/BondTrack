@@ -209,7 +209,6 @@ export default function OverviewPage() {
               error={feeRevenueError}
               userBond={totalBonded}
               totalActiveBond={runeToNumber(marketNetwork?.bondMetrics?.totalActiveBond)}
-              bondingEarnings={feeRevenue?.daily?.[feeRevenue.daily.length - 1]?.bondRewards}
               runePrice={price}
             />
             <FeeRevenueChart

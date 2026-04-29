@@ -322,7 +322,12 @@ export const useLpPositions = (address: string | null) => {
       asset2Depth: poolData?.assetDepth ?? '0',
       dateFirstAdded: poolRaw.dateFirstAdded,
       dateLastAdded: poolRaw.dateLastAdded,
-      poolApy: Number.isFinite(Number(poolData?.annualPercentageRate)) ? Number(poolData?.annualPercentageRate) * 100 : 0,
+      poolApy: (() => {
+        const fromApy = Number(poolData?.poolAPY);
+        if (Number.isFinite(fromApy) && fromApy > 0) return fromApy;
+        const fromApr = Number(poolData?.annualPercentageRate);
+        return Number.isFinite(fromApr) && fromApr > 0 ? fromApr * 100 : 0;
+      })(),
       poolStatus,
       ownershipPercent: deriveOwnershipPercent(poolRaw.liquidityUnits, poolData?.liquidityUnits),
       hasPending: runePending > 0n || asset2Pending > 0n,

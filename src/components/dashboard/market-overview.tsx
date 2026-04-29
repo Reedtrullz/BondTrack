@@ -171,10 +171,12 @@ function formatChange(value: number | null | undefined): string {
 
 function getPoolApy(pool: PoolDetailRaw): number {
   const fromApy = Number(pool.poolAPY);
-  if (Number.isFinite(fromApy)) return fromApy;
+  if (Number.isFinite(fromApy) && fromApy > 0) return fromApy;
 
   const fromApr = Number(pool.annualPercentageRate);
-  return Number.isFinite(fromApr) ? fromApr * 100 : 0;
+  if (Number.isFinite(fromApr) && fromApr > 0) return fromApr * 100;
+
+  return 0;
 }
 
 function calculateDepthRuneEquivalent(pool: PoolDetailRaw, runePrice: number): number {

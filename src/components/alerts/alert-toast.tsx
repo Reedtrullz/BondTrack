@@ -49,16 +49,13 @@ function formatTimestamp(timestamp: number): string {
 }
 
 export function AlertToast({ alerts, onDismiss, permission, onRequestPermission }: AlertToastProps) {
-  const [isPromptDismissed, setIsPromptDismissed] = useState(false);
-  const [permissionFeedback, setPermissionFeedback] = useState<'idle' | 'blocked'>('idle');
-
-  useEffect(() => {
+  const [isPromptDismissed, setIsPromptDismissed] = useState(() => {
     if (typeof window === 'undefined') {
-      return;
+      return false;
     }
-
-    setIsPromptDismissed(localStorage.getItem(NOTIFICATION_PROMPT_DISMISSED_KEY) === 'true');
-  }, []);
+    return localStorage.getItem(NOTIFICATION_PROMPT_DISMISSED_KEY) === 'true';
+  });
+  const [permissionFeedback, setPermissionFeedback] = useState<'idle' | 'blocked'>('idle');
 
   useEffect(() => {
     if (permission === 'granted' && typeof window !== 'undefined') {

@@ -37,9 +37,9 @@ export function calculatePersonalFeeLeakage(
 
   const totalBond = safePositions.reduce((sum, p) => sum + getBondAmount(p), 0);
   
-  // APY Estimation
   const isApyEstimated = networkApy === undefined;
-  const apy = networkApy ?? 0.20; 
+  const rawApy = networkApy ?? 0.20;
+  const apy = rawApy > 1 ? rawApy / 100 : rawApy;
   
   // Fee Estimation
   let operatorFeeMissing = false;

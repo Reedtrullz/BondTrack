@@ -294,7 +294,10 @@ export async function getFeeRevenue(): Promise<FeeRevenueRaw> {
       } satisfies FeeRevenueDailyRaw;
     });
 
-  const last24h = daily.length > 0 ? daily[daily.length - 1] : null;
+  let last24h = daily.length > 0 ? daily[daily.length - 1] : null;
+  if (last24h && last24h.totalFees === '0' && daily.length > 1) {
+    last24h = daily[daily.length - 2];
+  }
   const last7d = daily.slice(-7);
   const last30d = daily.slice(-30);
 
@@ -444,7 +447,7 @@ export async function getNetworkSecurityMetrics(): Promise<NetworkSecurityMetric
   };
 }
 
-export async function getActions(address: string, limit = 50, actionTypes?: string, typeParam = 'txType'): Promise<ActionsResponseRaw> {
+export async function getActions(address: string, limit = 50, actionTypes?: string, typeParam = 'type'): Promise<ActionsResponseRaw> {
   const params = new URLSearchParams();
   params.set('address', address);
   params.set('limit', String(limit));

@@ -2,7 +2,7 @@ import React from 'react';
 import type { LpPosition } from '../../lib/types/lp';
 import { formatPercent, formatRuneAmount, formatAmount } from '../../lib/utils/formatters';
 import { LpStatusBadge } from './lp-status-badge';
-import { formatPnlDisplay } from '../../lib/utils/calculations';
+
 
 function formatLiquidityUnits(raw: string): string {
   try {
@@ -28,7 +28,12 @@ interface LpNodeRowProps {
 }
 
 export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
-  const pnlDisplay = formatPnlDisplay(position.netProfitLossUsd ?? 0);
+  const pnlPercent = position.netProfitLossPercent ?? 0;
+  const pnlColor = pnlPercent > 0
+    ? 'text-green-600 dark:text-green-400'
+    : pnlPercent < 0
+      ? 'text-red-600 dark:text-red-400'
+      : 'text-zinc-600 dark:text-zinc-400';
   const safeAddress = position.address ?? '';
 
   return (
@@ -75,10 +80,10 @@ export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
 
       <td className="px-4 py-4">
         <div className="space-y-2">
-          <div className={`font-semibold ${pnlDisplay.color}`}>
+          <div className={`font-semibold ${pnlColor}`}>
             {position.netProfitLoss}
           </div>
-          <div className={`text-sm ${pnlDisplay.color}`}>
+          <div className={`text-sm ${pnlColor}`}>
             {formatPercent(position.netProfitLossPercent)}
           </div>
           {position.pricingSource === 'current-only' && (

@@ -31,13 +31,14 @@ export function calculatePortfolioHealth(positions: BondPosition[]): HealthScore
     criticalIssues.push(`${jailedNodes.length} node(s) jailed`);
   }
 
-  // 2. Slash Point Analysis
-  // Scale: 0-50 (safe), 50-200 (warning), 200+ (critical)
   const highSlashNodes = positions.filter(p => p.slashPoints >= 200);
   const warningSlashNodes = positions.filter(p => p.slashPoints >= 50 && p.slashPoints < 200);
   
-  totalPoints -= highSlashNodes.length * 15;
-  totalPoints -= warningSlashNodes.length * 5;
+  highSlashNodes.forEach(p => {
+    const magnitudePenalty = Math.floor(p.slashPoints / 1000);
+    totalPoints -= 20 + magnitudePenalty;
+  });
+  totalPoints -= warningSlashNodes.length * 8;
   
   if (highSlashNodes.length > 0) criticalIssues.push('Critical slash points detected');
 

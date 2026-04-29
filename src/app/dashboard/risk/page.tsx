@@ -65,9 +65,13 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
   const health = calculatePortfolioHealth(positions);
   const healthScore = health.score;
   
-  const statusIcon = healthScore >= 80 ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : healthScore >= 50 ? <AlertIcon className="w-5 h-5 text-amber-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />;
-  const statusText = healthScore >= 80 ? "Healthy" : healthScore >= 50 ? "Needs Attention" : "At Risk";
-  const statusColor = healthScore >= 80 ? "text-emerald-600 dark:text-emerald-400" : healthScore >= 50 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400";
+  const hasCriticalSlash = criticalCount > 0;
+  const hasJailed = jailedCount > 0;
+  const isHealthy = healthScore >= 80 && !hasCriticalSlash && !hasJailed;
+  
+  const statusIcon = isHealthy ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : healthScore >= 50 ? <AlertIcon className="w-5 h-5 text-amber-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />;
+  const statusText = isHealthy ? "Healthy" : healthScore >= 50 ? "Needs Attention" : "At Risk";
+  const statusColor = isHealthy ? "text-emerald-600 dark:text-emerald-400" : healthScore >= 50 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400";
 
   // Use NETWORK bonds for pendulum (active + standby)
   const networkBondRaw = network?.bondMetrics?.totalActiveBond || '0';

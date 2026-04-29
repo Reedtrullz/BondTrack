@@ -196,28 +196,11 @@ export default function PortfolioPage() {
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
             Performance Summary
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <PerformanceCard
-              label="7d Return"
-              value="0.00%"
-              icon={<Calendar className="w-4 h-4 text-cyan-500" />}
-              highlight="cyan"
-            />
-            <PerformanceCard
-              label="30d Return"
-              value="0.00%"
-              icon={<BarChart3 className="w-4 h-4 text-purple-500" />}
-            />
-            <PerformanceCard
-              label="YTD Return"
-              value="0.00%"
-              icon={<TrendingUp className="w-4 h-4 text-emerald-500" />}
-              highlight="emerald"
-            />
+          <div className="h-[200px] flex flex-col items-center justify-center text-zinc-500 dark:text-zinc-400">
+            <BarChart3 className="w-8 h-8 mb-3 text-zinc-300 dark:text-zinc-600" />
+            <p className="text-sm">Historical performance tracking coming soon</p>
+            <p className="text-xs text-zinc-400 mt-1">Track your 7d, 30d, and YTD returns</p>
           </div>
-          <p className="mt-4 text-xs text-zinc-400 dark:text-zinc-500">
-            Historical performance data will be available in a future update.
-          </p>
         </div>
       </div>
 
