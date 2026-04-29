@@ -8,6 +8,7 @@ type NetworkSecurityHealth = 'healthy' | 'warning' | 'at-risk';
 
 type NetworkSecurityCardProps = {
   ratio: number;
+  activeRatio?: number;
   health: NetworkSecurityHealth;
   status: string;
 };
@@ -39,7 +40,7 @@ function getHealthStyles(health: NetworkSecurityHealth) {
   }
 }
 
-export function NetworkSecurityCard({ ratio, health, status }: NetworkSecurityCardProps) {
+export function NetworkSecurityCard({ ratio, activeRatio, health, status }: NetworkSecurityCardProps) {
   const styles = getHealthStyles(health);
   const progress = ratio > 0 ? Math.min(ratio * NETWORK.PROGRESS_BAR_MULTIPLIER, 100) : 0;
 
@@ -72,6 +73,12 @@ export function NetworkSecurityCard({ ratio, health, status }: NetworkSecurityCa
         <div className="text-right text-xs text-zinc-500 dark:text-zinc-400">
           <div className="font-medium text-zinc-700 dark:text-zinc-300">Live network</div>
           <div>updated from Midgard</div>
+          {typeof activeRatio === 'number' && activeRatio > 0 && (
+            <div className="mt-1">
+              <div className="font-medium text-zinc-700 dark:text-zinc-300">{activeRatio.toFixed(2)}x</div>
+              <div>active bond coverage</div>
+            </div>
+          )}
         </div>
       </div>
 

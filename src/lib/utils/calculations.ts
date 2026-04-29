@@ -118,7 +118,7 @@ export function calculateNetworkSecurityState(bondToPoolRatio: number): {
   if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.healthy) {
     return {
       securityHealth: 'healthy',
-      solvencyStatus: 'Well Secured',
+      solvencyStatus: 'Economically Secure',
     };
   }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { formatRuneAmount } from '@/lib/utils/formatters';
+import { formatRuneAmount, runeToNumber } from '@/lib/utils/formatters';
 import type { FeeRevenueDailyRaw } from '@/lib/api/midgard';
 
 interface FeeRevenueChartProps {
@@ -21,16 +21,6 @@ interface TooltipProps {
   active?: boolean;
   payload?: Array<{ value: number; dataKey: string }>;
   label?: string;
-}
-
-function runeToNumber(raw: string | undefined): number {
-  if (!raw) return 0;
-
-  try {
-    return Number(BigInt(raw)) / 1e8;
-  } catch {
-    return 0;
-  }
 }
 
 function toChartPoint(item: FeeRevenueDailyRaw): ChartPoint {

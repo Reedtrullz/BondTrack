@@ -46,8 +46,11 @@ export default function Home() {
           <h1 className="text-4xl sm:text-5xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 tracking-tight font-serif italic uppercase">
             Heimdall
           </h1>
+          <div className="text-sm font-bold uppercase tracking-[0.24em] text-amber-600 dark:text-amber-400 mb-3">
+            THORNode Watcher
+          </div>
           <p className="text-lg text-zinc-600 dark:text-zinc-400 max-w-lg mx-auto">
-            The all-seeing guardian of THORChain nodes. Real-time health monitoring, rewards tracking, and risk analysis for the decentralized web.
+            Monitor your bond provider positions with real-time health monitoring, rewards tracking, and risk analysis for the decentralized web.
           </p>
         </div>
 

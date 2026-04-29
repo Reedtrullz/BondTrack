@@ -464,6 +464,7 @@ export default function RiskPage() {
   const totalPooledRune = runeToNumber(network?.totalPooledRune || '0');
   const totalBonds = totalActiveBond + totalStandbyBond;
   const bondToPoolRatio = totalPooledRune > 0 ? totalBonds / totalPooledRune : 0;
+  const activeBondToPoolRatio = totalPooledRune > 0 ? totalActiveBond / totalPooledRune : 0;
   const securityState = calculateNetworkSecurityState(bondToPoolRatio);
 
   return (
@@ -494,6 +495,7 @@ export default function RiskPage() {
             ) : (
               <NetworkSecurityCard
                 ratio={bondToPoolRatio}
+                activeRatio={activeBondToPoolRatio}
                 health={securityState.securityHealth}
                 status={securityState.solvencyStatus}
               />

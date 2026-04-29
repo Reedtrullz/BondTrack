@@ -10,6 +10,12 @@ function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+function formatWalletName(walletType: string | null): string {
+  if (walletType === 'keplr') return 'Keplr';
+  if (walletType === 'vultisig') return 'Vultisig';
+  return 'XDEFI';
+}
+
 function KeplrIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={className} fill="none">
@@ -114,7 +120,7 @@ export function WalletConnect() {
 
   if (isConnected && address) {
     return (
-      <div className="relative" ref={dropdownRef}>
+      <div className="relative flex items-center" ref={dropdownRef}>
         <button
           onClick={() => setDropdownOpen(!dropdownOpen)}
           className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors"
@@ -126,14 +132,22 @@ export function WalletConnect() {
           ) : (
             <XdefiIcon className="h-5 w-5" />
           )}
+          <span className="font-medium">{formatWalletName(walletType)}</span>
           <span className="font-mono">{truncateAddress(address)}</span>
           <ChevronDown className="h-4 w-4 text-zinc-400" />
+        </button>
+        <button
+          onClick={disconnect}
+          className="ml-2 inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          Disconnect
         </button>
 
         {dropdownOpen && (
           <div className="absolute right-0 top-full mt-2 w-48 rounded-lg border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 z-50">
             <div className="px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-700">
-              Connected with {walletType === 'keplr' ? 'Keplr' : walletType === 'vultisig' ? 'Vultisig' : 'XDEFI'}
+              Connected with {formatWalletName(walletType)}
             </div>
             <button
               onClick={() => {
@@ -179,11 +193,10 @@ export function WalletConnect() {
             <div className="px-1">
               <WalletOption
                 name="Keplr Wallet"
-                icon={<KeplrIcon className="h-5 w-5" />}
-                onClick={() => {
-                  connect('keplr');
-                  setDropdownOpen(false);
-                }}
+	                icon={<KeplrIcon className="h-5 w-5" />}
+	                onClick={() => {
+	                  connect('keplr');
+	                }}
                 disabled={isConnecting}
               />
             </div>
@@ -193,11 +206,10 @@ export function WalletConnect() {
             <div className="px-1">
               <WalletOption
                 name="XDEFI Wallet"
-                icon={<XdefiIcon className="h-5 w-5" />}
-                onClick={() => {
-                  connect('xdefi');
-                  setDropdownOpen(false);
-                }}
+	                icon={<XdefiIcon className="h-5 w-5" />}
+	                onClick={() => {
+	                  connect('xdefi');
+	                }}
                 disabled={isConnecting}
               />
             </div>
@@ -207,11 +219,10 @@ export function WalletConnect() {
             <div className="px-1">
               <WalletOption
                 name="Vultisig Wallet"
-                icon={<VultisigIcon className="h-5 w-5" />}
-                onClick={() => {
-                  connect('vultisig');
-                  setDropdownOpen(false);
-                }}
+	                icon={<VultisigIcon className="h-5 w-5" />}
+	                onClick={() => {
+	                  connect('vultisig');
+	                }}
                 disabled={isConnecting}
               />
             </div>

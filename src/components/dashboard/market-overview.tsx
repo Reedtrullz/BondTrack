@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { BarChart3, Coins, DollarSign, TrendingUp } from 'lucide-react';
 import type { NetworkRaw, PoolDetailRaw } from '@/lib/api/midgard';
-import { formatPercent, formatRuneAmount, formatUsd, runeToNumber } from '@/lib/utils/formatters';
+import { formatDecimalPercent, formatPercent, formatRuneAmount, formatUsd, runeToNumber } from '@/lib/utils/formatters';
 import { normalizeApy } from '@/lib/utils/fee-calculations';
 
 interface MarketOverviewProps {
@@ -108,7 +108,7 @@ export function MarketOverview({ pools, network, runePrice, isLoading, runePrice
                       <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">{pool.asset}</td>
                       <td className="px-4 py-3">{formatUsd(volumeUsd, 0)}</td>
                       <td className="px-4 py-3">{formatRuneAmount(String(Math.round(depthRune * 1e8)))}</td>
-                      <td className="px-4 py-3">{formatPercent(getPoolApy(pool), 2)}</td>
+                      <td className="px-4 py-3">{formatDecimalPercent(getPoolApy(pool), 2)}</td>
                     </tr>
                   );
                 })}

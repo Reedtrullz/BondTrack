@@ -66,7 +66,7 @@ export function calculatePersonalFeeLeakage(
   const isFeeEstimated = operatorFeeMissing;
   const isEstimated = isApyEstimated || isFeeEstimated;
 
-  const rate = period === 'daily' ? apy / 365 : apy / 12;
+  const rate = period === 'daily' ? apy / 365 : (apy / 365) * 30;
   const grossReward = totalBond * rate;
   const feeLeakage = grossReward * (avgOperatorFee / 10000);
   const netTakeHome = grossReward - feeLeakage;
@@ -90,10 +90,11 @@ export function calculatePersonalFeeLeakage(
 export function calculateWeightedApy(positions: BondPosition[], networkBaselineApy: number = 0): number {
   let totalBond = 0;
   let weightedSum = 0;
+  const baselineApyPercent = normalizeApy(networkBaselineApy) * 100;
 
   positions.forEach(pos => {
     const bond = getBondAmount(pos);
-    const apy = pos.netAPY || networkBaselineApy;
+    const apy = pos.netAPY || baselineApyPercent;
     totalBond += bond;
     weightedSum += bond * apy;
   });

@@ -1,6 +1,6 @@
 import React from 'react';
 import type { LpPosition } from '../../lib/types/lp';
-import { formatPercent, formatRuneAmount, formatAmount } from '../../lib/utils/formatters';
+import { formatDecimalPercent, formatPercent, formatRuneAmount, formatAmount } from '../../lib/utils/formatters';
 import { LpStatusBadge } from './lp-status-badge';
 
 
@@ -114,7 +114,7 @@ export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
 
       <td className="px-4 py-4">
         <div className="space-y-2">
-          <div className="font-semibold text-green-600 dark:text-green-400">{formatPercent(position.poolApy)}</div>
+          <div className="font-semibold text-green-600 dark:text-green-400">{formatDecimalPercent(position.poolApy)}</div>
           <div className="text-sm text-zinc-500 dark:text-zinc-400">APY</div>
         </div>
       </td>

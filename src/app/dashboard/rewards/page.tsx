@@ -92,7 +92,7 @@ export default function RewardsPage() {
     );
   }
 
-  if (!address || safePositions.length === 0) {
+  if (!address) {
     return (
       <DashboardCard className="p-8 text-center max-w-2xl mx-auto mt-12 bg-white dark:bg-zinc-900 rounded-xl" title="No Bond Positions Found">
         <p className="text-zinc-500">Please enter a valid THORChain address to view reward metrics.</p>
@@ -110,7 +110,7 @@ export default function RewardsPage() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-emerald-500" />
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Performance</h2>
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">PnL Performance</h2>
           </div>
           <div className="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold">
             Live Metrics
@@ -133,6 +133,38 @@ export default function RewardsPage() {
             <Download className="mr-2 h-4 w-4" />
             Export Tax Report
           </Button>
+        </div>
+      </DashboardCard>
+
+      {safePositions.length === 0 && (
+        <DashboardCard className="p-6 bg-white dark:bg-zinc-900">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">No Bond Positions Found</h2>
+          <p className="mt-2 text-sm text-zinc-500">Please enter an address with bond positions to calculate live reward values.</p>
+        </DashboardCard>
+      )}
+
+      <DashboardCard className="p-6 bg-white dark:bg-zinc-900">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Earnings History</h3>
+            <p className="mt-1 text-xs text-zinc-500">Historical reward trend</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Per-Churn Reward (est.)</h3>
+            <p className="mt-1 text-xs text-zinc-500">Estimated from current APY</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Operator Fees (per churn)</h3>
+            <p className="mt-1 text-xs text-zinc-500">Weighted by bond share</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Operator Fee Impact</h3>
+            <p className="mt-1 text-xs text-zinc-500">Monthly fee leakage</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Auto-Compound Growth</h3>
+            <p className="mt-1 text-xs text-zinc-500">One-year projection</p>
+          </div>
         </div>
       </DashboardCard>
 

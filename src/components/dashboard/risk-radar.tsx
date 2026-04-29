@@ -58,7 +58,7 @@ export function RiskRadar({ positions }: RiskRadarProps) {
           >
             {positions.map((pos, idx) => (
               <option key={pos.nodeAddress} value={idx}>
-                {pos.nodeAddress.slice(0, 8)}...{pos.nodeAddress.slice(-4)} — ᚱ{formatRuneFromNumber(pos.bondAmount)} ({pos.status})
+                {pos.nodeAddress.slice(0, 8)}...{pos.nodeAddress.slice(-4)} — {formatRuneFromNumber(pos.bondAmount)} ({pos.status})
               </option>
             ))}
           </select>

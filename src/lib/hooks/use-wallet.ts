@@ -80,8 +80,10 @@ export function useWallet() {
       throw new Error('Keplr wallet not installed');
     }
 
-    const chainId = await window.keplr.getChainId(THORCHAIN_CHAIN_ID);
     await window.keplr.enable(THORCHAIN_CHAIN_ID);
+    const chainId = window.keplr.getChainId
+      ? await window.keplr.getChainId(THORCHAIN_CHAIN_ID)
+      : THORCHAIN_CHAIN_ID_MAINNET;
     
     const key = await window.keplr.getKey(THORCHAIN_CHAIN_ID);
     const address = key.bech32Address;

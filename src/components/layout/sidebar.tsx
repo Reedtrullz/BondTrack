@@ -12,6 +12,7 @@ const basePath = '/dashboard';
 const navItems = (addr: string | null) => {
   const addrParam = addr ? `?address=${addr}` : '';
   return [
+    { path: `${basePath}/overview`, href: `${basePath}/overview${addrParam}`, label: 'Overview', icon: <PieChart className="w-4 h-4" />, desc: 'Dashboard home' },
     { path: `${basePath}/portfolio`, href: `${basePath}/portfolio${addrParam}`, label: 'Portfolio', icon: <Wallet className="w-4 h-4" />, desc: 'Unified portfolio view' },
     { path: `${basePath}/nodes`, href: `${basePath}/nodes${addrParam}`, label: 'Nodes', icon: <Shield className="w-4 h-4" />, desc: 'Validator status' },
     { path: `${basePath}/rewards`, href: `${basePath}/rewards${addrParam}`, label: 'Rewards', icon: <BarChart3 className="w-4 h-4" />, desc: 'Earnings & APY' },
@@ -61,7 +62,10 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500/80 to-amber-600/80 flex items-center justify-center shadow-lg shadow-amber-500/10 group-hover:shadow-amber-500/20 transition-all duration-300 border border-amber-500/20">
             <Eye className="w-5 h-5 text-amber-500" />
           </div>
-          <span className="hidden md:inline text-lg tracking-tight font-serif italic uppercase">Heimdall</span>
+          <span className="hidden md:flex flex-col leading-tight">
+            <span className="text-lg tracking-tight font-serif italic uppercase">Heimdall</span>
+            <span className="text-[10px] font-sans font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">THORNode Watcher</span>
+          </span>
           <span className="md:hidden">H</span>
         </Link>
         

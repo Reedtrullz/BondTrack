@@ -4,6 +4,7 @@ import { getNetworkConstants } from '@/lib/api/thornode';
 import { extractBondPositions, type BondPosition, type YieldGuardFlag } from '@/lib/types/node';
 import { getHealth } from '@/lib/api/midgard';
 import { NETWORK } from '@/lib/config';
+import { runeToNumber } from '@/lib/utils/formatters';
 
 function getYieldGuardFlags(
   positions: BondPosition[],
@@ -17,7 +18,7 @@ function getYieldGuardFlags(
   if (activeNodes.length === 0) return flags;
 
   const maxSlash = Math.max(...activeNodes.map(n => n.slash_points));
-  const minBond = Math.min(...activeNodes.map(n => Number(n.total_bond)));
+  const minBond = Math.min(...activeNodes.map(n => runeToNumber(n.total_bond)));
   const oldestStatusSince = Math.min(...activeNodes.map(n => n.status_since));
 
   for (const pos of positions) {
@@ -25,7 +26,7 @@ function getYieldGuardFlags(
     const node = allNodes.find(n => n.node_address === pos.nodeAddress);
     if (!node || node.status !== 'Active') continue;
 
-    const totalBond = Number(node.total_bond);
+    const totalBond = runeToNumber(node.total_bond);
     if (optimalBond && totalBond >= optimalBond) {
       nodeFlags.push('overbonded');
     }
@@ -79,7 +80,7 @@ export function useBondPositions(address: string | null) {
     : [];
 
   const optimalBond = constants?.int_64_values?.OptimalBondD
-    ? Number(constants.int_64_values.OptimalBondD)
+    ? runeToNumber(constants.int_64_values.OptimalBondD)
     : null;
 
   const yieldGuardFlags = getYieldGuardFlags(positions, nodes || [], optimalBond);

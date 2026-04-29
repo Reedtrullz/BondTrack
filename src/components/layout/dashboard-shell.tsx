@@ -151,7 +151,7 @@ export function DashboardShell({
                   </p>
                   {balance !== null && balance > 0 && (
                     <span className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 block">
-                      <span className="font-mono">ᚱ{formatRuneFromNumber(balance)}</span> available
+                      <span className="font-mono">{formatRuneFromNumber(balance)}</span> available
                     </span>
                   )}
                 </>

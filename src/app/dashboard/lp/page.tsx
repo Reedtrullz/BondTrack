@@ -14,7 +14,7 @@ import { DashboardCard } from '../../../components/shared/dashboard-card';
 import { useLpPositions } from '../../../lib/hooks/use-lp-positions';
 import type { LpPosition } from '../../../lib/types/lp';
 import { calculateLpPortfolioSummary } from '../../../lib/utils/lp-analytics';
-import { formatPercent, formatRuneAmount, formatAmount } from '../../../lib/utils/formatters';
+import { formatDecimalPercent, formatPercent, formatRuneAmount, formatAmount } from '../../../lib/utils/formatters';
 import { calculateIL } from '../../../lib/utils/il-calculator';
 import { getPoolHistoryAtTimestamp } from '../../../lib/api/midgard';
 
@@ -184,11 +184,11 @@ function LpMobileCard({ position }: { position: LpPosition }) {
         <div>
           <div className="text-xs text-zinc-500 dark:text-zinc-400">Pool APY</div>
           <div className="font-semibold text-green-600 dark:text-green-400">
-            {formatPercent(position.poolApy)}
+            {formatDecimalPercent(position.poolApy)}
           </div>
         </div>
         <div>
-          <div className="text-xs text-zinc-500 dark:text-zinc-400">IL %</div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400">Loss Impact</div>
           {position.impermanentLossPercent !== null && Number.isFinite(position.impermanentLossPercent) ? (
             <div
               className={`font-semibold ${
@@ -513,6 +513,9 @@ function DashboardContentWithAddress({ address }: { address: string }) {
             <LpMobileCard key={`mobile-${position.pool}-${position.address}`} position={position} />
           ))}
         </div>
+        <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+          IL estimates use historical pool pricing when available and fall back to current-only pricing when Midgard history is unavailable.
+        </p>
       </DashboardCard>
     </div>
   );

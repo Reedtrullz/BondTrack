@@ -2,6 +2,7 @@
 
 import { TrendingUp, DollarSign, Activity, Coins, ShieldCheck, Info } from 'lucide-react';
 import { calculatePortfolioHealth, getGradeColor, type HealthGrade } from '@/lib/utils/health-score';
+import { formatRuneFromNumber } from '@/lib/utils/formatters';
 import { getYieldPerformanceColor } from '@/lib/utils/yield-benchmarks';
 import type { BondPosition } from '@/lib/types/node';
 import { YieldBenchmarks } from '@/lib/utils/yield-benchmarks';
@@ -31,7 +32,7 @@ export function PortfolioSummary({ totalBonded, runePrice, weightedAPY, position
       <SummaryCard
         icon={<TrendingUp className="w-4 h-4 text-emerald-500" />}
         label="Total Bonded"
-        value={`${totalBonded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+        value={formatRuneFromNumber(totalBonded)}
         subValue={`${runePrice > 0 ? `$${usdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '--'} USD`}
         highlight="emerald"
       />

@@ -48,14 +48,12 @@ function calculateProjections(
     }));
   }
 
-  const dailyRate = Math.pow(1 + weightedAPY / 100, 1 / 365) - 1;
+  const dailyRate = (weightedAPY / 100) / 365;
   const feeMultiplier = averageFeeBps / 10000;
 
   return TIMEFRAMES.map((tf) => {
-    const compoundFactor = Math.pow(1 + dailyRate, tf.days);
-    const bondAfter = totalBonded * compoundFactor;
-    
-    const netRuneReward = bondAfter - totalBonded;
+    const netRuneReward = totalBonded * dailyRate * tf.days;
+    const bondAfter = totalBonded + netRuneReward;
     const feeLeakage = feeMultiplier < 1 ? (netRuneReward / (1 - feeMultiplier)) * feeMultiplier : 0;
     const grossRuneReward = netRuneReward + feeLeakage;
     

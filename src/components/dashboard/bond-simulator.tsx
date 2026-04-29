@@ -28,12 +28,10 @@ function simulateBond(
   const feeDecimal = operatorFeeBps / 10000;
   const effectiveApy = apyDecimal * (1 - feeDecimal);
 
-  // Use compound interest to match reward-projections.tsx
-  const dailyRate = Math.pow(1 + effectiveApy, 1 / 365) - 1;
-  const compoundFactor = Math.pow(1 + dailyRate, lockDays);
-  const totalAfterLock = bondAmount * compoundFactor;
-  const totalReward = totalAfterLock - bondAmount;
-  const dailyReward = totalReward / lockDays;
+  // Bond rewards accrue as simple daily APY projections; compounding is modeled separately.
+  const dailyReward = (bondAmount * effectiveApy) / 365;
+  const totalReward = dailyReward * lockDays;
+  const totalAfterLock = bondAmount + totalReward;
   const perChurnReward = dailyReward * 2.5;
 
   return {

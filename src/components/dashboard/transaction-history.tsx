@@ -147,9 +147,11 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
       ) : isLoading ? (
         <div className="text-center py-8 text-zinc-500">Loading transactions...</div>
       ) : error ? (
-        <div className="text-center py-8">
-          <div className="text-red-500 mb-2">Failed to load transactions</div>
-          <div className="text-xs text-zinc-500 font-mono">{String(error)}</div>
+        <div className="text-center py-8 rounded-lg border border-dashed border-amber-200 bg-amber-50/60 px-4 dark:border-amber-900/60 dark:bg-amber-950/20">
+          <div className="text-amber-700 dark:text-amber-300 mb-2">Transaction history is temporarily unavailable</div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400">
+            Midgard could not return bond actions right now. The transaction composer still works while history is unavailable.
+          </div>
         </div>
       ) : transactions.length === 0 ? (
         <div className="text-center py-8 text-zinc-500">

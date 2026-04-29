@@ -109,3 +109,11 @@ export function formatPercent(value: number | null | undefined, digits = 2): str
 
   return `${value.toFixed(digits)}%`;
 }
+
+export function formatDecimalPercent(value: number | null | undefined, digits = 2): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return '--';
+  }
+
+  return `${(value * 100).toFixed(digits)}%`;
+}

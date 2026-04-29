@@ -49,6 +49,7 @@ function formatTimestamp(timestamp: number): string {
 }
 
 export function AlertToast({ alerts, onDismiss, permission, onRequestPermission }: AlertToastProps) {
+  const [hasMounted, setHasMounted] = useState(false);
   const [isPromptDismissed, setIsPromptDismissed] = useState(() => {
     if (typeof window === 'undefined') {
       return false;
@@ -56,6 +57,10 @@ export function AlertToast({ alerts, onDismiss, permission, onRequestPermission 
     return localStorage.getItem(NOTIFICATION_PROMPT_DISMISSED_KEY) === 'true';
   });
   const [permissionFeedback, setPermissionFeedback] = useState<'idle' | 'blocked'>('idle');
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     if (permission === 'granted' && typeof window !== 'undefined') {
@@ -88,6 +93,10 @@ export function AlertToast({ alerts, onDismiss, permission, onRequestPermission 
   };
 
   const showPermissionGuidance = permission === 'denied' || permissionFeedback === 'blocked';
+
+  if (!hasMounted) {
+    return null;
+  }
 
   return (
     <>

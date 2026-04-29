@@ -209,6 +209,7 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
   const CopyStatusIcon = copyFeedback.status === 'success' ? Check : X;
   const InlineCopyIcon = inlineCopyState === 'success' ? Check : inlineCopyState === 'error' ? X : Copy;
   const PrimaryCopyIcon = primaryCopyState === 'success' ? Check : primaryCopyState === 'error' ? X : Copy;
+  const copyFeedbackId = copyFeedback.status !== 'idle' ? 'transaction-copy-feedback' : undefined;
 
   const handleModeChange = (nextMode: Mode) => {
     const normalizedMode = nextMode.toLowerCase() as 'bond' | 'unbond';
@@ -224,20 +225,23 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
         <button onClick={() => handleModeChange('UNBOND')} className={cn('px-4 py-2 rounded-lg font-medium transition', mode === 'UNBOND' ? 'bg-amber-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400')}>UNBOND</button>
       </div>
       <div className="bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-5 space-y-5 hover:shadow-md hover:shadow-emerald-500/10 transition-all">
+        <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
+          Minimum bond transaction reserve: <span className="font-mono text-zinc-700 dark:text-zinc-200">1.02 RUNE</span>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="space-y-1">
-            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Node Address</label>
-            <input type="text" value={nodeAddress} onChange={(e) => setNodeAddress(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100" />
+            <label htmlFor="transaction-node-address" className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Node Address</label>
+            <input id="transaction-node-address" type="text" placeholder="thor1..." value={nodeAddress} onChange={(e) => setNodeAddress(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100" />
           </div>
           {mode === 'BOND' ? (
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Bond Amount</label>
-              <input type="text" value={bondProviderAddress} onChange={(e) => setBondProviderAddress(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100" />
+              <label htmlFor="transaction-bond-amount" className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Bond Amount</label>
+              <input id="transaction-bond-amount" type="text" placeholder="0" value={bondProviderAddress} onChange={(e) => setBondProviderAddress(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100" />
             </div>
           ) : (
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Unbond Amount</label>
-              <input type="text" value={amountToUnbond} onChange={(e) => setAmountToUnbond(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100" />
+              <label htmlFor="transaction-unbond-amount" className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Amount to Unbond</label>
+              <input id="transaction-unbond-amount" type="text" placeholder="0" value={amountToUnbond} onChange={(e) => setAmountToUnbond(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100" />
             </div>
           )}
         </div>
@@ -252,7 +256,7 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
               size="sm"
               variant="outline"
               onClick={() => handleCopy('inline')}
-              aria-describedby={copyFeedback.status !== 'idle' ? 'transaction-copy-feedback' : undefined}
+              aria-describedby={copyFeedbackId}
               className={cn(
                 'shrink-0 gap-2 border-zinc-700 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 hover:text-white dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700',
                 inlineCopyState === 'success' && 'border-emerald-500/60 bg-emerald-500 text-white hover:bg-emerald-600 hover:text-white',
@@ -269,7 +273,7 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
             type="button"
             variant={primaryCopyState === 'success' ? 'success' : primaryCopyState === 'error' ? 'destructive' : 'outline'}
             onClick={() => handleCopy('button')}
-            aria-describedby={copyFeedback.status !== 'idle' ? 'transaction-copy-feedback' : undefined}
+            aria-describedby={copyFeedbackId}
             className="flex-1 gap-2"
           >
             <PrimaryCopyIcon className="h-4 w-4" />
@@ -281,12 +285,11 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
             <Button disabled className="flex-1">Connect Wallet</Button>
           )}
         </div>
-        <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-          {copyFeedback.message}
-        </p>
         {copyFeedback.status !== 'idle' && (
           <div
             id="transaction-copy-feedback"
+            role="status"
+            aria-live="polite"
             className={cn(
               'flex items-start gap-2 rounded-lg border px-3 py-2 text-sm',
               copyFeedback.status === 'success'

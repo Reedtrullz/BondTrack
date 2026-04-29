@@ -5,9 +5,19 @@ import { getLiquidityProvider, LiquidityProviderRaw } from '../api/thornode';
 import { LpPoolStatus, LpPosition, LpPricingSource } from '../types/lp';
 import { calculateLpWithdrawableAmounts, formatPnlDisplay, calculateAssetPriceFromPoolDepth } from '../utils/calculations';
 import { normalizeApy } from '../utils/fee-calculations';
+import { runeToNumber } from '../utils/formatters';
 import { calculateLpPositionValuation, getCurrentAssetPriceUsd, getLpAssetSymbol } from '../utils/lp-analytics';
 
 type LpDataState = 'ready' | 'empty' | 'error';
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => {
+      window.setTimeout(() => resolve(null), ms);
+    }),
+  ]);
+}
 
 function getStatusCode(message: string): number | null {
   const match = message.match(/API error:\s*(\d{3})/i);
@@ -158,8 +168,8 @@ export const useLpPositions = (address: string | null) => {
         if (firstAddedTimestamp > 0) {
           try {
             const [runeEntryPrice, poolHistory] = await Promise.all([
-              getHistoricalRunePrice(firstAddedTimestamp),
-              getPoolHistoryAtTimestamp(pool.pool, firstAddedTimestamp)
+              withTimeout(getHistoricalRunePrice(firstAddedTimestamp), 4000),
+              withTimeout(getPoolHistoryAtTimestamp(pool.pool, firstAddedTimestamp), 4000)
             ]);
 
             if (runeEntryPrice === null) {
@@ -173,8 +183,8 @@ export const useLpPositions = (address: string | null) => {
 
             if (!poolHistory?.runeDepth || !poolHistory?.assetDepth) {
               // Fallback: Assume symmetric (50/50) deposit on Day 1 to estimate asset price
-              const runeDep = Number(pool.runeDeposit);
-              const assetDep = Number(pool.assetDeposit);
+              const runeDep = runeToNumber(pool.runeDeposit);
+              const assetDep = runeToNumber(pool.assetDeposit);
 
               if (runeDep > 0 && assetDep > 0) {
                 const estimatedAssetEntryPrice = (runeDep * runeEntryPrice) / assetDep;

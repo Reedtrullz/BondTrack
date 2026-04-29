@@ -82,7 +82,7 @@ export default function PortfolioPage() {
   } = useBondPositions(address);
   const {
     positions: lpPositions,
-    isLoading: lpLoading,
+    error: lpError,
   } = useLpPositions(address);
   const { price: runePrice, intervals: runePriceHistory, isLoading: priceLoading } = useRunePriceHistory('day', 8);
   const { data: marketNetwork, isLoading: metricsLoading } = useNetworkMetrics();
@@ -135,7 +135,7 @@ export default function PortfolioPage() {
     };
   }, []);
 
-  const isLoading = bondLoading || lpLoading || priceLoading || metricsLoading || benchmarksLoading || allNodesLoading || marketLoading;
+  const isLoading = bondLoading || priceLoading || metricsLoading || benchmarksLoading || allNodesLoading || marketLoading;
 
   if (isLoading) {
     return (
@@ -156,7 +156,9 @@ export default function PortfolioPage() {
   const totalBondedRune = bondPositions.reduce((sum, p) => sum + p.bondAmount, 0);
   const totalBondedValueUsd = totalBondedRune * runePrice;
 
-  const totalLpValueUsd = lpPositions.reduce(
+  const lpDataUnavailable = Boolean(lpError);
+  const effectiveLpPositions = lpDataUnavailable ? [] : lpPositions;
+  const totalLpValueUsd = effectiveLpPositions.reduce(
     (sum, p) => sum + p.currentTotalValueUsd,
     0
   );
@@ -329,7 +331,7 @@ export default function PortfolioPage() {
             <div className="space-y-1">
               <p className="text-xs text-zinc-500 dark:text-zinc-400">Weighted APY</p>
               <p className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
-                {weightedAPY > 0 ? `${(weightedAPY * 100).toFixed(2)}%` : '--'}
+                {weightedAPY > 0 ? `${weightedAPY.toFixed(2)}%` : '--'}
               </p>
             </div>
             <div className="space-y-1">
@@ -341,20 +343,26 @@ export default function PortfolioPage() {
             <div className="space-y-1">
               <p className="text-xs text-zinc-500 dark:text-zinc-400">Active Positions</p>
               <p className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
-                {bondPositions.length + lpPositions.length}
+                {bondPositions.length + effectiveLpPositions.length}
               </p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-zinc-500 dark:text-zinc-400">Est. Daily Earnings</p>
               <p className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
                 {totalBondedRune > 0 && weightedAPY > 0
-                  ? formatUsd((totalBondedRune * weightedAPY / 365) * runePrice, 2)
+                  ? formatUsd((totalBondedRune * (weightedAPY / 100) / 365) * runePrice, 2)
                   : '--'}
               </p>
             </div>
           </div>
         </DashboardCard>
       </div>
+
+      {lpDataUnavailable && (
+        <DashboardCard className="border-amber-200 bg-amber-50 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+          LP data is temporarily unavailable from Midgard. Bond positions and market data are shown without LP valuation.
+        </DashboardCard>
+      )}
 
       <DashboardCard title="Quick Actions">
         <div className="flex flex-wrap gap-3">

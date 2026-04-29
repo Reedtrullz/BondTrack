@@ -49,13 +49,13 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
     const monthlyRate = Math.pow(1 + forecastApy / 100, 1 / 12) - 1;
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
+    const startMonth = startDate.getMonth();
 
     let activeBalance = totalBonded;
 
     const startYear = startDate.getFullYear();
     for (let i = 0; i <= months; i++) {
-      const date = new Date(startDate);
-      date.setMonth(date.getMonth() + i);
+      const date = new Date(startDate.getFullYear(), startMonth + i, 1);
       
       const passiveRune = totalBonded;
       const activeRune = activeBalance;
