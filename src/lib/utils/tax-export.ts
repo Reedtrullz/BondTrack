@@ -207,7 +207,8 @@ async function generateLpRows(
         endTimestamp
       );
       poolHistoryIntervals = poolHistory.intervals || [];
-    } catch {
+    } catch (err) {
+      console.error('Failed to fetch pool history for tax report:', err);
     }
 
     for (const interval of intervals) {

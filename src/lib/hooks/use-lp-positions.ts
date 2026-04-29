@@ -1,11 +1,11 @@
 import React from 'react';
 import useSWR from 'swr';
-import { getMemberDetails, getPools, getRunePriceHistory, getHistoricalRunePrice, getPoolHistoryAtTimestamp, MemberDetailsRaw, PoolDetailRaw } from '../lib/api/midgard';
-import { getLiquidityProvider, LiquidityProviderRaw } from '../lib/api/thornode';
-import { LpPoolStatus, LpPosition, LpPricingSource } from '../lib/types/lp';
-import { calculateLpWithdrawableAmounts, formatPnlDisplay, calculateAssetPriceFromPoolDepth } from '../lib/utils/calculations';
-import { normalizeApy } from '../lib/utils/fee-calculations';
-import { calculateLpPositionValuation, getCurrentAssetPriceUsd, getLpAssetSymbol } from '../lib/utils/lp-analytics';
+import { getMemberDetails, getPools, getRunePriceHistory, getHistoricalRunePrice, getPoolHistoryAtTimestamp, MemberDetailsRaw, PoolDetailRaw } from '../api/midgard';
+import { getLiquidityProvider, LiquidityProviderRaw } from '../api/thornode';
+import { LpPoolStatus, LpPosition, LpPricingSource } from '../types/lp';
+import { calculateLpWithdrawableAmounts, formatPnlDisplay, calculateAssetPriceFromPoolDepth } from '../utils/calculations';
+import { normalizeApy } from '../utils/fee-calculations';
+import { calculateLpPositionValuation, getCurrentAssetPriceUsd, getLpAssetSymbol } from '../utils/lp-analytics';
 
 type LpDataState = 'ready' | 'empty' | 'error';
 

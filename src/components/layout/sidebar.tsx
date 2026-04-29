@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Eye, Shield, Activity, BarChart3, AlertTriangle, ArrowRightLeft, Menu, X, ScrollText, Coins, PieChart, Wallet } from 'lucide-react';
+import { Eye, Shield, BarChart3, AlertTriangle, ArrowRightLeft, Menu, X, ScrollText, Coins, PieChart, Wallet } from 'lucide-react';
 import { ThemeToggle } from './theme-toggle';
 import { BifrostStatus } from './bifrost-status';
 import { cn } from '@/lib/utils';
@@ -13,7 +13,6 @@ const navItems = (addr: string | null) => {
   const addrParam = addr ? `?address=${addr}` : '';
   return [
     { path: `${basePath}/portfolio`, href: `${basePath}/portfolio${addrParam}`, label: 'Portfolio', icon: <Wallet className="w-4 h-4" />, desc: 'Unified portfolio view' },
-    { path: `${basePath}/overview`, href: `${basePath}/overview${addrParam}`, label: 'Overview', icon: <Activity className="w-4 h-4" />, desc: 'Portfolio at a glance' },
     { path: `${basePath}/nodes`, href: `${basePath}/nodes${addrParam}`, label: 'Nodes', icon: <Shield className="w-4 h-4" />, desc: 'Validator status' },
     { path: `${basePath}/rewards`, href: `${basePath}/rewards${addrParam}`, label: 'Rewards', icon: <BarChart3 className="w-4 h-4" />, desc: 'Earnings & APY' },
     { path: `${basePath}/lp`, href: `${basePath}/lp${addrParam}`, label: 'LP Status', icon: <Coins className="w-4 h-4" />, desc: 'Liquidity positions' },

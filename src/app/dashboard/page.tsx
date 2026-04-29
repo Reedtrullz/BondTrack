@@ -8,6 +8,6 @@ export default function DashboardPage(props: {
 
   return address.then(addr => {
     const qs = addr ? `?address=${encodeURIComponent(addr as string)}` : '';
-    redirect(`/dashboard/overview${qs}`);
+    redirect(`/dashboard/portfolio${qs}`);
   });
 }

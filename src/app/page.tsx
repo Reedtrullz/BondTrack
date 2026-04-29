@@ -7,22 +7,29 @@ import { RecentAddresses } from '@/components/shared/recent-addresses';
 import { Eye, Activity, BarChart3, TrendingUp, Zap, Globe, Lock, Wallet, Bell, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
-const LAST_ADDRESS_KEY = 'thornode-watcher-last-address';
+const BONDTRACK_ADDRESS = 'BONDTRACK_ADDRESS';
+const OLD_LAST_ADDRESS_KEY = 'thornode-watcher-last-address';
 
 export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const lastAddress = localStorage.getItem(LAST_ADDRESS_KEY);
-      if (lastAddress && lastAddress.startsWith('thor1')) {
-        router.replace(`/dashboard?address=${encodeURIComponent(lastAddress)}`);
-      }
+    if (typeof window === 'undefined') return;
+
+    const oldAddress = localStorage.getItem(OLD_LAST_ADDRESS_KEY);
+    if (oldAddress && oldAddress.startsWith('thor1')) {
+      localStorage.setItem(BONDTRACK_ADDRESS, oldAddress);
+      localStorage.removeItem(OLD_LAST_ADDRESS_KEY);
+    }
+
+    const lastAddress = localStorage.getItem(BONDTRACK_ADDRESS);
+    if (lastAddress && lastAddress.startsWith('thor1')) {
+      router.replace(`/dashboard?address=${encodeURIComponent(lastAddress)}`);
     }
   }, [router]);
 
   const handleAddressSubmit = (address: string) => {
-    localStorage.setItem(LAST_ADDRESS_KEY, address);
+    localStorage.setItem(BONDTRACK_ADDRESS, address);
     router.push(`/dashboard?address=${encodeURIComponent(address)}`);
   };
 

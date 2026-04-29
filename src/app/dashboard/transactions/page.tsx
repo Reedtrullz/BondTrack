@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, type MouseEvent } from 'react';
+import { useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { TransactionComposer } from '@/components/dashboard/transaction-composer';
 import { TransactionHistory } from '@/components/dashboard/transaction-history';
@@ -21,8 +21,8 @@ export default function TransactionsPage() {
   const action = parseTransactionAction(searchParams.get('action'));
 
   const { positions } = useBondPositions(address);
-  const { addresses: watchlist, addAddress, removeAddress } = useWatchlist();
-  const { bondActions } = useBondHistory(address);
+  const { addresses: watchlist } = useWatchlist();
+  useBondHistory(address);
 
   const syncTransactionMode = useCallback((nextAction: TransactionAction) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -32,25 +32,6 @@ export default function TransactionsPage() {
 
     router.replace(`/dashboard/transactions?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
-
-  const handleComposerClick = useCallback((event: MouseEvent<HTMLDivElement>) => {
-    const target = event.target;
-
-    if (!(target instanceof Element)) {
-      return;
-    }
-
-    const button = target.closest('button');
-    const label = button?.textContent?.trim();
-
-    if (label === 'BOND' && action !== 'bond') {
-      syncTransactionMode('bond');
-    }
-
-    if (label === 'UNBOND' && action !== 'unbond') {
-      syncTransactionMode('unbond');
-    }
-  }, [action, syncTransactionMode]);
 
   return (
     <div className="space-y-6">
@@ -70,9 +51,7 @@ export default function TransactionsPage() {
               {action === 'bond' ? 'Bond mode' : 'Unbond mode'}
             </span>
           </div>
-          <div onClick={handleComposerClick}>
-            <TransactionComposer positions={positions} address={address} />
-          </div>
+          <TransactionComposer positions={positions} address={address} onModeChange={syncTransactionMode} />
         </div>
 
         <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
@@ -86,7 +65,7 @@ export default function TransactionsPage() {
               {watchlist.map(addr => (
                 <button
                   key={addr}
-                  onClick={() => window.location.href = `/dashboard?address=${addr}`}
+                  onClick={() => router.push(`/dashboard?address=${encodeURIComponent(addr)}`)}
                   className="px-3 py-1 text-xs font-mono bg-zinc-100 dark:bg-zinc-800 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700"
                 >
                   {addr.slice(0, 10)}...

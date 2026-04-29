@@ -115,21 +115,21 @@ export function calculateNetworkSecurityState(bondToPoolRatio: number): {
   securityHealth: NetworkSecurityHealth;
   solvencyStatus: string;
 } {
-  if (bondToPoolRatio >= 2.5) {
+  if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.healthy) {
     return {
       securityHealth: 'healthy',
       solvencyStatus: 'Well Secured',
     };
   }
 
-  if (bondToPoolRatio >= 1.5) {
+  if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.building) {
     return {
       securityHealth: 'healthy',
       solvencyStatus: 'Healthy',
     };
   }
 
-  if (bondToPoolRatio >= 1.0) {
+  if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.underSecured) {
     return {
       securityHealth: 'warning',
       solvencyStatus: 'Building',
@@ -181,10 +181,10 @@ export function calculateLpWithdrawableAmounts(
   asset2Deposit: string,
   runeDepth: string,
   asset2Depth: string,
-  runeAdded: string,
-  runeWithdrawn: string,
-  asset2Added: string,
-  asset2Withdrawn: string,
+  _runeAdded: string,
+  _runeWithdrawn: string,
+  _asset2Added: string,
+  _asset2Withdrawn: string,
   ownershipPercent: number
 ): { runeWithdrawable: string; asset2Withdrawable: string; runeDeposited: string; asset2Deposited: string } {
   if (ownershipPercent <= 0) {

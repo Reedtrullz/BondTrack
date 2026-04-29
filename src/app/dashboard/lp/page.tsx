@@ -3,15 +3,18 @@
 import React from 'react';
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AlertTriangle, Download, RefreshCw, Waves } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, Download, RefreshCw, Waves } from 'lucide-react';
 import { LpNodeRow } from '../../../components/dashboard/lp-node-row';
+import { LpStatusBadge } from '../../../components/dashboard/lp-status-badge';
 import { LpPortfolioHero } from '../../../components/dashboard/lp-portfolio-hero';
 import { LpSummaryCard } from '../../../components/dashboard/lp-summary-card';
 import { Button } from '../../../components/ui/button';
 import { ErrorBoundary } from '../../../components/ui/error-boundary';
-import { useLpPositions } from '../../../hooks/use-lp-positions';
+import { DashboardCard } from '../../../components/shared/dashboard-card';
+import { useLpPositions } from '../../../lib/hooks/use-lp-positions';
 import type { LpPosition } from '../../../lib/types/lp';
 import { calculateLpPortfolioSummary } from '../../../lib/utils/lp-analytics';
+import { formatPercent, formatRuneAmount, formatAmount } from '../../../lib/utils/formatters';
 import { calculateIL } from '../../../lib/utils/il-calculator';
 import { getPoolHistoryAtTimestamp } from '../../../lib/api/midgard';
 
@@ -36,7 +39,7 @@ function LpStatePanel({ tone, title, description, detail, address, action }: LpS
     : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300';
 
   return (
-    <section className={`rounded-2xl border p-8 text-center ${panelToneStyles[tone]}`}>
+    <DashboardCard className={`p-8 text-center ${panelToneStyles[tone]}`}>
       <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${iconTone}`}>
         <Icon className="h-7 w-7" />
       </div>
@@ -52,14 +55,14 @@ function LpStatePanel({ tone, title, description, detail, address, action }: LpS
         </div>
       ) : null}
       {action ? <div className="mt-6 flex justify-center">{action}</div> : null}
-    </section>
+    </DashboardCard>
   );
 }
 
 function LpLoadingState({ loadingProgress = 0 }: { loadingProgress?: number }) {
   return (
     <div className="animate-pulse space-y-8">
-      <section className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+      <DashboardCard>
         <div className="h-6 w-44 rounded bg-zinc-200 dark:bg-zinc-800" />
         <div className="mt-3 h-4 w-full max-w-xl rounded bg-zinc-200 dark:bg-zinc-800" />
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -67,15 +70,15 @@ function LpLoadingState({ loadingProgress = 0 }: { loadingProgress?: number }) {
             <div key={index} className="h-36 rounded-xl bg-zinc-100 dark:bg-zinc-800/70" />
           ))}
         </div>
-      </section>
-      <section className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+      </DashboardCard>
+      <DashboardCard>
         <div className="h-6 w-56 rounded bg-zinc-200 dark:bg-zinc-800" />
         <div className="mt-6 space-y-3">
           {Array.from({ length: 3 }).map((_, index) => (
             <div key={index} className="h-16 rounded-xl bg-zinc-100 dark:bg-zinc-800/70" />
           ))}
         </div>
-      </section>
+      </DashboardCard>
       {loadingProgress > 0 ? (
         <div className="mb-4">
           <div className="h-2 w-full rounded-full bg-zinc-200 dark:bg-zinc-800">
@@ -146,6 +149,105 @@ function exportLPData(positions: LpPosition[]) {
   URL.revokeObjectURL(url);
 }
 
+function LpMobileCard({ position }: { position: LpPosition }) {
+  const [expanded, setExpanded] = React.useState(false);
+
+  const pnlPercent = position.netProfitLossPercent ?? 0;
+  const pnlColor =
+    pnlPercent > 0
+      ? 'text-emerald-600 dark:text-emerald-400'
+      : pnlPercent < 0
+        ? 'text-red-600 dark:text-red-400'
+        : 'text-zinc-600 dark:text-zinc-400';
+
+  return (
+    <div
+      className="cursor-pointer rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+      onClick={() => setExpanded(!expanded)}
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">{position.pool}</h3>
+          <div className="mt-1">
+            <LpStatusBadge status={position.poolStatus} />
+          </div>
+        </div>
+        <div className="text-right">
+          <div className={`font-semibold ${pnlColor}`}>
+            {formatPercent(position.netProfitLossPercent)}
+          </div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400">Net PnL</div>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400">Pool APY</div>
+          <div className="font-semibold text-green-600 dark:text-green-400">
+            {formatPercent(position.poolApy)}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400">IL %</div>
+          {position.impermanentLossPercent !== null && Number.isFinite(position.impermanentLossPercent) ? (
+            <div
+              className={`font-semibold ${
+                position.impermanentLossPercent >= 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-red-600 dark:text-red-400'
+              }`}
+            >
+              {position.impermanentLossPercent >= 0 ? '+' : ''}
+              {position.impermanentLossPercent.toFixed(2)}%
+            </div>
+          ) : (
+            <div className="font-semibold text-zinc-500 dark:text-zinc-400">--</div>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center justify-center text-zinc-400 dark:text-zinc-500">
+        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      </div>
+
+      {expanded ? (
+        <div className="mt-3 space-y-3 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+          <div>
+            <div className="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+              Deposited
+            </div>
+            <div className="text-sm text-zinc-900 dark:text-zinc-100">
+              RUNE: {formatRuneAmount(position.runeDeposit)}
+            </div>
+            <div className="text-sm text-zinc-900 dark:text-zinc-100">
+              {position.assetSymbol}: {formatAmount(position.asset2Deposit)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+              Withdrawable
+            </div>
+            <div className="text-sm text-green-600 dark:text-green-400">
+              RUNE: {formatRuneAmount(position.runeWithdrawable)}
+            </div>
+            <div className="text-sm text-green-600 dark:text-green-400">
+              {position.assetSymbol}: {formatAmount(position.asset2Withdrawable)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+              Share
+            </div>
+            <div className="text-sm text-zinc-900 dark:text-zinc-100">
+              {formatPercent(position.ownershipPercent)}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function DashboardContentWithAddress({ address }: { address: string }) {
   const { positions, isLoading, error, state, retry, loadingProgress } = useLpPositions(address);
 
@@ -181,7 +283,8 @@ function DashboardContentWithAddress({ address }: { address: string }) {
               );
               results.set(`${position.pool}-${position.address}`, il);
             }
-          } catch {
+          } catch (err) {
+            console.error('IL calculation failed for position:', err);
           }
         })
       );
@@ -269,7 +372,7 @@ function DashboardContentWithAddress({ address }: { address: string }) {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+      <DashboardCard>
         <div className="flex flex-col gap-3 border-b border-zinc-200/80 pb-6 dark:border-zinc-800/80 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-500 dark:text-zinc-400">
@@ -319,16 +422,16 @@ function DashboardContentWithAddress({ address }: { address: string }) {
             <LpSummaryCard key={`${position.pool}-${position.address}`} position={position} />
           ))}
         </div>
-      </section>
+      </DashboardCard>
 
-      <section className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+      <DashboardCard>
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-zinc-950 dark:text-zinc-50">Your Liquidity Positions</h2>
           <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
             Pool status, ownership share, and pool context remain visible only after the LP member lookup succeeds.
           </p>
         </div>
-        <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
+        <div className="hidden md:block overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
           <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-800">
             <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-950/60">
               <tr>
@@ -405,7 +508,12 @@ function DashboardContentWithAddress({ address }: { address: string }) {
             </tbody>
           </table>
         </div>
-      </section>
+        <div className="md:hidden space-y-4">
+          {sortedPositions.map((position) => (
+            <LpMobileCard key={`mobile-${position.pool}-${position.address}`} position={position} />
+          ))}
+        </div>
+      </DashboardCard>
     </div>
   );
 }

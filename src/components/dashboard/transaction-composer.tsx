@@ -55,9 +55,10 @@ function validateUnbondAmount(amount: string): { valid: boolean; error?: string 
 interface TransactionComposerProps {
   positions: BondPosition[];
   address?: string | null;
+  onModeChange?: (mode: 'bond' | 'unbond') => void;
 }
 
-export function TransactionComposer({ positions, address }: TransactionComposerProps) {
+export function TransactionComposer({ positions, address, onModeChange }: TransactionComposerProps) {
   void address;
   const searchParams = useSearchParams();
   const paramNode = searchParams?.get('node');
@@ -209,11 +210,18 @@ export function TransactionComposer({ positions, address }: TransactionComposerP
   const InlineCopyIcon = inlineCopyState === 'success' ? Check : inlineCopyState === 'error' ? X : Copy;
   const PrimaryCopyIcon = primaryCopyState === 'success' ? Check : primaryCopyState === 'error' ? X : Copy;
 
+  const handleModeChange = (nextMode: Mode) => {
+    const normalizedMode = nextMode.toLowerCase() as 'bond' | 'unbond';
+
+    setMode(nextMode);
+    onModeChange?.(normalizedMode);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex gap-2">
-        <button onClick={() => setMode('BOND')} className={cn('px-4 py-2 rounded-lg font-medium transition', mode === 'BOND' ? 'bg-emerald-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400')}>BOND</button>
-        <button onClick={() => setMode('UNBOND')} className={cn('px-4 py-2 rounded-lg font-medium transition', mode === 'UNBOND' ? 'bg-amber-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400')}>UNBOND</button>
+        <button onClick={() => handleModeChange('BOND')} className={cn('px-4 py-2 rounded-lg font-medium transition', mode === 'BOND' ? 'bg-emerald-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400')}>BOND</button>
+        <button onClick={() => handleModeChange('UNBOND')} className={cn('px-4 py-2 rounded-lg font-medium transition', mode === 'UNBOND' ? 'bg-amber-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400')}>UNBOND</button>
       </div>
       <div className="bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-5 space-y-5 hover:shadow-md hover:shadow-emerald-500/10 transition-all">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

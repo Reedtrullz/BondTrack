@@ -13,12 +13,14 @@ import { NetworkSecurityMetrics } from '@/components/dashboard/network-security-
 import { NetworkSecurityCard } from '@/components/dashboard/network-security-card';
 import { UnbondWindowTracker } from '@/components/dashboard/unbond-window-tracker';
 import { RiskRadar } from '@/components/dashboard/risk-radar';
+import { DashboardCard } from '@/components/shared/dashboard-card';
 import type { YieldGuardFlag, BondPosition } from '@/lib/types/node';
 import { useState } from 'react';
 import { generatePortfolioAlerts } from '@/lib/utils/portfolio-alerts';
 import { cn } from '@/lib/utils';
 import { calculateNetworkSecurityState, estimateNextChurn } from '@/lib/utils/calculations';
 import { runeToNumber, formatCompactNumber, formatRuneFromNumber } from '@/lib/utils/formatters';
+import { NETWORK } from '@/lib/config';
 
 function formatRuneValue(value: number): string {
   if (!value || value <= 0) return '--';
@@ -32,12 +34,12 @@ function formatRuneCompact(value: number): string {
 
 function getNodeSeverityScore(p: BondPosition): number {
   let score = 0;
-  if (p.slashPoints >= 200) score += 50;
-  else if (p.slashPoints >= 50) score += 25;
-  else if (p.slashPoints > 0) score += 10;
-  if (p.isJailed) score += 100;
-  if (p.yieldGuardFlags?.includes('lowest_bond')) score += 20;
-  if (p.yieldGuardFlags?.includes('overbonded')) score += 15;
+  if (p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical) score += NETWORK.NODE_SEVERITY_SCORES.criticalSlash;
+  else if (p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning) score += NETWORK.NODE_SEVERITY_SCORES.warningSlash;
+  else if (p.slashPoints > 0) score += NETWORK.NODE_SEVERITY_SCORES.minorSlash;
+  if (p.isJailed) score += NETWORK.NODE_SEVERITY_SCORES.jailed;
+  if (p.yieldGuardFlags?.includes('lowest_bond')) score += NETWORK.NODE_SEVERITY_SCORES.lowestBond;
+  if (p.yieldGuardFlags?.includes('overbonded')) score += NETWORK.NODE_SEVERITY_SCORES.overbonded;
   return score;
 }
 
@@ -58,8 +60,8 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
   const standbyCount = positions.filter(p => p.status === 'Standby').length;
   const jailedCount = positions.filter(p => p.isJailed).length;
   const atRiskCount = positions.filter(p => p.yieldGuardFlags && p.yieldGuardFlags.length > 0).length;
-  const criticalCount = positions.filter(p => p.slashPoints >= 200).length;
-  const warningCount = positions.filter(p => p.slashPoints >= 50 && p.slashPoints < 200).length;
+  const criticalCount = positions.filter(p => p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical).length;
+  const warningCount = positions.filter(p => p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning && p.slashPoints < NETWORK.SLASH_POINT_THRESHOLDS.critical).length;
   
   // Use canonical health score from utility layer
   const health = calculatePortfolioHealth(positions);
@@ -67,11 +69,11 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
   
   const hasCriticalSlash = criticalCount > 0;
   const hasJailed = jailedCount > 0;
-  const isHealthy = healthScore >= 80 && !hasCriticalSlash && !hasJailed;
-  
-  const statusIcon = isHealthy ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : healthScore >= 50 ? <AlertIcon className="w-5 h-5 text-amber-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />;
-  const statusText = isHealthy ? "Healthy" : healthScore >= 50 ? "Needs Attention" : "At Risk";
-  const statusColor = isHealthy ? "text-emerald-600 dark:text-emerald-400" : healthScore >= 50 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400";
+  const isHealthy = healthScore >= NETWORK.HEALTH_SCORE_THRESHOLDS.healthy && !hasCriticalSlash && !hasJailed;
+
+  const statusIcon = isHealthy ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : healthScore >= NETWORK.HEALTH_SCORE_THRESHOLDS.warning ? <AlertIcon className="w-5 h-5 text-amber-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />;
+  const statusText = isHealthy ? 'Healthy' : healthScore >= NETWORK.HEALTH_SCORE_THRESHOLDS.warning ? 'Needs Attention' : 'At Risk';
+  const statusColor = isHealthy ? 'text-emerald-600 dark:text-emerald-400' : healthScore >= NETWORK.HEALTH_SCORE_THRESHOLDS.warning ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
 
   // Use NETWORK bonds for pendulum (active + standby)
   const networkBondRaw = network?.bondMetrics?.totalActiveBond || '0';
@@ -89,14 +91,14 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
   // THORChain Incentive Pendulum status:
   // - >2.5x: Well Secured, 1.5-2.5x: Healthy, 1.0-1.5x: Building, <1.0x: Under-secured
   let pendulumStatus: { status: string; icon: React.ReactNode; color: string };
-  if (bondToPoolRatio > 2.5) {
-    pendulumStatus = { status: "Well Secured", icon: <TrendingUp className="w-3 h-3" />, color: "text-emerald-600 dark:text-emerald-400" };
-  } else if (bondToPoolRatio >= 1.5) {
-    pendulumStatus = { status: "Healthy", icon: <Minus className="w-3 h-3" />, color: "text-emerald-600 dark:text-emerald-400" };
-  } else if (bondToPoolRatio >= 1.0) {
-    pendulumStatus = { status: "Building", icon: <TrendingDown className="w-3 h-3" />, color: "text-amber-600 dark:text-amber-400" };
+  if (bondToPoolRatio > NETWORK.BOND_TO_POOL_THRESHOLDS.healthy) {
+    pendulumStatus = { status: 'Well Secured', icon: <TrendingUp className="w-3 h-3" />, color: 'text-emerald-600 dark:text-emerald-400' };
+  } else if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.building) {
+    pendulumStatus = { status: 'Healthy', icon: <Minus className="w-3 h-3" />, color: 'text-emerald-600 dark:text-emerald-400' };
+  } else if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.underSecured) {
+    pendulumStatus = { status: 'Building', icon: <TrendingDown className="w-3 h-3" />, color: 'text-amber-600 dark:text-amber-400' };
   } else {
-    pendulumStatus = { status: "Under-secured", icon: <TrendingDown className="w-3 h-3" />, color: "text-red-600 dark:text-red-400" };
+    pendulumStatus = { status: 'Under-secured', icon: <TrendingDown className="w-3 h-3" />, color: 'text-red-600 dark:text-red-400' };
   }
 
   const nextChurn = currentBlockHeight ? estimateNextChurn(currentBlockHeight) : null;
@@ -214,7 +216,7 @@ function NodesList({ positions }: { positions: BondPosition[] }) {
             return false;
           });
           const severity = getNodeSeverityScore(pos);
-          const isHighRisk = severity >= 25;
+          const isHighRisk = severity >= NETWORK.NODE_SEVERITY_SCORES.highRisk;
 
           return (
             <div 
@@ -245,9 +247,9 @@ function NodesList({ positions }: { positions: BondPosition[] }) {
                     {pos.slashPoints > 0 && (
                       <span className={cn(
                         "px-1.5 py-0.5 rounded text-xs font-medium",
-                        pos.slashPoints >= 200 ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-400" :
-                        pos.slashPoints >= 50 ? "bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-400" :
-                        "bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-400"
+                        pos.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-400' :
+                        pos.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning ? 'bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-400' :
+                        'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-400'
                       )}>
                         {pos.slashPoints} pts
                       </span>
@@ -257,9 +259,9 @@ function NodesList({ positions }: { positions: BondPosition[] }) {
                 <div className="flex items-center gap-2 shrink-0 ml-2">
                   <span className={cn(
                     "px-2 py-0.5 rounded text-xs font-medium",
-                    pos.status === 'Active' ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-400" :
-                    pos.status === 'Standby' ? "bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-400" :
-                    "bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400"
+                    pos.status === 'Active' ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-400' :
+                    pos.status === 'Standby' ? 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-400' :
+                    'bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
                   )}>
                     {pos.status}
                   </span>
@@ -292,16 +294,16 @@ function RiskKPIs({ positions }: { positions: BondPosition[] }) {
   const standbyCount = positions.filter(p => p.status === 'Standby').length;
   const jailedCount = positions.filter(p => p.isJailed).length;
   const slashNodes = positions.filter(p => p.slashPoints > 0).length;
-  const criticalSlash = positions.filter(p => p.slashPoints >= 200).length;
-  const warningSlash = positions.filter(p => p.slashPoints >= 50 && p.slashPoints < 200).length;
+  const criticalSlash = positions.filter(p => p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical).length;
+  const warningSlash = positions.filter(p => p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning && p.slashPoints < NETWORK.SLASH_POINT_THRESHOLDS.critical).length;
   const nextChurnEstimate = currentBlockHeight ? estimateNextChurn(currentBlockHeight) : null;
   const churnDays = nextChurnEstimate ? Math.floor(nextChurnEstimate.estimatedSeconds / 86400) : null;
 
   const pills = [
-    { icon: <Zap className="w-4 h-4" />, value: activeCount, label: "Earning", color: "bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400", sub: standbyCount > 0 ? `${standbyCount} standby` : null },
-    { icon: <AlertTriangle className="w-4 h-4" />, value: slashNodes, label: "Slash", color: criticalSlash > 0 ? "bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400" : warningSlash > 0 ? "bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400" : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400", sub: criticalSlash > 0 ? `${criticalSlash} crit` : warningSlash > 0 ? `${warningSlash} warn` : null },
-    { icon: <Lock className="w-4 h-4" />, value: jailedCount, label: "Jailed", color: jailedCount > 0 ? "bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400" : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400", sub: null },
-    { icon: <Hourglass className="w-4 h-4" />, value: churnDays !== null ? churnDays + 'd' : '--', label: "Churn", color: "bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400", sub: null },
+    { icon: <Zap className="w-4 h-4" />, value: activeCount, label: 'Earning', color: 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400', sub: standbyCount > 0 ? `${standbyCount} standby` : null },
+    { icon: <AlertTriangle className="w-4 h-4" />, value: slashNodes, label: 'Slash', color: criticalSlash > 0 ? 'bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400' : warningSlash > 0 ? 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400', sub: criticalSlash > 0 ? `${criticalSlash} crit` : warningSlash > 0 ? `${warningSlash} warn` : null },
+    { icon: <Lock className="w-4 h-4" />, value: jailedCount, label: 'Jailed', color: jailedCount > 0 ? 'bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400', sub: null },
+    { icon: <Hourglass className="w-4 h-4" />, value: churnDays !== null ? churnDays + 'd' : '--', label: 'Churn', color: 'bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400', sub: null },
   ];
 
   return (
@@ -338,7 +340,7 @@ function IncentivePendulum() {
   // - 1.0-1.5x: Building (bond > liquidity but needs more)
   // - <1.0x: Under-secured (liquidity > bond)
   let pendulumStatus: { status: string; icon: React.ReactNode; color: string; bg: string; desc: string };
-  if (bondToPoolRatio > 2.5) {
+  if (bondToPoolRatio > NETWORK.BOND_TO_POOL_THRESHOLDS.healthy) {
     pendulumStatus = { 
       status: "Well Secured", 
       icon: <TrendingUp className="w-4 h-4" />, 
@@ -346,7 +348,7 @@ function IncentivePendulum() {
       bg: "bg-emerald-50 dark:bg-emerald-900/20",
       desc: "Bond exceeds 2.5x liquidity. Node rewards maximized, LP yields reduced."
     };
-  } else if (bondToPoolRatio >= 1.5) {
+  } else if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.building) {
     pendulumStatus = { 
       status: "Healthy", 
       icon: <Minus className="w-4 h-4" />, 
@@ -354,7 +356,7 @@ function IncentivePendulum() {
       bg: "bg-emerald-50 dark:bg-emerald-900/20",
       desc: "Bond 1.5-2x liquidity. Balanced reward distribution."
     };
-  } else if (bondToPoolRatio >= 1.0) {
+  } else if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.underSecured) {
     pendulumStatus = { 
       status: "Building", 
       icon: <TrendingDown className="w-4 h-4" />, 
@@ -375,7 +377,7 @@ function IncentivePendulum() {
   // THORChain incentive pendulum: actual reward split formula
   // When bond > liquidity: nodeShare = 1 - 1/(bondToPool + 1)
   // When bond <= liquidity: nodeShare = bondToPool / (bondToPool + 1)
-  const nodeShareFraction = bondToPoolRatio > 1
+  const nodeShareFraction = bondToPoolRatio > NETWORK.BOND_TO_POOL_THRESHOLDS.underSecured
     ? 1 - 1 / (bondToPoolRatio + 1)
     : bondToPoolRatio / (bondToPoolRatio + 1);
   const nodeShare = nodeShareFraction * 100;
@@ -435,14 +437,14 @@ function IncentivePendulum() {
           <div 
             className={cn(
               "h-full transition-all",
-              bondToPoolRatio >= 1.5 && bondToPoolRatio <= 3 ? "bg-emerald-500" :
-              bondToPoolRatio >= 1 ? "bg-amber-500" : "bg-red-500"
+              bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.building && bondToPoolRatio <= 3 ? 'bg-emerald-500' :
+              bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.underSecured ? 'bg-amber-500' : 'bg-red-500'
             )}
-            style={{ width: `${Math.min(bondToPoolRatio * 33, 100)}%` }}
+            style={{ width: `${Math.min(bondToPoolRatio * NETWORK.PROGRESS_BAR_MULTIPLIER, 100)}%` }}
           />
         </div>
         <div className="flex items-center justify-between text-xs text-zinc-400 mt-1">
-          <span>Target: 1.5x - 3x</span>
+          <span>Target: {NETWORK.BOND_TO_POOL_THRESHOLDS.building}x - 3x</span>
           <span>Current: {bondToPoolRatio.toFixed(2)}x</span>
         </div>
       </div>
@@ -486,9 +488,9 @@ export default function RiskPage() {
           </div>
           <div className="mt-4">
             {networkLoading ? (
-              <div className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+              <DashboardCard className="p-6">
                 <div className="animate-pulse h-28 rounded-xl bg-zinc-200 dark:bg-zinc-800" />
-              </div>
+              </DashboardCard>
             ) : (
               <NetworkSecurityCard
                 ratio={bondToPoolRatio}
@@ -498,16 +500,16 @@ export default function RiskPage() {
             )}
           </div>
         </div>
-        <div className="lg:col-span-1 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
+        <DashboardCard className="lg:col-span-1 p-4 rounded-lg bg-white dark:bg-zinc-900">
           <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2 font-serif italic">Shield Analysis</h3>
           {positions.length > 0 ? (
-            <RiskRadar position={positions[0]} />
+            <RiskRadar positions={positions} />
           ) : (
             <div className="h-[240px] flex items-center justify-center text-zinc-500 text-xs italic">
               Awaiting node signal...
             </div>
           )}
-        </div>
+        </DashboardCard>
       </div>
 
       <NodesList positions={positions} />

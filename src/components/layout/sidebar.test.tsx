@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Sidebar } from './sidebar';
 
 const mocks = vi.hoisted(() => ({
-  pathname: '/dashboard/overview',
+  pathname: '/dashboard/portfolio',
   searchParams: new URLSearchParams('address=thor1abc'),
 }));
 
@@ -26,17 +26,17 @@ vi.mock('./theme-toggle', () => ({
 
 describe('Sidebar', () => {
   beforeEach(() => {
-    mocks.pathname = '/dashboard/overview';
+    mocks.pathname = '/dashboard/portfolio';
     mocks.searchParams = new URLSearchParams('address=thor1abc');
   });
 
-  it('marks the current route as active instead of always highlighting overview', () => {
+  it('marks the current route as active on portfolio navigation', () => {
     mocks.pathname = '/dashboard/rewards';
 
     render(<Sidebar />);
 
     expect(screen.getByLabelText('Navigate to Rewards page')).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByLabelText('Navigate to Overview page')).not.toHaveAttribute('aria-current');
+    expect(screen.getByLabelText('Navigate to Portfolio page')).not.toHaveAttribute('aria-current');
   });
 
   it('preserves the address query when rendering navigation links', () => {

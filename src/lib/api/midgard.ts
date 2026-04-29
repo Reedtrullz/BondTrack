@@ -1,7 +1,6 @@
 import { fetchMidgard } from './client';
 import { getCoingeckoRunePrice } from './coingecko';
-import { calculateNetworkSecurityState } from '../utils/calculations';
-import { runeToNumber } from '../utils/formatters';
+import { NETWORK } from '../config';
 
 export interface BondDetailsRaw {
   address: string;
@@ -129,12 +128,6 @@ export interface NetworkRaw {
   };
   nextChurnHeight: string;
   poolActivationCountdown: string;
-}
-
-export interface NetworkSecurityMetricsRaw {
-  bondToPoolRatio: number;
-  securityHealth: 'healthy' | 'warning' | 'at-risk';
-  solvencyStatus: string;
 }
 
 export interface ActionRaw {
@@ -324,8 +317,6 @@ export async function getRunePriceHistory(interval = 'day', count?: number, from
   return fetchMidgard<RunePriceHistoryRaw>(`/v2/history/rune?${qs}`);
 }
 
-const MIN_HISTORY_DAYS = 30;
-const HISTORY_BUFFER_DAYS = 7;
 const HISTORY_COVERAGE_TOLERANCE_SECONDS = 86400;
 
 function normalizeHistoryTimestampValue(timestamp: number | string): number {
@@ -336,14 +327,6 @@ function normalizeHistoryTimestampValue(timestamp: number | string): number {
   }
 
   return numericTimestamp > 1e12 ? numericTimestamp / 1e9 : numericTimestamp;
-}
-
-function getHistoryCountForTimestamp(timestamp: number): number {
-  const normalizedTimestamp = normalizeHistoryTimestampValue(timestamp);
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  const secondsBack = Math.max(0, nowSeconds - normalizedTimestamp);
-  const daysBack = Math.ceil(secondsBack / 86400) + HISTORY_BUFFER_DAYS;
-  return Math.max(MIN_HISTORY_DAYS, daysBack);
 }
 
 function hasHistoryCoverage(timestamps: Array<number | string>, requestedTimestamp: number): boolean {
@@ -433,21 +416,7 @@ export async function getNetwork(): Promise<NetworkRaw> {
   return fetchMidgard<NetworkRaw>('/v2/network');
 }
 
-export async function getNetworkSecurityMetrics(): Promise<NetworkSecurityMetricsRaw> {
-  const network = await getNetwork();
-  const totalActiveBond = runeToNumber(network.bondMetrics?.totalActiveBond || '0');
-  const totalPooledRune = runeToNumber(network.totalPooledRune || '0');
-  const bondToPoolRatio = totalPooledRune > 0 ? totalActiveBond / totalPooledRune : 0;
-  const { securityHealth, solvencyStatus } = calculateNetworkSecurityState(bondToPoolRatio);
-
-  return {
-    bondToPoolRatio,
-    securityHealth,
-    solvencyStatus,
-  };
-}
-
-export async function getActions(address: string, limit = 50, actionTypes?: string, typeParam = 'type'): Promise<ActionsResponseRaw> {
+export async function getActions(address: string, limit = NETWORK.MAX_ACTIONS_LIMIT, actionTypes?: string, typeParam = 'type'): Promise<ActionsResponseRaw> {
   const params = new URLSearchParams();
   params.set('address', address);
   params.set('limit', String(limit));

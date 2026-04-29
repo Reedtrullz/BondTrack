@@ -158,7 +158,9 @@ export default function ChangelogsPage() {
             });
             setExpandedEntryIds(cleaned);
           }
-        } catch {}
+        } catch (err) {
+          console.error('Failed to parse changelogs expanded state:', err);
+        }
       }
     }
   }, []);

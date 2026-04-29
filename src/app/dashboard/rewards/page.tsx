@@ -4,18 +4,18 @@ export const dynamic = 'force-dynamic';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
-import { useRunePrice, useRunePriceHistory, useHistoricalRunePrice } from '@/lib/hooks/use-rune-price';
+import { useRunePrice, useHistoricalRunePrice } from '@/lib/hooks/use-rune-price';
 import { useBondHistory } from '@/lib/hooks/use-bond-history';
-import { useCoinApiRunePrice } from '@/lib/hooks/use-coinapi-price';
 import { PnLDashboard } from '@/components/dashboard/pnl-dashboard';
 import { PersonalFeeAudit } from '@/components/dashboard/fee-impact-tracker';
 import { AutoCompoundChart } from '@/components/dashboard/auto-compound-chart';
 import { PriceChart } from '@/components/dashboard/price-chart';
 import { useMemo, useState, useEffect } from 'react';
-import { TrendingUp, Zap, Download } from 'lucide-react';
+import { TrendingUp, Zap, Download, BarChart3 } from 'lucide-react';
 import { calculateWeightedApy } from '@/lib/utils/fee-calculations';
 import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
 import { Button } from '@/components/ui/button';
+import { DashboardCard } from '@/components/shared/dashboard-card';
 
 export default function RewardsPage() {
   const router = useRouter();
@@ -50,9 +50,7 @@ export default function RewardsPage() {
       params.set('address', address);
     }
 
-    params.set('action', 'optimize');
-
-    router.push(`/dashboard/transactions?${params.toString()}`);
+    router.push(`/dashboard/risk?${params.toString()}`);
   };
 
   const handleExportTaxReport = async () => {
@@ -96,10 +94,9 @@ export default function RewardsPage() {
 
   if (!address || safePositions.length === 0) {
     return (
-      <div className="p-8 text-center bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 max-w-2xl mx-auto mt-12">
-        <h2 className="text-xl font-semibold mb-2">No Bond Positions Found</h2>
+      <DashboardCard className="p-8 text-center max-w-2xl mx-auto mt-12 bg-white dark:bg-zinc-900 rounded-xl" title="No Bond Positions Found">
         <p className="text-zinc-500">Please enter a valid THORChain address to view reward metrics.</p>
-      </div>
+      </DashboardCard>
     );
   }
 
@@ -109,9 +106,12 @@ export default function RewardsPage() {
 
   return (
     <div className="space-y-12 pb-20">
-      <section className="relative">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">PnL Performance</h2>
+      <DashboardCard className="relative">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-emerald-500" />
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Performance</h2>
+          </div>
           <div className="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold">
             Live Metrics
           </div>
@@ -134,47 +134,40 @@ export default function RewardsPage() {
             Export Tax Report
           </Button>
         </div>
-      </section>
+      </DashboardCard>
 
-      <section className="space-y-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-            <Zap className="w-4 h-4" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-widest">
-              Yield Optimization
-            </h3>
-            <p className="text-xs text-zinc-500">Reduce leakage and maximize future growth</p>
-          </div>
+      <DashboardCard>
+        <div className="flex items-center gap-2 mb-4">
+          <Zap className="w-5 h-5 text-emerald-500" />
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Yield Optimization</h2>
         </div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-4">
             <PersonalFeeAudit positions={safePositions} networkApy={weightedApy} />
           </div>
-          
+
           <div className="lg:col-span-8">
             {weightedApy > 0 ? (
-              <AutoCompoundChart 
-                positions={safePositions} 
-                weightedApy={weightedApy} 
+              <AutoCompoundChart
+                positions={safePositions}
+                weightedApy={weightedApy}
               />
             ) : (
-              <div className="p-8 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm flex items-center justify-center min-h-[300px]">
+              <DashboardCard className="p-8 bg-white dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm flex items-center justify-center min-h-[300px]">
                 <p className="text-zinc-500">Loading APY data...</p>
-              </div>
+              </DashboardCard>
             )}
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="mt-6 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-1 h-8 bg-emerald-500 rounded-full" />
             <div>
               <div className="text-xs font-bold text-zinc-400 uppercase tracking-tight">Strategic Insight</div>
               <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                {safePositions.length === 1 
+                {safePositions.length === 1
                   ? "Your portfolio is concentrated in a single node. Consider diversifying to reduce operator fee exposure."
                   : "Your weighted APY is stable. Compounding your rewards monthly could increase your end-of-year balance."}
               </p>
@@ -186,22 +179,18 @@ export default function RewardsPage() {
             onClick={handleOptimizeNow}
             className="min-w-[8.5rem]"
           >
-            Optimize Now
+            Review Risk
           </Button>
         </div>
-      </section>
+      </DashboardCard>
 
-      <section className="space-y-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
-            <TrendingUp className="w-4 h-4" />
-          </div>
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-widest">
-            Market Context
-          </h3>
+      <DashboardCard>
+        <div className="flex items-center gap-2 mb-4">
+          <BarChart3 className="w-5 h-5 text-emerald-500" />
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Market Context</h2>
         </div>
         <PriceChart />
-      </section>
+      </DashboardCard>
 
       {showTaxModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

@@ -14,6 +14,51 @@ export const NETWORK = {
   MINIMUM_BOND_RUNE: 1_000_000_000_000, // 10,000 RUNE in 1e8
   DESIRED_VALIDATOR_SET: 100,
   MAX_BOND_PROVIDERS: 6,
+  SLASH_POINT_THRESHOLDS: {
+    warning: 50,
+    critical: 200,
+  },
+  HEALTH_SCORE_THRESHOLDS: {
+    healthy: 80,
+    warning: 50,
+  },
+  BOND_TO_POOL_THRESHOLDS: {
+    underSecured: 1.0,
+    building: 1.5,
+    healthy: 2.5,
+  },
+  NODE_SEVERITY_SCORES: {
+    criticalSlash: 50,
+    warningSlash: 25,
+    minorSlash: 10,
+    jailed: 100,
+    lowestBond: 20,
+    overbonded: 15,
+    highRisk: 25,
+  },
+  HEALTH_SCORE_RULES: {
+    startingPoints: 100,
+    jailedPenalty: 40,
+    criticalSlashPenalty: 20,
+    criticalSlashMagnitudeDivisor: 1000,
+    warningSlashPenalty: 8,
+    atRiskPenalty: 5,
+    gradeThresholds: {
+      f: 40,
+      d: 60,
+      c: 75,
+      b: 90,
+      a: 100,
+    },
+  },
+  PROGRESS_BAR_MULTIPLIER: 33,
+  MAX_ACTIONS_LIMIT: 50,
+  REFRESH_INTERVALS: {
+    bondPositions: 60000,
+    earnings: 300000,
+    price: 300000,
+    health: 30000,
+  },
 } as const;
 
 export const LATEST_THORNODE_VERSION = '1.135.0';

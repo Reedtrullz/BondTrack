@@ -33,7 +33,7 @@ export function useBondHistory(address: string | null) {
       } catch (err) {
         // Fallback to a smaller limit if Midgard is struggling.
         return {
-          ...(await getActions(address!, 25, 'bond,unbond,leave')),
+          ...(await getActions(address!, 50, 'bond,unbond,leave')),
         };
       }
     },

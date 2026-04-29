@@ -1,6 +1,7 @@
 'use client';
 
 import { Shield, AlertTriangle, Minus } from 'lucide-react';
+import { NETWORK } from '@/lib/config';
 import { cn } from '@/lib/utils';
 
 type NetworkSecurityHealth = 'healthy' | 'warning' | 'at-risk';
@@ -40,7 +41,7 @@ function getHealthStyles(health: NetworkSecurityHealth) {
 
 export function NetworkSecurityCard({ ratio, health, status }: NetworkSecurityCardProps) {
   const styles = getHealthStyles(health);
-  const progress = ratio > 0 ? Math.min(ratio * 33, 100) : 0;
+  const progress = ratio > 0 ? Math.min(ratio * NETWORK.PROGRESS_BAR_MULTIPLIER, 100) : 0;
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">

@@ -8,6 +8,10 @@ import { Sidebar, MobileMenuButton } from '@/components/layout/sidebar';
 import { WalletConnect } from '@/components/wallet/wallet-connect';
 import { Button } from '@/components/ui/button';
 import { Breadcrumbs } from '@/components/shared/breadcrumbs';
+import { ApiHealthBanner } from '@/components/shared/api-health-banner';
+import { useApiHealth } from '@/lib/hooks/use-api-health';
+import { useWalletBalance } from '@/lib/hooks/use-wallet-balance';
+import { formatRuneFromNumber } from '@/lib/utils/formatters';
 import { getTHORNameReverseLookupNoRetry as getTHORNameReverseLookup } from '@/lib/api/midgard';
 
 const THORNAME_CACHE_PREFIX = 'thorname-rlookup:';
@@ -46,6 +50,8 @@ export function DashboardShell({
   const [thorName, setThorName] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const [tickAtRefresh, setTickAtRefresh] = useState(0);
+  const { midgard, thornode } = useApiHealth();
+  const { balance } = useWalletBalance(address);
 
   const hasAddress = requireAddress ? !!address : true;
 
@@ -99,7 +105,8 @@ export function DashboardShell({
           );
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('THORName reverse lookup failed:', err);
         if (!cancelled) {
           setThorName(null);
           // Cache the absence to avoid repeated retries on failure
@@ -138,9 +145,16 @@ export function DashboardShell({
                 Dashboard
               </h1>
               {address && (
-                <p className="text-[10px] sm:text-xs md:text-sm text-zinc-500 font-mono mt-0.5 truncate" title={address}>
-                  {thorName || truncateAddress(address)}
-                </p>
+                <>
+                  <p className="text-[10px] sm:text-xs md:text-sm text-zinc-500 font-mono mt-0.5 truncate" title={address}>
+                    {thorName || truncateAddress(address)}
+                  </p>
+                  {balance !== null && balance > 0 && (
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 block">
+                      <span className="font-mono">ᚱ{formatRuneFromNumber(balance)}</span> available
+                    </span>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -163,6 +177,7 @@ export function DashboardShell({
             </Button>
           </div>
         </div>
+        <ApiHealthBanner midgard={midgard} thornode={thornode} />
         {children}
       </main>
     </div>

@@ -1,10 +1,9 @@
 import useSWR from 'swr';
 import { getAllNodes, type NodeRaw } from '@/lib/api/thornode';
 import { getNetworkConstants } from '@/lib/api/thornode';
-import { extractBondPositions, type BondPosition } from '@/lib/types/node';
+import { extractBondPositions, type BondPosition, type YieldGuardFlag } from '@/lib/types/node';
 import { getHealth } from '@/lib/api/midgard';
-
-export type YieldGuardFlag = 'overbonded' | 'highest_slash' | 'lowest_bond' | 'oldest' | 'leaving';
+import { NETWORK } from '@/lib/config';
 
 function getYieldGuardFlags(
   positions: BondPosition[],
@@ -56,7 +55,7 @@ export function useBondPositions(address: string | null) {
     'nodes',
     () => getAllNodes(),
     { 
-      refreshInterval: 60_000,
+      refreshInterval: NETWORK.REFRESH_INTERVALS.bondPositions,
       errorRetryInterval: 5000,
     }
   );
@@ -64,13 +63,13 @@ export function useBondPositions(address: string | null) {
   const { data: constants } = useSWR(
     address ? 'network-constants' : null,
     () => getNetworkConstants(),
-    { revalidateOnFocus: false, refreshInterval: 300_000 }
+    { revalidateOnFocus: false, refreshInterval: NETWORK.REFRESH_INTERVALS.price }
   );
 
   const { data: healthData } = useSWR(
     'health',
     () => getHealth(),
-    { refreshInterval: 30_000 }
+    { refreshInterval: NETWORK.REFRESH_INTERVALS.health }
   );
 
   const currentBlockHeight = healthData?.lastThorNode?.height ?? nodes?.[0]?.active_block_height ?? 0;

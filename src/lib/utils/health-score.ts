@@ -1,3 +1,4 @@
+import { NETWORK } from '../config';
 import { BondPosition } from '@/lib/types/node';
 
 export type HealthGrade = 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
@@ -18,50 +19,50 @@ export interface HealthScoreResult {
  */
 export function calculatePortfolioHealth(positions: BondPosition[]): HealthScoreResult {
   if (positions.length === 0) {
-    return { grade: 'A+', score: 100, reason: 'No positions bonded', isCritical: false };
+    return { grade: 'A+', score: NETWORK.HEALTH_SCORE_RULES.startingPoints, reason: 'No positions bonded', isCritical: false };
   }
 
-  let totalPoints = 100;
+  let totalPoints = NETWORK.HEALTH_SCORE_RULES.startingPoints;
   const criticalIssues = [];
 
   // 1. Check for Jailed Nodes (Immediate Criticality)
   const jailedNodes = positions.filter(p => p.isJailed);
   if (jailedNodes.length > 0) {
-    totalPoints -= 40;
+    totalPoints -= NETWORK.HEALTH_SCORE_RULES.jailedPenalty;
     criticalIssues.push(`${jailedNodes.length} node(s) jailed`);
   }
 
-  const highSlashNodes = positions.filter(p => p.slashPoints >= 200);
-  const warningSlashNodes = positions.filter(p => p.slashPoints >= 50 && p.slashPoints < 200);
+  const highSlashNodes = positions.filter(p => p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical);
+  const warningSlashNodes = positions.filter(p => p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning && p.slashPoints < NETWORK.SLASH_POINT_THRESHOLDS.critical);
   
   highSlashNodes.forEach(p => {
-    const magnitudePenalty = Math.floor(p.slashPoints / 1000);
-    totalPoints -= 20 + magnitudePenalty;
+    const magnitudePenalty = Math.floor(p.slashPoints / NETWORK.HEALTH_SCORE_RULES.criticalSlashMagnitudeDivisor);
+    totalPoints -= NETWORK.HEALTH_SCORE_RULES.criticalSlashPenalty + magnitudePenalty;
   });
-  totalPoints -= warningSlashNodes.length * 8;
+  totalPoints -= warningSlashNodes.length * NETWORK.HEALTH_SCORE_RULES.warningSlashPenalty;
   
   if (highSlashNodes.length > 0) criticalIssues.push('Critical slash points detected');
 
   // 3. Churn Risk (Based on yieldGuard flags)
   const atRiskNodes = positions.filter(p => p.yieldGuardFlags?.includes('lowest_bond'));
-  totalPoints -= atRiskNodes.length * 5;
+  totalPoints -= atRiskNodes.length * NETWORK.HEALTH_SCORE_RULES.atRiskPenalty;
 
   // Clamp score 0-100
   const finalScore = Math.max(0, totalPoints);
 
   // Map score to grade
   let grade: HealthGrade = 'A+';
-  if (finalScore < 40) grade = 'F';
-  else if (finalScore < 60) grade = 'D';
-  else if (finalScore < 75) grade = 'C';
-  else if (finalScore < 90) grade = 'B';
-  else if (finalScore < 100) grade = 'A';
+  if (finalScore < NETWORK.HEALTH_SCORE_RULES.gradeThresholds.f) grade = 'F';
+  else if (finalScore < NETWORK.HEALTH_SCORE_RULES.gradeThresholds.d) grade = 'D';
+  else if (finalScore < NETWORK.HEALTH_SCORE_RULES.gradeThresholds.c) grade = 'C';
+  else if (finalScore < NETWORK.HEALTH_SCORE_RULES.gradeThresholds.b) grade = 'B';
+  else if (finalScore < NETWORK.HEALTH_SCORE_RULES.gradeThresholds.a) grade = 'A';
 
   return {
     grade,
     score: finalScore,
     reason: criticalIssues.length > 0 ? criticalIssues.join(', ') : 'All positions healthy',
-    isCritical: finalScore < 60 || jailedNodes.length > 0 || highSlashNodes.length > 0
+    isCritical: finalScore < NETWORK.HEALTH_SCORE_RULES.gradeThresholds.d || jailedNodes.length > 0 || highSlashNodes.length > 0
   };
 }
 

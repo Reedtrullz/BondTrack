@@ -58,7 +58,7 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
-vi.mock('../../../hooks/use-lp-positions', () => ({
+vi.mock('../../../lib/hooks/use-lp-positions', () => ({
   useLpPositions: (address: string | null) => mockUseLpPositions(address),
 }));
 

@@ -1,68 +1,80 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   PieChart,
   Pie,
-  Cell,
   ResponsiveContainer,
   Tooltip,
   Legend,
 } from 'recharts';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
-import { useLpPositions } from '@/hooks/use-lp-positions';
-import { useRunePrice } from '@/lib/hooks/use-rune-price';
+import { useLpPositions } from '@/lib/hooks/use-lp-positions';
+import { useRunePriceHistory } from '@/lib/hooks/use-rune-price';
 import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
-import { formatUsd } from '@/lib/utils/formatters';
+import { useYieldBenchmarks } from '@/lib/hooks/use-yield-benchmarks';
+import { useAllNodes } from '@/lib/hooks/use-all-nodes';
+import { getFeeRevenue, getPools, type FeeRevenueRaw, type PoolDetailRaw } from '@/lib/api/midgard';
+import { formatUsd, runeToNumber } from '@/lib/utils/formatters';
+import { DashboardCard } from '@/components/shared/dashboard-card';
+import { ExportButton } from '@/components/shared/export-button';
+import { MarketOverview } from '@/components/dashboard/market-overview';
+import { PortfolioSummary } from '@/components/dashboard/portfolio-summary';
+import { FeeRevenueChart } from '@/components/dashboard/fee-revenue-chart';
+import { FeeRevenueSummary } from '@/components/dashboard/fee-revenue-summary';
+import { PositionTable } from '@/components/dashboard/position-table';
+import { RewardProjections } from '@/components/dashboard/reward-projections';
+import { ActionableAlerts } from '@/components/dashboard/actionable-alerts';
+import { IntelligenceFeed } from '@/components/dashboard/intelligence-feed';
+import { Button } from '@/components/ui/button';
 import {
   TrendingUp,
-  Calendar,
   BarChart3,
   ArrowRight,
-  Wallet,
   Shield,
   Coins,
+  Plus,
+  Minus,
+  Sparkles,
+  Eye,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const COLORS = ['#10b981', '#f59e0b'];
 
-interface PerformanceCardProps {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  highlight?: 'emerald' | 'amber' | 'cyan';
+type TransactionAction = 'bond' | 'unbond';
+
+function buildTransactionHref(address: string | null, action: TransactionAction) {
+  const params = new URLSearchParams();
+
+  if (address) {
+    params.set('address', address);
+  }
+
+  params.set('action', action);
+
+  return `/dashboard/transactions?${params.toString()}`;
 }
 
-function PerformanceCard({ label, value, icon, highlight }: PerformanceCardProps) {
-  const highlightStyles = {
-    emerald: 'border-emerald-200/60 dark:border-emerald-800/40',
-    amber: 'border-amber-200/60 dark:border-amber-800/40',
-    cyan: 'border-cyan-200/60 dark:border-cyan-800/40',
-  };
+function buildDashboardHref(path: string, address: string | null) {
+  if (!address) {
+    return path;
+  }
 
-  return (
-    <div
-      className={cn(
-        'p-4 rounded-xl border bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300',
-        highlight ? highlightStyles[highlight] : 'border-zinc-200/60 dark:border-zinc-800/60'
-      )}
-    >
-      <div className="flex items-center gap-2 text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2">
-        {icon}
-        <span>{label}</span>
-      </div>
-      <div className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight font-mono">
-        {value}
-      </div>
-    </div>
-  );
+  const params = new URLSearchParams({ address });
+  return `${path}?${params.toString()}`;
 }
 
 export default function PortfolioPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
+  const [marketPools, setMarketPools] = useState<PoolDetailRaw[]>([]);
+  const [marketLoading, setMarketLoading] = useState(true);
+  const [feeRevenue, setFeeRevenue] = useState<FeeRevenueRaw | null>(null);
+  const [feeRevenueLoading, setFeeRevenueLoading] = useState(true);
+  const [feeRevenueError, setFeeRevenueError] = useState<string | null>(null);
 
   const {
     positions: bondPositions,
@@ -72,10 +84,58 @@ export default function PortfolioPage() {
     positions: lpPositions,
     isLoading: lpLoading,
   } = useLpPositions(address);
-  const { price: runePrice, isLoading: priceLoading } = useRunePrice();
-  const { isLoading: metricsLoading } = useNetworkMetrics();
+  const { price: runePrice, intervals: runePriceHistory, isLoading: priceLoading } = useRunePriceHistory('day', 8);
+  const { data: marketNetwork, isLoading: metricsLoading } = useNetworkMetrics();
+  const { benchmarks, isLoading: benchmarksLoading } = useYieldBenchmarks();
+  const { data: allNodes, isLoading: allNodesLoading } = useAllNodes();
 
-  const isLoading = bondLoading || lpLoading || priceLoading || metricsLoading;
+  useEffect(() => {
+    let active = true;
+
+    async function loadMarketPools() {
+      try {
+        const pools = await getPools();
+        if (active) {
+          setMarketPools(pools);
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        if (active) {
+          setMarketLoading(false);
+        }
+      }
+    }
+
+    async function loadFeeRevenue() {
+      setFeeRevenueError(null);
+
+      try {
+        const data = await getFeeRevenue();
+        if (active) {
+          setFeeRevenue(data);
+        }
+      } catch (error) {
+        if (active) {
+          setFeeRevenueError('Failed to load fee revenue');
+          console.error(error);
+        }
+      } finally {
+        if (active) {
+          setFeeRevenueLoading(false);
+        }
+      }
+    }
+
+    loadMarketPools();
+    loadFeeRevenue();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const isLoading = bondLoading || lpLoading || priceLoading || metricsLoading || benchmarksLoading || allNodesLoading || marketLoading;
 
   if (isLoading) {
     return (
@@ -102,13 +162,41 @@ export default function PortfolioPage() {
   );
 
   const totalAum = totalBondedValueUsd + totalLpValueUsd;
+  const weightedAPY = bondPositions.length > 0 && totalBondedRune > 0
+    ? bondPositions.reduce((sum, p) => sum + p.netAPY * p.bondAmount, 0) / totalBondedRune
+    : 0;
+  const averageFeeBps = bondPositions.length > 0 && totalBondedRune > 0
+    ? bondPositions.reduce((sum, p) => sum + (p.operatorFee || 0) * p.bondAmount, 0) / totalBondedRune
+    : 0;
+  const runePriceChange24h = (() => {
+    if (runePriceHistory.length < 2) return null;
+
+    const first = runePriceHistory[runePriceHistory.length - 2].runePriceUSD;
+    const last = runePriceHistory[runePriceHistory.length - 1].runePriceUSD;
+
+    if (!Number.isFinite(first) || first <= 0 || !Number.isFinite(last)) {
+      return null;
+    }
+
+    return ((last - first) / first) * 100;
+  })();
+  const runePriceChange7d = (() => {
+    if (runePriceHistory.length < 8) return null;
+
+    const first = runePriceHistory[0].runePriceUSD;
+    const last = runePriceHistory[runePriceHistory.length - 1].runePriceUSD;
+
+    if (!Number.isFinite(first) || first <= 0 || !Number.isFinite(last)) {
+      return null;
+    }
+
+    return ((last - first) / first) * 100;
+  })();
 
   const pieData = [
     { name: 'Bond', value: totalBondedValueUsd, fill: COLORS[0] },
     { name: 'LP', value: totalLpValueUsd, fill: COLORS[1] },
   ];
-
-  const addrParam = address ? `?address=${address}` : '';
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 py-4">
@@ -121,17 +209,28 @@ export default function PortfolioPage() {
             Unified view of your Bond and LP positions
           </p>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-semibold border border-emerald-200/60 dark:border-emerald-800/50">
-          <Wallet className="w-3 h-3" />
-          <span>Live</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={buildTransactionHref(address, 'bond')}>
+              <Button variant="success" className="gap-2">
+                <Plus className="w-4 h-4" />
+                Bond More
+              </Button>
+            </Link>
+            <Link href={buildTransactionHref(address, 'unbond')}>
+              <Button variant="destructive" className="gap-2">
+                <Minus className="w-4 h-4" />
+                Unbond
+              </Button>
+            </Link>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-semibold border border-emerald-200/60 dark:border-emerald-800/50">
+              <Sparkles className="w-3 h-3 animate-pulse" />
+              <span>Live</span>
+            </div>
+            {bondPositions.length > 0 && <ExportButton bondPositions={bondPositions} />}
+          </div>
         </div>
-      </div>
 
-      <div className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
-        <div className="flex items-center gap-2 text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2">
-          <TrendingUp className="w-4 h-4 text-emerald-500" />
-          <span>Total Portfolio Value</span>
-        </div>
+      <DashboardCard title="Total Portfolio Value" icon={<TrendingUp className="w-4 h-4 text-emerald-500" />}>
         <div className="text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight font-mono">
           {formatUsd(totalAum, 2)}
         </div>
@@ -149,13 +248,10 @@ export default function PortfolioPage() {
             </span>
           </span>
         </div>
-      </div>
+      </DashboardCard>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
-          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
-            Asset Allocation
-          </h2>
+        <DashboardCard title="Asset Allocation">
           {totalAum > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
@@ -167,11 +263,7 @@ export default function PortfolioPage() {
                   outerRadius={100}
                   paddingAngle={4}
                   dataKey="value"
-                >
-                  {pieData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index]} />
-                  ))}
-                </Pie>
+                />
                 <Tooltip
                   formatter={(value) =>
                     typeof value === 'number' ? formatUsd(value, 2) : String(value)
@@ -190,27 +282,21 @@ export default function PortfolioPage() {
               No portfolio data available
             </div>
           )}
-        </div>
+        </DashboardCard>
 
-        <div className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
-          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
-            Performance Summary
-          </h2>
+        <DashboardCard title="Performance Summary">
           <div className="h-[200px] flex flex-col items-center justify-center text-zinc-500 dark:text-zinc-400">
             <BarChart3 className="w-8 h-8 mb-3 text-zinc-300 dark:text-zinc-600" />
             <p className="text-sm">Historical performance tracking coming soon</p>
             <p className="text-xs text-zinc-400 mt-1">Track your 7d, 30d, and YTD returns</p>
           </div>
-        </div>
+        </DashboardCard>
       </div>
 
-      <div className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
-          Quick Actions
-        </h2>
+      <DashboardCard title="Quick Actions">
         <div className="flex flex-wrap gap-3">
           <Link
-            href={`/dashboard/risk${addrParam}`}
+            href={buildDashboardHref('/dashboard/risk', address)}
             className={cn(
               'inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
               'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300',
@@ -222,7 +308,7 @@ export default function PortfolioPage() {
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
           <Link
-            href={`/dashboard/rewards${addrParam}`}
+            href={buildDashboardHref('/dashboard/rewards', address)}
             className={cn(
               'inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
               'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300',
@@ -234,7 +320,7 @@ export default function PortfolioPage() {
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
           <Link
-            href={`/dashboard/lp${addrParam}`}
+            href={buildDashboardHref('/dashboard/lp', address)}
             className={cn(
               'inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
               'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300',
@@ -246,7 +332,72 @@ export default function PortfolioPage() {
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
+      </DashboardCard>
+
+      <PortfolioSummary
+        totalBonded={totalBondedRune}
+        runePrice={runePrice}
+        weightedAPY={weightedAPY}
+        positionCount={bondPositions.length}
+        positions={bondPositions}
+        benchmarks={benchmarks}
+      />
+
+      <DashboardCard title="Bond Positions">
+        <PositionTable positions={bondPositions} />
+      </DashboardCard>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <FeeRevenueChart
+          daily={feeRevenue?.daily}
+          isLoading={feeRevenueLoading}
+          error={feeRevenueError}
+        />
+        <FeeRevenueSummary
+          summary={feeRevenue?.summary}
+          isLoading={feeRevenueLoading}
+          error={feeRevenueError}
+          userBond={totalBondedRune}
+          totalActiveBond={runeToNumber(marketNetwork?.bondMetrics?.totalActiveBond)}
+          runePrice={runePrice}
+        />
       </div>
+
+      <MarketOverview
+        pools={marketPools}
+        network={marketNetwork ?? null}
+        runePrice={runePrice}
+        runePriceChange24h={runePriceChange24h}
+        runePriceChange7d={runePriceChange7d}
+        isLoading={marketLoading}
+      />
+
+      {totalBondedRune > 0 && weightedAPY > 0 && (
+        <RewardProjections
+          totalBonded={totalBondedRune}
+          weightedAPY={weightedAPY}
+          runePrice={runePrice}
+          averageFeeBps={averageFeeBps}
+        />
+      )}
+
+      <ActionableAlerts positions={bondPositions} address={address} />
+
+      <DashboardCard className="space-y-4 border-0 bg-transparent p-0 shadow-none dark:bg-transparent">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-amber-600/80 dark:text-amber-500/80">
+            <Eye className="w-4 h-4" />
+            <span className="text-xs font-bold uppercase tracking-widest font-serif italic">Heimdall&apos;s Sight</span>
+          </div>
+        </div>
+        <IntelligenceFeed
+          positions={bondPositions}
+          benchmarks={benchmarks}
+          allNodes={allNodes || []}
+          providerAddress={address}
+          isLoading={allNodesLoading || benchmarksLoading}
+        />
+      </DashboardCard>
     </div>
   );
 }

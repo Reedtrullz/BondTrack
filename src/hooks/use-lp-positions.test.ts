@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { SWRConfig } from 'swr';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useLpPositions } from './use-lp-positions';
+import { useLpPositions } from '../lib/hooks/use-lp-positions';
 import * as midgard from '../lib/api/midgard';
 
 vi.mock('../lib/api/midgard');
