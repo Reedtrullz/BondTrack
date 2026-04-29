@@ -47,7 +47,14 @@ describe('PersonalFeeAudit', () => {
     // Expected Leakage: (10000 * 0.000001 * 30 * 0.01) + (20000 * 0.000001 * 30 * 0.02) 
     // = 0.003 + 0.012 = 0.015
     expect(screen.getByText(/-0.00 RUNE/i)).toBeDefined();
-    expect(screen.getByText((content, element) => content === 'Leakage' && element.tagName === 'SPAN' && element.parentElement?.className.includes('bg-red-50'))).toBeDefined();
+    expect(
+      screen.getByText((content: string, element: Element | null): boolean => {
+        if (!element) return false;
+        if (content !== 'Leakage') return false;
+        if (element.tagName !== 'SPAN') return false;
+        return element.parentElement?.className.includes('bg-red-50') ?? false;
+      })
+    ).toBeDefined();
   });
 
   it('handles zero positions gracefully', () => {

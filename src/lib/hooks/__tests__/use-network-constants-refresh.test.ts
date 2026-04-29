@@ -24,7 +24,7 @@ describe('useNetworkConstants refreshInterval', () => {
 
     const cache = new Map();
     const wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(SWRConfig, { provider: () => cache }, children);
+      React.createElement(SWRConfig, { value: { provider: () => cache } }, children);
 
     const { result } = renderHook(() => useNetworkConstants(), { wrapper });
 
