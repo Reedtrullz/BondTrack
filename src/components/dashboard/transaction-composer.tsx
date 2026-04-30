@@ -220,9 +220,26 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-2">
-        <button onClick={() => handleModeChange('BOND')} className={cn('px-4 py-2 rounded-lg font-medium transition', mode === 'BOND' ? 'bg-emerald-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400')}>BOND</button>
-        <button onClick={() => handleModeChange('UNBOND')} className={cn('px-4 py-2 rounded-lg font-medium transition', mode === 'UNBOND' ? 'bg-amber-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400')}>UNBOND</button>
+      <div className="flex items-center gap-3">
+        <div className="inline-flex rounded-lg bg-zinc-100 dark:bg-zinc-800 p-1">
+          <button 
+            onClick={() => handleModeChange('BOND')} 
+            className={cn('px-4 py-2 rounded-md font-medium transition text-sm', 
+              mode === 'BOND' ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100')}
+          >
+            BOND
+          </button>
+          <button 
+            onClick={() => handleModeChange('UNBOND')} 
+            className={cn('px-4 py-2 rounded-md font-medium transition text-sm', 
+              mode === 'UNBOND' ? 'bg-amber-600 text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100')}
+          >
+            UNBOND
+          </button>
+        </div>
+        <span className="text-xs text-zinc-500">
+          {mode === 'BOND' ? 'Add RUNE to a node' : 'Withdraw RUNE from a node'}
+        </span>
       </div>
       <div className="bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-5 space-y-5 hover:shadow-md hover:shadow-emerald-500/10 transition-all">
         <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
@@ -291,14 +308,17 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
             role="status"
             aria-live="polite"
             className={cn(
-              'flex items-start gap-2 rounded-lg border px-3 py-2 text-sm',
+              'flex items-start gap-2 rounded-lg border px-4 py-3 text-sm transition-all duration-300',
               copyFeedback.status === 'success'
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300'
-                : 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300 shadow-sm shadow-emerald-500/10'
+                : 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300 shadow-sm shadow-red-500/10'
             )}
           >
             <CopyStatusIcon className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>{copyFeedback.message}</span>
+            <div>
+              <p className="font-medium">{copyFeedback.status === 'success' ? 'Success!' : 'Copy Failed'}</p>
+              <p className="text-xs opacity-80 mt-0.5">{copyFeedback.message}</p>
+            </div>
           </div>
         )}
       </div>

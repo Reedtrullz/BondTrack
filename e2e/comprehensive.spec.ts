@@ -9,13 +9,13 @@ test.describe('Visual Regression - Layout', () => {
     await expect(page.getByPlaceholder('thor1...')).toBeVisible();
   });
 
-  test('dashboard overview page renders correctly', async ({ page }) => {
-    await page.goto(`/dashboard/overview?address=${MOCK_ADDRESS}`);
+  test('dashboard portfolio page renders correctly', async ({ page }) => {
+    await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
     await expect(page.getByText('Total Bonded').first()).toBeVisible();
   });
 
   test('sidebar is visible on all dashboard pages', async ({ page }) => {
-    const pages = ['overview', 'nodes', 'rewards', 'risk', 'transactions'];
+    const pages = ['portfolio', 'nodes', 'rewards', 'risk', 'transactions', 'lp'];
     for (const pg of pages) {
       await page.goto(`/dashboard/${pg}?address=${MOCK_ADDRESS}`);
       await expect(page.getByText('THORNode Watcher').first()).toBeVisible();
@@ -60,7 +60,7 @@ test.describe('API Integration', () => {
       });
     });
 
-    await page.goto(`/dashboard/overview?address=${MOCK_ADDRESS}`);
+    await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
 
     await page.waitForTimeout(3000);
 
@@ -85,7 +85,7 @@ test.describe('API Integration', () => {
       }
     });
 
-    await page.goto(`/dashboard/overview?address=${MOCK_ADDRESS}`);
+    await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
 
     await page.waitForTimeout(5000);
 

@@ -100,10 +100,10 @@ export function AlertToast({ alerts, onDismiss, permission, onRequestPermission 
 
   return (
     <>
-      {permission !== 'granted' && !isPromptDismissed && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4 sm:justify-start sm:px-6">
+       {permission !== 'granted' && !isPromptDismissed && (
+        <div className="pointer-events-none fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex justify-center px-4 w-full max-w-md">
           <div
-            className="pointer-events-auto w-full max-w-md rounded-xl border border-zinc-200/80 bg-white/95 p-4 shadow-xl backdrop-blur-xl dark:border-zinc-700 dark:bg-zinc-900/95"
+            className="pointer-events-auto w-full rounded-xl border border-zinc-200/80 bg-white/95 p-4 shadow-xl backdrop-blur-xl dark:border-zinc-700 dark:bg-zinc-900/95"
             role="status"
             aria-live="polite"
           >

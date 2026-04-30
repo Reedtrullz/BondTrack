@@ -5,6 +5,44 @@ import { extractBondPositions, type BondPosition, type YieldGuardFlag } from '@/
 import { getHealth } from '@/lib/api/midgard';
 import { NETWORK } from '@/lib/config';
 import { runeToNumber } from '@/lib/utils/formatters';
+import { MOCK_BOND_POSITIONS, isDevelopmentMode } from '../mock-data';
+
+function buildMockNodes(address: string | null): NodeRaw[] {
+  const bondAddress = address ?? 'thor1mockbondaddress000000000000000000000000';
+
+  return MOCK_BOND_POSITIONS.map((position, index) => {
+    const totalBond = typeof position.bondAmount === 'string' ? position.bondAmount : String(position.bondAmount);
+
+    return {
+      node_address: position.nodeAddress,
+      status: position.status,
+      pub_key_set: { secp256k1: '', ed25519: '' },
+      validator_cons_pub_key: '',
+      peer_id: '',
+      active_block_height: 1234567,
+      status_since: 1234500 - index * 100,
+      node_operator_address: `thor1mockoperator${index + 1}`,
+      total_bond: totalBond,
+      bond_providers: {
+        node_operator_fee: String(position.operatorFee),
+        providers: [{ bond_address: bondAddress, bond: totalBond }],
+      },
+      signer_membership: null,
+      requested_to_leave: false,
+      forced_to_leave: false,
+      leave_height: 0,
+      ip_address: '',
+      version: 'v1.0.0',
+      slash_points: position.slashPoints,
+      jail: {},
+      current_award: String(BigInt(totalBond) / 10n),
+      observe_chains: null,
+      preflight_status: { status: 'ready', reason: '', code: 0 },
+      maintenance: false,
+      missing_blocks: 0,
+    };
+  });
+}
 
 function getYieldGuardFlags(
   positions: BondPosition[],
@@ -52,8 +90,11 @@ function getYieldGuardFlags(
 }
 
 export function useBondPositions(address: string | null) {
+  const useMockData = isDevelopmentMode();
+  const mockNodes = useMockData ? buildMockNodes(address) : null;
+
   const { data: nodes, error, isLoading, mutate } = useSWR<NodeRaw[]>(
-    'nodes',
+    useMockData ? null : 'nodes',
     () => getAllNodes(),
     { 
       refreshInterval: NETWORK.REFRESH_INTERVALS.bondPositions,
@@ -62,28 +103,33 @@ export function useBondPositions(address: string | null) {
   );
 
   const { data: constants } = useSWR(
-    address ? 'network-constants' : null,
+    useMockData ? null : address ? 'network-constants' : null,
     () => getNetworkConstants(),
     { revalidateOnFocus: false, refreshInterval: NETWORK.REFRESH_INTERVALS.price }
   );
 
   const { data: healthData } = useSWR(
-    'health',
+    useMockData ? null : 'health',
     () => getHealth(),
     { refreshInterval: NETWORK.REFRESH_INTERVALS.health }
   );
 
-  const currentBlockHeight = healthData?.lastThorNode?.height ?? nodes?.[0]?.active_block_height ?? 0;
+  const currentBlockHeight = useMockData
+    ? 1234567
+    : healthData?.lastThorNode?.height ?? nodes?.[0]?.active_block_height ?? 0;
 
-  const positions: BondPosition[] = nodes && address
-    ? extractBondPositions(nodes, address, currentBlockHeight)
+  const positions: BondPosition[] = (useMockData ? mockNodes : nodes) && address
+    ? extractBondPositions(useMockData ? mockNodes! : nodes!, address, currentBlockHeight)
     : [];
 
-  const optimalBond = constants?.int_64_values?.OptimalBondD
-    ? runeToNumber(constants.int_64_values.OptimalBondD)
+  const optimalBond = useMockData
+    ? runeToNumber('1000000000')
+    : constants?.int_64_values?.OptimalBondD
+    ? runeToNumber(String(constants.int_64_values.OptimalBondD))
     : null;
 
-  const yieldGuardFlags = getYieldGuardFlags(positions, nodes || [], optimalBond);
+  const allNodes = useMockData ? mockNodes ?? [] : nodes ?? [];
+  const yieldGuardFlags = getYieldGuardFlags(positions, allNodes, optimalBond);
 
   const positionsWithFlags = positions.map(pos => ({
     ...pos,
@@ -92,8 +138,8 @@ export function useBondPositions(address: string | null) {
 
   return {
     positions: positionsWithFlags,
-    isLoading,
-    error,
+    isLoading: useMockData ? false : isLoading,
+    error: useMockData ? undefined : error,
     mutate,
   };
 }

@@ -12,7 +12,6 @@ const basePath = '/dashboard';
 const navItems = (addr: string | null) => {
   const addrParam = addr ? `?address=${addr}` : '';
   return [
-    { path: `${basePath}/overview`, href: `${basePath}/overview${addrParam}`, label: 'Overview', icon: <PieChart className="w-4 h-4" />, desc: 'Dashboard home' },
     { path: `${basePath}/portfolio`, href: `${basePath}/portfolio${addrParam}`, label: 'Portfolio', icon: <Wallet className="w-4 h-4" />, desc: 'Unified portfolio view' },
     { path: `${basePath}/nodes`, href: `${basePath}/nodes${addrParam}`, label: 'Nodes', icon: <Shield className="w-4 h-4" />, desc: 'Validator status' },
     { path: `${basePath}/rewards`, href: `${basePath}/rewards${addrParam}`, label: 'Rewards', icon: <BarChart3 className="w-4 h-4" />, desc: 'Earnings & APY' },
