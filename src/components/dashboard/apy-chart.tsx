@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { TrendingUp } from 'lucide-react';
 import { getEarningsHistory, getNetwork, type EarningsHistoryRaw, type NetworkRaw } from '@/lib/api/midgard';
 import { runeToNumber } from '@/lib/utils/formatters';
 
@@ -24,15 +23,21 @@ function formatAPY(value: number): string {
   return `${value.toFixed(2)}%`;
 }
 
+function normalizeApyPercent(raw: string | number | undefined): number {
+  const value = typeof raw === 'string' ? Number(raw) : raw;
+  if (!Number.isFinite(value) || !value || value <= 0) return 0;
+  return value > 1 ? value : value * 100;
+}
+
 async function calculateAPYHistory(earningsRaw: EarningsHistoryRaw, networkRaw: NetworkRaw): Promise<APYDataPoint[]> {
   const intervals = earningsRaw.intervals || [];
-  const totalBondsRune = Number(networkRaw.bondMetrics?.totalActiveBond || '0');
+  const totalBondsRune = runeToNumber(networkRaw.bondMetrics?.totalActiveBond || '0');
 
   if (intervals.length === 0 || totalBondsRune === 0) {
     return [];
   }
 
-  const baselineApy = parseFloat(networkRaw.bondingAPY || '0');
+  const baselineApy = normalizeApyPercent(networkRaw.bondingAPY);
   const totalPeriodEarnings = intervals.reduce((sum, curr) => sum + Number(curr.bondingEarnings), 0);
   const avgDailyEarnings = (totalPeriodEarnings / intervals.length) / 1e8;
 
@@ -71,7 +76,6 @@ export function APYChart({ interval = 'year', count = 365 }: APYChartProps) {
   const [data, setData] = useState<APYDataPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentApy, setCurrentApy] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -84,9 +88,6 @@ export function APYChart({ interval = 'year', count = 365 }: APYChartProps) {
           getEarningsHistory(apiInterval, apiCount),
           getNetwork(),
         ]);
-
-        const networkApy = parseFloat(networkRaw.bondingAPY || '0');
-        setCurrentApy(networkApy);
 
         const apyData = await calculateAPYHistory(earningsRaw, networkRaw);
         setData(apyData);

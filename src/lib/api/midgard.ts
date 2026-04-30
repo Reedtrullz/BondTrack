@@ -226,7 +226,7 @@ export interface ActionsResponseRaw {
 }
 
 export async function getBondDetails(address: string): Promise<BondDetailsRaw> {
-  return fetchMidgard<BondDetailsRaw>(`/v2/bonds/${address}`);
+  return fetchMidgard<BondDetailsRaw>(`/v2/bonds/${encodeURIComponent(address)}`);
 }
 
 export async function getChurns(): Promise<ChurnRaw[]> {
@@ -416,7 +416,7 @@ export async function getNetwork(): Promise<NetworkRaw> {
   return fetchMidgard<NetworkRaw>('/v2/network');
 }
 
-export async function getActions(address: string, limit = NETWORK.MAX_ACTIONS_LIMIT, actionTypes?: string, typeParam = 'type'): Promise<ActionsResponseRaw> {
+export async function getActions(address: string, limit: number = NETWORK.MAX_ACTIONS_LIMIT, actionTypes?: string, typeParam = 'type'): Promise<ActionsResponseRaw> {
   const params = new URLSearchParams();
   params.set('address', address);
   params.set('limit', String(limit));
@@ -447,13 +447,13 @@ export interface THORNameLookupRaw {
 }
 
 export async function getTHORNameLookup(name: string): Promise<THORNameLookupRaw> {
-  return fetchMidgard<THORNameLookupRaw>(`/v2/thorname/lookup/${name}`);
+  return fetchMidgard<THORNameLookupRaw>(`/v2/thorname/lookup/${encodeURIComponent(name)}`);
 }
 
 export async function getTHORNameReverseLookup(address: string): Promise<THORNameLookupRaw> {
   // Existing function retains retry behavior for backward compatibility
   try {
-    return await fetchMidgard<THORNameLookupRaw>(`/v2/thorname/rlookup/${address}`);
+    return await fetchMidgard<THORNameLookupRaw>(`/v2/thorname/rlookup/${encodeURIComponent(address)}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes('404') || message.includes('502')) {
@@ -468,7 +468,7 @@ export async function getTHORNameReverseLookup(address: string): Promise<THORNam
  * This is used for optional UI enrichment where repeated retries cause spam.
  */
 export async function getTHORNameReverseLookupNoRetry(address: string): Promise<THORNameLookupRaw> {
-  const url = `/v2/thorname/rlookup/${address}`;
+  const url = `/v2/thorname/rlookup/${encodeURIComponent(address)}`;
   try {
     const res = await fetch(`/api/midgard${url}`, {
       headers: { Accept: 'application/json' },
@@ -515,7 +515,7 @@ export async function getPoolHistory(pool: string, interval = 'day', count?: num
   if (from !== undefined) params.set('from', String(from));
   if (to !== undefined) params.set('to', String(to));
   const qs = params.toString();
-  return fetchMidgard<PoolHistoryRaw>(`/v2/pools/${pool}/history?${qs}`);
+  return fetchMidgard<PoolHistoryRaw>(`/v2/pools/${encodeURIComponent(pool)}/history?${qs}`);
 }
 
 export interface PoolHistoryEntry {
@@ -592,5 +592,5 @@ export async function getHealth(): Promise<HealthRaw> {
 }
 
 export async function getMemberDetails(address: string): Promise<MemberDetailsRaw> {
-  return fetchMidgard<MemberDetailsRaw>(`/v2/member/${address}`);
+  return fetchMidgard<MemberDetailsRaw>(`/v2/member/${encodeURIComponent(address)}`);
 }

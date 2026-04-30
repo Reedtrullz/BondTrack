@@ -1,7 +1,7 @@
-import { ENDPOINTS } from '../config';
-
 const RETRY_DELAYS = [1000, 2000, 4000];
 const MAX_RETRIES = 3;
+
+type NextFetchInit = RequestInit & { next?: { revalidate?: number } };
 
 class RetryableError extends Error {
   constructor(message: string, public readonly status?: number) {
@@ -11,22 +11,24 @@ class RetryableError extends Error {
 }
 
 async function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function fetchApi<T>(baseUrl: string, path: string, init?: RequestInit, retryCount = 0): Promise<T> {
   const url = `${baseUrl}${path}`;
-  
+
   let res: Response;
   try {
-    res = await fetch(url, {
+    const fetchInit: NextFetchInit = {
       ...init,
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         ...init?.headers,
       },
       next: { revalidate: 60 },
-    });
+    };
+
+    res = await fetch(url, fetchInit);
   } catch (networkError) {
     if (retryCount < MAX_RETRIES) {
       await delay(RETRY_DELAYS[retryCount]);
@@ -48,7 +50,7 @@ async function fetchApi<T>(baseUrl: string, path: string, init?: RequestInit, re
 
 export async function fetchThornode<T>(path: string, init?: RequestInit): Promise<T> {
   const localProxy = '/api/thorchain';
-  
+
   try {
     return await fetchApi<T>(localProxy, path, init);
   } catch (error) {
@@ -58,7 +60,7 @@ export async function fetchThornode<T>(path: string, init?: RequestInit): Promis
 
 export async function fetchMidgard<T>(path: string, init?: RequestInit): Promise<T> {
   const localProxy = '/api/midgard';
-  
+
   try {
     return await fetchApi<T>(localProxy, path, init);
   } catch (error) {

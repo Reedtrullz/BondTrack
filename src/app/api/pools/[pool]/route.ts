@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getEarningsHistory } from '@/lib/api/midgard';
 
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ pool: string }> }
+) {
   try {
+    const { pool: pathPool } = await params;
     const { searchParams } = new URL(request.url);
-    const pool = searchParams.get('pool');
-    
+    const pool = pathPool || searchParams.get('pool');
+
     if (!pool) {
       return NextResponse.json({ error: 'Pool parameter is required' }, { status: 400 });
     }
 
     const earnings = await getEarningsHistory('day', 30);
-    
+
     if (!earnings || !earnings.meta || !earnings.intervals) {
       return NextResponse.json({ error: 'Failed to fetch earnings data' }, { status: 500 });
     }
@@ -32,7 +36,7 @@ export async function GET(request: NextRequest) {
     }).filter(interval => interval.assetLiquidityFees !== undefined);
 
     return NextResponse.json({
-      pool: pool,
+      pool,
       meta: poolData,
       intervals: poolIntervals,
       totalPooledRune: earnings.meta.pools.length > 0 ? earnings.meta.pools[0].totalLiquidityFeesRune : '0',

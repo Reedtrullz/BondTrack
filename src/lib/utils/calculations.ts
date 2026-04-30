@@ -84,11 +84,13 @@ export function calculateBondRank(
     return bondA > bondB ? -1 : bondA < bondB ? 1 : 0;
   });
 
-  const rank = sorted.findIndex((n) => n.node_address === sorted.find((s) => s.total_bond === nodeTotalBond)?.node_address) + 1;
+  const targetBond = BigInt(nodeTotalBond || '0');
+  const rank = sorted.filter((n) => BigInt(n.total_bond || '0') > targetBond).length + 1;
   const total = sorted.length;
-  const percentile = total > 0 ? ((total - rank + 1) / total) * 100 : 0;
+  const nodesWithLessBond = sorted.filter((n) => BigInt(n.total_bond || '0') < targetBond).length;
+  const percentile = total > 1 ? (nodesWithLessBond / (total - 1)) * 100 : total === 1 ? 100 : 0;
 
-  return { rank: rank || total, total, percentile };
+  return { rank: total > 0 ? rank : 0, total, percentile };
 }
 
 /**
@@ -118,7 +120,7 @@ export function calculateNetworkSecurityState(bondToPoolRatio: number): {
   if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.healthy) {
     return {
       securityHealth: 'healthy',
-      solvencyStatus: 'Economically Secure',
+      solvencyStatus: 'Well Secured',
     };
   }
 

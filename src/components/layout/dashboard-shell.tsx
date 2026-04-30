@@ -21,6 +21,10 @@ const SWR_KEYS = [
   'earnings-history',
   'rune-price',
   'network-constants',
+  'network-metrics',
+  'health',
+  'current-block-height',
+  'churn-countdown',
 ];
 
 function formatElapsed(ms: number): string {

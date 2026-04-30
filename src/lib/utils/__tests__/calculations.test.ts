@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateNetworkSecurityState } from '../calculations';
+import { calculateBondRank, calculateNetworkSecurityState } from '../calculations';
 
 describe('calculateNetworkSecurityState', () => {
   it('marks ratios at or above 2.5x as healthy and well secured', () => {
@@ -28,5 +28,29 @@ describe('calculateNetworkSecurityState', () => {
 
     expect(result.securityHealth).toBe('at-risk');
     expect(result.solvencyStatus).toBe('Undercapitalized');
+  });
+});
+
+describe('calculateBondRank', () => {
+  const nodes = [
+    { node_address: 'a', total_bond: '300000000000' },
+    { node_address: 'b', total_bond: '100000000000' },
+    { node_address: 'c', total_bond: '200000000000' },
+  ];
+
+  it('ranks by target total node bond instead of matching the first node by value', () => {
+    expect(calculateBondRank('200000000000', nodes)).toEqual({
+      rank: 2,
+      total: 3,
+      percentile: 50,
+    });
+  });
+
+  it('returns the lowest percentile for the bottom active bond', () => {
+    expect(calculateBondRank('100000000000', nodes)).toEqual({
+      rank: 3,
+      total: 3,
+      percentile: 0,
+    });
   });
 });

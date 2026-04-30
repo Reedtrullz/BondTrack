@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Copy, X } from 'lucide-react';
+import { Check, Copy, ExternalLink, X } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { BondPosition } from '@/lib/types/node';
 import { useWallet } from '@/lib/hooks/use-wallet';
@@ -10,6 +10,8 @@ import {
   executeBondTransaction,
   executeUnbondTransaction,
   validateBondAmount,
+  validateUnbondAmount,
+  validateThorAddress,
   canUnbondNode,
   generateBondMemo,
   generateUnbondMemo,
@@ -33,24 +35,6 @@ const DEFAULT_COPY_FEEDBACK: CopyFeedbackState = {
   status: 'idle',
   message: '',
 };
-
-function validateUnbondAmount(amount: string): { valid: boolean; error?: string } {
-  const trimmed = amount.trim();
-  if (!trimmed) {
-    return { valid: false, error: 'Amount is required' };
-  }
-
-  if (!/^(?:\d+\.\d+|\d+)$/.test(trimmed)) {
-    return { valid: false, error: 'Amount must be a number' };
-  }
-
-  const parsedAmount = parseFloat(trimmed);
-  if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-    return { valid: false, error: 'Amount must be greater than 0' };
-  }
-
-  return { valid: true };
-}
 
 interface TransactionComposerProps {
   positions: BondPosition[];
@@ -76,8 +60,10 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
 
   const [mode, setMode] = useState<Mode>('BOND');
   const [nodeAddress, setNodeAddress] = useState('');
+  const [bondAmount, setBondAmount] = useState('');
+  const [showAdvancedBondFields, setShowAdvancedBondFields] = useState(false);
   const [bondProviderAddress, setBondProviderAddress] = useState('');
-  const [nodeOperatorFee] = useState('');
+  const [nodeOperatorFee, setNodeOperatorFee] = useState('');
   const [amountToUnbond, setAmountToUnbond] = useState('0');
   const [copyFeedback, setCopyFeedback] = useState<CopyFeedbackState>(DEFAULT_COPY_FEEDBACK);
   const [showPreview, setShowPreview] = useState(false);
@@ -88,14 +74,14 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
   const { address: walletAddress, walletType, isConnected, isNetworkMismatch } = useWallet();
 
   const selectedPosition = useMemo(() => {
-    return positions.find(p => p.nodeAddress === nodeAddress);
+    return positions.find((p) => p.nodeAddress === nodeAddress);
   }, [positions, nodeAddress]);
 
   useEffect(() => {
     if (paramAction) setMode(paramAction);
     if (paramNode) setNodeAddress(paramNode);
     if (paramAmount) {
-      if (paramAction === 'BOND') setBondProviderAddress(paramAmount);
+      if (paramAction === 'BOND') setBondAmount(paramAmount);
       else if (paramAction === 'UNBOND') setAmountToUnbond(paramAmount);
     }
   }, [paramAction, paramNode, paramAmount]);
@@ -114,23 +100,21 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
     };
   }, []);
 
-  const memo = useMemo(() => {
-    if (mode === 'BOND') {
-      return generateBondMemo(nodeAddress, bondProviderAddress, nodeOperatorFee);
-    }
-    return generateUnbondMemo(nodeAddress, amountToUnbond);
-  }, [mode, nodeAddress, bondProviderAddress, nodeOperatorFee, amountToUnbond]);
+  const nodeValidation = useMemo(() => {
+    if (!nodeAddress.trim()) return { valid: false, error: 'Node address is required' };
+    return validateThorAddress(nodeAddress, 'Node address');
+  }, [nodeAddress]);
 
-  const previewData: TransactionPreviewData = useMemo(() => ({
-    type: mode,
-    nodeAddress,
-    amount: mode === 'BOND' ? bondProviderAddress || '0' : amountToUnbond,
-    memo,
-    estimatedFee: '0.02',
-    walletType: walletType || 'keplr',
-  }), [mode, nodeAddress, bondProviderAddress, amountToUnbond, memo, walletType]);
+  const providerValidation = useMemo(() => {
+    if (!showAdvancedBondFields || !bondProviderAddress.trim()) return { valid: true };
+    return validateThorAddress(bondProviderAddress, 'Provider address');
+  }, [showAdvancedBondFields, bondProviderAddress]);
 
-  const unbondAmountValidation = useMemo(() => validateUnbondAmount(amountToUnbond), [amountToUnbond]);
+  const bondAmountValidation = useMemo(() => validateBondAmount(bondAmount || '0'), [bondAmount]);
+  const unbondAmountValidation = useMemo(
+    () => validateUnbondAmount(amountToUnbond, selectedPosition?.bondAmount),
+    [amountToUnbond, selectedPosition]
+  );
 
   const unbondValidation = useMemo(() => {
     if (mode === 'UNBOND' && selectedPosition) {
@@ -138,6 +122,26 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
     }
     return { canUnbond: true };
   }, [mode, selectedPosition]);
+
+  const memo = useMemo(() => {
+    if (mode === 'BOND') {
+      return generateBondMemo(
+        nodeAddress,
+        showAdvancedBondFields ? bondProviderAddress : undefined,
+        showAdvancedBondFields ? nodeOperatorFee : undefined
+      );
+    }
+    return generateUnbondMemo(nodeAddress, amountToUnbond);
+  }, [mode, nodeAddress, showAdvancedBondFields, bondProviderAddress, nodeOperatorFee, amountToUnbond]);
+
+  const previewData: TransactionPreviewData = useMemo(() => ({
+    type: mode,
+    nodeAddress,
+    amount: mode === 'BOND' ? bondAmount || '0' : amountToUnbond,
+    memo,
+    estimatedFee: '0.02',
+    walletType: walletType || 'keplr',
+  }), [mode, nodeAddress, bondAmount, amountToUnbond, memo, walletType]);
 
   const clearCopyFeedback = () => {
     if (copyFeedbackTimeoutRef.current !== null) {
@@ -186,8 +190,16 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
     setIsSubmitting(true);
     setTxResult(null);
     try {
-      const params = { type: mode, nodeAddress, amount: mode === 'BOND' ? bondProviderAddress || '0' : amountToUnbond, memo, walletType };
-      const result = mode === 'BOND' ? await executeBondTransaction(params, walletAddress) : await executeUnbondTransaction(params, walletAddress);
+      const params = {
+        type: mode,
+        nodeAddress,
+        amount: mode === 'BOND' ? bondAmount || '0' : amountToUnbond,
+        memo,
+        walletType,
+      };
+      const result = mode === 'BOND'
+        ? await executeBondTransaction(params, walletAddress)
+        : await executeUnbondTransaction(params, walletAddress);
       setTxResult(result);
       if (result.success) setShowPreview(false);
     } catch (err) {
@@ -198,11 +210,20 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
   };
 
   const canSubmit = useMemo(() => {
-    if (!isConnected || isNetworkMismatch) return false;
-    if (mode === 'BOND') return validateBondAmount(bondProviderAddress || '0').valid;
+    if (!isConnected || isNetworkMismatch || !nodeValidation.valid) return false;
+    if (mode === 'BOND') return bondAmountValidation.valid && providerValidation.valid;
     if (mode === 'UNBOND') return Boolean(selectedPosition) && unbondValidation.canUnbond && unbondAmountValidation.valid;
     return false;
-  }, [isConnected, isNetworkMismatch, mode, bondProviderAddress, selectedPosition, unbondValidation, unbondAmountValidation]);
+  }, [isConnected, isNetworkMismatch, nodeValidation, mode, bondAmountValidation, providerValidation, selectedPosition, unbondValidation, unbondAmountValidation]);
+
+  const validationMessage = useMemo(() => {
+    if (!nodeValidation.valid) return nodeValidation.error;
+    if (mode === 'BOND') return !bondAmountValidation.valid ? bondAmountValidation.error : !providerValidation.valid ? providerValidation.error : undefined;
+    if (!selectedPosition) return 'Select one of your bonded nodes before unbonding.';
+    if (!unbondValidation.canUnbond) return unbondValidation.reason;
+    if (!unbondAmountValidation.valid) return unbondAmountValidation.error;
+    return undefined;
+  }, [nodeValidation, mode, bondAmountValidation, providerValidation, selectedPosition, unbondValidation, unbondAmountValidation]);
 
   const inlineCopyState = copyFeedback.action === 'inline' ? copyFeedback.status : 'idle';
   const primaryCopyState = copyFeedback.action === 'button' ? copyFeedback.status : 'idle';
@@ -215,6 +236,7 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
     const normalizedMode = nextMode.toLowerCase() as 'bond' | 'unbond';
 
     setMode(nextMode);
+    setTxResult(null);
     onModeChange?.(normalizedMode);
   };
 
@@ -222,28 +244,52 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <div className="inline-flex rounded-lg bg-zinc-100 dark:bg-zinc-800 p-1">
-          <button 
-            onClick={() => handleModeChange('BOND')} 
-            className={cn('px-4 py-2 rounded-md font-medium transition text-sm', 
+          <button
+            type="button"
+            onClick={() => handleModeChange('BOND')}
+            className={cn('px-4 py-2 rounded-md font-medium transition text-sm',
               mode === 'BOND' ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100')}
           >
             BOND
           </button>
-          <button 
-            onClick={() => handleModeChange('UNBOND')} 
-            className={cn('px-4 py-2 rounded-md font-medium transition text-sm', 
+          <button
+            type="button"
+            onClick={() => handleModeChange('UNBOND')}
+            className={cn('px-4 py-2 rounded-md font-medium transition text-sm',
               mode === 'UNBOND' ? 'bg-amber-600 text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100')}
           >
             UNBOND
           </button>
         </div>
         <span className="text-xs text-zinc-500">
-          {mode === 'BOND' ? 'Add RUNE to a node' : 'Withdraw RUNE from a node'}
+          {mode === 'BOND' ? 'Add RUNE to a node' : 'Request RUNE withdrawal from a node'}
         </span>
       </div>
+
+      {txResult?.success && txResult.txHash && (
+        <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 shadow-sm dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold">Transaction broadcast</p>
+              <p className="font-mono text-xs break-all">{txResult.txHash}</p>
+            </div>
+            <a
+              href={`https://runescan.io/tx/${txResult.txHash}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-semibold underline underline-offset-4"
+            >
+              View on Runescan
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        </div>
+      )}
+
       <div className="bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-5 space-y-5 hover:shadow-md hover:shadow-emerald-500/10 transition-all">
         <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
           Minimum bond transaction reserve: <span className="font-mono text-zinc-700 dark:text-zinc-200">1.02 RUNE</span>
+          {mode === 'UNBOND' && <span className="block mt-1">Unbond request amounts are encoded in the memo in 1e8 base units.</span>}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="space-y-1">
@@ -253,15 +299,41 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
           {mode === 'BOND' ? (
             <div className="space-y-1">
               <label htmlFor="transaction-bond-amount" className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Bond Amount</label>
-              <input id="transaction-bond-amount" type="text" placeholder="0" value={bondProviderAddress} onChange={(e) => setBondProviderAddress(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100" />
+              <input id="transaction-bond-amount" type="text" inputMode="decimal" placeholder="0" value={bondAmount} onChange={(e) => setBondAmount(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100" />
             </div>
           ) : (
             <div className="space-y-1">
               <label htmlFor="transaction-unbond-amount" className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Amount to Unbond</label>
-              <input id="transaction-unbond-amount" type="text" placeholder="0" value={amountToUnbond} onChange={(e) => setAmountToUnbond(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100" />
+              <input id="transaction-unbond-amount" type="text" inputMode="decimal" placeholder="0" value={amountToUnbond} onChange={(e) => setAmountToUnbond(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100" />
             </div>
           )}
         </div>
+
+        {mode === 'BOND' && (
+          <div className="space-y-3 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+            <button
+              type="button"
+              onClick={() => setShowAdvancedBondFields((value) => !value)}
+              className="text-xs font-semibold text-zinc-600 underline underline-offset-4 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
+              aria-expanded={showAdvancedBondFields}
+            >
+              {showAdvancedBondFields ? 'Hide advanced bond memo fields' : 'Advanced: provider address / operator fee'}
+            </button>
+            {showAdvancedBondFields && (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <label htmlFor="transaction-provider-address" className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Provider Address (optional)</label>
+                  <input id="transaction-provider-address" type="text" placeholder="thor1..." value={bondProviderAddress} onChange={(e) => setBondProviderAddress(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100" />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="transaction-operator-fee" className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Operator Fee BPS (optional)</label>
+                  <input id="transaction-operator-fee" type="text" inputMode="numeric" placeholder="0" value={nodeOperatorFee} onChange={(e) => setNodeOperatorFee(e.target.value.replace(/\D/g, ''))} className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="bg-zinc-900 dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
           <div className="flex items-center justify-between mb-2">
             <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">Generated Memo</label>
@@ -285,6 +357,13 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
             </Button>
           </div>
         </div>
+
+        {validationMessage && (
+          <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+            {validationMessage}
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row gap-3">
           <Button
             type="button"

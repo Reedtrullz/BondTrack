@@ -78,11 +78,5 @@ export const MOCK_NODES = [
 ];
 
 export function isDevelopmentMode(): boolean {
-  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
-    return true;
-  }
-  if (typeof window !== 'undefined') {
-    return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  }
-  return false;
+  return process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
 }

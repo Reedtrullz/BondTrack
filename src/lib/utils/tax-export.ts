@@ -8,6 +8,8 @@ import {
   type ActionRaw,
 } from '@/lib/api/midgard';
 
+export type TaxConfidence = 'high' | 'estimated' | 'low';
+
 export interface TaxReportRow {
   date: string;
   type: 'bond' | 'lp';
@@ -16,6 +18,7 @@ export interface TaxReportRow {
   amountUSD: number;
   costBasis: number;
   gainLoss: number;
+  confidence?: TaxConfidence;
 }
 
 interface BondLot {
@@ -23,6 +26,12 @@ interface BondLot {
   amount: number;
   price: number;
   remaining: number;
+  confidence: TaxConfidence;
+}
+
+export interface TaxDateRange {
+  startTimestamp: number;
+  endTimestamp: number;
 }
 
 function normalizeTimestamp(dateStr: string | number): number {
@@ -44,6 +53,29 @@ function parseRuneAmount(raw: string | undefined): number {
   }
 }
 
+export function parseTaxDateRange(startDate: string, endDate: string): TaxDateRange {
+  const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateOnlyPattern.test(startDate) || !dateOnlyPattern.test(endDate)) {
+    throw new Error('Dates must use YYYY-MM-DD format');
+  }
+
+  const startMs = Date.parse(`${startDate}T00:00:00.000Z`);
+  const endMs = Date.parse(`${endDate}T23:59:59.999Z`);
+
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    throw new Error('Invalid date range');
+  }
+
+  if (startMs > endMs) {
+    throw new Error('Start date must be before or equal to end date');
+  }
+
+  return {
+    startTimestamp: Math.floor(startMs / 1000),
+    endTimestamp: Math.floor(endMs / 1000),
+  };
+}
+
 function extractRuneAmount(action: ActionRaw, isInbound: boolean): number {
   if (isInbound) {
     if (action.in && action.in.length > 0) {
@@ -52,12 +84,10 @@ function extractRuneAmount(action: ActionRaw, isInbound: boolean): number {
         if (runeCoin) return parseRuneAmount(runeCoin.amount);
       }
     }
-  } else {
-    if (action.out && action.out.length > 0) {
-      for (const output of action.out) {
-        const runeCoin = output.coins?.find((c) => c.asset === 'THOR.RUNE');
-        if (runeCoin) return parseRuneAmount(runeCoin.amount);
-      }
+  } else if (action.out && action.out.length > 0) {
+    for (const output of action.out) {
+      const runeCoin = output.coins?.find((c) => c.asset === 'THOR.RUNE');
+      if (runeCoin) return parseRuneAmount(runeCoin.amount);
     }
   }
 
@@ -69,7 +99,7 @@ function extractRuneAmount(action: ActionRaw, isInbound: boolean): number {
   return 0;
 }
 
-function getClosestPrice(timestamp: number, priceMap: Map<number, number>): number {
+function getClosestPrice(timestamp: number, priceMap: Map<number, number>): { price: number; confidence: TaxConfidence } {
   let closestPrice = 0;
   let minDiff = Infinity;
 
@@ -81,8 +111,15 @@ function getClosestPrice(timestamp: number, priceMap: Map<number, number>): numb
     }
   }
 
-  if (minDiff > 259_200) return 0;
-  return closestPrice;
+  if (minDiff <= 86_400) return { price: closestPrice, confidence: 'high' };
+  if (minDiff <= 259_200) return { price: closestPrice, confidence: 'estimated' };
+  return { price: 0, confidence: 'low' };
+}
+
+function combineConfidence(values: TaxConfidence[]): TaxConfidence {
+  if (values.includes('low')) return 'low';
+  if (values.includes('estimated')) return 'estimated';
+  return 'high';
 }
 
 async function generateBondRows(
@@ -91,11 +128,11 @@ async function generateBondRows(
   endTimestamp: number,
   priceMap: Map<number, number>
 ): Promise<TaxReportRow[]> {
-  const actionsResponse = await getActions(address, 50, 'bond,unbond,leave');
+  const actionsResponse = await getActions(address, 100, 'bond,unbond,leave');
 
   const actions = actionsResponse.actions
     .map((action) => ({ action, timestamp: normalizeTimestamp(action.date) }))
-    .filter(({ timestamp }) => timestamp >= startTimestamp && timestamp <= endTimestamp)
+    .filter(({ timestamp }) => timestamp > 0 && timestamp <= endTimestamp)
     .sort((a, b) => a.timestamp - b.timestamp);
 
   const rows: TaxReportRow[] = [];
@@ -112,7 +149,8 @@ async function generateBondRows(
     const amount = extractRuneAmount(action, isBond);
     if (amount <= 0) continue;
 
-    const runePrice = getClosestPrice(timestamp, priceMap);
+    const { price: runePrice, confidence: priceConfidence } = getClosestPrice(timestamp, priceMap);
+    const inRequestedRange = timestamp >= startTimestamp && timestamp <= endTimestamp;
 
     if (isBond) {
       const costBasis = amount * runePrice;
@@ -121,24 +159,31 @@ async function generateBondRows(
         amount,
         price: runePrice,
         remaining: amount,
+        confidence: priceConfidence,
       });
-      rows.push({
-        date,
-        type: 'bond',
-        asset: 'RUNE',
-        amountRune: amount,
-        amountUSD: costBasis,
-        costBasis,
-        gainLoss: 0,
-      });
+
+      if (inRequestedRange) {
+        rows.push({
+          date,
+          type: 'bond',
+          asset: 'RUNE',
+          amountRune: amount,
+          amountUSD: costBasis,
+          costBasis,
+          gainLoss: 0,
+          confidence: priceConfidence,
+        });
+      }
     } else {
       let remainingToSell = amount;
       let totalCostBasis = 0;
+      const confidenceParts: TaxConfidence[] = [priceConfidence];
 
       while (remainingToSell > 0.000_000_01 && lots.length > 0) {
         const lot = lots[0];
         const sellFromLot = Math.min(remainingToSell, lot.remaining);
         totalCostBasis += sellFromLot * lot.price;
+        confidenceParts.push(lot.confidence);
         lot.remaining -= sellFromLot;
         remainingToSell -= sellFromLot;
         if (lot.remaining <= 0.000_000_01) {
@@ -146,18 +191,25 @@ async function generateBondRows(
         }
       }
 
-      const proceeds = amount * runePrice;
-      const gainLoss = proceeds - totalCostBasis;
+      if (remainingToSell > 0.000_000_01) {
+        confidenceParts.push('low');
+      }
 
-      rows.push({
-        date,
-        type: 'bond',
-        asset: 'RUNE',
-        amountRune: amount,
-        amountUSD: proceeds,
-        costBasis: totalCostBasis,
-        gainLoss,
-      });
+      if (inRequestedRange) {
+        const proceeds = amount * runePrice;
+        const gainLoss = proceeds - totalCostBasis;
+
+        rows.push({
+          date,
+          type: 'bond',
+          asset: 'RUNE',
+          amountRune: amount,
+          amountUSD: proceeds,
+          costBasis: totalCostBasis,
+          gainLoss,
+          confidence: combineConfidence(confidenceParts),
+        });
+      }
     }
   }
 
@@ -198,6 +250,7 @@ async function generateLpRows(
 
     const userShare = userLiquidityUnits / poolTotalLiquidityUnits;
     let poolHistoryIntervals: { startTime: string; liquidityUnits: string }[] = [];
+    let lpConfidence: TaxConfidence = 'estimated';
     try {
       const poolHistory = await getPoolHistory(
         memberPool.pool,
@@ -208,6 +261,7 @@ async function generateLpRows(
       );
       poolHistoryIntervals = poolHistory.intervals || [];
     } catch (err) {
+      lpConfidence = 'low';
       console.error('Failed to fetch pool history for tax report:', err);
     }
 
@@ -228,12 +282,14 @@ async function generateLpRows(
         if (historicalTotalUnits > 0) {
           share = userLiquidityUnits / historicalTotalUnits;
         }
+      } else if (poolHistoryIntervals.length > 0) {
+        lpConfidence = 'low';
       }
 
       const userEarnings = totalPoolEarnings * share;
       if (userEarnings <= 0) continue;
 
-      const runePrice = getClosestPrice(intervalStart, priceMap);
+      const { price: runePrice, confidence: priceConfidence } = getClosestPrice(intervalStart, priceMap);
 
       rows.push({
         date: formatTaxDate(intervalStart),
@@ -243,6 +299,7 @@ async function generateLpRows(
         amountUSD: userEarnings * runePrice,
         costBasis: 0,
         gainLoss: userEarnings * runePrice,
+        confidence: combineConfidence([lpConfidence, priceConfidence]),
       });
     }
   }
@@ -255,16 +312,7 @@ export async function generateTaxReport(
   startDate: string,
   endDate: string
 ): Promise<TaxReportRow[]> {
-  const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
-  const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
-
-  if (!Number.isFinite(startTimestamp) || !Number.isFinite(endTimestamp)) {
-    throw new Error('Invalid date range');
-  }
-
-  if (startTimestamp > endTimestamp) {
-    throw new Error('Start date must be before end date');
-  }
+  const { startTimestamp, endTimestamp } = parseTaxDateRange(startDate, endDate);
 
   const priceHistory = await getRunePriceHistory(
     'day',
@@ -287,15 +335,13 @@ export async function generateTaxReport(
     generateLpRows(address, startTimestamp, endTimestamp, priceMap),
   ]);
 
-  const allRows = [...bondRows, ...lpRows].sort(
+  return [...bondRows, ...lpRows].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
-
-  return allRows;
 }
 
 export function exportToCSV(rows: TaxReportRow[]): string {
-  const headers = ['Date', 'Type', 'Asset', 'Amount_RUNE', 'Amount_USD', 'Cost_Basis', 'Gain_Loss'];
+  const headers = ['Date', 'Type', 'Asset', 'Amount_RUNE', 'Amount_USD', 'Cost_Basis', 'Gain_Loss', 'Confidence'];
 
   function escapeCsvField(value: string): string {
     if (/[",\n\r]/.test(value)) {
@@ -317,6 +363,7 @@ export function exportToCSV(rows: TaxReportRow[]): string {
     row.amountUSD.toFixed(2),
     row.costBasis.toFixed(2),
     row.gainLoss.toFixed(2),
+    escapeCsvField(row.confidence ?? 'high'),
   ]);
 
   return [headers.join(','), ...csvRows.map((r) => r.join(','))].join('\n');

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateTaxReport, exportToCSV } from '@/lib/utils/tax-export';
+import { generateTaxReport, exportToCSV, parseTaxDateRange } from '@/lib/utils/tax-export';
 
 export const dynamic = 'force-dynamic';
+
+const THOR_ADDRESS_PATTERN = /^thor1[0-9a-z]{38,59}$/;
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,9 +15,9 @@ export async function POST(request: NextRequest) {
 
     const { address, startDate, endDate } = body;
 
-    if (!address || typeof address !== 'string') {
+    if (!address || typeof address !== 'string' || !THOR_ADDRESS_PATTERN.test(address)) {
       return NextResponse.json(
-        { error: 'Address is required' },
+        { error: 'A valid THORChain address is required' },
         { status: 400 }
       );
     }
@@ -26,6 +28,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    parseTaxDateRange(startDate, endDate);
 
     const rows = await generateTaxReport(address, startDate, endDate);
     const csv = exportToCSV(rows);
@@ -39,6 +43,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    const status = message.includes('date') || message.includes('Date') || message.includes('YYYY-MM-DD') ? 400 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

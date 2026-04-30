@@ -58,7 +58,7 @@ export async function getAllNodes(init?: RequestInit): Promise<NodeRaw[]> {
 }
 
 export async function getNode(address: string): Promise<NodeRaw> {
-  return fetchThornode<NodeRaw>(`/thorchain/node/${address}`);
+  return fetchThornode<NodeRaw>(`/thorchain/node/${encodeURIComponent(address)}`);
 }
 
 export async function getNetworkConstants(init?: RequestInit): Promise<NetworkConstantsRaw> {

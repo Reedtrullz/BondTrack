@@ -1,8 +1,7 @@
 import useSWR from 'swr';
-import { getAllNodes, type NodeRaw } from '@/lib/api/thornode';
-import { getNetworkConstants } from '@/lib/api/thornode';
+import { getAllNodes, getNetworkConstants, type NodeRaw } from '@/lib/api/thornode';
+import { getHealth, getNetwork } from '@/lib/api/midgard';
 import { extractBondPositions, type BondPosition, type YieldGuardFlag } from '@/lib/types/node';
-import { getHealth } from '@/lib/api/midgard';
 import { NETWORK } from '@/lib/config';
 import { runeToNumber } from '@/lib/utils/formatters';
 import { MOCK_BOND_POSITIONS, isDevelopmentMode } from '../mock-data';
@@ -35,7 +34,7 @@ function buildMockNodes(address: string | null): NodeRaw[] {
       version: 'v1.0.0',
       slash_points: position.slashPoints,
       jail: {},
-      current_award: String(BigInt(totalBond) / 10n),
+      current_award: String(BigInt(totalBond) / BigInt(10)),
       observe_chains: null,
       preflight_status: { status: 'ready', reason: '', code: 0 },
       maintenance: false,
@@ -52,16 +51,16 @@ function getYieldGuardFlags(
   const flags = new Map<string, YieldGuardFlag[]>();
   if (positions.length === 0 || allNodes.length === 0) return flags;
 
-  const activeNodes = allNodes.filter(n => n.status === 'Active');
+  const activeNodes = allNodes.filter((n) => n.status === 'Active');
   if (activeNodes.length === 0) return flags;
 
-  const maxSlash = Math.max(...activeNodes.map(n => n.slash_points));
-  const minBond = Math.min(...activeNodes.map(n => runeToNumber(n.total_bond)));
-  const oldestStatusSince = Math.min(...activeNodes.map(n => n.status_since));
+  const maxSlash = Math.max(...activeNodes.map((n) => n.slash_points));
+  const minBond = Math.min(...activeNodes.map((n) => runeToNumber(n.total_bond)));
+  const oldestStatusSince = Math.min(...activeNodes.map((n) => n.status_since));
 
   for (const pos of positions) {
     const nodeFlags: YieldGuardFlag[] = [];
-    const node = allNodes.find(n => n.node_address === pos.nodeAddress);
+    const node = allNodes.find((n) => n.node_address === pos.nodeAddress);
     if (!node || node.status !== 'Active') continue;
 
     const totalBond = runeToNumber(node.total_bond);
@@ -89,6 +88,13 @@ function getYieldGuardFlags(
   return flags;
 }
 
+function parseNetworkApyPercent(value: string | number | undefined): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  const num = typeof value === 'string' ? Number(value) : value;
+  if (!Number.isFinite(num) || num <= 0) return undefined;
+  return num > 1 ? num : num * 100;
+}
+
 export function useBondPositions(address: string | null) {
   const useMockData = isDevelopmentMode();
   const mockNodes = useMockData ? buildMockNodes(address) : null;
@@ -96,7 +102,7 @@ export function useBondPositions(address: string | null) {
   const { data: nodes, error, isLoading, mutate } = useSWR<NodeRaw[]>(
     useMockData ? null : 'nodes',
     () => getAllNodes(),
-    { 
+    {
       refreshInterval: NETWORK.REFRESH_INTERVALS.bondPositions,
       errorRetryInterval: 5000,
     }
@@ -114,24 +120,34 @@ export function useBondPositions(address: string | null) {
     { refreshInterval: NETWORK.REFRESH_INTERVALS.health }
   );
 
+  const { data: networkData } = useSWR(
+    useMockData ? null : address ? 'network-metrics' : null,
+    () => getNetwork(),
+    { refreshInterval: NETWORK.REFRESH_INTERVALS.price, errorRetryInterval: 5000 }
+  );
+
   const currentBlockHeight = useMockData
     ? 1234567
     : healthData?.lastThorNode?.height ?? nodes?.[0]?.active_block_height ?? 0;
 
+  const networkBondingApyPercent = useMockData
+    ? 20
+    : parseNetworkApyPercent(networkData?.bondingAPY);
+
   const positions: BondPosition[] = (useMockData ? mockNodes : nodes) && address
-    ? extractBondPositions(useMockData ? mockNodes! : nodes!, address, currentBlockHeight)
+    ? extractBondPositions(useMockData ? mockNodes! : nodes!, address, currentBlockHeight, networkBondingApyPercent)
     : [];
 
   const optimalBond = useMockData
     ? runeToNumber('1000000000')
     : constants?.int_64_values?.OptimalBondD
-    ? runeToNumber(String(constants.int_64_values.OptimalBondD))
-    : null;
+      ? runeToNumber(String(constants.int_64_values.OptimalBondD))
+      : null;
 
   const allNodes = useMockData ? mockNodes ?? [] : nodes ?? [];
   const yieldGuardFlags = getYieldGuardFlags(positions, allNodes, optimalBond);
 
-  const positionsWithFlags = positions.map(pos => ({
+  const positionsWithFlags = positions.map((pos) => ({
     ...pos,
     yieldGuardFlags: yieldGuardFlags.get(pos.nodeAddress) || [],
   }));

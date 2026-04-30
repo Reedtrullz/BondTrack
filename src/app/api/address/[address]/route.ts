@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBondDetails, getActions } from '@/lib/api/midgard';
 
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ address: string }> }
+) {
   try {
+    const { address: pathAddress } = await params;
     const { searchParams } = new URL(request.url);
-    const address = searchParams.get('address');
-    
+    const address = pathAddress || searchParams.get('address');
+
     if (!address) {
       return NextResponse.json({ error: 'Address parameter is required' }, { status: 400 });
     }
@@ -23,7 +27,7 @@ export async function GET(request: NextRequest) {
     const parsedActions = bondActions.map(action => {
       const memo = action.memo?.toUpperCase() || '';
       const type: 'BOND' | 'UNBOND' = memo.startsWith('BOND:') ? 'BOND' : 'UNBOND';
-      
+
       const runeCoin = action.tx?.coins?.find(c => c.asset === 'THOR.RUNE');
       const amount = runeCoin ? parseFloat(runeCoin.amount) : 0;
       const parts = memo.split(':');

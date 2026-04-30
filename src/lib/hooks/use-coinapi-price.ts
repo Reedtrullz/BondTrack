@@ -1,10 +1,17 @@
 import useSWR from 'swr';
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+async function fetcher(url: string) {
+  const response = await fetch(url);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.error || `CoinAPI request failed: ${response.status}`);
+  }
+  return payload;
+}
 
 export function useCoinApiRunePrice(date: Date | null) {
   const dateStr = date?.toISOString().slice(0, 10) || '';
-  
+
   const { data, error, isLoading } = useSWR(
     date ? `/api/coinapi/rune-price?date=${dateStr}` : null,
     fetcher,
@@ -15,7 +22,7 @@ export function useCoinApiRunePrice(date: Date | null) {
   );
 
   return {
-    price: data?.price || null,
+    price: data?.price ?? null,
     isLoading,
     error,
   };

@@ -301,8 +301,17 @@ function DashboardContentWithAddress({ address }: { address: string }) {
     };
   }, [positions]);
 
+  const positionsWithComputedIl = React.useMemo(() => {
+    return positions.map((position) => {
+      const computedIl = ilMap.get(`${position.pool}-${position.address}`);
+      return computedIl === undefined
+        ? position
+        : { ...position, impermanentLossPercent: computedIl };
+    });
+  }, [positions, ilMap]);
+
   const sortedPositions = React.useMemo(() => {
-    return [...positions].sort((left, right) => {
+    return [...positionsWithComputedIl].sort((left, right) => {
       let comparison = 0;
 
       switch (sortField) {
@@ -316,8 +325,8 @@ function DashboardContentWithAddress({ address }: { address: string }) {
           break;
         }
         case 'il': {
-          const leftIl = ilMap.get(`${left.pool}-${left.address}`) ?? left.impermanentLossPercent ?? Number.NEGATIVE_INFINITY;
-          const rightIl = ilMap.get(`${right.pool}-${right.address}`) ?? right.impermanentLossPercent ?? Number.NEGATIVE_INFINITY;
+          const leftIl = left.impermanentLossPercent ?? Number.NEGATIVE_INFINITY;
+          const rightIl = right.impermanentLossPercent ?? Number.NEGATIVE_INFINITY;
           comparison = leftIl - rightIl;
           break;
         }
@@ -331,7 +340,7 @@ function DashboardContentWithAddress({ address }: { address: string }) {
 
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [positions, sortDirection, sortField]);
+  }, [positionsWithComputedIl, sortDirection, sortField]);
 
   const portfolioSummary = React.useMemo(() => calculateLpPortfolioSummary(positions), [positions]);
   const currentOnlyCount = positions.filter((position) => position.pricingSource === 'current-only').length;
@@ -418,7 +427,7 @@ function DashboardContentWithAddress({ address }: { address: string }) {
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {positions.map((position) => (
+          {positionsWithComputedIl.map((position) => (
             <LpSummaryCard key={`${position.pool}-${position.address}`} position={position} />
           ))}
         </div>

@@ -42,9 +42,10 @@ export function useRunePriceHistory(interval = 'day', count = 30) {
     }
   );
 
+  const mockNow = Date.UTC(2026, 0, 1);
   const mockIntervals: RunePriceInterval[] = Array.from({ length: count }, (_, index) => ({
     runePriceUSD: MOCK_RUNE_PRICE,
-    timestamp: new Date(Date.now() - (count - 1 - index) * 24 * 60 * 60 * 1000),
+    timestamp: new Date(mockNow - (count - 1 - index) * 24 * 60 * 60 * 1000),
   }));
 
   const intervals: RunePriceInterval[] = useMockData ? mockIntervals : data?.intervals?.map((i) => ({
