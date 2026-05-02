@@ -99,7 +99,7 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <MetricCard label="RUNE Deposited" value={formatRuneAmount(position.runeDeposit)} />
-        <MetricCard label={`${position.assetSymbol} Deposited`} value={formatRuneAmount(position.asset2Deposit)} />
+        <MetricCard label={`${position.assetSymbol} Deposited`} value={formatAmount(position.asset2Deposit)} />
         <MetricCard label="Current Value" value={formatUsd(position.currentTotalValueUsd, 0)} />
         <MetricCard
           label="Net P/L"

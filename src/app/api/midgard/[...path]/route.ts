@@ -60,8 +60,7 @@ export async function GET(
     );
   }
 
-  const errors: string[] = [];
-
+  const statusCodes: number[] = [];
   for (const baseUrl of MIDGARD_ENDPOINTS) {
     const targetUrl = `${baseUrl}/${pathStr}${searchParams}`;
 
@@ -81,6 +80,7 @@ export async function GET(
       clearTimeout(timeoutId);
 
       if (!response.ok) {
+        statusCodes.push(response.status);
         errors.push(`${baseUrl}: ${response.status}`);
         continue;
       }
@@ -97,9 +97,12 @@ export async function GET(
     }
   }
 
+  // If all failed, prefer returning 404 if any endpoint said so, otherwise 502
+  const finalStatus = statusCodes.includes(404) ? 404 : 502;
+
   return NextResponse.json(
     { error: 'All Midgard endpoints failed', details: errors },
-    { status: 502, headers: corsHeaders(request) }
+    { status: finalStatus, headers: corsHeaders(request) }
   );
 }
 

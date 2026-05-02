@@ -37,9 +37,10 @@ function FeeRevenueTooltip({ active, payload, label }: TooltipProps) {
     return null;
   }
 
-  const total = payload.find((item) => item.dataKey === 'totalFees')?.value ?? 0;
-  const bondRewards = payload.find((item) => item.dataKey === 'bondRewards')?.value ?? 0;
-  const poolRewards = payload.find((item) => item.dataKey === 'poolRewards')?.value ?? 0;
+  const point = payload[0].payload as ChartPoint;
+  const total = point.totalFees;
+  const bondRewards = point.bondRewards;
+  const poolRewards = point.poolRewards;
 
   return (
     <div className="rounded-lg border border-zinc-700 bg-zinc-900/95 p-3 shadow-lg dark:border-zinc-700 dark:bg-zinc-900/95">

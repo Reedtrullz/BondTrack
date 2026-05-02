@@ -224,7 +224,10 @@ export const useLpPositions = (address: string | null) => {
               pricingSource: 'historical',
             });
           } catch (err) {
-            console.error(`Error fetching historical data for ${pool.pool}:`, err);
+            const message = err instanceof Error ? err.message : String(err);
+            if (!message.includes('404') && !message.includes('500') && !message.includes('502')) {
+              console.error(`Error fetching historical data for ${pool.pool}:`, err);
+            }
             historicalPrices.set(pool.pool, {
               entryRunePriceUsd: null,
               entryAssetPriceUsd: null,
