@@ -193,10 +193,11 @@ export function PnLDashboard({
                 <Loader2 className="w-3 h-3 animate-spin text-zinc-400 ml-1" />
               )}
               {actionsError && !manualInitialBond && (
-                <AlertTriangle 
-                  className="w-3 h-3 text-amber-500 ml-1 cursor-help" 
-                  title={`History Unavailable: ${actionsError.message || 'API Error'}. Showing 0.00 baseline.`}
-                />
+                <span title={`History Unavailable: ${actionsError.message || 'API Error'}. Showing 0.00 baseline.`}>
+                  <AlertTriangle 
+                    className="w-3 h-3 text-amber-500 ml-1 cursor-help" 
+                  />
+                </span>
               )}
               {isEditing ? (
                 <span className="flex items-center gap-0.5 ml-1">

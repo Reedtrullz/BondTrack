@@ -60,6 +60,7 @@ export async function GET(
     );
   }
 
+  const errors: string[] = [];
   const statusCodes: number[] = [];
   for (const baseUrl of MIDGARD_ENDPOINTS) {
     const targetUrl = `${baseUrl}/${pathStr}${searchParams}`;

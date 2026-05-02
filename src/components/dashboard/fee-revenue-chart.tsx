@@ -19,7 +19,7 @@ interface ChartPoint {
 
 interface TooltipProps {
   active?: boolean;
-  payload?: Array<{ value: number; dataKey: string }>;
+  payload?: Array<{ value: number; dataKey: string; payload: ChartPoint }>;
   label?: string;
 }
 
