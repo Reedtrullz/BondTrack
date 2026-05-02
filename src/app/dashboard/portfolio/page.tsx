@@ -26,7 +26,6 @@ import { FeeRevenueChart } from '@/components/dashboard/fee-revenue-chart';
 import { FeeRevenueSummary } from '@/components/dashboard/fee-revenue-summary';
 import { PositionTable } from '@/components/dashboard/position-table';
 import { RewardProjections } from '@/components/dashboard/reward-projections';
-import { ActionableAlerts } from '@/components/dashboard/actionable-alerts';
 import { IntelligenceFeed } from '@/components/dashboard/intelligence-feed';
 import { Button } from '@/components/ui/button';
 import {
@@ -84,7 +83,7 @@ export default function PortfolioPage() {
     positions: lpPositions,
     error: lpError,
   } = useLpPositions(address);
-  const { price: runePrice, intervals: runePriceHistory, isLoading: priceLoading } = useRunePriceHistory('day', 8);
+  const { price: runePrice, intervals: runePriceHistory, isLoading: priceLoading } = useRunePriceHistory('hour', 24 * 7 + 1);
   const { data: marketNetwork, isLoading: metricsLoading } = useNetworkMetrics();
   const { benchmarks, isLoading: benchmarksLoading } = useYieldBenchmarks();
   const { data: allNodes, isLoading: allNodesLoading } = useAllNodes();
@@ -171,10 +170,10 @@ export default function PortfolioPage() {
     ? bondPositions.reduce((sum, p) => sum + (p.operatorFee || 0) * p.bondAmount, 0) / totalBondedRune
     : 0;
   const runePriceChange24h = (() => {
-    if (runePriceHistory.length < 2) return null;
+    if (runePriceHistory.length < 25) return null;
 
-    const first = runePriceHistory[runePriceHistory.length - 2].runePriceUSD;
     const last = runePriceHistory[runePriceHistory.length - 1].runePriceUSD;
+    const first = runePriceHistory[runePriceHistory.length - 25].runePriceUSD;
 
     if (!Number.isFinite(first) || first <= 0 || !Number.isFinite(last)) {
       return null;
@@ -183,7 +182,7 @@ export default function PortfolioPage() {
     return ((last - first) / first) * 100;
   })();
   const runePriceChange7d = (() => {
-    if (runePriceHistory.length < 8) return null;
+    if (runePriceHistory.length < 169) return null;
 
     const first = runePriceHistory[0].runePriceUSD;
     const last = runePriceHistory[runePriceHistory.length - 1].runePriceUSD;
@@ -451,8 +450,6 @@ export default function PortfolioPage() {
           averageFeeBps={averageFeeBps}
         />
       )}
-
-      <ActionableAlerts positions={bondPositions} address={address} />
 
       <DashboardCard className="space-y-4 border-0 bg-transparent p-0 shadow-none dark:bg-transparent">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -43,30 +43,48 @@ function getBondHistoryNodeAddress(action: ActionRaw): string {
 }
 
 function parseActions(actions: ActionRaw[]): Transaction[] {
+  if (!actions || !Array.isArray(actions)) return [];
+  
   return actions
     .map((action) => ({ action, txType: getBondHistoryTxType(action) }))
     .filter((entry): entry is { action: ActionRaw; txType: 'bond' | 'unbond' | 'leave' | 'unstake' } => entry.txType !== null)
     .map(({ action, txType }): Transaction => {
       let amount = 0;
       
-      if (action.in?.[0]?.coins) {
-        const inCoin = action.in[0].coins.find((c) => c.asset === 'THOR.RUNE' || c.asset === 'THOR');
-        if (inCoin) amount = parseFloat(inCoin.amount) / 1e8;
+      // Try to find RUNE amount in 'in', 'tx', or 'out'
+      const findRuneAmount = (coins: { asset: string; amount: string }[] | undefined) => {
+        if (!coins) return 0;
+        const runeCoin = coins.find((c) => 
+          c.asset === 'THOR.RUNE' || 
+          c.asset === 'THOR' || 
+          c.asset.startsWith('THOR.RUNE')
+        );
+        return runeCoin ? parseFloat(runeCoin.amount) / 1e8 : 0;
+      };
+
+      amount = findRuneAmount(action.in?.[0]?.coins);
+      if (amount === 0) amount = findRuneAmount(action.tx?.coins);
+      if (amount === 0) {
+        // For unbonds, amount might be in 'out'
+        action.out?.forEach(out => {
+          if (amount === 0) amount = findRuneAmount(out.coins);
+        });
       }
       
-      if (amount === 0 && action.tx?.coins) {
-        const txCoin = action.tx.coins.find((c) => c.asset === 'THOR.RUNE' || c.asset === 'THOR');
-        if (txCoin) amount = parseFloat(txCoin.amount) / 1e8;
-      }
-      
-      if (amount === 0 && action.out?.[0]?.coins) {
-        const outCoin = action.out[0].coins.find((c) => c.asset === 'THOR.RUNE' || c.asset === 'THOR');
-        if (outCoin) amount = parseFloat(outCoin.amount) / 1e8;
-      }
-      
-      const type = txType === 'bond' ? 'BOND' : 'UNBOND';
+      const type = (txType === 'bond') ? 'BOND' : 'UNBOND';
       const nodeAddress = getBondHistoryNodeAddress(action);
-      const timestamp = action.date ? new Date(Number(action.date) / 1e9 * 1000) : new Date();
+      
+      // Use BigInt for safer timestamp parsing to avoid precision loss
+      let timestamp = new Date();
+      if (action.date) {
+        try {
+          timestamp = new Date(Number(BigInt(action.date) / BigInt(1000000)));
+        } catch (e) {
+          console.error('Error parsing date:', action.date, e);
+          // Fallback to less precise parsing
+          timestamp = new Date(Number(action.date) / 1e6);
+        }
+      }
       
       return {
         type,
@@ -94,16 +112,33 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
     setInputAddress(address || '');
   }, [address]);
 
-  // Use type for bond/unbond/leave history lookups.
+  // Use more robust fetching with fallbacks
   const { data, error, isLoading } = useSWR(
     selectedAddress ? ['actions', selectedAddress] : null,
     async () => {
-      const result = await getActions(selectedAddress, 50, 'bond,unbond,leave');
-      return result;
+      // 1. Try txType=bond,unbond (removed 'leave' as it can cause 500s on some nodes)
+      try {
+        const result = await getActions(selectedAddress, 50, 'bond,unbond', 'txType');
+        if (result.actions && result.actions.length > 0) return result;
+      } catch (err) {
+        console.warn('Midgard txType query failed, trying type filter...', err);
+      }
+
+      // 2. Fallback: try type=bond,unbond (more standard high-level types)
+      try {
+        const result = await getActions(selectedAddress, 50, 'bond,unbond', 'type');
+        if (result.actions && result.actions.length > 0) return result;
+      } catch (err) {
+        console.warn('Midgard type query failed, trying unfiltered actions...', err);
+      }
+
+      // 3. Last resort: fetch recent actions and filter locally
+      return await getActions(selectedAddress, 50);
     },
     { 
       refreshInterval: 60_000,
       onError: (err) => console.error('Actions API error:', err),
+      shouldRetryOnError: false, // We handle retries/fallbacks manually in the fetcher
     }
   );
 

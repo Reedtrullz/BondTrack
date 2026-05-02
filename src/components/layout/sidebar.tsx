@@ -42,11 +42,10 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       
       <aside className={cn(
         "fixed md:relative z-50 md:z-0",
-        "w-64 h-screen",
+        "w-64 h-screen shrink-0 flex flex-col",
         "border-r border-zinc-200/60 dark:border-zinc-800/60",
         "bg-gradient-to-b from-white/90 to-zinc-50/90 dark:from-zinc-900/90 dark:to-zinc-950/90",
         "backdrop-blur-xl",
-        "p-4 space-y-2",
         "transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
         isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       )}>
@@ -57,58 +56,60 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           <X className="w-5 h-5" />
         </button>
 
-        <Link href="/" className="flex items-center gap-3 px-3 py-3 mb-4 font-bold text-zinc-900 dark:text-zinc-100 group">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500/80 to-amber-600/80 flex items-center justify-center shadow-lg shadow-amber-500/10 group-hover:shadow-amber-500/20 transition-all duration-300 border border-amber-500/20">
-            <Eye className="w-5 h-5 text-amber-500" />
+        <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+          <Link href="/" className="flex items-center gap-3 px-3 py-3 mb-4 font-bold text-zinc-900 dark:text-zinc-100 group">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500/80 to-amber-600/80 flex items-center justify-center shadow-lg shadow-amber-500/10 group-hover:shadow-amber-500/20 transition-all duration-300 border border-amber-500/20">
+              <Eye className="w-5 h-5 text-amber-500" />
+            </div>
+            <span className="hidden md:flex flex-col leading-tight">
+              <span className="text-lg tracking-tight font-serif italic uppercase">Heimdall</span>
+              <span className="text-[10px] font-sans font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">THORNode Watcher</span>
+            </span>
+            <span className="md:hidden">H</span>
+          </Link>
+          
+          <div className="px-3 py-2">
+            <ThemeToggle />
           </div>
-          <span className="hidden md:flex flex-col leading-tight">
-            <span className="text-lg tracking-tight font-serif italic uppercase">Heimdall</span>
-            <span className="text-[10px] font-sans font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">THORNode Watcher</span>
-          </span>
-          <span className="md:hidden">H</span>
-        </Link>
-        
-        <div className="px-3 py-2">
-          <ThemeToggle />
-        </div>
-        
-        <div className="pt-2 pb-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
-          <p className="px-3 text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Navigation</p>
-        </div>
-        
-        {navItems(address).map((item) => {
-          const isActive = pathname === item.path;
+          
+          <div className="pt-2 pb-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
+            <p className="px-3 text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Navigation</p>
+          </div>
+          
+          {navItems(address).map((item) => {
+            const isActive = pathname === item.path;
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onClose}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                "text-zinc-600 dark:text-zinc-400",
-                "hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-100",
-                "group relative overflow-hidden",
-                isActive && "bg-zinc-100 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100"
-              )}
-              aria-label={`Navigate to ${item.label} page`}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              <span className="relative z-10 flex items-center gap-3">
-                <span className={cn(
-                  "transition-colors duration-200",
-                  isActive ? "text-amber-500" : ""
-                )}>{item.icon}</span>
-                <span className="hidden md:inline">{item.label}</span>
-              </span>
-              <span className="hidden lg:flex items-center gap-1 text-[10px] text-zinc-400 dark:text-zinc-500 absolute right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                {item.desc}
-              </span>
-            </Link>
-          );
-        })}
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                  "text-zinc-600 dark:text-zinc-400",
+                  "hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-100",
+                  "group relative overflow-hidden",
+                  isActive && "bg-zinc-100 dark:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100"
+                )}
+                aria-label={`Navigate to ${item.label} page`}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <span className="relative z-10 flex items-center gap-3">
+                  <span className={cn(
+                    "transition-colors duration-200",
+                    isActive ? "text-amber-500" : ""
+                  )}>{item.icon}</span>
+                  <span className="hidden md:inline">{item.label}</span>
+                </span>
+                <span className="hidden lg:flex items-center gap-1 text-[10px] text-zinc-400 dark:text-zinc-500 absolute right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {item.desc}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
         
-        <div className="absolute bottom-6 left-4 right-4 space-y-3">
+        <div className="p-4 bg-zinc-50/50 dark:bg-zinc-900/50 border-t border-zinc-200/60 dark:border-zinc-800/60 space-y-3">
           <BifrostStatus />
           <div className="p-3 rounded-lg bg-gradient-to-br from-emerald-500/10 to-amber-500/10 dark:from-emerald-500/5 dark:to-amber-500/5 border border-zinc-200/60 dark:border-zinc-800/60">
             <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">

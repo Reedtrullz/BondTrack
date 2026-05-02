@@ -42,11 +42,16 @@ export function useRunePriceHistory(interval = 'day', count = 30) {
     }
   );
 
-  const mockNow = Date.UTC(2026, 0, 1);
-  const mockIntervals: RunePriceInterval[] = Array.from({ length: count }, (_, index) => ({
-    runePriceUSD: MOCK_RUNE_PRICE,
-    timestamp: new Date(mockNow - (count - 1 - index) * 24 * 60 * 60 * 1000),
-  }));
+  const mockNow = Date.now();
+  const intervalMs = interval === 'hour' ? 3600 * 1000 : 24 * 3600 * 1000;
+  const mockIntervals: RunePriceInterval[] = Array.from({ length: count }, (_, index) => {
+    // Add a slight deterministic variation to the mock price
+    const variation = Math.sin(index * 0.5) * 0.05; 
+    return {
+      runePriceUSD: MOCK_RUNE_PRICE * (1 + variation),
+      timestamp: new Date(mockNow - (count - 1 - index) * intervalMs),
+    };
+  });
 
   const intervals: RunePriceInterval[] = useMockData ? mockIntervals : data?.intervals?.map((i) => ({
     runePriceUSD: Number(i.runePriceUSD),

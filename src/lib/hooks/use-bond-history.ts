@@ -18,7 +18,7 @@ interface BondAction {
 }
 
 export function useBondHistory(address: string | null) {
-  const { data: bondDetails, isLoading: isLoadingDetails } = useSWR<BondDetailsRaw>(
+  const { data: bondDetails, isLoading: isLoadingDetails, error: detailsError } = useSWR<BondDetailsRaw>(
     address ? ['bond-details', address] : null,
     () => getBondDetails(address!),
     { refreshInterval: 60_000 }
@@ -26,11 +26,12 @@ export function useBondHistory(address: string | null) {
 
   const { data: actions, isLoading: isLoadingActions, error: actionsError } = useSWR<ActionsResponseRaw>(
     address ? ['actions-bond-v2', address] : null,
-    () => getActions(address!, 50, 'bond,unbond,leave'),
+    () => getActions(address!, 50, 'bond,unbond', 'type'),
     { refreshInterval: 60_000 }
   );
 
   const isLoading = isLoadingDetails || isLoadingActions;
+  const error = detailsError || actionsError;
 
   const bondActions: BondAction[] = actions?.actions
     ?.map((action) => {
@@ -56,6 +57,20 @@ export function useBondHistory(address: string | null) {
         action.metadata?.bond != null ||
         memo.startsWith('BOND:');
 
+      const isUnbondAction =
+        metadataTxType === 'unbond' ||
+        metadataTxType === 'leave' ||
+        action.type === 'unbond' ||
+        action.type === 'leave' ||
+        memo.startsWith('UNBOND:') ||
+        memo.startsWith('LEAVE:');
+
+      // Only classify as BOND or UNBOND if explicitly recognized.
+      // This prevents swaps/sends/tcy_stake from being counted as unbonds.
+      if (!isBondAction && !isUnbondAction) {
+        return null;
+      }
+
       const type: 'BOND' | 'UNBOND' = isBondAction ? 'BOND' : 'UNBOND';
 
       const rawDate = action.date || '0';
@@ -67,9 +82,10 @@ export function useBondHistory(address: string | null) {
         date,
       };
     })
+    .filter((a): a is BondAction => a !== null)
     .sort((a, b) => a.date.getTime() - b.date.getTime()) || [];
 
-  const history: BondHistory | null = address
+  const history: BondHistory | null = address && !error
     ? (() => {
         const initialBond = bondActions.reduce((sum, a) => {
           return a.type === 'BOND' ? sum + a.amount : sum - a.amount;
@@ -92,6 +108,7 @@ export function useBondHistory(address: string | null) {
   return {
     history,
     isLoading,
+    error,
     bondActions,
   };
 }

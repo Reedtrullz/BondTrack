@@ -81,7 +81,7 @@ export default function RewardsPage() {
   const { positions, isLoading, error } = useBondPositions(address);
   const { price: runePrice } = useRunePrice();
   const { data: networkData } = useNetworkMetrics();
-  const { history: bondHistory } = useBondHistory(address);
+  const { history: bondHistory, isLoading: isLoadingActions, error: actionsError } = useBondHistory(address);
   const { price: entryRunePrice } = useHistoricalRunePrice(bondHistory?.firstBondDate || null);
 
   const [mounted, setMounted] = useState(false);
@@ -213,6 +213,8 @@ export default function RewardsPage() {
               address={address}
               entryRunePrice={entryRunePrice || undefined}
               bondHistory={bondHistory ?? undefined}
+              actionsError={actionsError}
+              isLoadingActions={isLoadingActions}
             />
             <div className="mt-4 flex justify-end">
               <Button

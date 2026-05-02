@@ -128,7 +128,7 @@ async function generateBondRows(
   endTimestamp: number,
   priceMap: Map<number, number>
 ): Promise<TaxReportRow[]> {
-  const actionsResponse = await getActions(address, 100, 'bond,unbond,leave');
+  const actionsResponse = await getActions(address, 100, 'bond,unbond,leave', 'txType');
 
   const actions = actionsResponse.actions
     .map((action) => ({ action, timestamp: normalizeTimestamp(action.date) }))

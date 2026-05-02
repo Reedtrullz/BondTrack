@@ -22,7 +22,7 @@ describe('TransactionHistory', () => {
 
     expect((screen.getByPlaceholderText('Enter THORChain address') as HTMLInputElement).value).toBe('ADDR_ONE');
 
-    await waitFor(() => expect(midgard.getActions).toHaveBeenCalledWith('ADDR_ONE', 50, 'bond,unbond,leave'));
+    await waitFor(() => expect(midgard.getActions).toHaveBeenCalledWith('ADDR_ONE', 50, 'bond,unbond', 'txType'));
 
     rerender(<TransactionHistory address="ADDR_TWO" />);
 
@@ -30,7 +30,7 @@ describe('TransactionHistory', () => {
       expect((screen.getByPlaceholderText('Enter THORChain address') as HTMLInputElement).value).toBe('ADDR_TWO');
     });
 
-    await waitFor(() => expect(midgard.getActions).toHaveBeenCalledWith('ADDR_TWO', 50, 'bond,unbond,leave'));
+    await waitFor(() => expect(midgard.getActions).toHaveBeenCalledWith('ADDR_TWO', 50, 'bond,unbond', 'txType'));
   });
 
   it('handles null address prop correctly', async () => {
@@ -47,7 +47,7 @@ describe('TransactionHistory', () => {
       expect((screen.getByPlaceholderText('Enter THORChain address') as HTMLInputElement).value).toBe('ADDR_ONE');
     });
 
-    await waitFor(() => expect(midgard.getActions).toHaveBeenCalledWith('ADDR_ONE', 50, 'bond,unbond,leave'));
+    await waitFor(() => expect(midgard.getActions).toHaveBeenCalledWith('ADDR_ONE', 50, 'bond,unbond', 'txType'));
   });
 
   it('updates SWR key when address changes via input', async () => {
@@ -55,7 +55,7 @@ describe('TransactionHistory', () => {
 
     render(<TransactionHistory address="ADDR_ONE" />, { wrapper });
 
-    await waitFor(() => expect(midgard.getActions).toHaveBeenCalledWith('ADDR_ONE', 50, 'bond,unbond,leave'));
+    await waitFor(() => expect(midgard.getActions).toHaveBeenCalledWith('ADDR_ONE', 50, 'bond,unbond', 'txType'));
 
     const input = screen.getByPlaceholderText('Enter THORChain address') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'ADDR_TWO' } });
@@ -65,7 +65,7 @@ describe('TransactionHistory', () => {
       expect((screen.getByPlaceholderText('Enter THORChain address') as HTMLInputElement).value).toBe('ADDR_TWO');
     });
 
-    await waitFor(() => expect(midgard.getActions).toHaveBeenCalledWith('ADDR_TWO', 50, 'bond,unbond,leave'));
+    await waitFor(() => expect(midgard.getActions).toHaveBeenCalledWith('ADDR_TWO', 50, 'bond,unbond', 'txType'));
   });
 
   it('handles empty string address prop correctly', async () => {
@@ -82,7 +82,7 @@ describe('TransactionHistory', () => {
       expect((screen.getByPlaceholderText('Enter THORChain address') as HTMLInputElement).value).toBe('ADDR_ONE');
     });
 
-    await waitFor(() => expect(midgard.getActions).toHaveBeenCalledWith('ADDR_ONE', 50, 'bond,unbond,leave'));
+    await waitFor(() => expect(midgard.getActions).toHaveBeenCalledWith('ADDR_ONE', 50, 'bond,unbond', 'txType'));
   });
 
   it('renders bond history actions when Midgard returns refund actions with bond txType metadata', async () => {

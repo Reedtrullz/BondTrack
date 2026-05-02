@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { BondPosition } from '@/lib/types/node';
 import { calculatePricePnL, calculateTotalReturn } from '@/lib/utils/calculations';
-import { TrendingUp, DollarSign, Percent, Wallet, Edit3, Check, X } from 'lucide-react';
+import { TrendingUp, DollarSign, Percent, Wallet, Edit3, Check, X, AlertTriangle, Loader2 } from 'lucide-react';
 
 interface PnLDashboardProps {
   positions: BondPosition[];
@@ -23,6 +23,8 @@ interface PnLDashboardProps {
     bondGrowth: number;
     firstBondDate?: Date | null;
   } | null;
+  actionsError?: any;
+  isLoadingActions?: boolean;
 }
 
 function getStorageKey(address: string | null): string | null {
@@ -52,6 +54,8 @@ export function PnLDashboard({
   entryRunePrice,
   earningsHistory,
   bondHistory,
+  actionsError,
+  isLoadingActions,
 }: PnLDashboardProps) {
   const storageKey = getStorageKey(address);
 
@@ -151,7 +155,7 @@ export function PnLDashboard({
 
   // effectiveInitialBond: manual override > bond history > current bond (fallback)
   const hasHistoricalInitialBond = manualInitialBond !== null || (bondHistory?.initialBond != null && bondHistory.initialBond > 0);
-  const effectiveInitialBond = manualInitialBond ?? (bondHistory?.initialBond ?? totalCurrentBond);
+  const effectiveInitialBond = manualInitialBond ?? (bondHistory?.initialBond ?? 0);
   
   const effectiveEntryPrice = useMemo(() => 
     manualEntryPrice || entryRunePrice || 
@@ -185,6 +189,15 @@ export function PnLDashboard({
           label={
             <span className="flex items-center gap-1">
               Initial Bond
+              {isLoadingActions && (
+                <Loader2 className="w-3 h-3 animate-spin text-zinc-400 ml-1" />
+              )}
+              {actionsError && !manualInitialBond && (
+                <AlertTriangle 
+                  className="w-3 h-3 text-amber-500 ml-1 cursor-help" 
+                  title={`History Unavailable: ${actionsError.message || 'API Error'}. Showing 0.00 baseline.`}
+                />
+              )}
               {isEditing ? (
                 <span className="flex items-center gap-0.5 ml-1">
                   <button
