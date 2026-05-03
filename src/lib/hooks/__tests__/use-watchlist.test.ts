@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useWatchlist } from '../use-watchlist';
 
-const STORAGE_KEY = 'thornode-watcher-watchlist';
+const STORAGE_KEY = 'heimdall-watchlist';
 
 const createAddress = (char: string) => `thor1${char.repeat(39)}`;
 

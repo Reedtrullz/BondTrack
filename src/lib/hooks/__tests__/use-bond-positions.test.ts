@@ -98,17 +98,20 @@ describe('useBondPositions', () => {
 
     expect(result.current.positions).toEqual([]);
   });
-
   it('extracts bond positions for user address', async () => {
     vi.mocked(thornode.getAllNodes).mockResolvedValueOnce(mockNodes as unknown as thornode.NodeRaw[]);
     vi.mocked(midgard.getHealth).mockResolvedValueOnce({ lastThorNode: { height: 12345678 } });
 
     const { result } = renderHook(() => useBondPositions('thor1user123456789abcdef'), { wrapper });
+
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(result.current.positions.length).toBe(1);
+    // User has bonds in 2 nodes
+    expect(result.current.positions.length).toBe(2);
     expect(result.current.positions[0].nodeAddress).toBe('thor1abc123def456');
     expect(result.current.positions[0].status).toBe('Active');
+    expect(result.current.positions[1].nodeAddress).toBe('thor1def456ghi789');
+    expect(result.current.positions[1].status).toBe('Active');
   });
 
   it('marks overbonded positions when optimal bond uses the same raw unit as node total bond', async () => {
