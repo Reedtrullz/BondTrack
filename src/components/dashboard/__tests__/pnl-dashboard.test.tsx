@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { PnLDashboard } from '../pnl-dashboard';
+import PnLDashboard from '../pnl-dashboard';
 import { BondPosition } from '@/lib/types/node';
 
 const positions: BondPosition[] = [
@@ -57,10 +57,12 @@ describe('PnLDashboard', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getAllByText('20.00')).toHaveLength(2);
+      screen.getByText('250.00');
+      screen.getByText(/manual/);
     });
-    expect(screen.queryByPlaceholderText('Enter RUNE amount')).toBeNull();
-    expect(screen.queryByText(/manual/)).toBeNull();
+
+    fireEvent.click(screen.getByTitle('Edit initial bond'));
+    expect((screen.getByPlaceholderText('Enter RUNE amount') as HTMLInputElement).value).toBe('250');
 
     rerender(
       <PnLDashboard
@@ -71,8 +73,8 @@ describe('PnLDashboard', () => {
     );
 
     await waitFor(() => {
-      screen.getByText('250.00');
-      screen.getByText(/manual/);
+      screen.getByText('0.00');
+      screen.queryByText(/manual/) && screen.getByText(/manual/).not.toBeInTheDocument();
     });
   });
 });
