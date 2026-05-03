@@ -52,7 +52,7 @@
 
 **Styling**: Tailwind zinc palette, `border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg`. Numbers use `font-mono`. Labels use `text-zinc-500 text-sm`.
 
-**Charts**: Always wrap in `<ResponsiveContainer width="100%" height={300}>`. Timestamps from Midgard are nanoseconds — divide by `1e9` then format with `new Date(seconds * 1000)`.
+**Charts**: Always wrap in `<ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={0}>`. Timestamps from Midgard are nanoseconds — divide by `1e9` then format with `new Date(seconds * 1000)`.
 
 **Empty states**: Show centered text-zinc-500 message when data is empty.
 
