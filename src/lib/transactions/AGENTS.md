@@ -31,6 +31,13 @@ UNBOND:<node_address>:<amount_in_1e8>
 - Chain ID: `thorchain-mainnet-v1`
 - RPC: `https://rpc.thorchain.info`
 
+## DEPLOYED UX NOTES
+
+- Transaction entry points must preserve the intended mode (`BOND` vs `UNBOND`) when navigating into the composer.
+- The in-page `BOND` and `UNBOND` controls must produce visibly distinct composer states.
+- Copy actions should provide visible success feedback, not silent best-effort behavior.
+- Current live QA is explicitly focused on non-wallet transaction UX first; browser wallet connectivity can be deferred when requested.
+
 ## ANTI-PATTERNS
 - Never call executeBondTransaction without user confirmation
 - Never use empty phrase Client — always use wallet signer

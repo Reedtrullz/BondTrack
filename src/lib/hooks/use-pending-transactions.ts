@@ -26,8 +26,18 @@ function getInitialPendingTxs(): PendingTransaction[] {
         return age < TIMEOUT_MS && tx.status === 'pending';
       });
     }
-  } catch {}
+  } catch (error) {
+    console.error('Storage error while loading pending transactions:', error);
+  }
   return [];
+}
+
+function savePendingTxs(pendingTxs: PendingTransaction[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(pendingTxs));
+  } catch (error) {
+    console.error('Storage error while saving pending transactions:', error);
+  }
 }
 
 export function usePendingTransactions() {
@@ -44,7 +54,7 @@ export function usePendingTransactions() {
           return age < TIMEOUT_MS;
         });
         if (validTxs.length !== current.length) {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(validTxs));
+          savePendingTxs(validTxs);
         }
         return validTxs;
       });
@@ -55,7 +65,7 @@ export function usePendingTransactions() {
 
   useEffect(() => {
     if (isLoaded && pendingTxs.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(pendingTxs));
+      savePendingTxs(pendingTxs);
     }
   }, [pendingTxs, isLoaded]);
 
@@ -67,7 +77,7 @@ export function usePendingTransactions() {
     };
     setPendingTxs(current => {
       const updated = [...current, newTx];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      savePendingTxs(updated);
       return updated;
     });
     return newTx;
@@ -78,7 +88,7 @@ export function usePendingTransactions() {
       const updated = current.map(tx =>
         tx.txHash === txHash ? { ...tx, status } : tx
       );
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      savePendingTxs(updated);
       return updated;
     });
   }, []);
@@ -86,7 +96,7 @@ export function usePendingTransactions() {
   const removePendingTx = useCallback((txHash: string) => {
     setPendingTxs(current => {
       const updated = current.filter(tx => tx.txHash !== txHash);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      savePendingTxs(updated);
       return updated;
     });
   }, []);

@@ -31,18 +31,21 @@ export function TransactionPreview({
   position,
 }: TransactionPreviewProps) {
   const isLargeAmount = parseFloat(data.amount) > 2000;
+  const titleId = 'transaction-preview-title';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby={titleId}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
-      
+
       <div className="relative z-10 w-full max-w-md mx-4 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-800">
         <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+          <h2 id={titleId} className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
             Confirm Transaction
           </h2>
           <button
+            type="button"
             onClick={onCancel}
+            aria-label="Close transaction preview"
             className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
           >
             <X className="h-5 w-5 text-zinc-500" />
@@ -62,7 +65,7 @@ export function TransactionPreview({
               <span className="font-mono text-sm">{data.nodeAddress.slice(0, 12)}...</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-zinc-500">Amount</span>
+              <span className="text-zinc-500">Requested Amount</span>
               <span className="font-semibold">{data.amount} RUNE</span>
             </div>
             <div className="flex justify-between text-sm">
@@ -94,7 +97,7 @@ export function TransactionPreview({
           {data.type === 'UNBOND' && position && (
             <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
               <p className="text-sm text-amber-700 dark:text-amber-300">
-                <strong>Note:</strong> Unbonding is irreversible. Your RUNE will be locked until the node churns out of the active set.
+                <strong>Note:</strong> Unbonding is irreversible. The requested amount is encoded in the memo; the wallet transfer amount is not the unbond amount.
               </p>
             </div>
           )}

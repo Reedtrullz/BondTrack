@@ -22,11 +22,10 @@ A comprehensive dashboard for THORChain bond providers to monitor bonded RUNE, n
 - Churn-out risk assessment
 
 ### 💰 Rewards & Earnings
-- Earnings history with interval filtering
-- APY chart visualization
-- Fee impact calculations
+- PnL dashboard with initial bond tracking
+- Fee impact breakdown (leakage analysis)
 - Auto-compound projections
-- PnL dashboard
+- RUNE price chart with multiple timeframes
 
 ### ⚠️ Risk Monitoring
 - Slash monitor with severity levels
@@ -36,9 +35,16 @@ A comprehensive dashboard for THORChain bond providers to monitor bonded RUNE, n
 
 ### 🔧 Transaction Tools
 - BOND/UNBOND memo composer
-- Transaction history from Midgard
+- Transaction history from Midgard using `type=` filter
 - Wallet connection (Keplr, XDEFI, Vultisig)
 - Watchlist management
+
+### 🌊 LP Status Trust Rebuild
+- USD-based LP portfolio hero (`Total LP Value`, `Net P/L`, `Positions`, `Last Activity`)
+- Investor-facing LP cards and table rows with real asset symbols (`ATOM`, `DOGE`, `BCH`)
+- Honest `current-only` fallback when historical entry pricing cannot be proven
+- Pricing-confidence banner instead of fake `0.00%` LP performance metrics
+- Truthful missing-address state on `/dashboard/lp`
 
 ## Tech Stack
 
@@ -75,20 +81,22 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `NEXT_PUBLIC_THORNODE_API` | THORNode RPC endpoint | `gateway.liquify.com/chain/thorchain_api` |
-| `NEXT_PUBLIC_MIDGARD_API` | Midgard API endpoint | `gateway.liquify.com/chain/thorchain_midgard` |
-| `NEXT_PUBLIC_RPC_URL` | THORChain RPC | `https://rpc.thorchain.info` |
+| `NEXT_PUBLIC_THORNODE_API` | THORNode API endpoint | `https://gateway.liquify.com/chain/thorchain_api` |
+| `NEXT_PUBLIC_MIDGARD_API` | Midgard API endpoint | `https://gateway.liquify.com/chain/thorchain_midgard` |
+| `NEXT_PUBLIC_MIDGARD_FALLBACK` | Secondary Midgard fallback | `https://midgard.thorchain.network` |
+| `NEXT_PUBLIC_THORCHAIN_RPC` | THORChain RPC | `https://rpc.thorchain.info` |
 
 ## Project Structure
 
 ```
 src/
 ├── app/                    # Next.js App Router pages
+│   ├── api/                # Server-side API proxy routes (bypass CORS)
 │   ├── dashboard/          # Dashboard pages (overview, nodes, rewards, risk, transactions)
 │   ├── layout.tsx          # Root layout with ThemeProvider
 │   └── page.tsx            # Landing page
 ├── components/
-│   ├── dashboard/          # 14 domain components (charts, tables, monitors)
+│   ├── dashboard/          # 18 domain components (charts, tables, monitors)
 │   ├── layout/             # sidebar, dashboard-shell, theme-toggle
 │   ├── wallet/             # wallet-connect, transaction-preview
 │   ├── alerts/             # alert-toast
@@ -102,6 +110,15 @@ src/
     └── utils/              # formatters, calculations
 ```
 
+## API CORS Workaround
+
+External Midgard/THORNode APIs block browser requests due to CORS. The app uses server-side proxy routes:
+
+- `/api/midgard/*` → proxies to `gateway.liquify.com` (falls back to `midgard.thorchain.network`)
+- `/api/thorchain/*` → proxies to `gateway.liquify.com/chain/thorchain_api`
+
+All API calls from frontend go through these proxies, bypassing browser CORS restrictions.
+
 ## Supported Wallets
 
 - **Keplr Wallet** — Cosmos-based wallet with THORChain support
@@ -111,7 +128,21 @@ src/
 ## API Endpoints
 
 - **THORNode**: Nodes, Network Constants, Supply
-- **Midgard**: Bonds, Earnings, History, Network, Actions
+- **Midgard**: Bonds, Earnings, History, Network, Actions (`txType` for bond/unbond/leave history)
+
+## Current Dev QA Findings
+
+The deployed staging/dev environment at `https://dev.thorchain.no` is the source of truth for user-facing QA. As of the latest live audit, these non-wallet issues are confirmed and under remediation:
+
+- THORName reverse lookup can return repeated 502s on dashboard routes
+- The LP Status route now degrades honestly when member or pricing history data is unavailable; remaining live LP caveat is upstream Midgard pool-history `502` responses that force `current-only` valuation
+- The notification prompt can block header controls and its `Enable` CTA does not visibly resolve the prompt
+- Changelog year navigation works, but changelog search, filters, and entry buttons do not behave correctly on the deployed dev site
+- Overview quick-action buttons do not preserve the intended transaction mode
+- The Transactions page still needs clearer UNBOND-mode behavior and visible copy-action feedback
+- Some Rewards page controls have dead or unclear deployed behavior, including the `30D,` label oddity
+
+Fixes are considered complete only after they are re-tested on `https://dev.thorchain.no`, not just locally.
 
 ## Contributing
 

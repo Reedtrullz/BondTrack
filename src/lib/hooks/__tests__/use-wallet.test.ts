@@ -9,8 +9,8 @@ describe('useWallet', () => {
   });
 
   afterEach(() => {
-    delete (window as any).keplr;
-    delete (window as any).xfi;
+delete (window as unknown as Record<string, unknown>).keplr;
+delete (window as unknown as Record<string, unknown>).xfi;
   });
 
   it('returns initial disconnected state', () => {
@@ -29,22 +29,22 @@ describe('useWallet', () => {
   });
 
   it('detects Keplr wallet when installed', () => {
-    (window as any).keplr = { enable: vi.fn() };
+    (window as unknown as Record<string, unknown>).keplr = { enable: vi.fn() };
     const { result } = renderHook(() => useWallet());
 
     expect(result.current.availableWallets).toBe('keplr');
   });
 
   it('detects XDEFI wallet when installed', () => {
-    (window as any).xfi = { thorchain: { request: vi.fn() } };
+    (window as unknown as Record<string, unknown>).xfi = { thorchain: { request: vi.fn() } };
     const { result } = renderHook(() => useWallet());
 
     expect(result.current.availableWallets).toBe('xdefi');
   });
 
   it('prioritizes Keplr over XDEFI', () => {
-    (window as any).keplr = { enable: vi.fn() };
-    (window as any).xfi = { thorchain: { request: vi.fn() } };
+    (window as unknown as Record<string, unknown>).keplr = { enable: vi.fn() };
+    (window as unknown as Record<string, unknown>).xfi = { thorchain: { request: vi.fn() } };
     const { result } = renderHook(() => useWallet());
 
     expect(result.current.availableWallets).toBe('keplr');
@@ -52,7 +52,7 @@ describe('useWallet', () => {
 
   it('connects with Keplr wallet', async () => {
     const mockAddress = 'thor1test123456789abcdef';
-    (window as any).keplr = {
+    (window as unknown as Record<string, unknown>).keplr = {
       enable: vi.fn().mockResolvedValue(undefined),
       getChainId: vi.fn().mockResolvedValue('thorchain-mainnet-v1'),
       getKey: vi.fn().mockResolvedValue({ bech32Address: mockAddress }),
@@ -71,7 +71,7 @@ describe('useWallet', () => {
 
   it('connects with XDEFI wallet', async () => {
     const mockAddress = 'thor1xdefi123456789abcdef';
-    (window as any).xfi = {
+    (window as unknown as Record<string, unknown>).xfi = {
       thorchain: {
         request: vi.fn().mockResolvedValue(mockAddress),
       },
@@ -90,7 +90,7 @@ describe('useWallet', () => {
 
   it('disconnects and clears state', async () => {
     const mockAddress = 'thor1test123456789abcdef';
-    (window as any).keplr = {
+    (window as unknown as Record<string, unknown>).keplr = {
       enable: vi.fn().mockResolvedValue(undefined),
       getChainId: vi.fn().mockResolvedValue('thorchain-mainnet-v1'),
       getKey: vi.fn().mockResolvedValue({ bech32Address: mockAddress }),
@@ -114,7 +114,7 @@ describe('useWallet', () => {
 
   it('handles network mismatch', async () => {
     const mockAddress = 'thor1test123456789abcdef';
-    (window as any).keplr = {
+    (window as unknown as Record<string, unknown>).keplr = {
       enable: vi.fn().mockResolvedValue(undefined),
       getChainId: vi.fn().mockResolvedValue('thorchain-stagenet-v2'),
       getKey: vi.fn().mockResolvedValue({ bech32Address: mockAddress }),
@@ -132,7 +132,7 @@ describe('useWallet', () => {
   });
 
   it('handles connection error', async () => {
-    (window as any).keplr = {
+    (window as unknown as Record<string, unknown>).keplr = {
       enable: vi.fn().mockRejectedValue(new Error('User rejected')),
     };
 

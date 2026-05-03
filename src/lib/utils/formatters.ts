@@ -3,30 +3,39 @@ import { NETWORK } from '../config';
 const RUNE_DIVISOR = BigInt(10 ** NETWORK.RUNE_DECIMALS);
 
 /**
- * Convert a raw API amount string (1e8 units) to a human-readable RUNE number.
- * All THORChain API amounts are strings representing integer satoshis (1e8).
+ * Generic numeric formatter for crypto amounts with thousands separators.
  */
-export function formatRuneAmount(raw: string | number | undefined, decimals = 2): string {
+export function formatAmount(raw: string | number | undefined, decimals = 2): string {
   try {
-    if (!raw) {
-      return '0'.repeat(decimals + 1).replace('.', '').slice(0, decimals) || '0';
-    }
+    if (raw === undefined || raw === null) return '0.00';
+    
     let bigIntAmount: bigint;
     if (typeof raw === 'string') {
       bigIntAmount = BigInt(raw);
     } else if (typeof raw === 'number' && isFinite(raw)) {
       bigIntAmount = BigInt(Math.round(raw));
     } else {
-      return '0'.repeat(decimals + 1).replace('.', '').slice(0, decimals) || '0';
+      return '0.00';
     }
+
     const whole = bigIntAmount / RUNE_DIVISOR;
     const fraction = bigIntAmount % RUNE_DIVISOR;
     const fractionStr = fraction.toString().padStart(8, '0').slice(0, decimals);
-    if (decimals === 0) return whole.toString();
-    return `${whole}.${fractionStr}`;
+    
+    const wholeStr = whole.toLocaleString('en-US');
+    
+    if (decimals === 0) return wholeStr;
+    return `${wholeStr}.${fractionStr}`;
   } catch {
-    return '0'.repeat(decimals + 1).replace('.', '').slice(0, decimals) || '0';
+    return '0.00';
   }
+}
+
+/**
+ * Format a RUNE amount with the ᚱ symbol prefix.
+ */
+export function formatRuneAmount(raw: string | number | undefined, decimals = 2): string {
+  return `ᚱ${formatAmount(raw, decimals)}`;
 }
 
 export function runeToNumber(raw: string | number | undefined): number {
@@ -52,11 +61,15 @@ export function numberToRune(num: number): string {
   return String(BigInt(Math.round(num * Number(RUNE_DIVISOR))));
 }
 
+export function formatRuneFromNumber(num: number, decimals = 2): string {
+  return formatRuneAmount(numberToRune(num), decimals);
+}
+
 /**
  * Format RUNE amount with unit suffix.
  */
 export function formatRuneWithUnit(raw: string, decimals = 2): string {
-  return `${formatRuneAmount(raw, decimals)} RUNE`;
+  return formatRuneAmount(raw, decimals);
 }
 
 /**
@@ -75,4 +88,32 @@ export function formatCompactNumber(num: number): string {
   if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
   if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
   return num.toFixed(2);
+}
+
+export function formatUsd(value: number | null | undefined, maximumFractionDigits = 0): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return '--';
+  }
+
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits,
+  }).format(value);
+}
+
+export function formatPercent(value: number | null | undefined, digits = 2): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return '--';
+  }
+
+  return `${value.toFixed(digits)}%`;
+}
+
+export function formatDecimalPercent(value: number | null | undefined, digits = 2): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return '--';
+  }
+
+  return `${(value * 100).toFixed(digits)}%`;
 }

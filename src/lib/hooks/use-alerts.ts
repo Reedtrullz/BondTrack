@@ -33,7 +33,9 @@ function getInitialAlerts(): Alert[] {
       const parsed = JSON.parse(stored);
       return parsed.alerts || [];
     }
-  } catch {}
+  } catch (error) {
+    console.error('Storage error while loading alerts:', error);
+  }
   return [];
 }
 
@@ -55,7 +57,9 @@ function getInitialPreferences(): AlertPreferences {
         return parsed.preferences;
       }
     }
-  } catch {}
+  } catch (error) {
+    console.error('Storage error while loading alert preferences:', error);
+  }
   return {
     slashAlerts: true,
     jailAlerts: true,
@@ -80,7 +84,11 @@ export function useAlerts() {
 
   useEffect(() => {
     if (alerts.length > 0 || preferences) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ alerts, preferences }));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ alerts, preferences }));
+      } catch (error) {
+        console.error('Storage error while saving alerts:', error);
+      }
     }
   }, [alerts, preferences]);
 

@@ -58,7 +58,7 @@ export async function getAllNodes(init?: RequestInit): Promise<NodeRaw[]> {
 }
 
 export async function getNode(address: string): Promise<NodeRaw> {
-  return fetchThornode<NodeRaw>(`/thorchain/node/${address}`);
+  return fetchThornode<NodeRaw>(`/thorchain/node/${encodeURIComponent(address)}`);
 }
 
 export async function getNetworkConstants(init?: RequestInit): Promise<NetworkConstantsRaw> {
@@ -67,4 +67,35 @@ export async function getNetworkConstants(init?: RequestInit): Promise<NetworkCo
 
 export async function getSupply(): Promise<SupplyRaw> {
   return fetchThornode<SupplyRaw>('/thorchain/supply');
+}
+
+export interface LiquidityProviderRaw {
+  rune_address: string;
+  asset_address: string;
+  rune_deposit_value: string;
+  asset_deposit_value: string;
+  rune_redeem_value: string;
+  asset_redeem_value: string;
+  units: string;
+  pending_rune: string;
+  pending_asset: string;
+  last_add_height: number;
+  last_withdraw_height: number;
+}
+
+export async function getLiquidityProvider(
+  pool: string,
+  address: string
+): Promise<LiquidityProviderRaw | null> {
+  try {
+    return await fetchThornode<LiquidityProviderRaw>(
+      `/thorchain/pool/${encodeURIComponent(pool)}/liquidity_provider/${encodeURIComponent(address)}`
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('404') || message.includes('not found') || message.includes('Not Implemented')) {
+      return null;
+    }
+    throw error;
+  }
 }

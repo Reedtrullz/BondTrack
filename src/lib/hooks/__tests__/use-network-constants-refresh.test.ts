@@ -12,7 +12,7 @@ describe('useNetworkConstants refreshInterval', () => {
     vi.mocked(thornode.getNetworkConstants).mockReset();
     vi.mocked(thornode.getNetworkConstants).mockResolvedValue({
       int_64_values: { ChurnInterval: 43200 },
-    } as any);
+    } as unknown as thornode.NetworkConstantsRaw);
   });
 
   afterEach(() => {
@@ -24,7 +24,7 @@ describe('useNetworkConstants refreshInterval', () => {
 
     const cache = new Map();
     const wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(SWRConfig, { provider: () => cache }, children);
+      React.createElement(SWRConfig, { value: { provider: () => cache } }, children);
 
     const { result } = renderHook(() => useNetworkConstants(), { wrapper });
 

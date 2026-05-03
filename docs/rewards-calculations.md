@@ -206,3 +206,45 @@ NETWORK = {
 3. **Operator fee**: Uses per-position operator fee, defaults to 1000 bps (10%) if unavailable
 4. **No withdrawals**: Does not account for UNBOND events (future enhancement)
 5. **Price stability**: Assumes RUNE price at time of earning equals current price for USD conversion
+
+## Current Rewards UI QA Notes
+
+The formulas in this document remain the reference math. Separately, the deployed dev UI still has control-level issues under remediation:
+
+- `Edit initial bond` did not show a clear visible edit state during the latest deployed QA pass
+- `Optimize Now` did not produce an obvious visible response during deployed QA
+- chart range buttons need clearer selected-state/data-window feedback on the deployed page
+- the `30D` control currently renders with a trailing comma (`30D,`) on the deployed dev site
+
+These are UI/interaction issues, not formula changes. Fixes must be verified on `https://dev.thorchain.no` after deployment.
+
+---
+
+## Personal Fee Audit
+
+The Personal Fee Audit shows estimated monthly rewards and operator fee leakage.
+
+### Data Source
+- **Network API**: `/v2/network` returns `bondingAPY` as decimal (e.g., `"0.267"` = 26.7%)
+- **Bond Position**: `bondAmount` is already converted to RUNE units (not 1e8)
+
+### Calculation
+
+```
+Monthly Gross Rewards = totalBond × (bondingAPY / 12)
+
+Monthly Fee Leakage = Monthly Gross Rewards × (operatorFeeBps / 10000)
+
+Net Take-home = Monthly Gross Rewards - Monthly Fee Leakage
+```
+
+Where:
+- `totalBond` = sum of all bond positions for the user (in RUNE)
+- `bondingAPY` = network bonding APY from Midgard (decimal form, e.g., 0.267)
+- `operatorFeeBps` = node operator fee in basis points (default: 500 bps = 5%)
+
+### Important Notes
+
+1. **bondingAPY is decimal**: The API returns `"0.267"` NOT `"26.7"`. Do NOT divide by 100.
+2. **bondAmount already converted**: BondPosition.bondAmount is pre-converted to regular RUNE units (not 1e8).
+3. **Requires network data**: Component shows "Loading..." until `networkApy` is available from API.

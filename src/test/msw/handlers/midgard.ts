@@ -197,6 +197,7 @@ const mockNetwork: NetworkRaw = {
     poolReward: '0',
   },
   nextChurnHeight: '25700000',
+  poolActivationCountdown: '28800',
 };
 
 export const midgardHandlers = [

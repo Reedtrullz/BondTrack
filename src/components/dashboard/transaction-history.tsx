@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { getActions, type ActionRaw } from '@/lib/api/midgard';
-import { formatRuneAmount } from '@/lib/utils/formatters';
+import { ExternalLink } from 'lucide-react';
 
 interface Transaction {
   type: 'BOND' | 'UNBOND';
@@ -14,27 +14,84 @@ interface Transaction {
   status: string;
 }
 
-function parseActions(actions: ActionRaw[]): Transaction[] {
-  return actions
-    .filter((action) => {
-      const memo = action.memo?.toUpperCase() || '';
-      return memo.startsWith('BOND:') || memo.startsWith('UNBOND:');
-    })
-    .map((action) => {
-      const memo = action.memo?.toUpperCase() || '';
-      const type: 'BOND' | 'UNBOND' = memo.startsWith('BOND:') ? 'BOND' : 'UNBOND';
-      
-      const runeCoin = action.tx?.coins?.find((c) => c.asset === 'THOR.RUNE');
-      const amount = runeCoin ? parseFloat(runeCoin.amount) : 0;
-      const parts = memo.split(':');
-      const nodeAddress = parts[1] || action.tx?.address || '';
+function getBondHistoryTxType(action: ActionRaw): 'bond' | 'unbond' | 'leave' | 'unstake' | null {
+  const metadataTxType = action.metadata?.refund?.txType;
 
+  if (metadataTxType === 'bond' || metadataTxType === 'unbond' || metadataTxType === 'leave' || metadataTxType === 'unstake') {
+    return metadataTxType;
+  }
+
+  if (action.type === 'bond' || action.type === 'unbond' || action.type === 'leave' || action.type === 'unstake') {
+    return action.type;
+  }
+
+  const memo = action.metadata?.bond?.memo || action.metadata?.refund?.memo || action.memo || '';
+
+  if (memo.startsWith('BOND:')) return 'bond';
+  if (memo.startsWith('UNBOND:')) return 'unbond';
+  if (memo.startsWith('LEAVE:')) return 'leave';
+
+  return null;
+}
+
+function getBondHistoryNodeAddress(action: ActionRaw): string {
+  const memo = action.metadata?.bond?.memo || action.metadata?.refund?.memo || action.memo || '';
+  const memoParts = memo.split(':');
+  const memoNodeAddress = memoParts[1] || '';
+
+  return action.metadata?.bond?.nodeAddress || memoNodeAddress || action.in?.[0]?.address || action.tx?.address || '';
+}
+
+function parseActions(actions: ActionRaw[]): Transaction[] {
+  if (!actions || !Array.isArray(actions)) return [];
+  
+  return actions
+    .map((action) => ({ action, txType: getBondHistoryTxType(action) }))
+    .filter((entry): entry is { action: ActionRaw; txType: 'bond' | 'unbond' | 'leave' | 'unstake' } => entry.txType !== null)
+    .map(({ action, txType }): Transaction => {
+      let amount = 0;
+      
+      // Try to find RUNE amount in 'in', 'tx', or 'out'
+      const findRuneAmount = (coins: { asset: string; amount: string }[] | undefined) => {
+        if (!coins) return 0;
+        const runeCoin = coins.find((c) => 
+          c.asset === 'THOR.RUNE' || 
+          c.asset === 'THOR' || 
+          c.asset.startsWith('THOR.RUNE')
+        );
+        return runeCoin ? parseFloat(runeCoin.amount) / 1e8 : 0;
+      };
+
+      amount = findRuneAmount(action.in?.[0]?.coins);
+      if (amount === 0) amount = findRuneAmount(action.tx?.coins);
+      if (amount === 0) {
+        // For unbonds, amount might be in 'out'
+        action.out?.forEach(out => {
+          if (amount === 0) amount = findRuneAmount(out.coins);
+        });
+      }
+      
+      const type = (txType === 'bond') ? 'BOND' : 'UNBOND';
+      const nodeAddress = getBondHistoryNodeAddress(action);
+      
+      // Use BigInt for safer timestamp parsing to avoid precision loss
+      let timestamp = new Date();
+      if (action.date) {
+        try {
+          timestamp = new Date(Number(BigInt(action.date) / BigInt(1000000)));
+        } catch (e) {
+          console.error('Error parsing date:', action.date, e);
+          // Fallback to less precise parsing
+          timestamp = new Date(Number(action.date) / 1e6);
+        }
+      }
+      
       return {
         type,
         amount,
         nodeAddress,
-        timestamp: new Date(action.date),
-        txHash: action.tx?.txID || '',
+        timestamp,
+        txHash: action.in?.[0]?.txID || action.tx?.txID || action.out?.[0]?.txID || '',
         status: action.status || 'unknown',
       };
     })
@@ -49,10 +106,40 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
   const [selectedAddress, setSelectedAddress] = useState<string>(address || '');
   const [inputAddress, setInputAddress] = useState<string>(address || '');
 
+  // Sync state with prop changes
+  useEffect(() => {
+    setSelectedAddress(address || '');
+    setInputAddress(address || '');
+  }, [address]);
+
+  // Use more robust fetching with fallbacks
   const { data, error, isLoading } = useSWR(
     selectedAddress ? ['actions', selectedAddress] : null,
-    () => getActions(selectedAddress, 50),
-    { refreshInterval: 60_000 }
+    async () => {
+      // 1. Try txType=bond,unbond (removed 'leave' as it can cause 500s on some nodes)
+      try {
+        const result = await getActions(selectedAddress, 50, 'bond,unbond', 'txType');
+        if (result.actions && result.actions.length > 0) return result;
+      } catch (err) {
+        console.warn('Midgard txType query failed, trying type filter...', err);
+      }
+
+      // 2. Fallback: try type=bond,unbond (more standard high-level types)
+      try {
+        const result = await getActions(selectedAddress, 50, 'bond,unbond', 'type');
+        if (result.actions && result.actions.length > 0) return result;
+      } catch (err) {
+        console.warn('Midgard type query failed, trying unfiltered actions...', err);
+      }
+
+      // 3. Last resort: fetch recent actions and filter locally
+      return await getActions(selectedAddress, 50);
+    },
+    { 
+      refreshInterval: 60_000,
+      onError: (err) => console.error('Actions API error:', err),
+      shouldRetryOnError: false, // We handle retries/fallbacks manually in the fetcher
+    }
   );
 
   const transactions = data?.actions ? parseActions(data.actions) : [];
@@ -95,7 +182,12 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
       ) : isLoading ? (
         <div className="text-center py-8 text-zinc-500">Loading transactions...</div>
       ) : error ? (
-        <div className="text-center py-8 text-red-500">Failed to load transactions</div>
+        <div className="text-center py-8 rounded-lg border border-dashed border-amber-200 bg-amber-50/60 px-4 dark:border-amber-900/60 dark:bg-amber-950/20">
+          <div className="text-amber-700 dark:text-amber-300 mb-2">Transaction history is temporarily unavailable</div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400">
+            Midgard could not return bond actions right now. The transaction composer still works while history is unavailable.
+          </div>
+        </div>
       ) : transactions.length === 0 ? (
         <div className="text-center py-8 text-zinc-500">
           No BOND/UNBOND transactions found for this address
@@ -104,7 +196,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
         <>
           <div className="block md:hidden space-y-3">
           {transactions.map((tx) => (
-            <div key={tx.txHash} className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-2">
+            <div key={tx.txHash} className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm space-y-2">
               <div className="flex items-center justify-between">
                 <span
                   className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
@@ -127,10 +219,10 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
                   {tx.status}
                 </span>
               </div>
-              <div>
+                <div>
                 <div className="text-xs text-zinc-500">Amount</div>
                 <div className="font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                  {formatRuneAmount(String(Math.floor(tx.amount)))}
+                  {tx.amount.toFixed(2)}
                 </div>
               </div>
               <div>
@@ -149,11 +241,17 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
               </div>
               <div>
                 <div className="text-xs text-zinc-500">Tx Hash</div>
-                <div className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                <a
+                  href={`https://runescan.io/tx/${tx.txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-xs text-zinc-600 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 inline-flex items-center gap-1"
+                >
                   {tx.txHash.length > 20
                     ? `${tx.txHash.slice(0, 12)}...${tx.txHash.slice(-8)}`
                     : tx.txHash}
-                </div>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
               </div>
             </div>
           ))}
@@ -161,7 +259,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
 
         <div className="hidden md:block overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-sm min-w-[720px]">
-            <thead className="bg-zinc-50 dark:bg-zinc-900">
+            <thead className="bg-zinc-50 dark:bg-zinc-900 sticky top-0">
               <tr>
                 <th className="px-3 py-3 text-left font-medium text-zinc-500 whitespace-nowrap">Type</th>
                 <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap">Amount</th>
@@ -173,7 +271,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {transactions.map((tx) => (
-                <tr key={tx.txHash} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
+                <tr key={tx.txHash} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
                   <td className="px-3 py-3 whitespace-nowrap">
                     <span
                       className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
@@ -186,7 +284,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
                     </span>
                   </td>
                   <td className="px-3 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
-                    {formatRuneAmount(String(Math.floor(tx.amount)))}
+                    {tx.amount.toFixed(2)}
                   </td>
                   <td className="px-3 py-3 font-mono text-xs text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
                     {tx.nodeAddress.length > 20
@@ -197,9 +295,17 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
                     {tx.timestamp.toLocaleDateString()} {tx.timestamp.toLocaleTimeString()}
                   </td>
                   <td className="px-3 py-3 font-mono text-xs text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
-                    {tx.txHash.length > 20
-                      ? `${tx.txHash.slice(0, 12)}...${tx.txHash.slice(-8)}`
-                      : tx.txHash}
+                    <a
+                      href={`https://runescan.io/tx/${tx.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-blue-600 dark:hover:text-blue-400 inline-flex items-center gap-1"
+                    >
+                      {tx.txHash.length > 20
+                        ? `${tx.txHash.slice(0, 12)}...${tx.txHash.slice(-8)}`
+                        : tx.txHash}
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap">
                     <span

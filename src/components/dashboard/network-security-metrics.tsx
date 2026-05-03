@@ -5,11 +5,11 @@ import { useNetworkConstants } from '@/lib/hooks/use-network-constants';
 import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { runeToNumber, formatCompactNumber } from '@/lib/utils/formatters';
 import type { BondPosition } from '@/lib/types/node';
-import { Shield, Lock, Activity, TrendingUp, TrendingDown, Minus, Wallet, Users, Zap } from 'lucide-react';
+import { Shield, Lock, Activity, TrendingUp, TrendingDown, Minus, Wallet, Users, Zap, Coins, Clock } from 'lucide-react';
 
 function calculateNetworkHealth(bondToPoolRatio: number): 'healthy' | 'warning' | 'critical' {
-  if (bondToPoolRatio >= 1.5 && bondToPoolRatio <= 3) return 'healthy';
-  if (bondToPoolRatio >= 1 && bondToPoolRatio < 1.5) return 'warning';
+  if (bondToPoolRatio >= 1.5) return 'healthy';
+  if (bondToPoolRatio >= 1.0) return 'warning';
   return 'critical';
 }
 
@@ -32,41 +32,50 @@ function getHealthBgColor(status: 'healthy' | 'warning' | 'critical'): string {
 function getPendulumStatus(bondToPoolRatio: number): { status: string; icon: React.ReactNode; description: string } {
   if (bondToPoolRatio >= 2.5) {
     return {
-      status: 'Node Favored',
+      status: 'Well Secured',
       icon: <TrendingUp className="w-4 h-4" />,
-      description: 'High bond → nodes earn more. LP yields may be lower.'
+      description: 'Bond exceeds 2.5x liquidity. Node rewards maximized, LP yields reduced.'
     };
   }
-  if (bondToPoolRatio <= 1.2) {
+  if (bondToPoolRatio >= 1.5) {
     return {
-      status: 'LP Favored',
+      status: 'Healthy',
+      icon: <Minus className="w-4 h-4" />,
+      description: 'Bond 1.5-2x liquidity. Balanced reward distribution.'
+    };
+  }
+  if (bondToPoolRatio >= 1.0) {
+    return {
+      status: 'Building',
       icon: <TrendingDown className="w-4 h-4" />,
-      description: 'More liquidity than bond → LPs earn more. Consider bonding more?'
+      description: 'Bond > liquidity but below target. More bonding needed for full security.'
     };
   }
   return {
-    status: 'Balanced',
-    icon: <Minus className="w-4 h-4" />,
-    description: 'Near equilibrium (~2x). Rewards split fairly between nodes and LPs.'
+    status: 'Under-secured',
+    icon: <TrendingDown className="w-4 h-4" />,
+    description: 'Liquidity exceeds bond. Network shifts rewards to nodes to encourage bonding.'
   };
 }
 
 export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition[] }) {
   const { data: network, error, isLoading: networkLoading } = useNetworkMetrics();
-  const { constants, isLoading: constantsLoading } = useNetworkConstants();
+  const { isLoading: constantsLoading } = useNetworkConstants();
   const { data: nodes } = useAllNodes();
 
   const isLoading = networkLoading || constantsLoading;
 
   if (isLoading || error || !network) {
     return (
-      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
         <div className="animate-pulse h-48 bg-zinc-200 dark:bg-zinc-800 rounded" />
       </div>
     );
   }
 
-  const totalBonds = runeToNumber(network.bondMetrics?.totalActiveBond || '0');
+  const totalActiveBonds = runeToNumber(network.bondMetrics?.totalActiveBond || '0');
+  const totalStandbyBonds = runeToNumber(network.bondMetrics?.totalStandbyBond || '0');
+  const totalBonds = totalActiveBonds + totalStandbyBonds;
   const totalLiquidity = runeToNumber(network.totalPooledRune || '0');
   const bondToPoolRatio = totalLiquidity > 0 ? totalBonds / totalLiquidity : 0;
   const healthStatus = calculateNetworkHealth(bondToPoolRatio);
@@ -88,13 +97,29 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
     return sum + runeToNumber(n.total_bond);
   }, 0);
 
-  // Estimate node share (simplified calculation)
+  // THORChain incentive pendulum: actual reward split formula
+  // When bond > liquidity: nodeShare = 1 - 1/(bondToPool + 1)
+  // When bond <= liquidity: nodeShare = bondToPool / (bondToPool + 1)
   const securing = effectiveSecurityBond > 0 ? effectiveSecurityBond : totalBonds;
   const secured = totalLiquidity;
-  const nodeSharePercent = secured > 0 ? Math.min((securing / secured) * 50, 75) : 50;
+  const nodeShareFraction = bondToPoolRatio > 1
+    ? 1 - 1 / (bondToPoolRatio + 1)
+    : bondToPoolRatio / (bondToPoolRatio + 1);
+  const nodeSharePercent = nodeShareFraction * 100;
+
+  // Block rewards (per block)
+  const bondReward = runeToNumber(network.blockRewards?.bondReward || '0');
+  const poolReward = runeToNumber(network.blockRewards?.poolReward || '0');
+  
+  // Total reserve
+  const totalReserve = runeToNumber(network.totalReserve || '0');
+  
+  // Pool activation countdown (blocks)
+  const poolActivationCountdown = parseInt(network.poolActivationCountdown || '0', 10);
+  const activationDays = Math.floor(poolActivationCountdown / 1440); // ~1 block per 6 seconds = 1440/day
 
   return (
-    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+    <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Incentive Pendulum</h3>
         <Shield className="w-4 h-4 text-zinc-400" />
@@ -203,6 +228,52 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
                 of {formatCompactNumber(totalBonds)} RUNE
               </span>
             </div>
+          </div>
+        )}
+
+        {/* Block Rewards */}
+        <div className="border-t border-zinc-200 dark:border-zinc-700 pt-3 mt-3">
+          <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 mb-2">
+            <Zap className="w-4 h-4" />
+            <span>Block Rewards (per block)</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-zinc-500">Node Bond</span>
+              <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                {formatCompactNumber(bondReward)} RUNE
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-zinc-500">LP Pool</span>
+              <span className="font-medium text-purple-600 dark:text-purple-400">
+                {formatCompactNumber(poolReward)} RUNE
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Total Reserve */}
+        <div className="flex items-center justify-between pt-3">
+          <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <Coins className="w-4 h-4" />
+            <span>Total Reserve</span>
+          </div>
+          <span className="font-medium text-zinc-900 dark:text-zinc-100">
+            {formatCompactNumber(totalReserve)} RUNE
+          </span>
+        </div>
+
+        {/* Pool Activation */}
+        {poolActivationCountdown > 0 && (
+          <div className="flex items-center justify-between pt-3">
+            <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+              <Clock className="w-4 h-4" />
+              <span>Pool Activation</span>
+            </div>
+            <span className="font-medium text-amber-600 dark:text-amber-400">
+              {activationDays > 0 ? `${activationDays}d` : `${poolActivationCountdown} blocks`}
+            </span>
           </div>
         )}
       </div>

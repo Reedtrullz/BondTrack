@@ -28,16 +28,17 @@ function simulateBond(
   const feeDecimal = operatorFeeBps / 10000;
   const effectiveApy = apyDecimal * (1 - feeDecimal);
 
-  const annualReward = bondAmount * effectiveApy;
-  const dailyReward = annualReward / 365;
-  const perChurnReward = dailyReward * 2.5;
+  // Bond rewards accrue as simple daily APY projections; compounding is modeled separately.
+  const dailyReward = (bondAmount * effectiveApy) / 365;
   const totalReward = dailyReward * lockDays;
+  const totalAfterLock = bondAmount + totalReward;
+  const perChurnReward = dailyReward * 2.5;
 
   return {
     dailyReward,
     perChurnReward,
     totalReward,
-    totalAfterLock: bondAmount + totalReward,
+    totalAfterLock,
     apy: effectiveApy * 100,
     churns,
     lockDays,

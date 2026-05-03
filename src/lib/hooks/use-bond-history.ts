@@ -6,6 +6,7 @@ export interface BondHistory {
   initialBond: number;
   currentBond: number;
   bondGrowth: number;
+  firstBondAmount: number;
   firstBondDate: Date | null;
   lastBondDate: Date | null;
 }
@@ -17,42 +18,87 @@ interface BondAction {
 }
 
 export function useBondHistory(address: string | null) {
-  const { data: bondDetails, isLoading: isLoadingDetails } = useSWR<BondDetailsRaw>(
+  const { data: bondDetails, isLoading: isLoadingDetails, error: detailsError } = useSWR<BondDetailsRaw>(
     address ? ['bond-details', address] : null,
     () => getBondDetails(address!),
     { refreshInterval: 60_000 }
   );
 
-  const { data: actions, isLoading: isLoadingActions } = useSWR<ActionsResponseRaw>(
-    address ? ['actions-bond', address] : null,
-    () => getActions(address!, 100, 'bond'),
+  const { data: actions, isLoading: isLoadingActions, error: actionsError } = useSWR<ActionsResponseRaw>(
+    address ? ['actions-bond-v2', address] : null,
+    () => getActions(address!, 50, 'bond,unbond', 'type'),
     { refreshInterval: 60_000 }
   );
 
   const isLoading = isLoadingDetails || isLoadingActions;
+  const error = detailsError || actionsError;
 
   const bondActions: BondAction[] = actions?.actions
     ?.map((action) => {
-      const inCoin = action.in?.[0]?.coins?.find((c) => c.asset === 'THOR.RUNE');
-      const amount = inCoin ? parseFloat(inCoin.amount) / 1e8 : 0;
+      const inCoin = action.in?.[0]?.coins?.find((c) => c.asset === 'THOR.RUNE' || c.asset === 'THOR');
+      const txCoin = action.tx?.coins?.find((c) => c.asset === 'THOR.RUNE' || c.asset === 'THOR');
+      const outCoin = action.out?.find((o) => o.address === address)?.coins?.find((c) => c.asset === 'THOR.RUNE' || c.asset === 'THOR');
+
+      const amount = inCoin
+        ? parseFloat(inCoin.amount) / 1e8
+        : outCoin
+          ? parseFloat(outCoin.amount) / 1e8
+          : txCoin
+            ? parseFloat(txCoin.amount) / 1e8
+            : 0;
+
+      const metadataTxType = action.metadata?.refund?.txType;
+      const memo = action.metadata?.bond?.memo || action.metadata?.refund?.memo || action.memo || '';
+
+      const isBondAction =
+        metadataTxType === 'bond' ||
+        action.type === 'bond' ||
+        action.type === 'addLiquidity' ||
+        action.metadata?.bond != null ||
+        memo.startsWith('BOND:');
+
+      const isUnbondAction =
+        metadataTxType === 'unbond' ||
+        metadataTxType === 'leave' ||
+        action.type === 'unbond' ||
+        action.type === 'leave' ||
+        memo.startsWith('UNBOND:') ||
+        memo.startsWith('LEAVE:');
+
+      // Only classify as BOND or UNBOND if explicitly recognized.
+      // This prevents swaps/sends/tcy_stake from being counted as unbonds.
+      if (!isBondAction && !isUnbondAction) {
+        return null;
+      }
+
+      const type: 'BOND' | 'UNBOND' = isBondAction ? 'BOND' : 'UNBOND';
+
+      const rawDate = action.date || '0';
+      const date = new Date(Number(BigInt(rawDate) / BigInt(1000000))); // ms precision
+
       return {
-        type: 'BOND' as const,
+        type,
         amount,
-        date: new Date(Number(action.date) / 1e6),
+        date,
       };
     })
+    .filter((a): a is BondAction => a !== null)
     .sort((a, b) => a.date.getTime() - b.date.getTime()) || [];
 
-  const history: BondHistory | null = address
+  const history: BondHistory | null = address && !error
     ? (() => {
-        const initialBond = bondActions.reduce((sum, a) => sum + a.amount, 0);
+        const initialBond = bondActions.reduce((sum, a) => {
+          return a.type === 'BOND' ? sum + a.amount : sum - a.amount;
+        }, 0);
         const currentBond = bondDetails ? runeToNumber(bondDetails.totalBonded) : 0;
         const bondGrowth = currentBond - initialBond;
 
+        const bondActionsList = bondActions.filter((a) => a.type === 'BOND');
         return {
           initialBond,
           currentBond,
           bondGrowth,
+          firstBondAmount: bondActionsList.length > 0 ? bondActionsList[0].amount : 0,
           firstBondDate: bondActions.length > 0 ? bondActions[0].date : null,
           lastBondDate: bondActions.length > 0 ? bondActions[bondActions.length - 1].date : null,
         };
@@ -62,6 +108,7 @@ export function useBondHistory(address: string | null) {
   return {
     history,
     isLoading,
+    error,
     bondActions,
   };
 }
