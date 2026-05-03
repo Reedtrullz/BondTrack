@@ -261,7 +261,7 @@ export default function PortfolioPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <DashboardCard title="Asset Allocation">
           {totalAum > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height={280} minWidth={0} minHeight={0}>
               <PieChart>
                 <Pie
                   data={pieData}

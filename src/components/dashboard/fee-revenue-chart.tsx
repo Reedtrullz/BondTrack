@@ -91,7 +91,7 @@ export function FeeRevenueChart({ daily, isLoading, error }: FeeRevenueChartProp
   } else {
     content = (
       <div className="w-full h-[300px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
           <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
             <defs>
               <linearGradient id="feeRevenueGradient" x1="0" y1="0" x2="0" y2="1">
