@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import { Exo_2, Open_Sans } from "next/font/google";
+import { Exo2, Open_Sans } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
-const exo2 = Exo_2({
-  variable: "--font-exo-2",
+console.log('HEIMDALL LAYOUT LOADED - FIX APPLIED'); // Marker to verify deployment
+
+const exo2 = Exo2({
+  variable: "--font-exo2",
   subsets: ["latin"],
 });
 
