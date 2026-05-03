@@ -110,6 +110,7 @@ test.describe("Portfolio Page", () => {
   });
 
   test("displays portfolio summary", async ({ page }) => {
-    await expect(page.getByText("Total Bonded")).toBeVisible();
+    // Use first() because "Total Bonded" appears in multiple components on the page
+    await expect(page.getByText("Total Bonded").first()).toBeVisible();
   });
 });
