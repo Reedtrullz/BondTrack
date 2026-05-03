@@ -9,6 +9,7 @@ import { runeToNumber } from '@/lib/utils/formatters';
 import { formatRuneAmount } from '@/lib/utils/formatters';
 
 export function NetworkStatus() {
+  console.log('HEIMDALL DEPLOY TEST - FIX APPLIED'); // Marker to verify deployment
   const { data: network, isLoading: networkLoading } = useNetworkMetrics();
   const { data: churn, isLoading: churnLoading } = useChurnCountdown();
 
