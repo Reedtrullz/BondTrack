@@ -1,5 +1,5 @@
 import useSWR from 'swr';
-import { getNetworkConstants } from '@/lib/api/thornode';
+import { getHealth } from '@/lib/api/midgard';
 import { NETWORK } from '@/lib/config';
 
 interface ChurnCountdownData {
@@ -32,8 +32,11 @@ export function useChurnCountdown() {
   const { data, error, isLoading, mutate } = useSWR<ChurnCountdownData>(
     'churn-countdown',
     async () => {
-      const constants = await getNetworkConstants();
-      const blockHeight = constants.int_64_values?.block_height || constants.int_64_values?.last_observed_height || 0;
+      const health = await getHealth();
+      const blockHeight = health.lastThorNode?.height;
+      if (!blockHeight) {
+        throw new Error('Unable to fetch current block height');
+      }
       return calculateChurnCountdown(blockHeight);
     },
     {
