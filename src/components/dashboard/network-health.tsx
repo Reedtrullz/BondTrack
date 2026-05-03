@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getNetworkConstants, getAllNodes } from '@/lib/api/thornode';
+import { getAllNodes } from '@/lib/api/thornode';
+import { useCurrentBlockHeight } from '@/lib/hooks/use-current-block-height';
 import { formatCompactNumber } from '@/lib/utils/formatters';
 import { NETWORK } from '@/lib/config';
 import { Activity, Shield, Clock, Hash, AlertTriangle } from 'lucide-react';
-import type { NetworkConstantsRaw, NodeRaw } from '@/lib/api/thornode';
+import type { NodeRaw } from '@/lib/api/thornode';
 
 interface NetworkHealthData {
   blockHeight: number;
@@ -58,18 +59,24 @@ export function NetworkHealth() {
   const [data, setData] = useState<NetworkHealthData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Get live block height from Midgard /v2/health
+  const { currentBlockHeight, isLoading: blockHeightLoading } = useCurrentBlockHeight();
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [constants, nodes] = await Promise.all([
-          getNetworkConstants(),
-          getAllNodes(),
-        ]);
-
-        const blockHeight = constants.int_64_values?.['block_height'] ?? 0;
+        // Fetch nodes for active validator count
+        const nodes = await getAllNodes();
         const activeNodes = nodes.filter((n: NodeRaw) => n.status === 'active');
         const activeValidators = activeNodes.length;
+
+        // Use live block height from Midgard (not static constant!)
+        const blockHeight = currentBlockHeight;
+        
+        if (blockHeight === 0) {
+          throw new Error('Unable to fetch current block height');
+        }
 
         const blocksSinceChurn = blockHeight % NETWORK.CHURN_INTERVAL_BLOCKS;
         const nextChurnBlocks = NETWORK.CHURN_INTERVAL_BLOCKS - blocksSinceChurn;
@@ -91,12 +98,13 @@ export function NetworkHealth() {
       }
     }
 
-    fetchData();
-    const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
-  }, []);
+    // Only fetch when we have the block height
+    if (!blockHeightLoading && currentBlockHeight > 0) {
+      fetchData();
+    }
+  }, [currentBlockHeight, blockHeightLoading]);
 
-  if (isLoading) {
+  if (isLoading || blockHeightLoading) {
     return (
       <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <div className="flex items-center justify-between mb-4">
