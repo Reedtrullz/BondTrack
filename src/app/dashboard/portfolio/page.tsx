@@ -24,6 +24,7 @@ import { FeeRevenueSummary } from '@/components/dashboard/fee-revenue-summary';
 import { PositionTable } from '@/components/dashboard/position-table';
 import { RewardProjections } from '@/components/dashboard/reward-projections';
 import { IntelligenceFeed } from '@/components/dashboard/intelligence-feed';
+import { NetworkStatus } from '@/components/dashboard/network-status';
 import { Button } from '@/components/ui/button';
 import {
   TrendingUp,
@@ -238,8 +239,10 @@ export default function PortfolioPage() {
               <span>Live</span>
             </div>
             {bondPositions.length > 0 && <ExportButton bondPositions={bondPositions} />}
-          </div>
         </div>
+      </div>
+
+      <NetworkStatus />
 
       <PortfolioSummary 
         totalBonded={totalBondedRune}
