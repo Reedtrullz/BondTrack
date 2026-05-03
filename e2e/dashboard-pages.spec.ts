@@ -43,7 +43,13 @@ test.describe("Portfolio Page", () => {
           body: JSON.stringify({
             totalPooledRune: "100000000000",
             totalBond: "50000000000",
-            totalReserve: "20000000000"
+            totalReserve: "20000000000",
+            activeNodeCount: "50",
+            standbyNodeCount: "10",
+            bondMetrics: {
+              totalActiveBond: "50000000000",
+              averageActiveBond: "1000000000"
+            }
           })
         });
         return;

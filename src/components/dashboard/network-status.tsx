@@ -14,7 +14,7 @@ export function NetworkStatus() {
 
   const activeNodes = network ? parseInt(network.activeNodeCount) : 0;
   const totalBonded = network ? runeToNumber(network.totalPooledRune) : 0; // Note: totalPooledRune is across all pools, not total bonded. Use bondMetrics.totalActiveBond instead.
-  const totalActiveBond = network ? runeToNumber(network.bondMetrics.totalActiveBond) : 0;
+  const totalActiveBond = network?.bondMetrics ? runeToNumber(network.bondMetrics.totalActiveBond) : 0;
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -40,10 +40,10 @@ export function NetworkStatus() {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {networkLoading ? '--' : formatRuneAmount(network!.bondMetrics.totalActiveBond)}
+            {networkLoading ? '--' : formatRuneAmount(network?.bondMetrics?.totalActiveBond ?? 0)}
           </div>
           <p className="text-xs text-zinc-500 mt-1">
-            {networkLoading ? 'Loading...' : `Avg: ${formatRuneAmount(network!.bondMetrics.averageActiveBond)}`}
+            {networkLoading ? 'Loading...' : `Avg: ${formatRuneAmount(network?.bondMetrics?.averageActiveBond ?? 0)}`}
           </p>
         </CardContent>
       </Card>
