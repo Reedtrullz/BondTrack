@@ -29,8 +29,8 @@ describe('PnLDashboard', () => {
   });
 
   it('clears stale manual baseline and hydrates from the new storage key', async () => {
-    localStorage.setItem('bondtrack-initial-bond-addr-a', '100');
-    localStorage.setItem('bondtrack-initial-bond-addr-c', '250');
+    localStorage.setItem('heimdall-initial-bond-addr-a', '100');
+    localStorage.setItem('heimdall-initial-bond-addr-b', '250');
 
     const { rerender } = render(
       <PnLDashboard

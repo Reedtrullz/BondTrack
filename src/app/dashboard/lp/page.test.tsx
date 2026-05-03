@@ -58,11 +58,11 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
-vi.mock('../../../lib/hooks/use-lp-positions', () => ({
+vi.mock('@/lib/hooks/use-lp-positions', () => ({
   useLpPositions: (address: string | null) => mockUseLpPositions(address),
 }));
 
-vi.mock('../../../components/dashboard/lp-summary-card', () => ({
+vi.mock('@/components/dashboard/lp-summary-card', () => ({
   LpSummaryCard: ({ position }: { position: { pool: string; poolStatus: string; runeDeposit: string; poolApy: number; ownershipPercent: number } }) => (
     <div>
       {position.pool} summary {position.poolStatus} {position.runeDeposit} {position.poolApy} {position.ownershipPercent}
@@ -70,7 +70,7 @@ vi.mock('../../../components/dashboard/lp-summary-card', () => ({
   ),
 }));
 
-vi.mock('../../../components/dashboard/lp-node-row', () => ({
+vi.mock('@/components/dashboard/lp-node-row', () => ({
   LpNodeRow: ({ position }: { position: { pool: string; poolStatus: string; runeDeposit: string; poolApy: number; ownershipPercent: number; volume24h: string; dateFirstAdded: string; dateLastAdded: string } }) => (
     <tr>
       <td>{position.pool}</td>
