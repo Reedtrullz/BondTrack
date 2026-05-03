@@ -63,9 +63,11 @@ vi.mock('@/lib/hooks/use-lp-positions', () => ({
 }));
 
 vi.mock('@/components/dashboard/lp-summary-card', () => ({
-  LpSummaryCard: ({ position }: { position: { pool: string; poolStatus: string; runeDeposit: string; poolApy: number; ownershipPercent: number } }) => (
+  LpSummaryCard: ({ position }: { position: { pool: string; poolStatus: string; runeDeposit: string; poolApy: number; ownershipPercent: number; dateFirstAdded: string; dateLastAdded: string } }) => (
     <div>
       {position.pool} summary {position.poolStatus} {position.runeDeposit} {position.poolApy} {position.ownershipPercent}
+      <span>Positions</span>
+      <span>Last Activity</span>
     </div>
   ),
 }));
