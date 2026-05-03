@@ -32,7 +32,6 @@ export const NETWORK = {
     warningSlash: 25,
     minorSlash: 10,
     jailed: 100,
-    lowestBond: 20,
     overbonded: 15,
     highRisk: 25,
   },
@@ -62,4 +61,3 @@ export const NETWORK = {
 } as const;
 
 export const LATEST_THORNODE_VERSION = '1.135.0';
-// Triggering fresh Vercel build
