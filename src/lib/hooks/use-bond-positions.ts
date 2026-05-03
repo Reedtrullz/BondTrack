@@ -1,6 +1,6 @@
 import useSWR from 'swr';
 import { getAllNodes, getNetworkConstants, type NodeRaw } from '@/lib/api/thornode';
-import { getHealth, getNetwork } from '@/lib/api/midgard';
+import { getHealth } from '@/lib/api/midgard';
 import { extractBondPositions, type BondPosition, type YieldGuardFlag } from '@/lib/types/node';
 import { NETWORK } from '@/lib/config';
 import { runeToNumber } from '@/lib/utils/formatters';
@@ -88,13 +88,6 @@ function getYieldGuardFlags(
   return flags;
 }
 
-function parseNetworkApyPercent(value: string | number | undefined): number | undefined {
-  if (value === undefined || value === null) return undefined;
-  const num = typeof value === 'string' ? Number(value) : value;
-  if (!Number.isFinite(num) || num <= 0) return undefined;
-  return num > 1 ? num : num * 100;
-}
-
 export function useBondPositions(address: string | null) {
   const useMockData = isDevelopmentMode();
   const mockNodes = useMockData ? buildMockNodes(address) : null;
@@ -120,22 +113,12 @@ export function useBondPositions(address: string | null) {
     { refreshInterval: NETWORK.REFRESH_INTERVALS.health }
   );
 
-  const { data: networkData } = useSWR(
-    useMockData ? null : address ? 'network-metrics' : null,
-    () => getNetwork(),
-    { refreshInterval: NETWORK.REFRESH_INTERVALS.price, errorRetryInterval: 5000 }
-  );
-
   const currentBlockHeight = useMockData
     ? 1234567
     : healthData?.lastThorNode?.height ?? nodes?.[0]?.active_block_height ?? 0;
 
-  const networkBondingApyPercent = useMockData
-    ? 20
-    : parseNetworkApyPercent(networkData?.bondingAPY);
-
   const positions: BondPosition[] = (useMockData ? mockNodes : nodes) && address
-    ? extractBondPositions(useMockData ? mockNodes! : nodes!, address, currentBlockHeight, networkBondingApyPercent)
+    ? extractBondPositions(useMockData ? mockNodes! : nodes!, address, currentBlockHeight)
     : [];
 
   const optimalBond = useMockData

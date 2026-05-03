@@ -21,7 +21,7 @@ export interface AlertPreferences {
   statusAlerts: boolean;
 }
 
-const STORAGE_KEY = 'thornode-watcher-alerts';
+const STORAGE_KEY = 'heimdall-alerts';
 const RATE_LIMIT_MS = 5 * 60 * 1000;
 
 // Lazy initializer for alerts from localStorage
@@ -139,7 +139,7 @@ export function useAlerts() {
     setAlerts(current => [alert, ...current].slice(0, 50));
 
     if (permission === 'granted') {
-      new Notification('THORNode Watcher Alert', {
+      new Notification('Heimdall Alert', {
         body: message,
         icon: '/favicon.ico',
       });

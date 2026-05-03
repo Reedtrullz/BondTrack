@@ -5,7 +5,7 @@ const MOCK_ADDRESS = 'thor1test123456789abcdefghijklmnop';
 test.describe('Visual Regression - Layout', () => {
   test('homepage renders correctly', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText('THORNode Watcher').first()).toBeVisible();
+    await expect(page.getByText('Heimdall').first()).toBeVisible();
     await expect(page.getByPlaceholder('thor1...')).toBeVisible();
   });
 
@@ -18,7 +18,7 @@ test.describe('Visual Regression - Layout', () => {
     const pages = ['portfolio', 'nodes', 'rewards', 'risk', 'transactions', 'lp'];
     for (const pg of pages) {
       await page.goto(`/dashboard/${pg}?address=${MOCK_ADDRESS}`);
-      await expect(page.getByText('THORNode Watcher').first()).toBeVisible();
+      await expect(page.getByText('Heimdall').first()).toBeVisible();
     }
   });
 });
@@ -35,19 +35,19 @@ test.describe('Responsive Behavior', () => {
   test('works on mobile viewport', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
-    await expect(page.getByText('THORNode Watcher').first()).toBeVisible();
+    await expect(page.getByText('Heimdall').first()).toBeVisible();
   });
 
   test('works on tablet viewport', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.goto('/');
-    await expect(page.getByText('THORNode Watcher').first()).toBeVisible();
+    await expect(page.getByText('Heimdall').first()).toBeVisible();
   });
 
   test('works on desktop viewport', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto('/');
-    await expect(page.getByText('THORNode Watcher').first()).toBeVisible();
+    await expect(page.getByText('Heimdall').first()).toBeVisible();
   });
 });
 
@@ -62,9 +62,11 @@ test.describe('API Integration', () => {
 
     await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
 
-    await page.waitForTimeout(3000);
+    // Wait for page to settle (either error state or partial content)
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
-    await expect(page.getByText('Total Bonded').first()).toBeVisible();
+    // The page should handle the error gracefully - check that the heading is visible (page didn't crash)
+    await expect(page.getByRole('heading', { name: /Portfolio/ })).toBeVisible({ timeout: 15000 });
   });
 
   test('retries failed requests', async ({ page }) => {

@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 
-const STORAGE_KEY = 'thornode-watcher-watchlist';
+const STORAGE_KEY = 'heimdall-watchlist';
 
 // THORChain address validation regex
 // Mainnet addresses start with 'thor' and are Base58 encoded (42-62 chars)

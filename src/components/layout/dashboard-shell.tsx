@@ -11,6 +11,7 @@ import { Breadcrumbs } from '@/components/shared/breadcrumbs';
 import { ApiHealthBanner } from '@/components/shared/api-health-banner';
 import { useApiHealth } from '@/lib/hooks/use-api-health';
 import { useWalletBalance } from '@/lib/hooks/use-wallet-balance';
+import { ChurnCountdown } from '@/components/dashboard/churn-countdown';
 import { formatRuneFromNumber } from '@/lib/utils/formatters';
 import { getTHORNameReverseLookupNoRetry as getTHORNameReverseLookup } from '@/lib/api/midgard';
 
@@ -168,6 +169,7 @@ export function DashboardShell({
               <Clock className="h-3 w-3" />
               <span className="font-medium">{freshnessLabel}</span>
             </span>
+            <ChurnCountdown />
             <WalletConnect />
             <Button
               variant="glass"

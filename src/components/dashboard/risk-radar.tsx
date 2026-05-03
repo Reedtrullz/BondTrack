@@ -65,7 +65,7 @@ export function RiskRadar({ positions }: RiskRadarProps) {
         </div>
       )}
 
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
         <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
           <PolarGrid stroke="#3f3f46" strokeDasharray="3 3" />
           <PolarAngleAxis 

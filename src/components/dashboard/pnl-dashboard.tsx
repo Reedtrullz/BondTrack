@@ -29,12 +29,12 @@ interface PnLDashboardProps {
 
 function getStorageKey(address: string | null): string | null {
   if (!address) return null;
-  return `bondtrack-initial-bond-${address}`;
+  return `heimdall-initial-bond-${address}`;
 }
 
 function getEntryPriceKey(address: string | null): string {
   if (!address) return '';
-  return `bondtrack-entry-price-${address}`;
+  return `heimdall-entry-price-${address}`;
 }
 
 function getLegacyStorageKey(address: string | null): string | null {
@@ -175,9 +175,6 @@ export function PnLDashboard({
   const pricePnL = useMemo(() => calculatePricePnL(effectiveInitialBond, effectiveEntryPrice, currentRunePrice), [effectiveInitialBond, effectiveEntryPrice, currentRunePrice]);
   const totalReturn = useMemo(() => calculateTotalReturn(effectiveInitialBond, currentBond, effectiveEntryPrice, currentRunePrice), [effectiveInitialBond, currentBond, effectiveEntryPrice, currentRunePrice]);
   const totalReturnPercent = useMemo(() => effectiveInitialBond > 0 ? (totalReturn / initialBondValueUSD) * 100 : 0, [effectiveInitialBond, totalReturn, initialBondValueUSD]);
-
-  const bondGrowth = currentBond - effectiveInitialBond;
-  const bondGrowthPercent = effectiveInitialBond > 0 ? (bondGrowth / effectiveInitialBond) * 100 : 0;
 
   const bondGrowth = currentBond - effectiveInitialBond;
   const bondGrowthPercent = effectiveInitialBond > 0 ? (bondGrowth / effectiveInitialBond) * 100 : 0;

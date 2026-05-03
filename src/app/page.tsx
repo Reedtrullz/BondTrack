@@ -8,9 +8,9 @@ import { Eye, Activity, BarChart3, TrendingUp, Zap, Globe, Lock, Wallet, Bell, C
 import Link from 'next/link';
 
 const BONDTRACK_ADDRESS = 'BONDTRACK_ADDRESS';
-const OLD_LAST_ADDRESS_KEY = 'thornode-watcher-last-address';
+const OLD_LAST_ADDRESS_KEY = 'heimdall-last-address';
 
-const LAST_ADDRESS_KEY = 'thornode-watcher-last-address';
+const LAST_ADDRESS_KEY = 'heimdall-last-address';
 
 export default function Home() {
   const router = useRouter();

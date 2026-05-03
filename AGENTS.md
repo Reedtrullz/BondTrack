@@ -4,28 +4,26 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-# BondTrack — Knowledge Base
+# Heimdall — Knowledge Base
 
 **Stack**: Next.js 16.2.2 (App Router, Turbopack) · TypeScript · Tailwind v4 · SWR · Recharts · lucide-react
 **Purpose**: Professional Investment Command Center for THORChain bond providers to monitor and optimize bonded RUNE, node health, rewards, and risk.
-**Note**: Renamed to "BondTrack" but directory remains `thornode-watcher/`
+**Note**: Renamed to "Heimdall" (GitHub repo: Reedtrullz/Heimdall, was BondTrack/THORNode Watcher)
 
 ## DEPLOYMENT
 
-**Vercel Project**: reedtrullzs-projects/bond-track
-**Project ID**: prj_8u5egmdS0r5dm5Ssz07QE8qgbqnU
-**Production URL**: https://thorchain.no
-**Preview URL**: https://bond-track-*.vercel.app
+**Platform**: Coolify (self-hosted at https://cool.reidar.tech)
+**GitHub Repo**: Reedtrullz/Heimdall (renamed from BondTrack)
+**Package Name**: heimdall (updated from thornode-watcher)
 
-**Domains configured**:
-- thorchain.no (custom, verified)
-- bond-track-pi.vercel.app (auto-created)
-- dev.thorchain.no (Staging/Development)
+**Applications**:
+- **Production**: https://bond.thorchain.no (master branch, UUID: aihij0m9qdbg7wp8ysjzxqzu)
+- **Staging**: https://dev.thorchain.no (staging branch, UUID: v7g498fp21auheu7h0ejndts)
 
-**Observability**: Vercel Analytics + Speed Insights installed. No log drains (Hobby plan).
-
-**Deployment method**: GitHub integration (auto-deploy on push to master)
+**Deployment method**: GitHub webhook (auto-deploy on push to master/staging)
 **CI**: GitHub Actions (`.github/workflows/test.yml`) runs test, coverage, e2e, and build on Node 22.
+
+**Monitoring**: Use `coolify-deployment-manager` skill to check status, view logs, and monitor deployments.
 
 ## LIVE DEV QA POLICY
 
@@ -43,7 +41,7 @@ Current live QA scope is focused on non-wallet user flows first. Browser wallet 
 
 ## STRUCTURE
 ```
-thornode-watcher/
+heimdall/
 ├── src/
 │   ├── app/                    # Next.js App Router pages
 │   │   ├── api/                # Server-side API proxy routes

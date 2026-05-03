@@ -8,7 +8,7 @@ test.describe('Homepage', () => {
   });
 
   test('displays app title and description', async ({ page }) => {
-    await expect(page.getByText('THORNode Watcher').first()).toBeVisible();
+    await expect(page.getByText('Heimdall').first()).toBeVisible();
     await expect(page.getByText('Monitor your bond provider positions')).toBeVisible();
   });
 

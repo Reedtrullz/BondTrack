@@ -283,7 +283,7 @@ export default function ChangelogsPage() {
           const nextSearchQuery = '';
           const nextTypeFilter: FilterType = 'all';
           const currentParams = new URLSearchParams(window.location.search);
-          const nextUrl = buildChangelogQuery(currentParams, nextSearchQuery, nextTypeFilter);
+    const nextUrl = buildChangelogQuery(currentParams, nextSearchQuery, typeFilter);
 
           setSearchBuffer('');
           setTypeFilter('all');
@@ -459,7 +459,7 @@ export default function ChangelogsPage() {
         <div className="hidden sm:block absolute left-4 top-0 bottom-0 w-0.5">
           <div 
             className="absolute inset-0"
-            style={{ background: `linear-gradient(to bottom, #00CCFF 0%, #00CCFF 20%, transparent 20%)` }}
+            style={{ background: `linear-gradient(to bottom, #00CCFF 0%, #00CCFF 20%, transparent 100%)` }}
           />
         </div>
         

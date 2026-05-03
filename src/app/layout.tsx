@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-// Re-triggering deployment after temporary git provider 500 error
-import { Exo_2, Open_Sans } from "next/font/google";
+import { Exo2, Open_Sans } from "next/font/google";
 import { ThemeProvider } from "next-themes";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
-const exo2 = Exo_2({
-  variable: "--font-exo-2",
+console.log('HEIMDALL LAYOUT LOADED - FIX APPLIED'); // Marker to verify deployment
+
+const exo2 = Exo2({
+  variable: "--font-exo2",
   subsets: ["latin"],
 });
 
@@ -35,8 +34,6 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
         </ThemeProvider>
-        <Analytics />
-        <SpeedInsights />
       </body>
     </html>
   );

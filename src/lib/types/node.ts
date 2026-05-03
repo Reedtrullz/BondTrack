@@ -1,7 +1,7 @@
 import { NodeRaw } from '@/lib/api/thornode';
-export type { NodeRaw };
+export type { NodeRaw } from '@/lib/api/thornode';
 import { runeToNumber, formatBasisPoints } from '@/lib/utils/formatters';
-import { calculateBondShare, calculateAPY } from '@/lib/utils/calculations';
+import { calculateAPY, calculateBondShare } from '@/lib/utils/calculations';
 
 export type YieldGuardFlag = 'overbonded' | 'highest_slash' | 'lowest_bond' | 'oldest' | 'leaving';
 
@@ -32,20 +32,10 @@ export interface BondPosition {
   pooledNodeData?: PooledNodeData;
 }
 
-function calculateNetworkBaselineApy(networkBondingApyPercent: number | undefined, operatorFeeBps: number): number | null {
-  if (networkBondingApyPercent === undefined || !Number.isFinite(networkBondingApyPercent) || networkBondingApyPercent <= 0) {
-    return null;
-  }
-
-  const operatorFeeDecimal = operatorFeeBps / 10000;
-  return networkBondingApyPercent * (1 - operatorFeeDecimal);
-}
-
 export function extractBondPositions(
   nodes: NodeRaw[],
   address: string,
-  currentBlockHeight: number,
-  networkBondingApyPercent?: number
+  currentBlockHeight: number
 ): BondPosition[] {
   return nodes
     .map((node) => {
@@ -64,8 +54,9 @@ export function extractBondPositions(
       const bondAmount = runeToNumber(provider.bond);
       const bondSharePercent = calculateBondShare(provider.bond, node.total_bond);
       const operatorFee = Number(node.bond_providers.node_operator_fee);
-      const baselineApy = calculateNetworkBaselineApy(networkBondingApyPercent, operatorFee);
-      const netAPY = baselineApy ?? calculateAPY(bondSharePercent, node.current_award, operatorFee, provider.bond);
+      // Always use per-node APY calculation based on node.current_award
+      const netAPY = calculateAPY(bondSharePercent, node.current_award, operatorFee, provider.bond);
+
       const providers = node.bond_providers?.providers ?? [];
       const isPooled = providers.length > 1;
 

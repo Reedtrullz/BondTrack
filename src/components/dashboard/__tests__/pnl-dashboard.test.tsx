@@ -29,8 +29,8 @@ describe('PnLDashboard', () => {
   });
 
   it('clears stale manual baseline and hydrates from the new storage key', async () => {
-    localStorage.setItem('bondtrack-initial-bond-addr-a', '100');
-    localStorage.setItem('bondtrack-initial-bond-addr-c', '250');
+    localStorage.setItem('heimdall-initial-bond-addr-a', '100');
+    localStorage.setItem('heimdall-initial-bond-addr-b', '250');
 
     const { rerender } = render(
       <PnLDashboard
@@ -57,10 +57,12 @@ describe('PnLDashboard', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getAllByText('20.00')).toHaveLength(2);
+      screen.getByText('250.00');
+      screen.getByText(/manual/);
     });
-    expect(screen.queryByPlaceholderText('Enter RUNE amount')).toBeNull();
-    expect(screen.queryByText(/manual/)).toBeNull();
+
+    fireEvent.click(screen.getByTitle('Edit initial bond'));
+    expect((screen.getByPlaceholderText('Enter RUNE amount') as HTMLInputElement).value).toBe('250');
 
     rerender(
       <PnLDashboard
@@ -71,8 +73,8 @@ describe('PnLDashboard', () => {
     );
 
     await waitFor(() => {
-      screen.getByText('250.00');
-      screen.getByText(/manual/);
+      screen.getByText('0.00');
+      screen.queryByText(/manual/) && screen.getByText(/manual/).not.toBeInTheDocument();
     });
   });
 });

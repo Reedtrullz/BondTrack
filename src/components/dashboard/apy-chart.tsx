@@ -123,7 +123,7 @@ export function APYChart({ interval = 'year', count = 365 }: APYChartProps) {
           </div>
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={160}>
+        <ResponsiveContainer width="100%" height={160} minWidth={0} minHeight={0}>
           <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
             <defs>
               <linearGradient id="apyGradient" x1="0" y1="0" x2="0" y2="1">

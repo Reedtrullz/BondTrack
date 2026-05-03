@@ -152,7 +152,7 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
       )}
       
       <div className="h-72 rounded-xl bg-zinc-50 dark:bg-zinc-900/30 p-4 mb-8 border border-zinc-100 dark:border-zinc-800/50">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
           <AreaChart data={projectionData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
             <defs>
               <linearGradient id="activeGradient" x1="0" y1="0" x2="0" y2="1">

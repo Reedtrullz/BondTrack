@@ -20,6 +20,7 @@ const navItems = (addr: string | null) => {
     { path: `${basePath}/risk`, href: `${basePath}/risk${addrParam}`, label: 'Risk', icon: <AlertTriangle className="w-4 h-4" />, desc: 'Security metrics' },
     { path: `${basePath}/transactions`, href: `${basePath}/transactions${addrParam}`, label: 'Transactions', icon: <ArrowRightLeft className="w-4 h-4" />, desc: 'Bond & unbond' },
     { path: `${basePath}/changelogs`, href: `${basePath}/changelogs${addrParam}`, label: 'Changelogs', icon: <ScrollText className="w-4 h-4" />, desc: 'Version history' },
+    { path: `${basePath}/settings/notifications`, href: `${basePath}/settings/notifications${addrParam}`, label: 'Settings', icon: <PieChart className="w-4 h-4" />, desc: 'Notification preferences' },
   ];
 };
 
@@ -64,7 +65,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             </div>
             <span className="hidden md:flex flex-col leading-tight">
               <span className="text-lg tracking-tight font-serif italic uppercase">Heimdall</span>
-              <span className="text-[10px] font-sans font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">THORNode Watcher</span>
+              <span className="text-[10px] font-sans font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Heimdall</span>
             </span>
             <span className="md:hidden">H</span>
           </Link>
