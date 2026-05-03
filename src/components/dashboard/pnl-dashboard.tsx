@@ -29,12 +29,12 @@ interface PnLDashboardProps {
 
 function getStorageKey(address: string | null): string | null {
   if (!address) return null;
-  return `bondtrack-initial-bond-${address}`;
+  return `heimdall-initial-bond-${address}`;
 }
 
 function getEntryPriceKey(address: string | null): string {
   if (!address) return '';
-  return `bondtrack-entry-price-${address}`;
+  return `heimdall-entry-price-${address}`;
 }
 
 function getLegacyStorageKey(address: string | null): string | null {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import PnLDashboard from '../pnl-dashboard';
+import { PnLDashboard } from '../pnl-dashboard';
 import { BondPosition } from '@/lib/types/node';
 
 const positions: BondPosition[] = [
