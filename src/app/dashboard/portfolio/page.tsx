@@ -25,6 +25,9 @@ import { PositionTable } from '@/components/dashboard/position-table';
 import { RewardProjections } from '@/components/dashboard/reward-projections';
 import { IntelligenceFeed } from '@/components/dashboard/intelligence-feed';
 import { NetworkStatus } from '@/components/dashboard/network-status';
+import { ExportButton } from '@/components/shared/export-button';
+import { DashboardCard } from '@/components/shared/dashboard-card';
+import { MarketOverview } from '@/components/dashboard/market-overview';
 import { Button } from '@/components/ui/button';
 import {
   TrendingUp,

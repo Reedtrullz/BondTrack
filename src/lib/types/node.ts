@@ -1,6 +1,7 @@
 import { NodeRaw } from '@/lib/api/thornode';
+export type { NodeRaw } from '@/lib/api/thornode';
 import { runeToNumber, formatBasisPoints } from '@/lib/utils/formatters';
-import { calculateAPY } from '@/lib/utils/calculations';
+import { calculateAPY, calculateBondShare } from '@/lib/utils/calculations';
 
 export type YieldGuardFlag = 'overbonded' | 'highest_slash' | 'lowest_bond' | 'oldest' | 'leaving';
 

@@ -196,12 +196,12 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
     <div>
       {/* Back Button */}
       <div className="mb-8">
-        <Button variant="ghost" asChild>
-          <Link href="/learn" className="gap-2">
+        <Link href="/learn">
+          <Button variant="ghost" className="gap-2">
             <ArrowLeft className="h-4 w-4" />
             Back to Learn
-          </Link>
-        </Button>
+          </Button>
+        </Link>
       </div>
 
       {/* Article Header */}
@@ -250,9 +250,11 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
             .filter(a => a.slug !== article.slug)
             .slice(0, 3)
             .map(a => (
-              <Button key={a.slug} variant="outline" asChild>
-                <Link href={`/learn/${a.slug}`}>{a.title}</Link>
-              </Button>
+              <Link href={`/learn/${a.slug}`} key={a.slug}>
+                <Button variant="outline">
+                  {a.title}
+                </Button>
+              </Link>
             ))}
         </div>
       </div>

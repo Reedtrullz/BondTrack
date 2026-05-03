@@ -70,16 +70,16 @@ export function NetworkStatus() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2">
-            <Button variant="link" asChild className="justify-start px-0">
-              <a href="https://tcecosystem.guide" target="_blank" rel="noopener noreferrer">
+            <a href="https://tcecosystem.guide" target="_blank" rel="noopener noreferrer">
+              <Button variant="link" className="justify-start px-0">
                 THORChain Ecosystem Guide
-              </a>
-            </Button>
-            <Button variant="link" asChild className="justify-start px-0">
-              <a href="https://gitlab.com/thorchain" target="_blank" rel="noopener noreferrer">
+              </Button>
+            </a>
+            <a href="https://gitlab.com/thorchain" target="_blank" rel="noopener noreferrer">
+              <Button variant="link" className="justify-start px-0">
                 THORChain GitLab
-              </a>
-            </Button>
+              </Button>
+            </a>
           </div>
         </CardContent>
       </Card>
