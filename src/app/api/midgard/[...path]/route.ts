@@ -98,8 +98,9 @@ export async function GET(
     }
   }
 
-  // If all failed, prefer returning 404 if any endpoint said so, otherwise 502
-  const finalStatus = statusCodes.includes(404) ? 404 : 502;
+  // If all failed, prefer returning a client error (400-499) if any endpoint said so, otherwise 502
+  const clientError = statusCodes.find((code) => code >= 400 && code < 500);
+  const finalStatus = clientError || 502;
 
   return NextResponse.json(
     { error: 'All Midgard endpoints failed', details: errors },

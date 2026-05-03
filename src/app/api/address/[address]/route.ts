@@ -37,7 +37,7 @@ export async function GET(
         type,
         amount,
         nodeAddress,
-        timestamp: new Date(action.date),
+        timestamp: new Date(Number(BigInt(action.date) / 1000000n)),
         txHash: action.tx?.txID || '',
         status: action.status || 'unknown',
         pools: action.pools || []
