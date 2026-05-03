@@ -8,6 +8,6 @@ test.describe("Portfolio Page", () => {
   });
 
   test("displays portfolio summary", async ({ page }) => {
-    await expect(page.getByText("Total Portfolio Value")).toBeVisible();
+    await expect(page.getByText("Total Bonded")).toBeVisible();
   });
 });
