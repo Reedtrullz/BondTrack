@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Eye, Shield, BarChart3, AlertTriangle, ArrowRightLeft, Menu, X, ScrollText, Coins, PieChart, Wallet } from 'lucide-react';

@@ -261,6 +261,29 @@ The Risk page (`src/app/dashboard/risk/page.tsx`) shows portfolio risk assessmen
   - transactions UNBOND/copy UX still needs deployed verification/fixes
   - rewards controls still have dead/unclear deployed behavior, including the `30D,` label oddity
 
+## RECENT CHANGES
+- Fix jail detection: use Midgard `/v2/health` for current block height instead of stale node `active_block_height`
+- Add `useCurrentBlockHeight` hook for real-time block height from Midgard
+- Complete UI/UX overhaul with Network Comparison and Pooled Node details
+- Add NetworkComparisonTable component to compare bond positions vs network averages
+- Add PooledNodeDetails component showing accumulated rewards from all nodes
+- Add useAllNodes, useChurnCountdown, useNetworkMetrics hooks
+- Add RecentAddresses component for quick address switching
+- Add thorchain.no as custom domain, deploy to Vercel
+- `use-bond-positions.ts`: Added Yield Guard flag calculation, skip constants fetch when address is null
+- `position-table.tsx`: Added YieldGuardBadge component with risk flags
+- `risk/page.tsx`: Added YourNodesAtRisk card, improved Your All Positions section
+- `rewards/page.tsx`: Fixed bond history empty states, timestamps divide by 1e9
+- `pnl-dashboard.tsx`: Manual initial bond input with localStorage
+- **Risk dashboard overhaul**: Refactor all components to show user's nodes only (not network-wide)
+- **useNodeRankings hook**: Computes user's node rank in active set, percentile, at-risk status
+- **Incentive Pendulum card**: Shows Node/LP reward split, effective security, pendulum status
+- **EarningStatusSummary**: Quick view of Active (earning) vs Standby (not earning) vs Jailed
+
+## KNOWN ISSUES
+- Bond history may show empty for addresses that should have transactions — check `getActions()` type=bond filter
+- 6 pre-existing test failures in `use-watchlist.test.ts` and `use-bond-positions.test.ts`
+
 ## COMMANDS
 ```bash
 npm run dev          # Next.js dev (Turbopack)

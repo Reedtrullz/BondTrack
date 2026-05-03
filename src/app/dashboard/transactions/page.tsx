@@ -74,6 +74,27 @@ export default function TransactionsPage() {
             </div>
           )}
         </div>
+
+        <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
+          <h3 className="text-md font-medium text-zinc-700 dark:text-zinc-300 mb-4">
+            Watchlist
+          </h3>
+          {watchlist.length === 0 ? (
+            <p className="text-sm text-zinc-500">No saved addresses. Your recent lookups appear here.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {watchlist.map(addr => (
+                <button
+                  key={addr}
+                  onClick={() => window.location.href = `/dashboard?address=${addr}`}
+                  className="px-3 py-1 text-xs font-mono bg-zinc-100 dark:bg-zinc-800 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                >
+                  {addr.slice(0, 10)}...
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {address && (

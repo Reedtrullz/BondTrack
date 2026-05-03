@@ -99,7 +99,7 @@ export function APYChart({ interval = 'year', count = 365 }: APYChartProps) {
       }
     }
     fetchData();
-  }, [interval, count]);
+  }, [interval]);
 
   return (
     <div className="p-6 rounded-2xl bg-transparent border border-transparent shadow-none">
