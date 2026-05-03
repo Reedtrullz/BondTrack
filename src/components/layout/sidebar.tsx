@@ -65,7 +65,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             </div>
             <span className="hidden md:flex flex-col leading-tight">
               <span className="text-lg tracking-tight font-serif italic uppercase">Heimdall</span>
-              <span className="text-[10px] font-sans font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">THORNode Watcher</span>
+              <span className="text-[10px] font-sans font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Heimdall</span>
             </span>
             <span className="md:hidden">H</span>
           </Link>

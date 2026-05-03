@@ -8,7 +8,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 **Stack**: Next.js 16.2.2 (App Router, Turbopack) · TypeScript · Tailwind v4 · SWR · Recharts · lucide-react
 **Purpose**: Professional Investment Command Center for THORChain bond providers to monitor and optimize bonded RUNE, node health, rewards, and risk.
-**Note**: Renamed to "BondTrack" but directory remains `thornode-watcher/`
+**Note**: Renamed to "BondTrack" but directory remains `heimdall/`
 
 ## DEPLOYMENT
 
@@ -43,7 +43,7 @@ Current live QA scope is focused on non-wallet user flows first. Browser wallet 
 
 ## STRUCTURE
 ```
-thornode-watcher/
+heimdall/
 ├── src/
 │   ├── app/                    # Next.js App Router pages
 │   │   ├── api/                # Server-side API proxy routes

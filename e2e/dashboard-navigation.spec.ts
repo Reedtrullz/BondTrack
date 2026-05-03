@@ -9,7 +9,7 @@ test.describe('Dashboard Navigation', () => {
 
   test('displays dashboard shell with sidebar', async ({ page }) => {
     await expect(page.getByText('Heimdall').first()).toBeVisible();
-    await expect(page.getByText('THORNode Watcher').first()).toBeVisible();
+    await expect(page.getByText('Heimdall').first()).toBeVisible();
   });
 
   test('sidebar contains all navigation links', async ({ page }) => {

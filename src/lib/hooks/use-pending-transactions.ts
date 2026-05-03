@@ -11,7 +11,7 @@ export interface PendingTransaction {
   status: 'pending' | 'confirmed' | 'failed';
 }
 
-const STORAGE_KEY = 'thornode-watcher-pending-txs';
+const STORAGE_KEY = 'heimdall-pending-txs';
 const TIMEOUT_MS = 10 * 60 * 1000;
 
 // Lazy initializer for pending transactions from localStorage
