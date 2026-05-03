@@ -195,6 +195,7 @@ export default function RewardsPage() {
 
   return (
     <div className="space-y-12 pb-20">
+      <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Rewards</h1>
       <DashboardCard className="relative">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">

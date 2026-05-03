@@ -113,6 +113,7 @@ export default function NodesPage() {
   return (
     <div className="space-y-8">
       <div className="space-y-4">
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Nodes</h1>
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Node Health</h2>
           {positions.length > 0 && <ExportButton bondPositions={positions} />}

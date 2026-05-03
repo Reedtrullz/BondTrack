@@ -146,9 +146,6 @@ export function DashboardShell({
             <MobileMenuButton onClick={() => setSidebarOpen(true)} />
             <div className="min-w-0">
               <Breadcrumbs />
-              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-                Dashboard
-              </h1>
               {address && (
                 <>
                   <p className="text-[10px] sm:text-xs md:text-sm text-zinc-500 font-mono mt-0.5 truncate" title={address}>

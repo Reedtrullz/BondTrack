@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Exo2, Open_Sans } from "next/font/google";
+import { Exo_2, Open_Sans } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
-console.log('HEIMDALL LAYOUT LOADED - FIX APPLIED'); // Marker to verify deployment
+console.log('HEIMDALL LAYOUT V2 - DEPLOYED');
 
-const exo2 = Exo2({
-  variable: "--font-exo2",
+const exo2 = Exo_2({
+  variable: "--font-exo-2",
   subsets: ["latin"],
 });
 
@@ -16,7 +16,7 @@ const openSans = Open_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Heimdall | THORChain Watcher",
+  title: "Heimdall | THORChain Watcher TEST",
   description: "The all-seeing guardian of your THORChain node infrastructure.",
 };
 
