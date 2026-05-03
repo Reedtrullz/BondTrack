@@ -179,9 +179,6 @@ export function PnLDashboard({
   const bondGrowth = currentBond - effectiveInitialBond;
   const bondGrowthPercent = effectiveInitialBond > 0 ? (bondGrowth / effectiveInitialBond) * 100 : 0;
 
-  const bondGrowth = currentBond - effectiveInitialBond;
-  const bondGrowthPercent = effectiveInitialBond > 0 ? (bondGrowth / effectiveInitialBond) * 100 : 0;
-
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-medium text-zinc-500">Profit & Loss</h3>
