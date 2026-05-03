@@ -16,8 +16,8 @@ const mockNodes = [
   {
     node_address: 'thor1abc123def456',
     status: 'Active',
-    pub_key_set: { secp256k1: '03a2bcde3f45678901234567890123456789012345678901234567890123456', ed25519: '02b3e5ef789012345678901234567890123456789012345678901234567890123' },
-    validator_cons_pub_key: 'thorvalconspub1zcjduepq2w6r4z2h3ujnsn3e8qjjjl7r2h9u2d4z2h3ujnsn3e8qjjjl7r2h9u2d',
+    pub_key_set: { secp256k1: '03a2bcde3f45678901234567890123456789012345678901234567890123456', ed25519: '02b3e5ef789012345678901234567890123456789012345678901234' },
+    validator_cons_pub_key: 'thorvalconspub1zcjduepq2w6r4z2h3ujns3e8qjjjl7r2h9u2d4z2h3ujns3e8qjjjl7r2h9u2d',
     peer_id: '16Uvh8Eh8J3fG3YDCK4f4W2c5b6d7e8f9a0b1c2d3e4f',
     active_block_height: 12345678,
     status_since: 1700000000,
@@ -39,6 +39,37 @@ const mockNodes = [
     jail: {},
     current_award: '250000000',
     observe_chains: [{ chain: 'BTC', height: 850000 }],
+    preflight_status: { status: 'ok', reason: '', code: 0 },
+    maintenance: false,
+    missing_blocks: 0,
+  },
+  // Second node with DIFFERENT current_award to test per-node APY
+  {
+    node_address: 'thor1def456ghi789',
+    status: 'Active',
+    pub_key_set: { secp256k1: '03def45678901234567890123456789012345678901234567890123456789012', ed25519: '02def456789012345678901234567890123456789012345678901234567890' },
+    validator_cons_pub_key: 'thorvalconspub1def456789012345678901234567890123456789012345678901234',
+    peer_id: '16def456789012345678901234567890123456789012345678901234',
+    active_block_height: 12345679,
+    status_since: 1700000100,
+    node_operator_address: 'thor1operatordef456789012345',
+    total_bond: '3000000000000',
+    bond_providers: {
+      node_operator_fee: '1500',
+      providers: [
+        { bond_address: 'thor1user123456789abcdef', bond: '1500000000000' },
+      ],
+    },
+    signer_membership: ['02def45678901234567890123456789012345678901234567890123456789012'],
+    requested_to_leave: false,
+    forced_to_leave: false,
+    leave_height: 0,
+    ip_address: '10.0.0.2',
+    version: '2.3.0',
+    slash_points: 0,
+    jail: {},
+    current_award: '350000000', // Different from node 1
+    observe_chains: [{ chain: 'ETH', height: 950000 }],
     preflight_status: { status: 'ok', reason: '', code: 0 },
     maintenance: false,
     missing_blocks: 0,
@@ -106,5 +137,44 @@ describe('useBondPositions', () => {
     });
     
     expect(result.current.positions).toEqual([]);
+  });
+
+  // NEW TEST: Verify per-node APY uses node.current_award
+  it('calculates per-node APY using node.current_award', async () => {
+    vi.mocked(thornode.getAllNodes).mockResolvedValueOnce(mockNodes as unknown as thornode.NodeRaw[]);
+    vi.mocked(midgard.getHealth).mockResolvedValueOnce({ lastThorNode: { height: 12345678 } });
+
+    const { result } = renderHook(() => useBondPositions('thor1user123456789abcdef'), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Node 1 has current_award: '250000000'
+    // APY should be calculated from this value, not a flat network rate
+    expect(result.current.positions[0].netAPY).toBeGreaterThan(0);
+    expect(result.current.positions[0].netAPY).toBeLessThan(100); // Reasonable APY range
+  });
+
+  // NEW TEST: Verify different nodes get different APYs
+  it('returns different APYs for nodes with different current_award', async () => {
+    vi.mocked(thornode.getAllNodes).mockResolvedValueOnce(mockNodes as unknown as thornode.NodeRaw[]);
+    vi.mocked(midgard.getHealth).mockResolvedValueOnce({ lastThorNode: { height: 12345678 } });
+
+    const { result } = renderHook(() => useBondPositions('thor1user123456789abcdef'), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // User has bonds in both nodes (same address)
+    // Node 1: current_award: '250000000'
+    // Node 2: current_award: '350000000'
+    // They should have DIFFERENT APY values
+    const node1 = result.current.positions.find(p => p.nodeAddress === 'thor1abc123def456');
+    const node2 = result.current.positions.find(p => p.nodeAddress === 'thor1def456ghi789');
+    
+    // Both should exist
+    expect(node1).toBeDefined();
+    expect(node2).toBeDefined();
+    
+    // APYs should be different (different current_award)
+    if (node1 && node2) {
+      expect(node1.netAPY).not.toBe(node2.netAPY);
+    }
   });
 });

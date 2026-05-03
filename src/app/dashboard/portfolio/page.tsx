@@ -18,9 +18,6 @@ import { useYieldBenchmarks } from '@/lib/hooks/use-yield-benchmarks';
 import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { getFeeRevenue, getPools, type FeeRevenueRaw, type PoolDetailRaw } from '@/lib/api/midgard';
 import { formatUsd, runeToNumber } from '@/lib/utils/formatters';
-import { DashboardCard } from '@/components/shared/dashboard-card';
-import { ExportButton } from '@/components/shared/export-button';
-import { MarketOverview } from '@/components/dashboard/market-overview';
 import { PortfolioSummary } from '@/components/dashboard/portfolio-summary';
 import { FeeRevenueChart } from '@/components/dashboard/fee-revenue-chart';
 import { FeeRevenueSummary } from '@/components/dashboard/fee-revenue-summary';
@@ -169,6 +166,19 @@ export default function PortfolioPage() {
   const averageFeeBps = bondPositions.length > 0 && totalBondedRune > 0
     ? bondPositions.reduce((sum, p) => sum + (p.operatorFee || 0) * p.bondAmount, 0) / totalBondedRune
     : 0;
+
+  // Step 4: Calculate fee impact for net earnings transparency
+  const annualEarningsRUNE = totalBondedRune * (weightedAPY / 100);
+  const annualEarningsUSD = annualEarningsRUNE * runePrice;
+  
+  // Calculate fee impact: if net APY is after fee, estimate gross and fee paid
+  const feeDecimal = averageFeeBps / 10000;
+  const annualGrossRUNE = feeDecimal > 0 && feeDecimal < 1
+    ? annualEarningsRUNE / (1 - feeDecimal)
+    : annualEarningsRUNE;
+  const feeImpactRUNE = annualGrossRUNE - annualEarningsRUNE;
+  const feeImpactUSD = feeImpactRUNE * runePrice;
+
   const runePriceChange24h = (() => {
     if (runePriceHistory.length < 25) return null;
 
@@ -231,25 +241,16 @@ export default function PortfolioPage() {
           </div>
         </div>
 
-      <DashboardCard title="Total Portfolio Value" icon={<TrendingUp className="w-4 h-4 text-emerald-500" />}>
-        <div className="text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight font-mono">
-          {formatUsd(totalAum, 2)}
-        </div>
-        <div className="mt-2 flex flex-wrap gap-4 text-sm text-zinc-500 dark:text-zinc-400">
-          <span>
-            Bond:{' '}
-            <span className="font-semibold text-zinc-700 dark:text-zinc-300">
-              {formatUsd(totalBondedValueUsd, 2)}
-            </span>
-          </span>
-          <span>
-            LP:{' '}
-            <span className="font-semibold text-zinc-700 dark:text-zinc-300">
-              {formatUsd(totalLpValueUsd, 2)}
-            </span>
-          </span>
-        </div>
-      </DashboardCard>
+      <PortfolioSummary 
+        totalBonded={totalBondedRune}
+        runePrice={runePrice}
+        weightedAPY={weightedAPY}
+        positionCount={bondPositions.length}
+        positions={bondPositions}
+        benchmarks={benchmarks}
+        feeImpactRUNE={feeImpactRUNE}
+        feeImpactUSD={feeImpactUSD}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <DashboardCard title="Asset Allocation">
@@ -266,7 +267,7 @@ export default function PortfolioPage() {
                   dataKey="value"
                 />
                 <Tooltip
-                  formatter={(value) =>
+                  formatter={(value: unknown) =>
                     typeof value === 'number' ? formatUsd(value, 2) : String(value)
                   }
                   contentStyle={{
@@ -404,13 +405,15 @@ export default function PortfolioPage() {
         </div>
       </DashboardCard>
 
-      <PortfolioSummary
+      <PortfolioSummary 
         totalBonded={totalBondedRune}
         runePrice={runePrice}
         weightedAPY={weightedAPY}
         positionCount={bondPositions.length}
         positions={bondPositions}
         benchmarks={benchmarks}
+        feeImpactRUNE={feeImpactRUNE}
+        feeImpactUSD={feeImpactUSD}
       />
 
       <DashboardCard title="Bond Positions">
