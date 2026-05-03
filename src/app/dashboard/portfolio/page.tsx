@@ -22,12 +22,10 @@ import { PortfolioSummary } from '@/components/dashboard/portfolio-summary';
 import { FeeRevenueChart } from '@/components/dashboard/fee-revenue-chart';
 import { FeeRevenueSummary } from '@/components/dashboard/fee-revenue-summary';
 import { PositionTable } from '@/components/dashboard/position-table';
-import { RewardProjections } from '@/components/dashboard/reward-projections';
+import { MarketOverview } from '@/components/dashboard/market-overview';
 import { IntelligenceFeed } from '@/components/dashboard/intelligence-feed';
-import { NetworkStatus } from '@/components/dashboard/network-status';
 import { ExportButton } from '@/components/shared/export-button';
 import { DashboardCard } from '@/components/shared/dashboard-card';
-import { MarketOverview } from '@/components/dashboard/market-overview';
 import { Button } from '@/components/ui/button';
 import {
   TrendingUp,
@@ -39,6 +37,8 @@ import {
   Minus,
   Sparkles,
   Eye,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -88,6 +88,10 @@ export default function PortfolioPage() {
   const { data: marketNetwork, isLoading: metricsLoading } = useNetworkMetrics();
   const { benchmarks, isLoading: benchmarksLoading } = useYieldBenchmarks();
   const { data: allNodes, isLoading: allNodesLoading } = useAllNodes();
+
+  const [showFeeRevenue, setShowFeeRevenue] = useState(false);
+  const [showMarket, setShowMarket] = useState(false);
+  const [showIntelligence, setShowIntelligence] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -163,25 +167,11 @@ export default function PortfolioPage() {
     0
   );
 
-  const totalAum = totalBondedValueUsd + totalLpValueUsd;
+  const totalSum = totalBondedValueUsd + totalLpValueUsd;
+
   const weightedAPY = bondPositions.length > 0 && totalBondedRune > 0
     ? bondPositions.reduce((sum, p) => sum + p.netAPY * p.bondAmount, 0) / totalBondedRune
     : 0;
-  const averageFeeBps = bondPositions.length > 0 && totalBondedRune > 0
-    ? bondPositions.reduce((sum, p) => sum + (p.operatorFee || 0) * p.bondAmount, 0) / totalBondedRune
-    : 0;
-
-  // Step 4: Calculate fee impact for net earnings transparency
-  const annualEarningsRUNE = totalBondedRune * (weightedAPY / 100);
-  const annualEarningsUSD = annualEarningsRUNE * runePrice;
-  
-  // Calculate fee impact: if net APY is after fee, estimate gross and fee paid
-  const feeDecimal = averageFeeBps / 10000;
-  const annualGrossRUNE = feeDecimal > 0 && feeDecimal < 1
-    ? annualEarningsRUNE / (1 - feeDecimal)
-    : annualEarningsRUNE;
-  const feeImpactRUNE = annualGrossRUNE - annualEarningsRUNE;
-  const feeImpactUSD = feeImpactRUNE * runePrice;
 
   const runePriceChange24h = (() => {
     if (runePriceHistory.length < 25) return null;
@@ -195,6 +185,7 @@ export default function PortfolioPage() {
 
     return ((last - first) / first) * 100;
   })();
+
   const runePriceChange7d = (() => {
     if (runePriceHistory.length < 169) return null;
 
@@ -215,6 +206,7 @@ export default function PortfolioPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 py-4">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
@@ -224,43 +216,49 @@ export default function PortfolioPage() {
             Unified view of your Bond and LP positions
           </p>
         </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href={buildTransactionHref(address, 'bond')}>
-              <Button variant="success" className="gap-2">
-                <Plus className="w-4 h-4" />
-                Bond More
-              </Button>
-            </Link>
-            <Link href={buildTransactionHref(address, 'unbond')}>
-              <Button variant="destructive" className="gap-2">
-                <Minus className="w-4 h-4" />
-                Unbond
-              </Button>
-            </Link>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-semibold border border-emerald-200/60 dark:border-emerald-800/50">
-              <Sparkles className="w-3 h-3 animate-pulse" />
-              <span>Live</span>
-            </div>
-            {bondPositions.length > 0 && <ExportButton bondPositions={bondPositions} />}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={buildTransactionHref(address, 'bond')}>
+            <Button variant="success" className="gap-2">
+              <Plus className="w-4 h-4" />
+              Bond More
+            </Button>
+          </Link>
+          <Link href={buildTransactionHref(address, 'unbond')}>
+            <Button variant="destructive" className="gap-2">
+              <Minus className="w-4 h-4" />
+              Unbond
+            </Button>
+          </Link>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-bold border border-emerald-200/60 dark:border-emerald-800/50">
+            <Sparkles className="w-3 h-3 animate-pulse" />
+            <span>Live</span>
+          </div>
+          {bondPositions.length > 0 && <ExportButton bondPositions={bondPositions} />}
         </div>
       </div>
 
-      <NetworkStatus />
-
-      <PortfolioSummary 
+      {/* Hero Stats */}
+      <PortfolioSummary
         totalBonded={totalBondedRune}
         runePrice={runePrice}
         weightedAPY={weightedAPY}
         positionCount={bondPositions.length}
         positions={bondPositions}
         benchmarks={benchmarks}
-        feeImpactRUNE={feeImpactRUNE}
-        feeImpactUSD={feeImpactUSD}
+        feeImpactRUNE={0}
+        feeImpactUSD={0}
       />
 
+      {/* Main 2-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left: Bond Positions */}
+        <DashboardCard title="Bond Positions">
+          <PositionTable positions={bondPositions} />
+        </DashboardCard>
+
+        {/* Right: Asset Allocation */}
         <DashboardCard title="Asset Allocation">
-          {totalAum > 0 ? (
+          {totalSum > 0 ? (
             <ResponsiveContainer width="100%" height={280} minWidth={0} minHeight={0}>
               <PieChart>
                 <Pie
@@ -291,85 +289,9 @@ export default function PortfolioPage() {
             </div>
           )}
         </DashboardCard>
-
-        <DashboardCard title="Performance Summary">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">7d Portfolio Impact</p>
-              <p
-                className={cn(
-                  'text-lg font-bold font-mono',
-                  runePriceChange7d != null && runePriceChange7d >= 0
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-red-600 dark:text-red-400'
-                )}
-              >
-                {runePriceChange7d != null
-                  ? `${runePriceChange7d >= 0 ? '+' : ''}${runePriceChange7d.toFixed(2)}%`
-                  : '--'}
-              </p>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
-                {runePriceChange7d != null && totalBondedValueUsd > 0
-                  ? formatUsd(totalBondedValueUsd * (runePriceChange7d / 100), 2)
-                  : '--'}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">24h Portfolio Impact</p>
-              <p
-                className={cn(
-                  'text-lg font-bold font-mono',
-                  runePriceChange24h != null && runePriceChange24h >= 0
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-red-600 dark:text-red-400'
-                )}
-              >
-                {runePriceChange24h != null
-                  ? `${runePriceChange24h >= 0 ? '+' : ''}${runePriceChange24h.toFixed(2)}%`
-                  : '--'}
-              </p>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
-                {runePriceChange24h != null && totalBondedValueUsd > 0
-                  ? formatUsd(totalBondedValueUsd * (runePriceChange24h / 100), 2)
-                  : '--'}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">Weighted APY</p>
-              <p className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
-                {weightedAPY > 0 ? `${weightedAPY.toFixed(2)}%` : '--'}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">Avg Operator Fee</p>
-              <p className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
-                {averageFeeBps > 0 ? `${(averageFeeBps / 100).toFixed(2)}%` : '--'}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">Active Positions</p>
-              <p className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
-                {bondPositions.length + effectiveLpPositions.length}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">Est. Daily Earnings</p>
-              <p className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
-                {totalBondedRune > 0 && weightedAPY > 0
-                  ? formatUsd((totalBondedRune * (weightedAPY / 100) / 365) * runePrice, 2)
-                  : '--'}
-              </p>
-            </div>
-          </div>
-        </DashboardCard>
       </div>
 
-      {lpDataUnavailable && (
-        <DashboardCard className="border-amber-200 bg-amber-50 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-          LP data is temporarily unavailable from Midgard. Bond positions and market data are shown without LP valuation.
-        </DashboardCard>
-      )}
-
+      {/* Quick Actions */}
       <DashboardCard title="Quick Actions">
         <div className="flex flex-wrap gap-3">
           <Link
@@ -411,69 +333,94 @@ export default function PortfolioPage() {
         </div>
       </DashboardCard>
 
-      <PortfolioSummary 
-        totalBonded={totalBondedRune}
-        runePrice={runePrice}
-        weightedAPY={weightedAPY}
-        positionCount={bondPositions.length}
-        positions={bondPositions}
-        benchmarks={benchmarks}
-        feeImpactRUNE={feeImpactRUNE}
-        feeImpactUSD={feeImpactUSD}
-      />
-
-      <DashboardCard title="Bond Positions">
-        <PositionTable positions={bondPositions} />
+      {/* Collapsible: Fee Revenue */}
+      <DashboardCard className="border-0 bg-transparent p-0 shadow-none dark:bg-transparent">
+        <button
+          onClick={() => setShowFeeRevenue(!showFeeRevenue)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300 transition-colors"
+        >
+          <BarChart3 className="w-4 h-4" />
+          Fee Revenue
+          {showFeeRevenue ? (
+            <ChevronUp className="w-3 h-3" />
+          ) : (
+            <ChevronDown className="w-3 h-3" />
+          )}
+        </button>
+        {showFeeRevenue && (
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <FeeRevenueChart
+              daily={feeRevenue?.daily}
+              isLoading={feeRevenueLoading}
+              error={feeRevenueError}
+            />
+            <FeeRevenueSummary
+              summary={feeRevenue?.summary}
+              isLoading={feeRevenueLoading}
+              error={feeRevenueError}
+              userBond={totalBondedRune}
+              totalActiveBond={runeToNumber(marketNetwork?.bondMetrics?.totalActiveBond)}
+              runePrice={runePrice}
+            />
+          </div>
+        )}
       </DashboardCard>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <FeeRevenueChart
-          daily={feeRevenue?.daily}
-          isLoading={feeRevenueLoading}
-          error={feeRevenueError}
-        />
-        <FeeRevenueSummary
-          summary={feeRevenue?.summary}
-          isLoading={feeRevenueLoading}
-          error={feeRevenueError}
-          userBond={totalBondedRune}
-          totalActiveBond={runeToNumber(marketNetwork?.bondMetrics?.totalActiveBond)}
-          runePrice={runePrice}
-        />
-      </div>
+      {/* Collapsible: Market Overview */}
+      <DashboardCard className="border-0 bg-transparent p-0 shadow-none dark:bg-transparent">
+        <button
+          onClick={() => setShowMarket(!showMarket)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300 transition-colors"
+        >
+          <TrendingUp className="w-4 h-4" />
+          Market Overview
+          {showMarket ? (
+            <ChevronUp className="w-3 h-3" />
+          ) : (
+            <ChevronDown className="w-3 h-3" />
+          )}
+        </button>
+        {showMarket && (
+          <div className="mt-4">
+            <MarketOverview
+              pools={marketPools}
+              network={marketNetwork ?? null}
+              runePrice={runePrice}
+              runePriceChange24h={runePriceChange24h}
+              runePriceChange7d={runePriceChange7d}
+              isLoading={marketLoading}
+            />
+          </div>
+        )}
+      </DashboardCard>
 
-      <MarketOverview
-        pools={marketPools}
-        network={marketNetwork ?? null}
-        runePrice={runePrice}
-        runePriceChange24h={runePriceChange24h}
-        runePriceChange7d={runePriceChange7d}
-        isLoading={marketLoading}
-      />
-
-      {totalBondedRune > 0 && weightedAPY > 0 && (
-        <RewardProjections
-          totalBonded={totalBondedRune}
-          weightedAPY={weightedAPY}
-          runePrice={runePrice}
-          averageFeeBps={averageFeeBps}
-        />
-      )}
-
+      {/* Intelligence Feed */}
       <DashboardCard className="space-y-4 border-0 bg-transparent p-0 shadow-none dark:bg-transparent">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-amber-600/80 dark:text-amber-500/80">
             <Eye className="w-4 h-4" />
-            <span className="text-xs font-bold uppercase tracking-widest font-serif italic">Heimdall&apos;s Sight</span>
+            <span className="text-xs font-bold uppercase tracking-widest font-serif italic">Heimdall's Sight</span>
           </div>
+          <button
+            onClick={() => setShowIntelligence(!showIntelligence)}
+            className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+          >
+            {showIntelligence ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </button>
         </div>
-        <IntelligenceFeed
-          positions={bondPositions}
-          benchmarks={benchmarks}
-          allNodes={allNodes || []}
-          providerAddress={address}
-          isLoading={allNodesLoading || benchmarksLoading}
-        />
+        {showIntelligence && (
+          <IntelligenceFeed
+            positions={bondPositions}
+            benchmarks={benchmarks}
+            allNodes={allNodes || []}
+            providerAddress={address}
+            isLoading={allNodesLoading || benchmarksLoading}
+          />
+        )}
       </DashboardCard>
     </div>
   );

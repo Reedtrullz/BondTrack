@@ -38,7 +38,7 @@ function getNodeSeverityScore(p: BondPosition): number {
   else if (p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning) score += NETWORK.NODE_SEVERITY_SCORES.warningSlash;
   else if (p.slashPoints > 0) score += NETWORK.NODE_SEVERITY_SCORES.minorSlash;
   if (p.isJailed) score += NETWORK.NODE_SEVERITY_SCORES.jailed;
-  if (p.yieldGuardFlags?.includes('lowest_bond')) score += NETWORK.NODE_SEVERITY_SCORES.lowestBond;
+  if (p.yieldGuardFlags?.includes('lowest_bond')) score += NETWORK.NODE_SEVERITY_SCORES.highRisk;
   if (p.yieldGuardFlags?.includes('overbonded')) score += NETWORK.NODE_SEVERITY_SCORES.overbonded;
   return score;
 }
@@ -469,6 +469,7 @@ export default function RiskPage() {
 
   return (
     <div className="space-y-4">
+      <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Risk</h1>
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Risk Monitor</h2>
         <button
