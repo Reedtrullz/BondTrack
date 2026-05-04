@@ -5,8 +5,9 @@ import type { BondPosition, YieldGuardFlag } from '@/lib/types/node';
 import { formatRuneAmount, formatRuneWithUnit, numberToRune } from '@/lib/utils/formatters';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Badge } from '@/components/shared/badge';
-import { PooledNodeDetails } from './pooled-node-details';
-import { AlertTriangle, TrendingDown, Clock, UserMinus, Gauge, Inbox } from 'lucide-react';
+import { YieldGuardBadge } from './pooled-node-details';
+import { AlertTriangle, TrendingDown, Clock, UserMinus, Gauge, Inbox, HelpCircle } from 'lucide-react';
+import { MetricTooltip, METRIC_EXPLANATIONS } from '@/components/shared/metric-tooltip';
 
 interface PositionTableProps {
   positions: BondPosition[];
@@ -95,8 +96,9 @@ export function PositionTable({ positions }: PositionTableProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
           Bonded Positions
+          <MetricTooltip label="Bonded Positions" explanation={METRIC_EXPLANATIONS.totalBonded} />
         </h2>
         <div className="flex items-center gap-4">
           <span className="text-sm text-zinc-500">
@@ -129,7 +131,10 @@ export function PositionTable({ positions }: PositionTableProps) {
                 </div>
               </div>
               <div className="flex items-center justify-end gap-3">
-                <div className="text-xs text-zinc-500">Share</div>
+                <div className="text-xs text-zinc-500 flex items-center gap-1">
+                  Share
+                  <MetricTooltip label="Bond Share" explanation={METRIC_EXPLANATIONS.bondShare} />
+                </div>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-sm text-zinc-600 dark:text-zinc-400">
                     {pos.bondSharePercent.toFixed(2)}%
