@@ -78,5 +78,7 @@ export const MOCK_NODES = [
 ];
 
 export function isDevelopmentMode(): boolean {
+  // Disable mock mode in test environment
+  if (process.env.NODE_ENV === 'test') return false;
   return process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
 }
