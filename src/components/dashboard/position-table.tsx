@@ -6,7 +6,7 @@ import { formatRuneAmount, formatRuneWithUnit, numberToRune } from '@/lib/utils/
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Badge } from '@/components/shared/badge';
 import { PooledNodeDetails } from './pooled-node-details';
-import { AlertTriangle, TrendingDown, Clock, UserMinus, Gauge } from 'lucide-react';
+import { AlertTriangle, TrendingDown, Clock, UserMinus, Gauge, Inbox } from 'lucide-react';
 
 interface PositionTableProps {
   positions: BondPosition[];
@@ -75,8 +75,19 @@ export function PositionTable({ positions }: PositionTableProps) {
 
   if (positions.length === 0) {
     return (
-      <div className="text-center py-12 text-zinc-500">
-        No bonded positions found for this address.
+      <div className="text-center py-16 px-4">
+        <div className="mb-4">
+          <Inbox className="w-12 h-12 mx-auto text-zinc-300 dark:text-zinc-600" />
+        </div>
+        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
+          No Bonded Positions
+        </h3>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-md mx-auto">
+          This address doesn't have any active bond positions yet. Bond to a node to start earning rewards and securing the THORChain network.
+        </p>
+        <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-3">
+          New bonds typically appear within 1-2 churns after the transaction.
+        </p>
       </div>
     );
   }
@@ -98,17 +109,18 @@ export function PositionTable({ positions }: PositionTableProps) {
         {positions.map((pos) => (
           <div key={pos.nodeAddress} className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm space-y-3">
             <div className="flex items-start justify-between">
-              <div className="min-w-0 flex-1">
-                <div className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
+              <div>
+                <div className="font-mono text-sm text-zinc-600 dark:text-zinc-400">
                   {pos.nodeAddress.slice(0, 12)}...{pos.nodeAddress.slice(-8)}
                 </div>
-                <div className="text-xs text-zinc-400">v{pos.version}</div>
+                <div className="text-xs text-zinc-400 mt-1">v{pos.version}</div>
                 {pos.yieldGuardFlags && pos.yieldGuardFlags.length > 0 && (
                   <YieldGuardBadge flags={pos.yieldGuardFlags} />
                 )}
               </div>
               <StatusBadge status={pos.status} isJailed={pos.isJailed} />
             </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="flex items-center gap-3">
                 <div className="text-xs text-zinc-500">Bond</div>

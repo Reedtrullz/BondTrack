@@ -19,9 +19,19 @@ export function PersonalFeeAudit({ positions, networkApy }: PersonalFeeAuditProp
 
   if (safePositions.length === 0) {
     return (
-      <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col items-center justify-center text-center h-full min-h-[200px]">
-        <ShieldAlert className="w-8 h-8 text-zinc-300 mb-2" />
-        <p className="text-sm text-zinc-500">No bond positions found.</p>
+      <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col items-center justify-center text-center min-h-[200px]">
+        <div className="mb-4">
+          <ShieldAlert className="w-12 h-12 text-zinc-300 dark:text-zinc-600" />
+        </div>
+        <h4 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
+          No Bond Positions
+        </h4>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-[250px]">
+          Fee audit requires active bond positions. Bond to a node to see your monthly reward leakage analysis.
+        </p>
+        <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-3">
+          Operator fees (typically 0-1000 BPS) directly impact your net earnings.
+        </p>
       </div>
     );
   }

@@ -59,7 +59,7 @@ describe('PersonalFeeAudit', () => {
 
   it('handles zero positions gracefully', () => {
     render(<PersonalFeeAudit positions={[]} />);
-    expect(screen.getByText(/No bond positions found/i)).toBeDefined();
+    expect(screen.getByText(/No Bond Positions/i)).toBeInTheDocument();
   });
 
   it('formats RUNE amounts correctly', () => {
