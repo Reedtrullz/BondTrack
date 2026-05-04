@@ -153,8 +153,11 @@ export function PositionTable({ positions }: PositionTableProps) {
                   {pos.operatorFeeFormatted}
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-3">
-                <div className="text-xs text-zinc-500">Est. APY</div>
+              <div className="flex items-center gap-3">
+                <div className="text-xs text-zinc-500 flex items-center gap-1">
+                  Est. APY
+                  <MetricTooltip label="Estimated APY" explanation={METRIC_EXPLANATIONS.weightedAPY} />
+                </div>
                 <div className="font-mono text-sm font-medium text-emerald-600">
                   {pos.netAPY.toFixed(2)}%
                 </div>
@@ -174,7 +177,10 @@ export function PositionTable({ positions }: PositionTableProps) {
               <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap">Bond</th>
               <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap">Share</th>
               <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap">Fee</th>
-              <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap">Est. APY</th>
+              <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap flex items-center justify-end gap-1">
+                Est. APY
+                <MetricTooltip label="Estimated APY" explanation={METRIC_EXPLANATIONS.weightedAPY} />
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
