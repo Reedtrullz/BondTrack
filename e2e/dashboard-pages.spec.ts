@@ -4,9 +4,41 @@ const MOCK_ADDRESS = "thor1test123456789abcdefghijklmnop";
 
 test.describe("Portfolio Page", () => {
   test.beforeEach(async ({ page }) => {
-    // Mock Midgard API endpoints
+    // Mock all Midgard API endpoints
     await page.route("**/api/midgard/**", async (route) => {
       const url = route.request().url();
+      
+      // Mock bonds endpoint (used by getBondDetails)
+      if (url.includes("/bonds/")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            nodes: [
+              {
+                nodeAddress: "thor1node123456789",
+                bond: "100000000000",
+                status: "Active"
+              }
+            ],
+            totalBonded: "100000000000"
+          })
+        });
+        return;
+      }
+      
+      // Mock member endpoint  
+      if (url.includes("/member/")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            pools: [],
+            runeAddress: MOCK_ADDRESS
+          })
+        });
+        return;
+      }
       
       // Mock earnings endpoint
       if (url.includes("/history/earnings")) {
@@ -16,20 +48,6 @@ test.describe("Portfolio Page", () => {
           body: JSON.stringify({
             intervals: [],
             summary: { totalFees: "0", bondRewards: "0", poolRewards: "0" }
-          })
-        });
-        return;
-      }
-      
-      // Mock bonds endpoint
-      if (url.includes("/bonds/")) {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            pools: [],
-            bondAmount: "0",
-            bondShare: "0"
           })
         });
         return;
@@ -77,7 +95,16 @@ test.describe("Portfolio Page", () => {
         return;
       }
       
-      // Default: pass through
+      // Mock actions endpoint
+      if (url.includes("/actions")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ actions: [] })
+        });
+        return;
+      }
+      
       await route.continue();
     });
 
@@ -106,11 +133,15 @@ test.describe("Portfolio Page", () => {
       await route.continue();
     });
 
-    await page.goto("/dashboard/portfolio?address=" + MOCK_ADDRESS);
+    await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
   });
 
   test("displays portfolio summary", async ({ page }) => {
-    // Use first() because "Total Bonded" appears in multiple components on the page
-    await expect(page.getByText("Total Bonded").first()).toBeVisible();
+    // Wait for the page to load with mocked data
+    await expect(page.getByText("Total Bonded").first()).toBeVisible({ timeout: 10000 });
+  });
+  
+  test("displays bond positions section", async ({ page }) => {
+    await expect(page.getByText("Bond Positions").first()).toBeVisible({ timeout: 10000 });
   });
 });
