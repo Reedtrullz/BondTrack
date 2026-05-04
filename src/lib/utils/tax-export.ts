@@ -128,7 +128,8 @@ async function generateBondRows(
   endTimestamp: number,
   priceMap: Map<number, number>
 ): Promise<TaxReportRow[]> {
-  const actionsResponse = await getActions(address, 100, 'bond,unbond,leave', 'txType');
+  // Increase limit to get more history for accurate FIFO calculations
+  const actionsResponse = await getActions(address, 1000, 'bond,unbond,leave', 'txType');
 
   const actions = actionsResponse.actions
     .map((action) => ({ action, timestamp: normalizeTimestamp(action.date) }))
