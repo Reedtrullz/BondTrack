@@ -5,7 +5,6 @@ import type { BondPosition, YieldGuardFlag } from '@/lib/types/node';
 import { formatRuneAmount, formatRuneWithUnit, numberToRune } from '@/lib/utils/formatters';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Badge } from '@/components/shared/badge';
-import { YieldGuardBadge } from './pooled-node-details';
 import { AlertTriangle, TrendingDown, Clock, UserMinus, Gauge, Inbox, HelpCircle } from 'lucide-react';
 import { MetricTooltip, METRIC_EXPLANATIONS } from '@/components/shared/metric-tooltip';
 
@@ -156,7 +155,7 @@ export function PositionTable({ positions }: PositionTableProps) {
               <div className="flex items-center gap-3">
                 <div className="text-xs text-zinc-500 flex items-center gap-1">
                   Est. APY
-                  <MetricTooltip label="Estimated APY" explanation={METRIC_EXPLANATIONS.weightedAPY} />
+                  <MetricTooltip label="Estimated APY" explanation={METRIC_EXPLANATIONS.weightedApy} />
                 </div>
                 <div className="font-mono text-sm font-medium text-emerald-600">
                   {pos.netAPY.toFixed(2)}%
@@ -179,7 +178,7 @@ export function PositionTable({ positions }: PositionTableProps) {
               <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap">Fee</th>
               <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap flex items-center justify-end gap-1">
                 Est. APY
-                <MetricTooltip label="Estimated APY" explanation={METRIC_EXPLANATIONS.weightedAPY} />
+                <MetricTooltip label="Estimated APY" explanation={METRIC_EXPLANATIONS.weightedApy} />
               </th>
             </tr>
           </thead>
