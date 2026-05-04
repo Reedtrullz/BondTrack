@@ -11,6 +11,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { getRunePriceHistory, type RunePriceHistoryRaw } from '@/lib/api/midgard';
+import { SkeletonChart } from '@/components/shared/skeleton';
 
 type IntervalOption = 'day' | 'week' | 'month' | 'year';
 
@@ -132,9 +133,7 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
       </div>
 
       {loading ? (
-        <div className="h-[160px] sm:h-[200px] flex items-center justify-center text-zinc-400 text-sm">
-          Loading...
-        </div>
+        <SkeletonChart height={160} />
       ) : error ? (
         <div className="h-[160px] sm:h-[200px] flex items-center justify-center text-red-500 text-sm">
           {error}

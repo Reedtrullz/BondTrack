@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { getEarningsHistory, getNetwork, type EarningsHistoryRaw, type NetworkRaw } from '@/lib/api/midgard';
 import { runeToNumber } from '@/lib/utils/formatters';
+import { SkeletonChart } from '@/components/shared/skeleton';
 
 interface APYDataPoint {
   date: string;
@@ -108,9 +109,7 @@ export function APYChart({ interval = 'year', count = 365 }: APYChartProps) {
       </div>
 
       {loading ? (
-        <div className="h-[160px] sm:h-[200px] flex items-center justify-center text-zinc-400 text-sm">
-          Loading...
-        </div>
+        <SkeletonChart height={160} />
       ) : error ? (
         <div className="h-[160px] sm:h-[200px] flex items-center justify-center text-red-500 text-sm">
           {error}
