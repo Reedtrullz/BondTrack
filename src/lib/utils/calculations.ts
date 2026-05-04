@@ -21,15 +21,33 @@ export function calculateAPY(
   operatorFeeBps: number,
   bondAmount: string
 ): number {
-  const award = runeToNumber(currentAward);
+  // current_award can be:
+  // 1. Decimal APY: '0.6334' (63.34% APY) → use parseFloat()
+  // 2. 1e8 units: '250000000' (250 RUNE per churn) → use BigInt / 1e8
+  let award: number;
+  if (currentAward.includes('.')) {
+    // Decimal APY (already annualized)
+    award = parseFloat(currentAward) || 0;
+  } else {
+    // 1e8 units - convert to RUNE
+    award = Number(BigInt(currentAward || '0')) / 1e8;
+  }
+  
   const bond = runeToNumber(bondAmount);
   if (bond === 0) return 0;
 
   const operatorFeeDecimal = operatorFeeBps / 10000;
-  const perChurnReward = (bondSharePercent / 100) * award * (1 - operatorFeeDecimal);
-  const annualReward = perChurnReward * NETWORK.CHURNS_PER_YEAR;
-
-  return (annualReward / bond) * 100;
+  
+  if (currentAward.includes('.')) {
+    // Decimal APY - already annualized, just adjust for share/fee
+    const adjustedAPY = award * (bondSharePercent / 100) * (1 - operatorFeeDecimal);
+    return adjustedAPY * 100; // Convert to percentage
+  } else {
+    // 1e8 units - annualize by churns per year
+    const perChurnReward = award * (bondSharePercent / 100) * (1 - operatorFeeDecimal);
+    const annualReward = perChurnReward * NETWORK.CHURNS_PER_YEAR;
+    return (annualReward / bond) * 100;
+  }
 }
 
 /**
