@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBondDetails, getActions } from '@/lib/api/midgard';
 
+// Increase default limit to get more history for tax calculations
+const DEFAULT_ACTION_LIMIT = 500;
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ address: string }> }
@@ -9,14 +12,20 @@ export async function GET(
     const { address: pathAddress } = await params;
     const { searchParams } = new URL(request.url);
     const address = pathAddress || searchParams.get('address');
+    const limit = parseInt(searchParams.get('limit') || String(DEFAULT_ACTION_LIMIT), 10);
 
     if (!address) {
       return NextResponse.json({ error: 'Address parameter is required' }, { status: 400 });
     }
 
+    // Validate THORChain address format
+    if (!/^thor1[ac-hj-np-z02-9]{38,}$/.test(address)) {
+      return NextResponse.json({ error: 'Invalid THORChain address format' }, { status: 400 });
+    }
+
     const [bondDetails, actions] = await Promise.all([
       getBondDetails(address),
-      getActions(address, 50)
+      getActions(address, Math.min(limit, 1000)) // Cap at 1000 for safety
     ]);
 
     const bondActions = actions.actions.filter(action => {
@@ -28,7 +37,7 @@ export async function GET(
       const memo = action.memo?.toUpperCase() || '';
       const type: 'BOND' | 'UNBOND' = memo.startsWith('BOND:') ? 'BOND' : 'UNBOND';
 
-      const runeCoin = action.tx?.coins?.find(c => c.asset === 'THOR.RUNE');
+      const runeCoin = action.tx?.coins?.find((c: { asset: string }) => c.asset === 'THOR.RUNE');
       const amount = runeCoin ? parseFloat(runeCoin.amount) : 0;
       const parts = memo.split(':');
       const nodeAddress = parts[1] || action.tx?.address || '';
@@ -49,7 +58,8 @@ export async function GET(
       bondDetails,
       actions: parsedActions,
       totalBond: bondDetails.totalBonded,
-      nodeCount: bondDetails.nodes.length
+      nodeCount: bondDetails.nodes.length,
+      actionCount: parsedActions.length
     });
   } catch (error) {
     console.error('Error fetching address data:', error);
