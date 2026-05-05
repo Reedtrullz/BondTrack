@@ -5,7 +5,7 @@ RUN chown -R node:node /app && chmod -R 775 /app
 USER node
 
 # Install dependencies
-COPY --chown=node:node package.json ./
+COPY --chown=node:node package*.json ./
 RUN npm ci
 
 # Copy source and build
