@@ -55,6 +55,36 @@ curl https://bond.thorchain.no/api/health
 # Test homepage
 curl -s -o /dev/null -w "%{http_code}" https://bond.thorchain.no
 ```
+  
+### Environment Variables
+The playbook supports configurable environment variables:
+- `NEXT_PUBLIC_THORNODE_API` - THORNode API endpoint
+- `NEXT_PUBLIC_MIDGARD_API` - Midgard API endpoint
+- `VERSION` - Set to git SHA via `GITHUB_SHA` env var (or "latest")
+
+Set via Ansible vars:
+```bash
+ansible-playbook -i inventory/hosts.yml ansible-playbook.yml -e "thornode_api=https://custom-api.com"
+```
+
+### Sensitive Variables (Vault)
+Sensitive vars (COINAPI_KEY, Discord tokens) stored in Ansible Vault:
+- `group_vars/vps/vault.yml` (encrypted)
+- Automatically loaded for vps group hosts
+- Use `ansible-vault edit group_vars/vps/vault.yml` to update
+
+### Inebotten Deployment
+Separate playbook for Inebotten Discord bot:
+```bash
+ansible-playbook -i inventory/hosts.yml inebotten-playbook.yml
+```
+Requires env vars: `INEBOTTEN_DISCORD_TOKEN`, `INEBOTTEN_OPENROUTER_API_KEY`.
+
+### Rollback Mechanism
+If deployment fails health check:
+1. Automatically rolls back to previous container image (if exists)
+2. Reports rollback in failure message
+3. Uses `previous_image` fact captured before deployment
 
 ## What the Playbook Does
 
