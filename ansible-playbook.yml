@@ -15,8 +15,7 @@
 
     - name: Set previous image fact
       set_fact:
-        previous_image: "{{ current_container.container.Config.Image | default('none') }}"
-      when: current_container.container is defined
+        previous_image: "{{ (current_container.container.Config.Image) if (current_container.container is defined) else 'none' }}"
 
   tasks:
     - name: Pull latest image from GHCR
