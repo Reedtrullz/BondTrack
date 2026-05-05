@@ -11,19 +11,28 @@ This version has breaking changes — APIs, conventions, and file structure may 
 **Note**: Renamed to "Heimdall" (GitHub repo: Reedtrullz/Heimdall, was BondTrack/THORNode Watcher)
 
 ## DEPLOYMENT
-
-**Platform**: Coolify (self-hosted at https://cool.reidar.tech)
+**Platform**: VPS (Racknerd) with Ansible + GitHub Container Registry (GHCR)
 **GitHub Repo**: Reedtrullz/Heimdall (renamed from BondTrack)
 **Package Name**: heimdall (updated from thornode-watcher)
-
+**Container Image**: `ghcr.io/reedtrullz/heimdall:latest`
 **Applications**:
-- **Production**: https://bond.thorchain.no (master branch, UUID: aihij0m9qdbg7wp8ysjzxqzu)
-- **Staging**: https://dev.thorchain.no (staging branch, UUID: v7g498fp21auheu7h0ejndts)
-
-**Deployment method**: GitHub webhook (auto-deploy on push to master/staging)
-**CI**: GitHub Actions (`.github/workflows/test.yml`) runs test, coverage, e2e, and build on Node 22.
-
-**Monitoring**: Use `coolify-deployment-manager` skill to check status, view logs, and monitor deployments.
+- **Production**: https://bond.thorchain.no (master branch)
+- **Staging**: https://dev.thorchain.no (staging branch)
+**Deployment Pipeline**:
+1. GitHub Actions CI/CD runs tests, coverage, e2e, and build on Node 22
+2. Docker image built and pushed to GHCR (`.github/workflows/docker-publish.yml`)
+3. Ansible playbook pulls latest image and updates `compose.production.yml`
+4. Caddy reverse proxy serves the application (proxy to localhost:3001)
+**VPS Access**:
+- SSH: `ssh Racknerd-Deploy` (uses `~/.ssh/id_rsa_racknerd`)
+- Host: `198.23.137.16`, User: `deploy`
+- Compose file: `/opt/apps/heimdall/compose.production.yml`
+- Caddy config: `/etc/caddy/Caddyfile`
+**Monitoring**:
+- Check container status: `ssh Racknerd-Deploy "docker ps"`
+- View logs: `ssh Racknerd-Deploy "docker logs heimdall"`
+- Health check: `curl -s -o /dev/null -w "%{http_code}" https://bond.thorchain.no`
+- See `vps-ansible-ghcr-deployment` skill for full deployment workflow.
 
 ## LIVE DEV QA POLICY
 
