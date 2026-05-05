@@ -18,7 +18,7 @@ GitHub (CI/CD) → GHCR (ghcr.io/reedtrullz/heimdall:latest) → VPS (Ansible de
 ### On VPS (Target Node):
 - Docker installed ✓
 - GHCR authentication configured ✓
--firewall (UFW) active ✓
+- firewall (UFW) active ✓
 - fail2ban running ✓
 
 ## Deployment Steps
@@ -55,10 +55,10 @@ curl https://bond.thorchain.no/api/health
 # Test homepage
 curl -s -o /dev/null -w "%{http_code}" https://bond.thorchain.no
 ```
-  
+
 ### Environment Variables
 The playbook supports configurable environment variables:
-- `NEXT_PUBLIC_THORNODE_API` - THORNode API endpoint
+- `thornode_api` - THORNode API endpoint
 - `NEXT_PUBLIC_MIDGARD_API` - Midgard API endpoint
 - `VERSION` - Set to git SHA via `GITHUB_SHA` env var (or "latest")
 
@@ -68,7 +68,7 @@ ansible-playbook -i inventory/hosts.yml ansible-playbook.yml -e "thornode_api=ht
 ```
 
 ### Sensitive Variables (Vault)
-Sensitive vars (COINAPI_KEY, Discord tokens) stored in Ansible Vault:
+Sensitive vars (COINAPI_KEY, Discord token: INEBOTTEN_DISCORD_TOKEN env var) stored in Ansible Vault:
 - `group_vars/vps/vault.yml` (encrypted)
 - Automatically loaded for vps group hosts
 - Use `ansible-vault edit group_vars/vps/vault.yml` to update
@@ -78,6 +78,12 @@ Separate playbook for Inebotten Discord bot:
 ```bash
 ansible-playbook -i inventory/hosts.yml inebotten-playbook.yml
 ```
+
+Example with environment variables:
+```bash
+ansible-playbook -i inventory/hosts.yml inebotten-playbook.yml -e "inebotten_discord_token=xxx" -e "inebotten_openrouter_api_key=yyy"
+```
+
 Requires env vars: `INEBOTTEN_DISCORD_TOKEN`, `INEBOTTEN_OPENROUTER_API_KEY`.
 
 ### Rollback Mechanism
