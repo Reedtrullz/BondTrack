@@ -25,7 +25,9 @@ COPY --from=base --chown=node:node /app/public ./public
 USER node
 
 EXPOSE 3000
+ARG VERSION=unknown
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV VERSION=${VERSION}
 
 CMD ["node", "server.js"]
