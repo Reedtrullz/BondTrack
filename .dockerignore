@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+.github
+*.md
+.env*
+.env.local
+.env.production
+coverage
+.vscode
+.idea
+*.log
+npm-debug.log*
+yaarn-debug.log*
+pnpm-debug.log*

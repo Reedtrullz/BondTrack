@@ -17,9 +17,12 @@ FROM node:22-alpine
 WORKDIR /app
 
 # Copy standalone build output
-COPY --from=base /app/.next/standalone ./
-COPY --from=base /app/.next/static ./.next/static
-COPY --from=base /app/public ./public
+COPY --from=base --chown=node:node /app/.next/standalone ./
+COPY --from=base --chown=node:node /app/.next/static ./.next/static
+COPY --from=base --chown=node:node /app/public ./public
+
+# Switch to non-root user for security
+USER node
 
 EXPOSE 3000
 ENV NODE_ENV=production
