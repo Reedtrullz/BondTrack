@@ -28,7 +28,7 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
-      - run: npx vitest run
+      - run: ls -la node_modules/.bin/vitest* && npx vitest run
       - run: npm run test:coverage
         env:
           CI: true
