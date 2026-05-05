@@ -2,11 +2,13 @@
 
 A professional investment command center for THORChain bond providers — monitor bonded RUNE, node health, rewards, risk metrics, and LP positions with institutional-grade precision.
 
-![Next.js](https://img.shields.io/badge/Next.js-16.2.2-black)
+![Next.js](https://img.shields.io/badge/Next.js-16.2.4-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
 ![Tailwind](https://img.shields.io/badge/Tailwind-4.0-cyan)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![CI Status](https://github.com/Reedtrullz/Heimdall/actions/workflows/ci-cd.yml/badge.svg)
+![Deployment](https://img.shields.io/badge/Deployment-Ansible-blue)
+![Health](https://img.shields.io/badge/Health-✅-green)
 
 ## Features
 
@@ -53,13 +55,15 @@ A professional investment command center for THORChain bond providers — monito
 
 ## Tech Stack
 
-- **Framework**: Next.js 16.2.2 (App Router, Turbopack)
+- **Framework**: Next.js 16.2.4 (App Router, Turbopack)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS v4
 - **Data Fetching**: SWR
 - **Charts**: Recharts (with ResponsiveContainer fixes for clean rendering)
-- **Testing**: Vitest + Playwright (60 E2E tests, all passing ✅)
+- **Testing**: Vitest + Playwright (167 unit tests, 34 test files, all passing ✅)
 - **Icons**: lucide-react
+- **Deployment**: Ansible → VPS (GHCR, Docker, Caddy reverse proxy)
+- **Security**: Ansible Vault for sensitive variables
 
 ## Getting Started
 
@@ -93,6 +97,46 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 | `NEXT_PUBLIC_MIDGARD_API` | Midgard API endpoint | `https://gateway.liquify.com/chain/thorchain_midgard` |
 | `NEXT_PUBLIC_MIDGARD_FALLBACK` | Secondary Midgard fallback | `https://midgard.thorchain.network` |
 | `NEXT_PUBLIC_THORCHAIN_RPC` | THORChain RPC | `https://rpc.thorchain.info` |
+| `VERSION` | App version (set by Ansible/GitHub SHA) | `latest` |
+
+## Deployment
+
+Heimdall uses a **push-based deployment model** from your local machine to the VPS via Ansible.
+
+### Architecture
+```
+Developer Push → GitHub → CI/CD Pipeline (test, e2e, build) 
+                       ↓ (on success)
+                  docker-publish.yml 
+                       ↓
+                  GHCR (ghcr.io/reedtrullz/heimdall:latest)
+                       ↓
+                  Local Machine (ansible-playbook) 
+                       ↓
+                  VPS (198.23.137.16) 
+                       ↓
+                  Docker Container (port 3001) 
+                       ↓
+                  Caddy Reverse Proxy (bond.thorchain.no)
+```
+
+### Quick Deploy
+```bash
+# 1. Ensure Ansible is installed (via Homebrew)
+brew install ansible
+
+# 2. Run deployment playbook
+cd /Users/reidar/Projectos/Heimdall
+ansible-playbook -i inventory/hosts.yml ansible-playbook.yml
+```
+
+### Features
+- **Health Check**: Waits for `/api/health` to return `{"status":"healthy"}`
+- **Rollback**: Automatically reverts to previous image on health check failure
+- **Vault**: Sensitive vars (COINAPI_KEY, Discord tokens) stored in `group_vars/vps/vault.yml` (encrypted)
+- **Inebotten**: Separate playbook for Discord bot deployment (`inebotten-playbook.yml`)
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for full details.
 
 ## Project Structure
 
@@ -158,22 +202,24 @@ npx playwright show-report
 - Check page headings with `getByRole('heading', { name: ... })` 
 - Avoid fragile XPath locators; use semantic text/role locators
 - Handle missing elements gracefully (e.g., charts with `minWidth={0} minHeight={0}`)
-
 ## CI/CD Pipeline
 
-The staging branch uses GitHub Actions (`.github/workflows/ci-cd.yml`):
-- ✅ **test** — Vitest unit tests
-- ✅ **build** — Next.js production build  
-- ✅ **e2e** — Playwright E2E tests (60 tests)
+The `master` branch uses GitHub Actions (`.github/workflows/ci-cd.yml` + `docker-publish.yml`):
+
+- ✅ **test** — Vitest unit tests (167 tests, 34 test files)
+- ✅ **build** — Next.js production build 
+- ✅ **e2e** — Playwright E2E tests 
+- ✅ **docker-publish** — Build & push to GHCR (`ghcr.io/reedtrullz/heimdall:latest` + short SHA tag)
 - ✅ **report-status** — Reports CI status to GitHub
 
 All tests must pass before the Docker image is published to GHCR for Ansible deployment.
 
-**Current Status**: ✅ All jobs passing (as of 2026-05-03)
+**Current Status**: ✅ All jobs passing (as of 2026-05-05)
+**Live Site**: https://bond.thorchain.no (healthy, HTTP 200)
 
 ## Known Issues (Live QA)
 
-The deployed staging environment at `https://dev.thorchain.no` is the source of truth for user-facing QA. As of the latest live audit, these non-wallet issues are confirmed and under remediation:
+The deployed site at `https://bond.thorchain.no` is the source of truth for user-facing QA. As of the latest live audit, these non-wallet issues are confirmed and under remediation:
 
 - THORName reverse lookup can return repeated 502s on dashboard routes
 - The LP Status route now degrades honestly when member or pricing history data is unavailable; remaining live caveat is upstream Midgard pool-history `502` responses that force `current-only` valuation
