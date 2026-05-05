@@ -27,6 +27,12 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
+      - name: Debug vitest installation
+        run: |
+          echo "PATH: $PATH"
+          which vitest || echo "vitest not in PATH"
+          ls -la node_modules/.bin/vitest* 2>/dev/null || echo "vitest not in node_modules/.bin/"
+          npx vitest --version || echo "npx vitest failed"
       - run: npm test
         env:
           CI: true
