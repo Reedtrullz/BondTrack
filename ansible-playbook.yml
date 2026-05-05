@@ -50,15 +50,17 @@
       uri:
         url: "http://localhost:3001/api/health"
         return_content: yes
+        timeout: 5
       register: health_check
-      until: health_check.json.status == "healthy"
+      until: health_check is succeeded and health_check.json.status == "healthy"
       retries: 10
       delay: 5
+      failed_when: false
 
     - name: Fail if application is not healthy
       fail:
-        msg: "Heimdall health check failed: {{ health_check.json }}"
-      when: health_check.json.status != "healthy"
+        msg: "Heimdall health check failed: {{ health_check }}"
+      when: health_check is not succeeded or health_check.json.status != "healthy"
 
     - name: Verify container is running
       community.docker.docker_container_info:
