@@ -122,3 +122,4 @@
     - name: Report deployment status
       debug:
         msg: "✅ Heimdall deployed successfully: {{ container_info.container.State.Status }}"
+# Vault vars available: vault_coinapi_key, vault_discord_token, vault_openrouter_api_key
