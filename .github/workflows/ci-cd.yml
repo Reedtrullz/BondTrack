@@ -30,6 +30,7 @@ jobs:
       - run: npm test
         env:
           CI: true
+        timeout-minutes: 5
       - run: npm run test:coverage
         env:
           CI: true
