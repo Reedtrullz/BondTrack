@@ -165,9 +165,9 @@ The staging branch uses GitHub Actions (`.github/workflows/ci-cd.yml`):
 - ✅ **test** — Vitest unit tests
 - ✅ **build** — Next.js production build  
 - ✅ **e2e** — Playwright E2E tests (60 tests)
-- ✅ **report-status** — Checks all jobs and reports to Coolify
+- ✅ **report-status** — Reports CI status to GitHub
 
-All tests must pass before Coolify auto-deploys to staging.
+All tests must pass before the Docker image is published to GHCR for Ansible deployment.
 
 **Current Status**: ✅ All jobs passing (as of 2026-05-03)
 
