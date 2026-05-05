@@ -33,7 +33,9 @@ jobs:
           which vitest || echo "vitest not in PATH"
           ls -la node_modules/.bin/vitest* 2>/dev/null || echo "vitest not in node_modules/.bin/"
           npx vitest --version || echo "npx vitest failed"
-      - run: npm test
+      - run: |
+          set -x
+          npm test
         env:
           CI: true
         timeout-minutes: 5
