@@ -1,0 +1,55 @@
+- name: Deploy Heimdall to VPS
+  hosts: vps
+  gather_facts: false
+  vars:
+    docker_image: "ghcr.io/reedtrullz/heimdall:latest"
+    container_name: "heimdall"
+
+  tasks:
+    - name: Login to GHCR
+      community.docker.docker_login:
+        registry: ghcr.io
+        username: "{{ ghcr_user }}"
+        password: "{{ ghcr_token }}"
+      no_log: true
+
+    - name: Pull latest image from GHCR
+      community.docker.docker_image:
+        name: "{{ docker_image }}"
+        source: pull
+
+    - name: Stop and remove existing container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        state: absent
+
+    - name: Start new container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ docker_image }}"
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "127.0.0.1:3001:3000"
+        log_driver: "json-file"
+        log_options:
+          max-size: "10m"
+          max-file: "3"
+        healthcheck:
+          test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000', r => process.exit(r.statusCode === 200 ? 0 : 1))\""]
+          interval: 30s
+          timeout: 10s
+          retries: 3
+          start_period: 40s
+        env:
+          NODE_ENV: production
+          PORT: "3000"
+
+    - name: Verify container is running
+      community.docker.docker_container_info:
+        name: "{{ container_name }}"
+      register: container_info
+
+    - name: Report deployment status
+      debug:
+        msg: "✅ Heimdall deployed successfully: {{ container_info.container.State.Status }}"
