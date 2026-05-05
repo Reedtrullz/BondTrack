@@ -4,6 +4,7 @@
   vars:
     docker_image: "ghcr.io/reedtrullz/heimdall:latest"
     container_name: "heimdall"
+    image_tag: "{{ lookup('env', 'GITHUB_SHA') | default('latest') }}"
 
   tasks:
     - name: Pull latest image from GHCR
@@ -38,6 +39,7 @@
           NODE_ENV: production
           PORT: "3000"
           HOSTNAME: "0.0.0.0"
+          VERSION: "{{ image_tag }}"
           NEXT_PUBLIC_THORNODE_API: "{{ thornode_api | default('https://gateway.liquify.com/chain/thorchain_api') }}"
           NEXT_PUBLIC_MIDGARD_API: "{{ midgard_api | default('https://gateway.liquify.com/chain/thorchain_midgard') }}"
           NEXT_PUBLIC_THORCHAIN_RPC: "{{ thorchain_rpc | default('https://rpc.thorchain.info') }}"
