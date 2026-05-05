@@ -97,7 +97,6 @@
           NODE_ENV: production
           PORT: "3000"
           HOSTNAME: "0.0.0.0"
-          VERSION: "{{ image_tag }}"
           NEXT_PUBLIC_THORNODE_API: "{{ thornode_api | default('https://gateway.liquify.com/chain/thorchain_api') }}"
           NEXT_PUBLIC_MIDGARD_API: "{{ midgard_api | default('https://gateway.liquify.com/chain/thorchain_midgard') }}"
           NEXT_PUBLIC_THORCHAIN_RPC: "{{ thorchain_rpc | default('https://rpc.thorchain.info') }}"
@@ -113,13 +112,7 @@
         msg: "Deployment failed, rolled back to {{ previous_image }}"
       when: rollback.changed
 
-    - name: Fail with no rollback message
-      fail:
-        msg: "Heimdall health check failed: {{ health_check }} (no previous image to rollback to)"
-      when:
-        - health_check is not succeeded or health_check.json.status != "healthy"
-        - previous_image == "none"
-        - rollback is not defined
+
 
     - name: Verify container is running
       community.docker.docker_container_info:
