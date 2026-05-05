@@ -1,0 +1,44 @@
+- name: Deploy Inebotten to VPS
+  hosts: vps
+  gather_facts: false
+  vars:
+    docker_image: "apps-inebotten:latest"
+    container_name: "inebotten"
+    discord_token: "{{ lookup('env', 'INEBOTTEN_DISCORD_TOKEN') }}"
+    openrouter_api_key: "{{ lookup('env', 'INEBOTTEN_OPENROUTER_API_KEY') }}"
+
+  tasks:
+    - name: Pull latest Inebotten image
+      community.docker.docker_image:
+        name: "{{ docker_image }}"
+        source: pull
+      when: docker_image != "apps-inebotten:latest"
+
+    - name: Stop and remove existing container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        state: absent
+
+    - name: Start new Inebotten container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ docker_image }}"
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "127.0.0.1:8081:8081"
+          - "127.0.0.1:8080:3000"
+        env:
+          DISCORD_TOKEN: "{{ discord_token }}"
+          OPENROUTER_API_KEY: "{{ openrouter_api_key }}"
+          AI_PROVIDER: "openrouter"
+          OPENROUTER_MODEL: "google/gemma-4-31b-it:free"
+
+    - name: Verify container is running
+      community.docker.docker_container_info:
+        name: "{{ container_name }}"
+      register: container_info
+
+    - name: Report deployment status
+      debug:
+        msg: "✅ Inebotten deployed successfully: {{ container_info.container.State.Status }}"
