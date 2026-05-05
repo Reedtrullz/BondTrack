@@ -6,6 +6,18 @@
     container_name: "heimdall"
     image_tag: "{{ lookup('env', 'GITHUB_SHA') | default('latest') }}"
 
+  pre_tasks:
+    - name: Get current container image
+      community.docker.docker_container_info:
+        name: "{{ container_name }}"
+      register: current_container
+      ignore_errors: yes
+
+    - name: Set previous image fact
+      set_fact:
+        previous_image: "{{ current_container.container.Config.Image | default('none') }}"
+      when: current_container.container is defined
+
   tasks:
     - name: Pull latest image from GHCR
       community.docker.docker_image:
@@ -60,7 +72,55 @@
     - name: Fail if application is not healthy
       fail:
         msg: "Heimdall health check failed: {{ health_check }}"
-      when: health_check is not succeeded or health_check.json.status != "healthy"
+      when:
+        - health_check is not succeeded or health_check.json.status != "healthy"
+        - previous_image == "none"
+
+    - name: Rollback to previous image on failure
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ previous_image }}"
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "127.0.0.1:3001:3000"
+        log_driver: "json-file"
+        log_options:
+          max-size: "10m"
+          max-file: "3"
+        healthcheck:
+          test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000', r => process.exit(r.statusCode === 200 ? 0 : 1))\"\""]
+          interval: 30s
+          timeout: 10s
+          retries: 3
+          start_period: 40s
+        env:
+          NODE_ENV: production
+          PORT: "3000"
+          HOSTNAME: "0.0.0.0"
+          VERSION: "{{ image_tag }}"
+          NEXT_PUBLIC_THORNODE_API: "{{ thornode_api | default('https://gateway.liquify.com/chain/thorchain_api') }}"
+          NEXT_PUBLIC_MIDGARD_API: "{{ midgard_api | default('https://gateway.liquify.com/chain/thorchain_midgard') }}"
+          NEXT_PUBLIC_THORCHAIN_RPC: "{{ thorchain_rpc | default('https://rpc.thorchain.info') }}"
+          NEXT_PUBLIC_TRACK_API: "{{ track_api | default('https://track.thorchain.org/') }}"
+          NEXT_PUBLIC_MIDGARD_FALLBACK: "{{ midgard_fallback | default('https://midgard.thorchain.network') }}"
+      when:
+        - health_check is not succeeded or health_check.json.status != "healthy"
+        - previous_image != "none"
+      register: rollback
+
+    - name: Fail with rollback message
+      fail:
+        msg: "Deployment failed, rolled back to {{ previous_image }}"
+      when: rollback.changed
+
+    - name: Fail with no rollback message
+      fail:
+        msg: "Heimdall health check failed: {{ health_check }} (no previous image to rollback to)"
+      when:
+        - health_check is not succeeded or health_check.json.status != "healthy"
+        - previous_image == "none"
+        - rollback is not defined
 
     - name: Verify container is running
       community.docker.docker_container_info:
