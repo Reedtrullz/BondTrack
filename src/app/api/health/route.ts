@@ -5,7 +5,7 @@ export async function GET() {
     {
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version || 'unknown'
+      version: process.env.VERSION || process.env.npm_package_version || 'unknown',
     },
     { status: 200 }
   );
