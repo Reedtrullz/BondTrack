@@ -46,6 +46,20 @@
           NEXT_PUBLIC_TRACK_API: "{{ track_api | default('https://track.thorchain.org/') }}"
           NEXT_PUBLIC_MIDGARD_FALLBACK: "{{ midgard_fallback | default('https://midgard.thorchain.network') }}"
 
+    - name: Wait for application to become healthy
+      uri:
+        url: "http://localhost:3001/api/health"
+        return_content: yes
+      register: health_check
+      until: health_check.json.status == "healthy"
+      retries: 10
+      delay: 5
+
+    - name: Fail if application is not healthy
+      fail:
+        msg: "Heimdall health check failed: {{ health_check.json }}"
+      when: health_check.json.status != "healthy"
+
     - name: Verify container is running
       community.docker.docker_container_info:
         name: "{{ container_name }}"
