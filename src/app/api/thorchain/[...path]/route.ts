@@ -1,15 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const THORNODE_ENDPOINTS = [
-  process.env.THORNODE_API_URL || 'https://gateway.liquify.com/chain/thorchain_api',
+  process.env.THORNODE_API_URL || 'https://gateway.liquify.com/chain/thorchain_api/thorchain',
 ];
 
 const ALLOWED_PATHS = [
-  /^thorchain\/nodes$/,
-  /^thorchain\/node\/[A-Za-z0-9._:-]+$/,
-  /^thorchain\/constants$/,
-  /^thorchain\/supply$/,
-  /^thorchain\/pool\/[A-Za-z0-9._:-]+\/liquidity_provider\/[A-Za-z0-9._:-]+$/,
+  /^nodes$/,
+  /^node\/[A-Za-z0-9._:-]+$/,
+  /^constants$/,
+  /^supply$/,
+  /^queue$/,
+  /^network$/,
+  /^lastblock$/,
+  /^mimir$/,
+  /^version$/,
+  /^pools$/,
+  /^pool\/[A-Za-z0-9._:-]+$/,
+  /^pool\/[A-Za-z0-9._:-]+\/liquidity_provider\/[A-Za-z0-9._:-]+$/,
+  /^balance\/[A-Za-z0-9._:-]+$/,
+  /^tx\/[A-Za-z0-9._:-]+$/,
+  /^actions$/,
+  /^ping$/,
+  /^health$/,
+  /^stakers$/,
 ];
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +35,7 @@ function corsHeaders(request: NextRequest): HeadersInit {
   const origin = request.headers.get('origin');
   const allowedOrigins = new Set([
     'https://thorchain.no',
+    'https://bond.thorchain.no',
     'https://dev.thorchain.no',
     'http://localhost:3000',
     'http://localhost:3001',
