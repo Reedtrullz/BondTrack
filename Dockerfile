@@ -22,7 +22,11 @@ RUN npm ci
 COPY --chown=node:node . .
 
 # Build the app (creates .next/standalone)
+RUN ls -la /app/ || true
+RUN ls -la /app/.next/ || true
 RUN npm run build
+RUN ls -la /app/.next/ || true
+RUN ls -la /app/.next/standalone/ || true
 
 # Stage 2: Production
 FROM node:22-alpine
