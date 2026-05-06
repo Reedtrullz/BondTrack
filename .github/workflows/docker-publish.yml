@@ -60,8 +60,6 @@ jobs:
             NEXT_PUBLIC_MIDGARD_API=${{ env.NEXT_PUBLIC_MIDGARD_API }}
             NEXT_PUBLIC_COINGECKO_API=${{ env.NEXT_PUBLIC_COINGECKO_API }}
             NEXT_PUBLIC_THORCHAIN_NETWORK=${{ env.NEXT_PUBLIC_THORCHAIN_NETWORK }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Verify image published
         run: |
