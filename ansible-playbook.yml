@@ -4,7 +4,7 @@
   vars:
     docker_image: "ghcr.io/reedtrullz/heimdall:latest"
     container_name: "heimdall"
-    image_tag: "{{ lookup('env', 'GITHUB_SHA') | default('latest') }}"
+    image_tag: "{{ lookup('env', 'GITHUB_SHA') | default(lookup('pipe', 'git -C ' ~ playbook_dir ~ ' rev-parse --short HEAD 2>/dev/null || echo latest'), true) }}"
 
   pre_tasks:
     - name: Get current container image
