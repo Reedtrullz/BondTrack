@@ -8,6 +8,10 @@ on:
   workflow_dispatch:  # Allow manual trigger
 
 env:
+  NEXT_PUBLIC_THORNODE_API: https://gateway.liquify.com/chain/thorchain_mainnet
+  NEXT_PUBLIC_MIDGARD_API: https://gateway.liquify.com/chain/thorchain_mainnet
+  NEXT_PUBLIC_COINGECKO_API: https://api.coingecko.com/api/v3
+  NEXT_PUBLIC_THORCHAIN_NETWORK: mainnet
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
