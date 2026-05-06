@@ -18,9 +18,13 @@ COPY package.json package-lock.json ./
 # was generated on a different OS/arch (e.g. macOS arm64 → linux x64).
 # Force-install the linux/x64 native binaries Tailwind v4 + Turbopack need.
 RUN npm ci --include=optional \
- && npm install --no-save \
+ && npm install --no-save --no-package-lock \
       lightningcss-linux-x64-gnu \
-      @tailwindcss/oxide-linux-x64-gnu
+      @tailwindcss/oxide-linux-x64-gnu \
+      @rolldown/binding-linux-x64-gnu \
+      @unrs/resolver-binding-linux-x64-gnu \
+      @img/sharp-linux-x64 \
+      @img/sharp-libvips-linux-x64
 
 # ---------- 2. Build ----------
 FROM node:${NODE_VERSION}-slim AS builder
