@@ -10,7 +10,6 @@ RUN npm ci
 
 # Copy source and build
 COPY --chown=node:node . .
-RUN npm run build
 
 # Stage 2: Production
 FROM node:22-alpine
@@ -40,4 +39,5 @@ ENV NEXT_PUBLIC_MIDGARD_API=${NEXT_PUBLIC_MIDGARD_API}
 ENV NEXT_PUBLIC_COINGECKO_API=${NEXT_PUBLIC_COINGECKO_API}
 ENV NEXT_PUBLIC_THORCHAIN_NETWORK=${NEXT_PUBLIC_THORCHAIN_NETWORK}
 
+RUN npm run build
 CMD ["node", "server.js"]
