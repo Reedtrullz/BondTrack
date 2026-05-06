@@ -56,6 +56,8 @@
           NEXT_PUBLIC_THORCHAIN_RPC: "{{ thorchain_rpc | default('https://rpc.thorchain.info') }}"
           NEXT_PUBLIC_TRACK_API: "{{ track_api | default('https://track.thorchain.org/') }}"
           NEXT_PUBLIC_MIDGARD_FALLBACK: "{{ midgard_fallback | default('https://midgard.thorchain.network') }}"
+          # Server-side proxy route reads this; not bundled into client JS.
+          THORNODE_API_URL: "{{ thornode_api | default('https://gateway.liquify.com/chain/thorchain_api') }}/thorchain"
 
     - name: Wait for application to become healthy
       uri:
@@ -102,6 +104,7 @@
           NEXT_PUBLIC_THORCHAIN_RPC: "{{ thorchain_rpc | default('https://rpc.thorchain.info') }}"
           NEXT_PUBLIC_TRACK_API: "{{ track_api | default('https://track.thorchain.org/') }}"
           NEXT_PUBLIC_MIDGARD_FALLBACK: "{{ midgard_fallback | default('https://midgard.thorchain.network') }}"
+          THORNODE_API_URL: "{{ thornode_api | default('https://gateway.liquify.com/chain/thorchain_api') }}/thorchain"
       when:
         - health_check is not succeeded or health_check.json.status != "healthy"
         - previous_image != "none"
