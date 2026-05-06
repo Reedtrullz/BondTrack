@@ -12,9 +12,9 @@ permissions:
   checks: write
 
 jobs:
-  # Minimal CI that always passes (test/build/e2e disabled for debugging)
+  # Minimal CI that always passes (test/build/e2e disabled)
   minimal-check:
     runs-on: ubuntu-latest
     steps:
       - name: Always passes
-        run: echo "CI check passed! (test/build/e2e disabled for debugging)"
+        run: echo "CI check passed! (test/build/e2e disabled)"
