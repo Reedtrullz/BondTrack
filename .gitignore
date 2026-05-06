@@ -48,5 +48,5 @@ yarn-error.log*
 # Dogfood / scratch reports (regenerated locally)
 /dogfood-output
 
-# Sibling project (separate repo)
+# Sibling project (separate repo at github.com/Reedtrullz/inebotten-discord)
 inebotten-discord/

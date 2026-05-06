@@ -43,7 +43,6 @@ UI_UX_*.md
 
 # Ansible / deployment (host-side only)
 ansible-playbook.yml
-inebotten-playbook.yml
 inebotten-discord
 group_vars
 inventory

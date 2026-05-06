@@ -28,10 +28,6 @@ Human-friendly intro is in `README.md`. Deep AI context is in `CLAUDE.md`.
 9. **Always `force_source: yes` on docker_image pull tasks.** Without it,
    Ansible reports "ok" but skips the pull when `:latest` already exists
    locally — every deploy after the first runs stale code.
-10. **Inebotten uses host Caddy, not its bundled one.** The playbook drops
-    a `docker-compose.override.yml` that maps the bot to `127.0.0.1:8081`
-    and disables compose's `caddy` service. The host's system Caddy
-    handles TLS for `bot.reidar.tech` and `bond.thorchain.no`.
 
 ## Required commands before pushing
 ```bash
@@ -61,16 +57,9 @@ ansible-playbook -i inventory/hosts.yml ansible-playbook.yml \
 ```
 The CI publishes the image; Ansible just pulls and swaps containers.
 
-For the Inebotten Discord bot:
-```bash
-ansible-playbook -i inventory/hosts.yml inebotten-playbook.yml \
-  --vault-password-file ~/.vault_pass.txt
-```
-That playbook delegates to docker compose at
-`/opt/apps/inebotten-discord` on the VPS. It injects `AI_PROVIDER`,
-`OPENROUTER_API_KEY` (from vault), and `OPENROUTER_MODEL` into a
-managed block in `.env` on every run. `DISCORD_USER_TOKEN` lives in
-`.env` outside the managed block. See `DEPLOYMENT.md` for details.
+The Inebotten Discord bot is a sibling project with its own repo and
+deploy story — see [Reedtrullz/inebotten-discord](https://github.com/Reedtrullz/inebotten-discord)
+(`deploy/` directory). It does not belong here.
 
 ## Where things live
 | Concern | Path |

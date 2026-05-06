@@ -131,10 +131,11 @@ ansible-playbook -i inventory/hosts.yml ansible-playbook.yml
 ### Features
 - **Health Check**: Waits for `/api/health` to return `{"status":"healthy"}`
 - **Rollback**: Automatically reverts to previous image on health check failure
-- **Vault**: Sensitive vars (COINAPI_KEY, Discord tokens) stored in `group_vars/vps/vault.yml` (encrypted)
-- **Inebotten**: Separate playbook for Discord bot deployment (`inebotten-playbook.yml`). Delegates to docker compose at `/opt/apps/inebotten-discord` on the VPS. AI provider settings (incl. OpenRouter API key from vault) are injected into `.env` as a managed block on every deploy.
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for full details.
+- **Vault**: Sensitive vars (e.g. CoinAPI key) stored in `group_vars/vps/vault.yml` (encrypted)
+See [DEPLOYMENT.md](DEPLOYMENT.md) for full details. The Inebotten
+Discord bot is a separate project — see
+[Reedtrullz/inebotten-discord](https://github.com/Reedtrullz/inebotten-discord)
+(its `deploy/` directory contains its own playbook).
 
 ## Project Structure
 

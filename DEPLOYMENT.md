@@ -87,51 +87,20 @@ docker run -d --name heimdall --restart unless-stopped \
 
 ## Inebotten (Discord bot, sibling project)
 
-Inebotten lives at `/opt/apps/inebotten-discord` on the VPS, with a `.env`
-file already in place and its own `docker-compose.yml`. The playbook
-delegates to compose rather than recreating the container by hand.
+Inebotten is a separate project in its own repo:
+[Reedtrullz/inebotten-discord](https://github.com/Reedtrullz/inebotten-discord).
+Its deploy playbook lives in that repo at `deploy/`. From a checkout of
+that repo:
 
 ```bash
-ansible-playbook -i inventory/hosts.yml inebotten-playbook.yml \
+ansible-playbook -i deploy/inventory/hosts.yml deploy/ansible-playbook.yml \
   --vault-password-file ~/.vault_pass.txt
 ```
 
-What the playbook does:
-1. Removes any leftover standalone `inebotten` container from older deploys.
-2. `git pull` the source (idempotent; ignored if origin is unreachable so
-   an existing checkout still works).
-3. Idempotently writes a managed block to `.env`:
-   ```
-   AI_PROVIDER=openrouter
-   OPENROUTER_API_KEY={{ vault_openrouter_api_key }}
-   OPENROUTER_MODEL=google/gemma-4-31b-it:free
-   ```
-   The block is delimited by `# === managed by ansible (heimdall inebotten-playbook) BEGIN/END ===`. Hand-edits between those markers are overwritten on every run; lines outside the block (e.g. `DISCORD_USER_TOKEN`, `CONSOLE_HOST`) are preserved.
-4. Drops a `docker-compose.override.yml` that:
-   - remaps the bot's web console to `127.0.0.1:8081`, so the host's
-     system Caddy can reverse-proxy `bot.reidar.tech` → `localhost:8081`.
-   - disables the bundled compose `caddy` service (the host Caddy already
-     owns ports 80/443 for `bond.thorchain.no`; bringing up two would conflict).
-5. `docker compose up --build` for the `inebotten` service only.
-6. Polls `http://127.0.0.1:8081/health` and reports.
-
-The `DISCORD_USER_TOKEN` lives in `/opt/apps/inebotten-discord/.env` outside
-the managed block (it's per-user, not deployment config). The
-`OPENROUTER_API_KEY` lives in the Heimdall Ansible vault as
-`vault_openrouter_api_key` and is injected into `.env` on every deploy.
-
-Verify:
-```bash
-ssh deploy@198.23.137.16 "docker ps --filter name=inebotten-bot"
-ssh deploy@198.23.137.16 "docker logs --tail 20 inebotten-bot | grep -iE 'openrouter|fallback'"
-curl -s -o /dev/null -w "%{http_code}\n" https://bot.reidar.tech/
-```
-
-If the bot replies with `😅 Beklager, jeg sliter med å svare akkurat nå`,
-that's the bridge's "Local fallback response" — meaning the AI provider
-is unreachable. Check `AI_PROVIDER`, `OPENROUTER_API_KEY`, and
-`OPENROUTER_MODEL` in `/opt/apps/inebotten-discord/.env`, and re-run the
-playbook to re-inject them from vault.
+The Inebotten playbook reuses the same VPS, the same `deploy` user, and
+the same `~/.vault_pass.txt` password file as Heimdall, but its secrets
+(OpenRouter API key) live in `inebotten-discord/deploy/group_vars/vps/vault.yml` —
+not in Heimdall's vault.
 
 ## Secrets
 
@@ -168,8 +137,8 @@ ansible -i inventory/hosts.yml vps -m ping
 **Deploy reports "ok" but the live site still runs old code:**
 - `community.docker.docker_image` with `source: pull` is idempotent by
   image *name*. If `:latest` already exists locally, the pull is skipped
-  silently. The Heimdall and Inebotten playbooks pin `force_source: yes`
-  for that reason — keep it.
+  silently. The Heimdall playbook pins `force_source: yes` for that
+  reason — keep it.
 
 **"THORNode API is temporarily unavailable" banner appears:**
 - The browser hits `/api/thorchain/thorchain/nodes` (the client prepends
