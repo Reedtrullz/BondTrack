@@ -25,39 +25,40 @@ jobs:
     permissions:
       contents: read
       packages: write
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,prefix=sha-,format=short
-      
+
+      - name: Compute lowercase image name
+        id: img
+        run: echo "name=${IMAGE_NAME,,}" >> "$GITHUB_OUTPUT"
+        env:
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+
       - name: Build and push
         run: |
+          IMAGE="${{ env.REGISTRY }}/${{ steps.img.outputs.name }}"
+          SHA_TAG="sha-$(echo "${{ github.sha }}" | cut -c1-7)"
           docker build \
             --file ./Dockerfile.v2 \
             --build-arg NEXT_PUBLIC_THORNODE_API=${{ env.NEXT_PUBLIC_THORNODE_API }} \
             --build-arg NEXT_PUBLIC_MIDGARD_API=${{ env.NEXT_PUBLIC_MIDGARD_API }} \
             --build-arg NEXT_PUBLIC_COINGECKO_API=${{ env.NEXT_PUBLIC_COINGECKO_API }} \
             --build-arg NEXT_PUBLIC_THORCHAIN_NETWORK=${{ env.NEXT_PUBLIC_THORCHAIN_NETWORK }} \
-            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+            --tag "$IMAGE:latest" \
+            --tag "$IMAGE:$SHA_TAG" \
             .
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-      
+          docker push "$IMAGE:latest"
+          docker push "$IMAGE:$SHA_TAG"
+
       - name: Verify image published
         run: |
-          echo "✅ Image published to: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          echo "✅ Image published to: ${{ env.REGISTRY }}/${{ steps.img.outputs.name }}"
           echo "Monitor at: https://github.com/${{ github.repository }}/pkgs/container/heimdall"
