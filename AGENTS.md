@@ -67,8 +67,10 @@ ansible-playbook -i inventory/hosts.yml inebotten-playbook.yml \
   --vault-password-file ~/.vault_pass.txt
 ```
 That playbook delegates to docker compose at
-`/opt/apps/inebotten-discord` on the VPS. Secrets live in the `.env`
-file there, not in Ansible vault. See `DEPLOYMENT.md` for details.
+`/opt/apps/inebotten-discord` on the VPS. It injects `AI_PROVIDER`,
+`OPENROUTER_API_KEY` (from vault), and `OPENROUTER_MODEL` into a
+managed block in `.env` on every run. `DISCORD_USER_TOKEN` lives in
+`.env` outside the managed block. See `DEPLOYMENT.md` for details.
 
 ## Where things live
 | Concern | Path |

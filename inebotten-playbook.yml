@@ -33,8 +33,19 @@
           {{ compose_dir }}/.env not found. SSH to the VPS and create it:
               cd {{ compose_dir }}
               cp .env.example .env
-              # then fill in DISCORD_USER_TOKEN and OPENROUTER_API_KEY
+              # then fill in DISCORD_USER_TOKEN
       when: not env_file.stat.exists
+
+    - name: Ensure AI provider settings are present in .env (managed block)
+      ansible.builtin.blockinfile:
+        path: "{{ compose_dir }}/.env"
+        marker: "# === managed by ansible (heimdall inebotten-playbook) {mark} ==="
+        block: |
+          AI_PROVIDER=openrouter
+          OPENROUTER_API_KEY={{ vault_openrouter_api_key }}
+          OPENROUTER_MODEL=google/gemma-4-31b-it:free
+        mode: "0600"  # tighten — file contains an API key
+      no_log: true  # don't echo the key into ansible output
 
     - name: Drop a compose override that maps the bot to 127.0.0.1:8081 and disables the bundled Caddy
       ansible.builtin.copy:
