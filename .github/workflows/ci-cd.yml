@@ -28,8 +28,8 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
-      - name: Skip vitest (debugging in progress)
-        run: echo "Vitest temporarily disabled - debugging CI failure (fails in 0s)"
+      - run: npm test
+        timeout-minutes: 5
       # - run: npm test
       #   timeout-minutes: 5
       - run: npm run test:coverage
