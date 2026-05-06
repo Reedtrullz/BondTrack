@@ -1,137 +1,126 @@
 # Heimdall Deployment Guide
 
-## Overview
-
-Heimdall uses **Ansible** for deployment to the VPS. The workflow is:
+## Architecture
 
 ```
-GitHub (CI/CD) → GHCR (ghcr.io/reedtrullz/heimdall:latest) → VPS (Ansible deployment)
+Local push → GitHub → CI workflow (test, build, e2e, publish)
+                              ↓
+                   GHCR: ghcr.io/reedtrullz/heimdall:latest + :sha-<short>
+                              ↓
+                   ansible-playbook from local machine
+                              ↓
+                   VPS pulls image → swaps container → /api/health probe
+                              ↓
+                   Caddy proxy (https://bond.thorchain.no)
 ```
+
+The VPS is a *target*, never a *source*. Don't `git pull` on it; don't build
+images on it. CI builds, GHCR stores, Ansible deploys.
 
 ## Prerequisites
 
-### On Your Local Machine (Control Node):
-- Ansible installed: `pip install ansible`
-- SSH access to VPS configured
+### Local (control node)
+- Ansible: `brew install ansible`
 - SSH key at `~/.ssh/id_rsa_racknerd`
+- Vault password at `~/.vault_pass.txt` (gitignored)
 
-### On VPS (Target Node):
-- Docker installed ✓
-- GHCR authentication configured ✓
-- firewall (UFW) active ✓
-- fail2ban running ✓
+### VPS (managed node)
+- Docker
+- GHCR pull credentials (read:packages PAT) — `docker login ghcr.io` already done
+- UFW + fail2ban (already configured)
 
-## Deployment Steps
+## Deploy
 
-### 1. Pull Latest Changes
 ```bash
-cd /path/to/Heimdall
+cd /Users/reidar/Projectos/Heimdall
 git pull origin master
-```
-
-### 2. Verify Inventory
-Check `inventory/hosts.yml`:
-```yaml
-vps:
-  hosts:
-    198.23.137.16:
-      ansible_user: deploy
-      ansible_ssh_private_key_file: ~/.ssh/id_rsa_racknerd
-```
-
-### 3. Run Ansible Playbook
-```bash
 ansible-playbook -i inventory/hosts.yml ansible-playbook.yml
 ```
 
-### 4. Verify Deployment
+The playbook:
+1. Records the currently-running image (for rollback)
+2. Pulls `ghcr.io/reedtrullz/heimdall:latest`
+3. Stops + removes old container
+4. Starts new container with env vars from playbook + vault
+5. Polls `/api/health` until healthy (or rolls back)
+
+### Override variables
 ```bash
-# Check container health
-ssh deploy@198.23.137.16 "docker ps --filter name=heimdall"
-
-# Test health endpoint
-curl https://bond.thorchain.no/api/health
-
-# Test homepage
-curl -s -o /dev/null -w "%{http_code}" https://bond.thorchain.no
+ansible-playbook -i inventory/hosts.yml ansible-playbook.yml \
+  -e "thornode_api=https://custom-thornode.example.com"
 ```
 
-### Environment Variables
-The playbook supports configurable environment variables:
-- `thornode_api` - THORNode API endpoint
-- `NEXT_PUBLIC_MIDGARD_API` - Midgard API endpoint
-- `VERSION` - Set to git SHA via `GITHUB_SHA` env var (or "latest")
-
-Set via Ansible vars:
+### Force a specific tag
+The playbook uses `:latest` by default. To pin a SHA:
 ```bash
-ansible-playbook -i inventory/hosts.yml ansible-playbook.yml -e "thornode_api=https://custom-api.com"
+ansible-playbook -i inventory/hosts.yml ansible-playbook.yml \
+  -e "docker_image=ghcr.io/reedtrullz/heimdall:sha-490cac0"
 ```
 
-### Sensitive Variables (Vault)
-Sensitive vars (COINAPI_KEY, Discord token: INEBOTTEN_DISCORD_TOKEN env var) stored in Ansible Vault:
-- `group_vars/vps/vault.yml` (encrypted)
-- Automatically loaded for vps group hosts
-- Use `ansible-vault edit group_vars/vps/vault.yml` to update
+## Verify
 
-### Inebotten Deployment
-Separate playbook for Inebotten Discord bot:
 ```bash
-ansible-playbook -i inventory/hosts.yml inebotten-playbook.yml
+# Container status
+ssh deploy@198.23.137.16 "docker ps --filter name=heimdall --format '{{.Status}} {{.Image}}'"
+
+# Health endpoint
+curl -s https://bond.thorchain.no/api/health | jq
+
+# Homepage
+curl -s -o /dev/null -w "%{http_code}\n" https://bond.thorchain.no
 ```
 
-Example with environment variables:
+## Rollback
+
+Automatic: the playbook captures the previous image hash before swapping and
+restores it if the health check fails.
+
+Manual:
 ```bash
-ansible-playbook -i inventory/hosts.yml inebotten-playbook.yml -e "inebotten_discord_token=xxx" -e "inebotten_openrouter_api_key=yyy"
-```
-
-Requires env vars: `INEBOTTEN_DISCORD_TOKEN`, `INEBOTTEN_OPENROUTER_API_KEY`.
-
-### Rollback Mechanism
-If deployment fails health check:
-1. Automatically rolls back to previous container image (if exists)
-2. Reports rollback in failure message
-3. Uses `previous_image` fact captured before deployment
-
-## What the Playbook Does
-
-1. Pulls latest `ghcr.io/reedtrullz/heimdall:latest` image
-2. Stops and removes existing container
-3. Starts new container with:
-   - Port mapping: `127.0.0.1:3001:3000`
-   - Environment: `NODE_ENV=production`, `PORT=3000`, `HOSTNAME=0.0.0.0`
-   - Healthcheck: Every 30s, 10s timeout, 3 retries
-   - Logging: json-file, 10m max size, 3 files
-   - Restart policy: unless-stopped
-
-## Rollback (if needed)
-
-```bash
-# On VPS:
-docker stop heimdall
-docker rm heimdall
-docker run -d --name heimdall -p 127.0.0.1:3001:3000 \
-  --restart unless-stopped \
+ssh deploy@198.23.137.16
+docker stop heimdall && docker rm heimdall
+docker run -d --name heimdall --restart unless-stopped \
+  -p 127.0.0.1:3001:3000 \
   -e NODE_ENV=production -e PORT=3000 -e HOSTNAME=0.0.0.0 \
-  ghcr.io/reedtrullz/heimdall:latest
+  ghcr.io/reedtrullz/heimdall:sha-<previous-short-sha>
+```
+
+## Inebotten (Discord bot, sibling project)
+
+```bash
+ansible-playbook -i inventory/hosts.yml inebotten-playbook.yml \
+  -e "inebotten_discord_token=$INEBOTTEN_DISCORD_TOKEN" \
+  -e "inebotten_openrouter_api_key=$INEBOTTEN_OPENROUTER_API_KEY"
+```
+
+## Secrets
+
+Stored encrypted in `group_vars/vps/vault.yml`. Vault password lives at
+`~/.vault_pass.txt` (gitignored). Edit with:
+```bash
+ansible-vault edit group_vars/vps/vault.yml
 ```
 
 ## Troubleshooting
 
-### Container not healthy?
+**Container unhealthy:**
 ```bash
-ssh deploy@198.23.137.16 "docker logs heimdall"
-ssh deploy@198.23.137.16 "docker exec heimdall curl localhost:3000/api/health"
+ssh deploy@198.23.137.16 "docker logs --tail 100 heimdall"
+ssh deploy@198.23.137.16 "docker exec heimdall wget -qO- localhost:3000/api/health"
 ```
 
-### GHCR auth issues?
+**GHCR auth on VPS:**
 ```bash
-# Re-authenticate on VPS:
 ssh deploy@198.23.137.16
-echo "YOUR_GITHUB_PAT" | docker login ghcr.io -u Reedtrullz --password-stdin
+echo "$GHCR_PAT" | docker login ghcr.io -u Reedtrullz --password-stdin
 ```
 
-### Ansible connection issues?
+**Ansible can't reach VPS:**
 ```bash
-# Test SSH connection:
 ansible -i inventory/hosts.yml vps -m ping
 ```
+
+**CI fails on Docker step but local build works:**
+- Ensure new dependencies' linux-x64 prebuilts are added to the
+  `npm install --no-save` line in `Dockerfile`.
+- Don't switch to Alpine. See `CLAUDE.md` "Don't" section.

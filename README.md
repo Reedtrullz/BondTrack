@@ -6,7 +6,7 @@ A professional investment command center for THORChain bond providers — monito
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
 ![Tailwind](https://img.shields.io/badge/Tailwind-4.0-cyan)
 ![License](https://img.shields.io/badge/License-MIT-green)
-![CI Status](https://github.com/Reedtrullz/Heimdall/actions/workflows/ci-cd.yml/badge.svg)
+![CI](https://github.com/Reedtrullz/Heimdall/actions/workflows/ci.yml/badge.svg)
 ![Deployment](https://img.shields.io/badge/Deployment-Ansible-blue)
 ![Health](https://img.shields.io/badge/Health-✅-green)
 
@@ -105,11 +105,9 @@ Heimdall uses a **push-based deployment model** from your local machine to the V
 
 ### Architecture
 ```
-Developer Push → GitHub → CI/CD Pipeline (test, e2e, build) 
-                       ↓ (on success)
-                  docker-publish.yml 
-                       ↓
-                  GHCR (ghcr.io/reedtrullz/heimdall:latest)
+Developer Push → GitHub → CI workflow (test, build, e2e, publish)
+                       ↓ (publish job runs after the others pass)
+                  GHCR (ghcr.io/reedtrullz/heimdall:latest + :sha-<short>)
                        ↓
                   Local Machine (ansible-playbook) 
                        ↓
@@ -202,20 +200,20 @@ npx playwright show-report
 - Check page headings with `getByRole('heading', { name: ... })` 
 - Avoid fragile XPath locators; use semantic text/role locators
 - Handle missing elements gracefully (e.g., charts with `minWidth={0} minHeight={0}`)
-## CI/CD Pipeline
+## CI / CD
 
-The `master` branch uses GitHub Actions (`.github/workflows/ci-cd.yml` + `docker-publish.yml`):
+The `master` branch uses a single GitHub Actions workflow at
+`.github/workflows/ci.yml`:
 
-- ✅ **test** — Vitest unit tests (167 tests, 34 test files)
-- ✅ **build** — Next.js production build 
-- ✅ **e2e** — Playwright E2E tests 
-- ✅ **docker-publish** — Build & push to GHCR (`ghcr.io/reedtrullz/heimdall:latest` + short SHA tag)
-- ✅ **report-status** — Reports CI status to GitHub
+- **test** — Vitest unit tests + coverage
+- **build** — Next.js production build
+- **e2e** — Playwright E2E tests
+- **publish** — runs only on `push` to `master`, after the three above pass.
+  Builds the canonical `Dockerfile` with Buildx, pushes
+  `ghcr.io/reedtrullz/heimdall:latest` and `:sha-<short>` to GHCR.
 
-All tests must pass before the Docker image is published to GHCR for Ansible deployment.
-
-**Current Status**: ✅ All jobs passing (as of 2026-05-05)
-**Live Site**: https://bond.thorchain.no (healthy, HTTP 200)
+There is no separate publish workflow and no cross-workflow `workflow_run`
+trigger. See `CLAUDE.md` and `AGENTS.md` for the rationale.
 
 ## Known Issues (Live QA)
 

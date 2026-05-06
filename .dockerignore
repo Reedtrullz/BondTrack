@@ -1,15 +1,60 @@
+# Files NOT shipped into the Docker build context.
+# Keep this tight — anything not listed gets sent to the daemon.
+
+# Dependencies (rebuilt inside container)
 node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build output (rebuilt inside container)
 .next
+out
+build
+dist
+coverage
+
+# VCS / CI / IDE
 .git
 .github
-*.md
-.env*
-.env.local
-.env.production
-coverage
+.gitignore
 .vscode
 .idea
-*.log
-npm-debug.log*
-yaarn-debug.log*
-pnpm-debug.log*
+.DS_Store
+
+# Tests / E2E artefacts
+playwright-report
+test-results
+.playwright-mcp
+e2e
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# Docs and reports — never affect the runtime
+*.md
+docs
+dogfood-output
+AUDIT-*.md
+LP_*.md
+UI_UX_*.md
+
+# Ansible / deployment (host-side only)
+ansible-playbook.yml
+inebotten-playbook.yml
+inebotten-discord
+group_vars
+inventory
+compose.production.yml
+
+# Env files
+.env
+.env.*
+.vault_pass.txt
+
+# Misc
+*.pem
+*.tsbuildinfo
+next-env.d.ts
