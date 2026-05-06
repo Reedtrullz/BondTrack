@@ -22,6 +22,7 @@
       community.docker.docker_image:
         name: "{{ docker_image }}"
         source: pull
+        force_source: yes  # always re-pull; otherwise :latest is treated as already-present
 
     - name: Stop and remove existing container
       community.docker.docker_container:
