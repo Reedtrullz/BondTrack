@@ -6,9 +6,7 @@ on:
   pull_request:
     branches: [master, staging]
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false  # Disable - was cancelling runs immediately
+# Concurrency removed - allow parallel runs for faster debugging
 
 # Suppress Node.js 20 deprecation warnings (actions will migrate to Node.js 24 in June 2026)
 # FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: false  # Keep using Node 20 (actions failing on Node 24)
