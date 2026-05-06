@@ -1,16 +1,4 @@
-# Stage 1: Build
-FROM node:22-alpine AS base
-
-# Set environment variables FIRST (before build)
-ARG NEXT_PUBLIC_THORNODE_API
-ARG NEXT_PUBLIC_MIDGARD_API
-ARG NEXT_PUBLIC_COINGECKO_API
-ARG NEXT_PUBLIC_THORCHAIN_NETWORK
-
-ENV NEXT_PUBLIC_THORNODE_API=${NEXT_PUBLIC_THORNODE_API}
-ENV NEXT_PUBLIC_MIDGARD_API=${NEXT_PUBLIC_MIDGARD_API}
-ENV NEXT_PUBLIC_COINGECKO_API=${NEXT_PUBLIC_COINGECKO_API}
-ENV NEXT_PUBLIC_THORCHAIN_NETWORK=${NEXT_PUBLIC_THORCHAIN_NETWORK}
+FROM node:22-alpine
 
 WORKDIR /app
 
@@ -21,28 +9,19 @@ RUN npm ci
 # Copy source code
 COPY --chown=node:node . .
 
-# Build the app (creates .next/standalone)
-RUN ls -la /app/ || true
-RUN ls -la /app/.next/ || true
-RUN echo "=== DEBUG: Starting npm run build ==="
-RUN echo "NEXT_PUBLIC_THORNODE_API=$NEXT_PUBLIC_THORNODE_API"
-RUN ls -la /app/ || true
+# Set environment variables
+ARG NEXT_PUBLIC_THORNODE_API
+ARG NEXT_PUBLIC_MIDGARD_API
+ARG NEXT_PUBLIC_COINGECKO_API
+ARG NEXT_PUBLIC_THORCHAIN_NETWORK
+
+ENV NEXT_PUBLIC_THORNODE_API=${NEXT_PUBLIC_THORNODE_API}
+ENV NEXT_PUBLIC_MIDGARD_API=${NEXT_PUBLIC_MIDGARD_API}
+ENV NEXT_PUBLIC_COINGECKO_API=${NEXT_PUBLIC_COINGECKO_API}
+ENV NEXT_PUBLIC_THORCHAIN_NETWORK=${NEXT_PUBLIC_THORCHAIN_NETWORK}
+
+# Build the app
 RUN npm run build
-RUN echo "=== DEBUG: Build completed ==="
-RUN ls -la /app/.next/ || echo "ERROR: .next not found!"
-RUN ls -la /app/.next/standalone/ || echo "ERROR: .next/standalone not found!"
-RUN ls -la /app/.next/ || true
-RUN ls -la /app/.next/standalone/ || true
-
-# Stage 2: Production
-FROM node:22-alpine
-
-WORKDIR /app
-
-# Copy standalone build output from Stage 1
-COPY --from=base --chown=node:node /app/.next/standalone ./
-COPY --from=base --chown=node:node /app/.next/static ./.next/static
-COPY --from=base --chown=node:node /app/public ./public
 
 # Switch to non-root user for security
 USER node
@@ -51,5 +30,5 @@ EXPOSE 3000
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Run the standalone server
-CMD ["node", "server.js"]
+# Run the Next.js server
+CMD ["npm", "start"]
