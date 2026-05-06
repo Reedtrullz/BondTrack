@@ -30,6 +30,29 @@ The proxies:
 
 The proxy tries liquify first (`gateway.liquify.com`), then falls back to `midgard.thorchain.network`.
 
+### THORNode proxy path normalisation (do not remove)
+
+`fetchThornode()` in `client.ts` calls paths like `/thorchain/nodes`, so the
+browser actually requests `/api/thorchain/thorchain/nodes`. The proxy:
+
+1. Strips a leading `thorchain/` segment from the request path before
+   applying the allowlist regex (`/^nodes$/`, `/^network$/`, …).
+2. Appends what's left to `THORNODE_API_URL`, which already ends in
+   `/thorchain` (set in Ansible).
+
+If you remove the leading-segment strip, every request 403s with
+`Proxy path is not allowed`, three consecutive failures flip
+`useApiHealth` to `down`, and the user sees the
+"THORNode API is temporarily unavailable" banner. Don't.
+
+### Liquify endpoint paths
+
+- THORNode: `gateway.liquify.com/chain/thorchain_api/thorchain` (note the
+  trailing `/thorchain` — that's why the normalisation step matters).
+- Midgard: `gateway.liquify.com/chain/thorchain_midgard`.
+- The legacy `gateway.liquify.com/chain/thorchain_mainnet` path returns
+  HTTP 500 and is **not** a valid endpoint. Don't bake it into build args.
+
 ## CONVENTIONS
 
 **Type pattern**: Every endpoint function returns a typed `Promise<T>`. Define the `Raw` interface in the same file.

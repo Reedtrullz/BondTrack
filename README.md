@@ -132,7 +132,7 @@ ansible-playbook -i inventory/hosts.yml ansible-playbook.yml
 - **Health Check**: Waits for `/api/health` to return `{"status":"healthy"}`
 - **Rollback**: Automatically reverts to previous image on health check failure
 - **Vault**: Sensitive vars (COINAPI_KEY, Discord tokens) stored in `group_vars/vps/vault.yml` (encrypted)
-- **Inebotten**: Separate playbook for Discord bot deployment (`inebotten-playbook.yml`)
+- **Inebotten**: Separate playbook for Discord bot deployment (`inebotten-playbook.yml`). Delegates to docker compose at `/opt/apps/inebotten-discord` on the VPS; secrets live in `.env` there.
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for full details.
 
@@ -164,10 +164,14 @@ src/
 
 External Midgard/THORNode APIs block browser requests due to CORS. The app uses server-side proxy routes:
 
-- `/api/midgard/*` → proxies to `gateway.liquify.com` (falls back to `midgard.thorchain.network`)
-- `/api/thorchain/*` → proxies to `gateway.liquify.com/chain/thorchain_api`
+- `/api/midgard/*` → proxies to `gateway.liquify.com/chain/thorchain_midgard` (falls back to `midgard.thorchain.network`)
+- `/api/thorchain/*` → proxies to `gateway.liquify.com/chain/thorchain_api/thorchain`
 
 All API calls from frontend go through these proxies, bypassing browser CORS restrictions.
+
+> The legacy `gateway.liquify.com/chain/thorchain_mainnet` path returns HTTP 500 and is not a valid endpoint. Use `thorchain_api` and `thorchain_midgard`.
+
+> The `/api/thorchain/*` proxy normalises a leading `thorchain/` segment in the request path before applying its allowlist (see `src/app/api/thorchain/[...path]/route.ts`). The frontend client adds that prefix, and `THORNODE_API_URL` already ends in `/thorchain` — don't remove the normalisation.
 
 ## Supported Wallets
 

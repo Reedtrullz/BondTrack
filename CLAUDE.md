@@ -116,6 +116,10 @@ Version priority: `process.env.VERSION` → `process.env.npm_package_version` �
 - Don't introduce `Dockerfile.v2`, `Dockerfile-simple`, etc. as cache-bust hacks. If Docker cache misbehaves, prefer `--no-cache` on the action or a fresh GHA cache key.
 - Don't switch the base image to Alpine (musl breaks `lightningcss` and `@tailwindcss/oxide` prebuilts).
 - Don't commit secrets, `dogfood-output/`, or scratch `.md` reports to root — use `docs/archive/`.
+- Don't bake stale `gateway.liquify.com/chain/thorchain_mainnet` URLs as build args. The correct paths are `thorchain_api` (THORNode) and `thorchain_midgard` (Midgard) — they're already set in `ci.yml` and `ansible-playbook.yml`. The `_mainnet` path returns HTTP 500.
+- Don't change the `/api/thorchain/[...path]` proxy's leading-segment normalisation. The frontend client calls `fetchThornode('/thorchain/nodes')` so the browser hits `/api/thorchain/thorchain/nodes`; the proxy strips the duplicate `thorchain/` segment before its allowlist (`/^nodes$/`, `/^network$/`, …) runs, and `THORNODE_API_URL` already ends in `/thorchain`. Removing that step makes every request 403 and the "THORNode API is temporarily unavailable" banner reappears.
+- Don't drop `force_source: yes` from the docker_image tasks in either playbook — without it, Ansible silently skips the pull when `:latest` is already cached locally and you'll keep deploying yesterday's image.
+- Don't bring up the bundled compose `caddy` service for Inebotten. The host's system Caddy already terminates TLS for `bond.thorchain.no` and `bot.reidar.tech`; another Caddy on ports 80/443 will conflict. The Inebotten playbook drops a `docker-compose.override.yml` that disables it.
 
 ## Historical reports
 See `docs/archive/` for prior audits (LP, UI/UX, etc.) and `learnings.md`.

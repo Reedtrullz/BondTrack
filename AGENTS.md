@@ -18,6 +18,20 @@ Human-friendly intro is in `README.md`. Deep AI context is in `CLAUDE.md`.
 6. **Standalone output.** `next.config.ts` sets `output: 'standalone'`; the
    Dockerfile copies `.next/standalone`, `.next/static`, `public`. Don't
    regress to a single-stage build that ships `node_modules` + source.
+7. **Liquify upstream paths.** THORNode = `thorchain_api`, Midgard =
+   `thorchain_midgard`. The legacy `thorchain_mainnet` path returns HTTP 500
+   and is not a valid endpoint. These are baked into `ci.yml` build args.
+8. **Proxy path normalisation.** The `/api/thorchain` proxy strips a leading
+   `thorchain/` segment before its allowlist regex matches — the frontend
+   calls `fetchThornode('/thorchain/nodes')` and `THORNODE_API_URL` already
+   ends in `/thorchain`. Don't simplify it away.
+9. **Always `force_source: yes` on docker_image pull tasks.** Without it,
+   Ansible reports "ok" but skips the pull when `:latest` already exists
+   locally — every deploy after the first runs stale code.
+10. **Inebotten uses host Caddy, not its bundled one.** The playbook drops
+    a `docker-compose.override.yml` that maps the bot to `127.0.0.1:8081`
+    and disables compose's `caddy` service. The host's system Caddy
+    handles TLS for `bot.reidar.tech` and `bond.thorchain.no`.
 
 ## Required commands before pushing
 ```bash
@@ -42,9 +56,19 @@ npm run build      # mirrors CI's "build" job
 ## Deployment
 Don't deploy from the VPS. Run from your machine:
 ```bash
-ansible-playbook -i inventory/hosts.yml ansible-playbook.yml
+ansible-playbook -i inventory/hosts.yml ansible-playbook.yml \
+  --vault-password-file ~/.vault_pass.txt
 ```
 The CI publishes the image; Ansible just pulls and swaps containers.
+
+For the Inebotten Discord bot:
+```bash
+ansible-playbook -i inventory/hosts.yml inebotten-playbook.yml \
+  --vault-password-file ~/.vault_pass.txt
+```
+That playbook delegates to docker compose at
+`/opt/apps/inebotten-discord` on the VPS. Secrets live in the `.env`
+file there, not in Ansible vault. See `DEPLOYMENT.md` for details.
 
 ## Where things live
 | Concern | Path |

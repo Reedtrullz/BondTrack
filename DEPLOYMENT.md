@@ -87,10 +87,35 @@ docker run -d --name heimdall --restart unless-stopped \
 
 ## Inebotten (Discord bot, sibling project)
 
+Inebotten lives at `/opt/apps/inebotten-discord` on the VPS, with a `.env`
+file already in place and its own `docker-compose.yml`. The playbook
+delegates to compose rather than recreating the container by hand.
+
 ```bash
 ansible-playbook -i inventory/hosts.yml inebotten-playbook.yml \
-  -e "inebotten_discord_token=$INEBOTTEN_DISCORD_TOKEN" \
-  -e "inebotten_openrouter_api_key=$INEBOTTEN_OPENROUTER_API_KEY"
+  --vault-password-file ~/.vault_pass.txt
+```
+
+What the playbook does:
+1. Removes any leftover standalone `inebotten` container from older deploys.
+2. `git pull` the source (idempotent; ignored if origin is unreachable so
+   an existing checkout still works).
+3. Writes a `docker-compose.override.yml` that:
+   - remaps the bot's web console to `127.0.0.1:8081`, so the host's
+     system Caddy can reverse-proxy `bot.reidar.tech` → `localhost:8081`.
+   - disables the bundled compose `caddy` service (the host Caddy already
+     owns ports 80/443 for `bond.thorchain.no`; bringing up two would conflict).
+4. `docker compose up --build` for the `inebotten` service only.
+5. Polls `http://127.0.0.1:8081/health` and reports.
+
+Secrets live in `/opt/apps/inebotten-discord/.env` on the VPS, not in
+the Heimdall vault. Edit there if you rotate tokens.
+
+Verify:
+```bash
+ssh deploy@198.23.137.16 "docker ps --filter name=inebotten-bot"
+ssh deploy@198.23.137.16 "docker logs --tail 20 inebotten-bot"
+curl -s -o /dev/null -w "%{http_code}\n" https://bot.reidar.tech/
 ```
 
 ## Secrets
@@ -124,3 +149,18 @@ ansible -i inventory/hosts.yml vps -m ping
 - Ensure new dependencies' linux-x64 prebuilts are added to the
   `npm install --no-save` line in `Dockerfile`.
 - Don't switch to Alpine. See `CLAUDE.md` "Don't" section.
+
+**Deploy reports "ok" but the live site still runs old code:**
+- `community.docker.docker_image` with `source: pull` is idempotent by
+  image *name*. If `:latest` already exists locally, the pull is skipped
+  silently. The Heimdall and Inebotten playbooks pin `force_source: yes`
+  for that reason — keep it.
+
+**"THORNode API is temporarily unavailable" banner appears:**
+- The browser hits `/api/thorchain/thorchain/nodes` (the client prepends
+  a `/thorchain` path). The proxy at
+  `src/app/api/thorchain/[...path]/route.ts` strips a leading
+  `thorchain/` segment before applying its allowlist regex. If you see
+  HTTP 403 `Proxy path is not allowed`, that normalisation step regressed.
+- The proxy's `THORNODE_API_URL` already ends in `/thorchain`. Don't
+  duplicate the segment in env values.

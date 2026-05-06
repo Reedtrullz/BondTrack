@@ -10,7 +10,7 @@ Reusable UI primitives and cross-cutting components used across dashboard pages.
 |-----------|---------|-----------|
 | `dashboard-card.tsx` | Consistent card wrapper with optional title, icon, highlight border | `title`, `icon`, `highlight` (`emerald`\| `amber`\| `red`\| `cyan`) |
 | `export-button.tsx` | Bond position CSV export trigger | `bondPositions` |
-| `api-health-banner.tsx` | Degraded API state banner (502/timeout indicators) | — |
+| `api-health-banner.tsx` | Shows "X API is temporarily unavailable" when `useApiHealth` flips Midgard or THORNode to `degraded`/`down` (≥3 consecutive failed probes against `getHealth()` and `getAllNodes()`). If this banner reappears, the proxy routes — not the upstream APIs — are usually the culprit; see `src/lib/api/AGENTS.md` for the THORNode `thorchain/`-prefix normalisation rule. | — |
 | `address-input.tsx` | THORChain address input with validation | `value`, `onChange`, `onSubmit` |
 | `status-badge.tsx` | Color-coded status pill (Active/Standby/Ready/Disabled/Jailed) | `status`, `isJailed?` |
 | `badge.tsx` | Generic numeric/status badge | `children`, `variant` |
