@@ -46,11 +46,15 @@ jobs:
 
       - name: Build and push
         uses: docker/build-push-action@v5
-          build-args:
-            - NEXT_PUBLIC_THORNODE_API=${{ env.NEXT_PUBLIC_THORNODE_API }}
-            - NEXT_PUBLIC_MIDGARD_API=${{ env.NEXT_PUBLIC_MIDGARD_API }}
-            - NEXT_PUBLIC_COINGECKO_API=${{ env.NEXT_PUBLIC_COINGECKO_API }}
-            - NEXT_PUBLIC_THORCHAIN_NETWORK=${{ env.NEXT_PUBLIC_THORCHAIN_NETWORK }}
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            NEXT_PUBLIC_THORNODE_API=${{ env.NEXT_PUBLIC_THORNODE_API }}
+            NEXT_PUBLIC_MIDGARD_API=${{ env.NEXT_PUBLIC_MIDGARD_API }}
+            NEXT_PUBLIC_COINGECKO_API=${{ env.NEXT_PUBLIC_COINGECKO_API }}
+            NEXT_PUBLIC_THORCHAIN_NETWORK=${{ env.NEXT_PUBLIC_THORCHAIN_NETWORK }}
         with:
           context: .
           push: true
