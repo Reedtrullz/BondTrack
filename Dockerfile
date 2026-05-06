@@ -24,7 +24,13 @@ COPY --chown=node:node . .
 # Build the app (creates .next/standalone)
 RUN ls -la /app/ || true
 RUN ls -la /app/.next/ || true
+RUN echo "=== DEBUG: Starting npm run build ==="
+RUN echo "NEXT_PUBLIC_THORNODE_API=$NEXT_PUBLIC_THORNODE_API"
+RUN ls -la /app/ || true
 RUN npm run build
+RUN echo "=== DEBUG: Build completed ==="
+RUN ls -la /app/.next/ || echo "ERROR: .next not found!"
+RUN ls -la /app/.next/standalone/ || echo "ERROR: .next/standalone not found!"
 RUN ls -la /app/.next/ || true
 RUN ls -la /app/.next/standalone/ || true
 
