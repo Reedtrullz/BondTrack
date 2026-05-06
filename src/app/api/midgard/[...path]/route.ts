@@ -28,6 +28,7 @@ function corsHeaders(request: NextRequest): HeadersInit {
   const origin = request.headers.get('origin');
   const allowedOrigins = new Set([
     'https://thorchain.no',
+    'https://bond.thorchain.no',
     'https://dev.thorchain.no',
     'http://localhost:3000',
     'http://localhost:3001',

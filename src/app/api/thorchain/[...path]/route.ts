@@ -57,13 +57,19 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await params;
-  const decodedPath = path.join('/');
-  const pathStr = path.map((part) => encodeURIComponent(part)).join('/');
+
+  // Tolerate clients that include a leading 'thorchain/' segment.
+  // THORNODE_API_URL already ends in '/thorchain', so we strip one if present
+  // to avoid building a double-prefixed upstream URL.
+  const normalizedPath = path[0] === 'thorchain' ? path.slice(1) : path;
+
+  const decodedPath = normalizedPath.join('/');
+  const pathStr = normalizedPath.map((part) => encodeURIComponent(part)).join('/');
   const searchParams = request.nextUrl.search;
 
   if (!isAllowedPath(decodedPath)) {
     return NextResponse.json(
-      { error: 'Proxy path is not allowed' },
+      { error: 'Proxy path is not allowed', path: decodedPath },
       { status: 403, headers: corsHeaders(request) }
     );
   }
