@@ -36,13 +36,13 @@ async function coinApiFetch<T>(path: string): Promise<T> {
   return response.json();
 }
 
-export async function getCurrentRunePrice(): Promise<number> {
+export async function getCurrentRunePrice(): Promise<number | null> {
   try {
     const data = await coinApiFetch<CoinApiExchangeRate>('/exchangerate/RUNE/USD');
     return data.rate;
   } catch (error) {
     console.error('CoinAPI fetch error:', error);
-    return 0;
+    return null;
   }
 }
 

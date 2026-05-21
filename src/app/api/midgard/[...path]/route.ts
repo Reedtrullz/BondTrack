@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 
 const MIDGARD_ENDPOINTS = [
   process.env.MIDGARD_API_URL || 'https://gateway.liquify.com/chain/thorchain_midgard',
@@ -19,6 +20,9 @@ const ALLOWED_PATHS = [
 ];
 
 export const dynamic = 'force-dynamic';
+
+const MAX_REQUESTS = 300;
+const WINDOW_MS = 60 * 1000;
 
 function isAllowedPath(path: string): boolean {
   return ALLOWED_PATHS.some((pattern) => pattern.test(path));
@@ -52,6 +56,22 @@ export async function GET(
   const pathStr = path.map((part) => encodeURIComponent(part)).join('/');
   const decodedPath = path.join('/');
   const searchParams = request.nextUrl.search;
+
+  // Rate limit
+  const clientIp = getClientIp(request);
+  const rateLimit = checkRateLimit(`midgard:${clientIp}`, MAX_REQUESTS, WINDOW_MS);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded' },
+      { status: 429, headers: {
+        ...corsHeaders(request),
+        'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
+        'X-RateLimit-Limit': String(MAX_REQUESTS),
+        'X-RateLimit-Remaining': '0',
+        'X-RateLimit-Reset': String(Math.ceil(rateLimit.resetAt / 1000)),
+      }}
+    );
+  }
 
   if (!isAllowedPath(decodedPath)) {
     return NextResponse.json(
@@ -92,8 +112,7 @@ export async function GET(
         headers: corsHeaders(request),
       });
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      errors.push(`${baseUrl}: ${errMsg}`);
+      errors.push('Upstream request failed');
       continue;
     }
   }

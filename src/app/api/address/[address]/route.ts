@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBondDetails, getActions } from '@/lib/api/midgard';
+import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 
 // Increase default limit to get more history for tax calculations
 const DEFAULT_ACTION_LIMIT = 500;
+
+const MAX_REQUESTS = 30;
+const WINDOW_MS = 60 * 1000;
+
+function corsHeaders(_request?: NextRequest): HeadersInit {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Accept',
+  };
+}
 
 export async function GET(
   request: NextRequest,
@@ -15,12 +27,28 @@ export async function GET(
     const limit = parseInt(searchParams.get('limit') || String(DEFAULT_ACTION_LIMIT), 10);
 
     if (!address) {
-      return NextResponse.json({ error: 'Address parameter is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Address parameter is required' }, { status: 400, headers: corsHeaders(request) });
+    }
+
+    // Rate limit
+    const clientIp = getClientIp(request);
+    const rateLimit = checkRateLimit(`address:${clientIp}`, MAX_REQUESTS, WINDOW_MS);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded' },
+        { status: 429, headers: {
+          ...corsHeaders(request),
+          'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
+          'X-RateLimit-Limit': String(MAX_REQUESTS),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(Math.ceil(rateLimit.resetAt / 1000)),
+        }}
+      );
     }
 
     // Validate THORChain address format
     if (!/^thor1[ac-hj-np-z02-9]{38,}$/.test(address)) {
-      return NextResponse.json({ error: 'Invalid THORChain address format' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid THORChain address format' }, { status: 400, headers: corsHeaders(request) });
     }
 
     const [bondDetails, actions] = await Promise.all([
@@ -60,9 +88,9 @@ export async function GET(
       totalBond: bondDetails.totalBonded,
       nodeCount: bondDetails.nodes.length,
       actionCount: parsedActions.length
-    });
+    }, { headers: corsHeaders(request) });
   } catch (error) {
     console.error('Error fetching address data:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500, headers: corsHeaders(request) });
   }
 }

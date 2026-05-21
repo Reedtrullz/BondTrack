@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 
 const THORNODE_ENDPOINTS = [
   process.env.THORNODE_API_URL || 'https://gateway.liquify.com/chain/thorchain_api',
@@ -11,6 +12,9 @@ const ALLOWED_PATHS = [
   /^thorchain\/supply$/,
   /^thorchain\/pool\/[A-Za-z0-9._:-]+\/liquidity_provider\/[A-Za-z0-9._:-]+$/,
 ];
+
+const MAX_REQUESTS = 300;
+const WINDOW_MS = 60 * 1000;
 
 export const dynamic = 'force-dynamic';
 
@@ -47,6 +51,22 @@ export async function GET(
   const pathStr = path.map((part) => encodeURIComponent(part)).join('/');
   const searchParams = request.nextUrl.search;
 
+  // Rate limit
+  const clientIp = getClientIp(request);
+  const rateLimit = checkRateLimit(`thorchain:${clientIp}`, MAX_REQUESTS, WINDOW_MS);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded' },
+      { status: 429, headers: {
+        ...corsHeaders(request),
+        'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
+        'X-RateLimit-Limit': String(MAX_REQUESTS),
+        'X-RateLimit-Remaining': '0',
+        'X-RateLimit-Reset': String(Math.ceil(rateLimit.resetAt / 1000)),
+      }}
+    );
+  }
+
   if (!isAllowedPath(decodedPath)) {
     return NextResponse.json(
       { error: 'Proxy path is not allowed' },
@@ -81,7 +101,7 @@ export async function GET(
         headers: corsHeaders(request),
       });
     } catch (error) {
-      errors.push(error instanceof Error ? error.message : String(error));
+      errors.push('Upstream request failed');
       continue;
     }
   }

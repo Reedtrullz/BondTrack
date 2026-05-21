@@ -12,10 +12,10 @@ describe('CoinAPI Security', () => {
     process.env.COINAPI_KEY = originalEnv;
   });
 
-  it('should return 0 when COINAPI_KEY is not configured (graceful fallback)', async () => {
-    // After fix: no hardcoded key, so coinApiFetch throws, getCurrentRunePrice catches and returns 0
+  it('should return null when COINAPI_KEY is not configured (graceful fallback)', async () => {
+    // After fix: no hardcoded key, so coinApiFetch throws, getCurrentRunePrice catches and returns null
     const price = await getCurrentRunePrice();
-    expect(price).toBe(0);
+    expect(price).toBeNull();
   });
 
   it('should not have a hardcoded fallback API key in source', () => {

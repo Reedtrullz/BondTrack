@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRunePriceAtDate, getRunePriceRange } from '@/lib/api/coinapi';
-import { checkRateLimit } from '@/lib/api/rate-limit';
+import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,18 +16,24 @@ function parseIsoDate(value: string): Date | null {
   return Number.isFinite(date.getTime()) ? date : null;
 }
 
-function getClientIp(request: NextRequest): string {
-  // Try various headers for IP
-  const forwardedFor = request.headers.get('x-forwarded-for');
-  if (forwardedFor) {
-    // Get the first IP in the list
-    return forwardedFor.split(',')[0].trim();
-  }
-  const realIp = request.headers.get('x-real-ip');
-  if (realIp) return realIp;
-  
-  // Fallback to a default (shouldn't happen in production with proper proxy setup)
-  return 'unknown';
+function corsHeaders(request: NextRequest): HeadersInit {
+  const origin = request.headers.get('origin');
+  const allowedOrigins = new Set([
+    'https://thorchain.no',
+    'https://dev.thorchain.no',
+    'http://localhost:3000',
+    'http://localhost:3001',
+  ]);
+
+  if (process.env.NEXT_PUBLIC_APP_URL) allowedOrigins.add(process.env.NEXT_PUBLIC_APP_URL);
+  if (process.env.VERCEL_URL) allowedOrigins.add(`https://${process.env.VERCEL_URL}`);
+
+  return {
+    'Access-Control-Allow-Origin': origin && allowedOrigins.has(origin) ? origin : 'https://thorchain.no',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Accept',
+    'Vary': 'Origin',
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -60,22 +66,23 @@ export async function GET(request: NextRequest) {
   const timeEnd = searchParams.get('timeEnd');
 
   if (!process.env.COINAPI_KEY) {
-    return NextResponse.json({ error: 'CoinAPI is not configured' }, { status: 503 });
+    return NextResponse.json({ error: 'CoinAPI is not configured' }, { status: 503, headers: corsHeaders(request) });
   }
 
   if (date) {
     const targetDate = parseIsoDate(date);
     if (!targetDate) {
-      return NextResponse.json({ error: 'Invalid date' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid date' }, { status: 400, headers: corsHeaders(request) });
     }
     const price = await getRunePriceAtDate(targetDate);
     if (price === null) {
-      return NextResponse.json({ error: 'Price not available' }, { status: 404 });
+      return NextResponse.json({ error: 'Price not available' }, { status: 404, headers: corsHeaders(request) });
     }
     return NextResponse.json(
       { price, date: targetDate.toISOString().slice(0, 10) },
       { 
         headers: { 
+          ...corsHeaders(request),
           'Cache-Control': 's-maxage=86400, stale-while-revalidate=604800',
           'X-RateLimit-Limit': String(RATE_LIMIT_REQUESTS),
           'X-RateLimit-Remaining': String(rateLimit.remaining),
@@ -89,11 +96,11 @@ export async function GET(request: NextRequest) {
     const start = parseIsoDate(timeStart);
     const end = parseIsoDate(timeEnd);
     if (!start || !end) {
-      return NextResponse.json({ error: 'Invalid timeStart or timeEnd' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid timeStart or timeEnd' }, { status: 400, headers: corsHeaders(request) });
     }
     const rangeMs = end.getTime() - start.getTime();
     if (rangeMs <= 0 || rangeMs > MAX_RANGE_MS) {
-      return NextResponse.json({ error: 'Date range must be positive and no longer than 370 days' }, { status: 400 });
+      return NextResponse.json({ error: 'Date range must be positive and no longer than 370 days' }, { status: 400, headers: corsHeaders(request) });
     }
 
     const data = await getRunePriceRange(start.toISOString(), end.toISOString());
@@ -101,6 +108,7 @@ export async function GET(request: NextRequest) {
       { intervals: data },
       { 
         headers: { 
+          ...corsHeaders(request),
           'Cache-Control': 's-maxage=86400, stale-while-revalidate=604800',
           'X-RateLimit-Limit': String(RATE_LIMIT_REQUESTS),
           'X-RateLimit-Remaining': String(rateLimit.remaining),
@@ -110,5 +118,5 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ error: 'Missing date parameter' }, { status: 400 });
+  return NextResponse.json({ error: 'Missing date parameter' }, { status: 400, headers: corsHeaders(request) });
 }

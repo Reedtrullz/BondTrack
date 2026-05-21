@@ -1,9 +1,14 @@
+import { NextRequest } from 'next/server';
+
 interface RateLimitEntry {
   count: number;
   resetAt: number;
 }
 
 const rateLimitStore = new Map<string, RateLimitEntry>();
+
+// Prevent unbounded memory growth — cap the store at 10000 entries
+const MAX_ENTRIES = 10000;
 
 // Clean up expired entries every 10 minutes
 setInterval(() => {
@@ -21,6 +26,14 @@ export interface RateLimitResult {
   resetAt: number;
 }
 
+export function getClientIp(request: NextRequest): string {
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  if (forwardedFor) return forwardedFor.split(',')[0].trim();
+  const realIp = request.headers.get('x-real-ip');
+  if (realIp) return realIp;
+  return 'unknown';
+}
+
 export function checkRateLimit(
   identifier: string,
   maxRequests: number,
@@ -30,6 +43,14 @@ export function checkRateLimit(
   const entry = rateLimitStore.get(identifier);
 
   if (!entry || entry.resetAt < now) {
+    // Enforce store size limit before adding new entries
+    if (!entry && rateLimitStore.size >= MAX_ENTRIES) {
+      return {
+        allowed: false,
+        remaining: 0,
+        resetAt: now + windowMs,
+      };
+    }
     // First request or window expired
     const resetAt = now + windowMs;
     rateLimitStore.set(identifier, { count: 1, resetAt });
