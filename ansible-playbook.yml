@@ -1,0 +1,61 @@
+---
+- name: Deploy Heimdall
+  hosts: all
+  become: true
+  vars:
+    app_dir: /opt/heimdall
+    repo_url: https://github.com/Reedtrullz/Heimdall.git
+    branch: staging
+
+  tasks:
+    - name: Clone / update Heimdall repo
+      git:
+        repo: '{{ repo_url }}'
+        dest: '{{ app_dir }}'
+        version: '{{ branch }}'
+        force: true
+
+    - name: Build Docker image
+      docker_image:
+        name: heimdall
+        build:
+          path: '{{ app_dir }}'
+        source: build
+        force_source: true
+
+    - name: Deploy container
+      docker_container:
+        name: heimdall
+        image: heimdall
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - '3001:3001'
+        env:
+          NODE_ENV: production
+          PORT: '3001'
+          HOSTNAME: 0.0.0.0
+          NEXT_PUBLIC_THORNODE_API: 'https://gateway.liquify.com/chain/thorchain_api'
+          NEXT_PUBLIC_MIDGARD_API: 'https://gateway.liquify.com/chain/thorchain_midgard'
+          NEXT_PUBLIC_THORCHAIN_RPC: 'https://rpc.thorchain.network'
+          NEXT_PUBLIC_MIDGARD_FALLBACK: 'https://midgard.thorchain.network'
+          NEXT_PUBLIC_THORCHAIN_NETWORK: mainnet
+          NEXT_PUBLIC_COINGECKO_API: 'https://api.coingecko.com'
+          VERSION: dev
+          THORNODE_API_URL: 'https://gateway.liquify.com/chain/thorchain_api'
+          MIDGARD_API_URL: 'https://gateway.liquify.com/chain/thorchain_midgard'
+          MIDGARD_FALLBACK_URL: 'https://midgard.thorchain.network'
+
+    - name: Deploy Caddyfile
+      blockinfile:
+        path: /etc/caddy/Caddyfile
+        marker: '# {mark} ANSIBLE MANAGED — Heimdall'
+        block: |
+          bond.thorchain.no {
+            reverse_proxy localhost:3001
+          }
+        create: true
+
+    - name: Reload Caddy
+      shell: caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || systemctl reload caddy
+      ignore_errors: true

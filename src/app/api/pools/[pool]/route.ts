@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getEarningsHistory } from '@/lib/api/midgard';
 import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 
+export const dynamic = 'force-dynamic';
+
 const MAX_REQUESTS = 30;
 const WINDOW_MS = 60 * 1000;
 

@@ -599,10 +599,6 @@ export async function getMemberDetails(address: string): Promise<MemberDetailsRa
   return fetchMidgard<MemberDetailsRaw>(`/v2/member/${encodeURIComponent(address)}`);
 }
 
-export interface HealthRaw {
-  lastThorNode: { height: number };
-}
-
 export async function getHealth(): Promise<HealthRaw> {
   return fetchMidgard<HealthRaw>('/v2/health');
 }

@@ -75,7 +75,7 @@ export default function NotificationPreferences() {
     try {
       // Mock save to API
       await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Saved notification settings:', { settings, email, telegramChatId });
+      if (process.env.NODE_ENV !== 'production') console.log('Saved notification settings:', { settings, email, telegramChatId });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {

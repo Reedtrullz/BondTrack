@@ -3,7 +3,7 @@ import { Exo_2, Open_Sans } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
-console.log('HEIMDALL LAYOUT V2 - DEPLOYED');
+if (process.env.NODE_ENV !== 'production') console.log('HEIMDALL LAYOUT V2 - DEPLOYED');
 
 const exo2 = Exo_2({
   variable: "--font-exo-2",

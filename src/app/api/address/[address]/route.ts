@@ -5,6 +5,8 @@ import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 // Increase default limit to get more history for tax calculations
 const DEFAULT_ACTION_LIMIT = 500;
 
+export const dynamic = 'force-dynamic';
+
 const MAX_REQUESTS = 30;
 const WINDOW_MS = 60 * 1000;
 

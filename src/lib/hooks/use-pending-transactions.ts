@@ -42,11 +42,8 @@ function savePendingTxs(pendingTxs: PendingTransaction[]): void {
 
 export function usePendingTransactions() {
   const [pendingTxs, setPendingTxs] = useState<PendingTransaction[]>(getInitialPendingTxs);
-  const [isLoaded] = useState(true);
 
   useEffect(() => {
-    if (!isLoaded) return;
-
     const interval = setInterval(() => {
       setPendingTxs(current => {
         const validTxs = current.filter(tx => {
@@ -61,13 +58,13 @@ export function usePendingTransactions() {
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [isLoaded]);
+  }, []);
 
   useEffect(() => {
-    if (isLoaded && pendingTxs.length > 0) {
+    if (pendingTxs.length > 0) {
       savePendingTxs(pendingTxs);
     }
-  }, [pendingTxs, isLoaded]);
+  }, [pendingTxs]);
 
   const addPendingTx = useCallback((tx: Omit<PendingTransaction, 'timestamp' | 'status'>) => {
     const newTx: PendingTransaction = {
@@ -105,7 +102,6 @@ export function usePendingTransactions() {
 
   return {
     pendingTxs,
-    isLoaded,
     addPendingTx,
     updateTxStatus,
     removePendingTx,

@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  heimdall:
+    build: .
+    ports:
+      - '3001:3001'
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOSTNAME=0.0.0.0
+      - NEXT_PUBLIC_THORNODE_API=https://gateway.liquify.com/chain/thorchain_api
+      - NEXT_PUBLIC_MIDGARD_API=https://gateway.liquify.com/chain/thorchain_midgard
+      - NEXT_PUBLIC_THORCHAIN_RPC=https://rpc.thorchain.network
+      - NEXT_PUBLIC_MIDGARD_FALLBACK=https://midgard.thorchain.network
+      - NEXT_PUBLIC_THORCHAIN_NETWORK=mainnet
+      - NEXT_PUBLIC_COINGECKO_API=https://api.coingecko.com
+      - VERSION=dev
+      - THORNODE_API_URL=https://gateway.liquify.com/chain/thorchain_api
+      - MIDGARD_API_URL=https://gateway.liquify.com/chain/thorchain_midgard
+      - MIDGARD_FALLBACK_URL=https://midgard.thorchain.network
+    restart: unless-stopped
