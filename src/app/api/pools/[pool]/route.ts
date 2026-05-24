@@ -7,11 +7,23 @@ export const dynamic = 'force-dynamic';
 const MAX_REQUESTS = 30;
 const WINDOW_MS = 60 * 1000;
 
-function corsHeaders(_request?: NextRequest): HeadersInit {
+function corsHeaders(request: NextRequest): HeadersInit {
+  const origin = request.headers.get('origin');
+  const allowedOrigins = new Set([
+    'https://thorchain.no',
+    'https://dev.thorchain.no',
+    'http://localhost:3000',
+    'http://localhost:3001',
+  ]);
+
+  if (process.env.NEXT_PUBLIC_APP_URL) allowedOrigins.add(process.env.NEXT_PUBLIC_APP_URL);
+  if (process.env.VERCEL_URL) allowedOrigins.add(`https://${process.env.VERCEL_URL}`);
+
   return {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': origin && allowedOrigins.has(origin) ? origin : 'https://thorchain.no',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Accept',
+    'Vary': 'Origin',
   };
 }
 

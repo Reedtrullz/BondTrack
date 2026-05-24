@@ -9,11 +9,23 @@ const THOR_ADDRESS_PATTERN = /^thor1[0-9a-z]{38,59}$/;
 const MAX_REQUESTS = 10;
 const WINDOW_MS = 60 * 1000;
 
-function corsHeaders(_request?: NextRequest): HeadersInit {
+function corsHeaders(request: NextRequest): HeadersInit {
+  const origin = request.headers.get('origin');
+  const allowedOrigins = new Set([
+    'https://thorchain.no',
+    'https://dev.thorchain.no',
+    'http://localhost:3000',
+    'http://localhost:3001',
+  ]);
+
+  if (process.env.NEXT_PUBLIC_APP_URL) allowedOrigins.add(process.env.NEXT_PUBLIC_APP_URL);
+  if (process.env.VERCEL_URL) allowedOrigins.add(`https://${process.env.VERCEL_URL}`);
+
   return {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': origin && allowedOrigins.has(origin) ? origin : 'https://thorchain.no',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Accept',
+    'Vary': 'Origin',
   };
 }
 
@@ -71,8 +83,15 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error';
-    const status = message.includes('date') || message.includes('Date') || message.includes('YYYY-MM-DD') ? 400 : 500;
-    return NextResponse.json({ error: message }, { status, headers: corsHeaders(request) });
+    // Only surface known validation errors; generic message for everything else
+    const message = error instanceof Error ? error.message : '';
+    const isValidationError =
+      message.includes('Dates must use YYYY-MM-DD format') ||
+      message.includes('Invalid date range') ||
+      message.includes('Start date must be before');
+    return NextResponse.json(
+      { error: isValidationError ? message : 'Internal server error' },
+      { status: isValidationError ? 400 : 500, headers: corsHeaders(request) }
+    );
   }
 }
