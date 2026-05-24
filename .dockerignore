@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+*.md
+.env
+.env.*
+!.env.example
+coverage
+playwright-report
+test-results
+e2e
+docs
+.DS_Store
+*.log
+npm-debug.log*

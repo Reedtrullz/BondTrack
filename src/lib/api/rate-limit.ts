@@ -26,11 +26,33 @@ export interface RateLimitResult {
   resetAt: number;
 }
 
+// Simple IP validation — rejects obviously spoofed values
+function isValidIp(value: string): boolean {
+  // IPv4: 0.0.0.0 - 255.255.255.255
+  // IPv6: allow hex/colon patterns
+  return /^[\d.]+$/.test(value) || /^[0-9a-fA-F:.]+$/.test(value);
+}
+
 export function getClientIp(request: NextRequest): string {
+  // Prefer Vercel's trusted header in production
+  const vercelIp = request.headers.get('x-vercel-forwarded-for');
+  if (vercelIp) {
+    const first = vercelIp.split(',')[0].trim();
+    if (isValidIp(first)) return first;
+  }
+
   const forwardedFor = request.headers.get('x-forwarded-for');
-  if (forwardedFor) return forwardedFor.split(',')[0].trim();
+  if (forwardedFor) {
+    const first = forwardedFor.split(',')[0].trim();
+    if (isValidIp(first)) return first;
+  }
+
   const realIp = request.headers.get('x-real-ip');
-  if (realIp) return realIp;
+  if (realIp && isValidIp(realIp)) return realIp;
+
+  const cfIp = request.headers.get('cf-connecting-ip');
+  if (cfIp && isValidIp(cfIp)) return cfIp;
+
   return 'unknown';
 }
 
