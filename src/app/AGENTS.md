@@ -46,6 +46,8 @@ src/app/
 
 **API routes**: All proxies use `export const dynamic = 'force-dynamic'`. Forward to external APIs with CORS headers. Custom endpoints (address, pools) aggregate Midgard data server-side.
 
+**Health endpoint**: `/api/health` returns `{ status, timestamp, version }`. Version comes from `process.env.VERSION` (set by Ansible/Docker) → falls back to `process.env.npm_package_version` → `"unknown"`. Dockerfile passes `VERSION` as ARG/ENV.
+
 **Address persistence**: Unified `BONDTRACK_ADDRESS` localStorage key. Dashboard layout restores last address on load. Old keys (`dashboard-address`, `thornode-watcher-last-address`) are migrated and deleted automatically.
 
 ## ANTI-PATTERNS

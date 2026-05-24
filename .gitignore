@@ -1,6 +1,4 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
+# Dependencies
 /node_modules
 /.pnp
 .pnp.*
@@ -10,41 +8,45 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
+# Test output
 /coverage
-playwright-report/
-test-results/
+/playwright-report
+/test-results
+/.playwright-mcp
 
-# next.js
+# Next.js
 /.next/
 /out/
-
-# production
 /build
 
-# misc
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Env files
+.env
+.env.*
+
+# OS / editor cruft
 .DS_Store
 *.pem
+.vscode/
+.idea/
 
-# debug
+# Debug logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# playwright
-.playwright-mcp/
+# Secrets
+.vault_pass.txt
 
-# temp files
-*.png
+# Dogfood / scratch reports (regenerated locally)
+/dogfood-output
 
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-# trigger redeploy Sun May  3 23:11:25 CEST 2026
+# Sibling project (separate repo at github.com/Reedtrullz/inebotten-discord)
+inebotten-discord/

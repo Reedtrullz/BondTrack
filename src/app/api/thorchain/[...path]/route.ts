@@ -2,15 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 
 const THORNODE_ENDPOINTS = [
-  process.env.THORNODE_API_URL || 'https://gateway.liquify.com/chain/thorchain_api',
+  process.env.THORNODE_API_URL || 'https://gateway.liquify.com/chain/thorchain_api/thorchain',
 ];
 
 const ALLOWED_PATHS = [
-  /^thorchain\/nodes$/,
-  /^thorchain\/node\/[A-Za-z0-9._:-]+$/,
-  /^thorchain\/constants$/,
-  /^thorchain\/supply$/,
-  /^thorchain\/pool\/[A-Za-z0-9._:-]+\/liquidity_provider\/[A-Za-z0-9._:-]+$/,
+  /^nodes$/,
+  /^node\/[A-Za-z0-9._:-]+$/,
+  /^constants$/,
+  /^supply$/,
+  /^queue$/,
+  /^network$/,
+  /^lastblock$/,
+  /^mimir$/,
+  /^version$/,
+  /^pools$/,
+  /^pool\/[A-Za-z0-9._:-]+$/,
+  /^pool\/[A-Za-z0-9._:-]+\/liquidity_provider\/[A-Za-z0-9._:-]+$/,
+  /^balance\/[A-Za-z0-9._:-]+$/,
+  /^tx\/[A-Za-z0-9._:-]+$/,
+  /^actions$/,
+  /^ping$/,
+  /^health$/,
+  /^stakers$/,
 ];
 
 const MAX_REQUESTS = 300;
@@ -26,6 +39,7 @@ function corsHeaders(request: NextRequest): HeadersInit {
   const origin = request.headers.get('origin');
   const allowedOrigins = new Set([
     'https://thorchain.no',
+    'https://bond.thorchain.no',
     'https://dev.thorchain.no',
     'http://localhost:3000',
     'http://localhost:3001',
@@ -47,8 +61,14 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await params;
-  const decodedPath = path.join('/');
-  const pathStr = path.map((part) => encodeURIComponent(part)).join('/');
+
+  // Tolerate clients that include a leading 'thorchain/' segment.
+  // THORNODE_API_URL already ends in '/thorchain', so we strip one if present
+  // to avoid building a double-prefixed upstream URL.
+  const normalizedPath = path[0] === 'thorchain' ? path.slice(1) : path;
+
+  const decodedPath = normalizedPath.join('/');
+  const pathStr = normalizedPath.map((part) => encodeURIComponent(part)).join('/');
   const searchParams = request.nextUrl.search;
 
   // Rate limit
@@ -69,7 +89,7 @@ export async function GET(
 
   if (!isAllowedPath(decodedPath)) {
     return NextResponse.json(
-      { error: 'Proxy path is not allowed' },
+      { error: 'Proxy path is not allowed', path: decodedPath },
       { status: 403, headers: corsHeaders(request) }
     );
   }
