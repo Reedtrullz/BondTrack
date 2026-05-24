@@ -3,7 +3,6 @@ import { Exo_2, Open_Sans } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
-if (process.env.NODE_ENV !== 'production') console.log('HEIMDALL LAYOUT V2 - DEPLOYED');
 
 const exo2 = Exo_2({
   variable: "--font-exo-2",
@@ -16,7 +15,7 @@ const openSans = Open_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Heimdall | THORChain Watcher TEST",
+  title: "Heimdall | THORChain Investment Command Center",
   description: "The all-seeing guardian of your THORChain node infrastructure.",
 };
 
