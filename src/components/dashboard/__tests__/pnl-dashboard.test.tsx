@@ -74,7 +74,7 @@ describe('PnLDashboard', () => {
 
     await waitFor(() => {
       screen.getByText('0.00');
-      screen.queryByText(/manual/) && screen.getByText(/manual/).not.toBeInTheDocument();
+      expect(screen.queryByText(/manual/)).not.toBeInTheDocument();
     });
   });
 });

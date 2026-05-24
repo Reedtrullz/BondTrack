@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { getActions, type ActionRaw } from '@/lib/api/midgard';
+import { runeToNumber } from '@/lib/utils/formatters';
 import { ExternalLink } from 'lucide-react';
 
 interface Transaction {
@@ -59,7 +60,7 @@ function parseActions(actions: ActionRaw[]): Transaction[] {
           c.asset === 'THOR' || 
           c.asset.startsWith('THOR.RUNE')
         );
-        return runeCoin ? parseFloat(runeCoin.amount) / 1e8 : 0;
+        return runeCoin ? runeToNumber(runeCoin.amount) : 0;
       };
 
       amount = findRuneAmount(action.in?.[0]?.coins);

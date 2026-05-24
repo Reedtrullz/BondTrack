@@ -40,11 +40,11 @@ export function useBondHistory(address: string | null) {
       const outCoin = action.out?.find((o) => o.address === address)?.coins?.find((c) => c.asset === 'THOR.RUNE' || c.asset === 'THOR');
 
       const amount = inCoin
-        ? parseFloat(inCoin.amount) / 1e8
+        ? runeToNumber(inCoin.amount)
         : outCoin
-          ? parseFloat(outCoin.amount) / 1e8
+          ? runeToNumber(outCoin.amount)
           : txCoin
-            ? parseFloat(txCoin.amount) / 1e8
+            ? runeToNumber(txCoin.amount)
             : 0;
 
       const metadataTxType = action.metadata?.refund?.txType;

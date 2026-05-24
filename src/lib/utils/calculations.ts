@@ -24,10 +24,12 @@ export function calculateAPY(
   // current_award can be:
   // 1. Decimal APY: '0.6334' (63.34% APY) → use parseFloat()
   // 2. 1e8 units: '250000000' (250 RUNE per churn) → use BigInt / 1e8
+  // Detection: small values (< 1e7) are decimal APY; large values are 1e8 units
   let award: number;
-  if (currentAward.includes('.')) {
+  const numericValue = Number(currentAward);
+  if (Number.isFinite(numericValue) && numericValue < 1e7) {
     // Decimal APY (already annualized)
-    award = parseFloat(currentAward) || 0;
+    award = numericValue || 0;
   } else {
     // 1e8 units - convert to RUNE
     award = Number(BigInt(currentAward || '0')) / 1e8;
@@ -38,7 +40,7 @@ export function calculateAPY(
 
   const operatorFeeDecimal = operatorFeeBps / 10000;
   
-  if (currentAward.includes('.')) {
+  if (Number.isFinite(numericValue) && numericValue < 1e7) {
     // Decimal APY - already annualized, just adjust for share/fee
     const adjustedAPY = award * (bondSharePercent / 100) * (1 - operatorFeeDecimal);
     return adjustedAPY * 100; // Convert to percentage
