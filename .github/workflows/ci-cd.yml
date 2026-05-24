@@ -119,23 +119,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set Docker tags
-        id: meta
-        run: |
-          BRANCH=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
-          echo "tags=ghcr.io/reedtrullz/heimdall:${BRANCH}" >> $GITHUB_OUTPUT
-          echo "tags=ghcr.io/reedtrullz/heimdall:sha-${{ github.sha }}" >> $GITHUB_OUTPUT
-
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          build-args:
-            - NEXT_PUBLIC_THORNODE_API=${{ vars.NEXT_PUBLIC_THORNODE_API || 'https://gateway.liquify.com/chain/thorchain_api' }}
-            - NEXT_PUBLIC_MIDGARD_API=${{ vars.NEXT_PUBLIC_MIDGARD_API || 'https://gateway.liquify.com/chain/thorchain_midgard' }}
-            - NEXT_PUBLIC_THORCHAIN_RPC=${{ vars.NEXT_PUBLIC_THORCHAIN_RPC || 'https://rpc.thorchain.info' }}
-            - NEXT_PUBLIC_TRACK_API=${{ vars.NEXT_PUBLIC_TRACK_API || 'https://track.thorchain.org/' }}
-            - NEXT_PUBLIC_MIDGARD_FALLBACK=${{ vars.NEXT_PUBLIC_MIDGARD_FALLBACK || 'https://midgard.thorchain.network' }}
-            - NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL || 'https://thorchain.no' }}
+          tags: ghcr.io/reedtrullz/heimdall:${{ github.ref_name }},ghcr.io/reedtrullz/heimdall:sha-${{ github.sha }}
