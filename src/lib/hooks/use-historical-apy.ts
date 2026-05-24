@@ -1,5 +1,6 @@
 import useSWR from 'swr';
 import { getEarningsHistory, getNetwork } from '@/lib/api/midgard';
+import { runeToNumber } from '@/lib/utils/formatters';
 
 export function useHistoricalApy(days = 180) {
   const { data: earnings, isLoading: isLoadingEarnings } = useSWR(

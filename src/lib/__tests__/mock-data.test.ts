@@ -15,6 +15,7 @@ describe('isDevelopmentMode', () => {
   });
 
   it('should return true when NEXT_PUBLIC_USE_MOCK_DATA is "true"', () => {
+    vi.stubEnv('NODE_ENV', 'development');
     vi.stubEnv('NEXT_PUBLIC_USE_MOCK_DATA', 'true');
     expect(isDevelopmentMode()).toBe(true);
   });
