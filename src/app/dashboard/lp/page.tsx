@@ -16,7 +16,7 @@ import { formatUsd } from '@/lib/utils/formatters';
 export default function LpPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
-  const { positions, isLoading, error, state, retry } = useLpPositions(address);
+  const { positions, isLoading, error, retry } = useLpPositions(address);
   const [activeTab, setActiveTab] = useState('positions');
 
   // Calculate total LP stats
@@ -29,6 +29,12 @@ export default function LpPage() {
     },
     { totalValue: 0, totalPnl: 0, totalIl: 0 }
   ) ?? { totalValue: 0, totalPnl: 0, totalIl: 0 };
+  const hasUntrustedPerformance = positions?.some(
+    (position) =>
+      position.pricingSource === 'current-only' ||
+      position.netProfitLossUsd === null ||
+      position.impermanentLossUsd === null
+  ) ?? false;
 
   // Count positions lacking historical pricing
   const positionsWithoutHistory = positions?.filter(p => p.pricingSource === 'current-only') ?? [];
@@ -64,7 +70,7 @@ export default function LpPage() {
               Historical entry pricing is unavailable for {positionsWithoutHistory.length} position{positionsWithoutHistory.length !== 1 ? 's' : ''}.
             </p>
             <p className="mt-1 text-sm opacity-90">
-              Net P/L and impermanent loss calculations are using current prices only.
+              Current value is still shown, but Net P/L and impermanent loss are hidden until historical entry pricing is available.
             </p>
           </div>
         </div>
@@ -112,8 +118,16 @@ export default function LpPage() {
             <Card className="border-zinc-200 bg-white/80 shadow-md backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80">
               <CardContent className="p-4">
                 <div className="text-sm text-zinc-500">Net P/L</div>
-                <div className={`text-2xl font-bold font-display ${totalStats.totalPnl >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'}`}>
-                  {totalStats.totalPnl >= 0 ? '+' : ''}{formatUsd(totalStats.totalPnl)}
+                <div className={`text-2xl font-bold font-display ${
+                  hasUntrustedPerformance
+                    ? 'text-zinc-500 dark:text-zinc-400'
+                    : totalStats.totalPnl >= 0
+                      ? 'text-[var(--color-success)]'
+                      : 'text-[var(--color-danger)]'
+                }`}>
+                  {hasUntrustedPerformance
+                    ? 'Unavailable'
+                    : `${totalStats.totalPnl >= 0 ? '+' : ''}${formatUsd(totalStats.totalPnl)}`}
                 </div>
               </CardContent>
             </Card>
@@ -121,7 +135,7 @@ export default function LpPage() {
               <CardContent className="p-4">
                 <div className="text-sm text-zinc-500">Total Impermanent Loss</div>
                 <div className="text-2xl font-bold font-display text-[var(--color-danger)]">
-                  -{formatUsd(totalStats.totalIl)}
+                  {hasUntrustedPerformance ? 'Unavailable' : `-${formatUsd(totalStats.totalIl)}`}
                 </div>
               </CardContent>
             </Card>

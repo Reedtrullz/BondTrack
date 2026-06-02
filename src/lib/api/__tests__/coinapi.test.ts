@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { getCurrentRunePrice, getRunePriceAtDate, getRunePriceRange } from '../coinapi';
+import { getCurrentRunePrice } from '../coinapi';
 
 describe('CoinAPI Security', () => {
   const originalEnv = process.env.COINAPI_KEY;
@@ -21,7 +22,7 @@ describe('CoinAPI Security', () => {
   it('should not have a hardcoded fallback API key in source', () => {
     // Verify no fallback key pattern exists in the module
     // This is a static check for the anti-pattern: process.env.X || 'key'
-    const moduleSource = require('fs').readFileSync(require('path').join(__dirname, '../coinapi.ts'), 'utf8');
+    const moduleSource = readFileSync('src/lib/api/coinapi.ts', 'utf8');
     expect(moduleSource).not.toMatch(/process\.env\.COINAPI_KEY\s*\|\|/);
   });
 });

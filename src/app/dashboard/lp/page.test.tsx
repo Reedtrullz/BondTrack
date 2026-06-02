@@ -194,5 +194,7 @@ describe('LpDashboardPage', () => {
     render(<LpDashboardPage />);
 
     expect(await screen.findByText(/Historical entry pricing is unavailable for 1 position\./)).toBeInTheDocument();
+    expect(screen.getByText(/Net P\/L and impermanent loss are hidden/i)).toBeInTheDocument();
+    expect(screen.getAllByText('Unavailable')).toHaveLength(2);
   });
 });

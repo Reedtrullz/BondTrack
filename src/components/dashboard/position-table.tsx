@@ -83,7 +83,7 @@ export function PositionTable({ positions }: PositionTableProps) {
           No Bonded Positions
         </h3>
         <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-md mx-auto">
-          This address doesn't have any active bond positions yet. Bond to a node to start earning rewards and securing the THORChain network.
+          This address doesn&apos;t have any active bond positions yet. Bond to a node to start earning rewards and securing the THORChain network.
         </p>
         <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-3">
           New bonds typically appear within 1-2 churns after the transaction.

@@ -129,12 +129,13 @@ describe('useLpPositions', () => {
       entryRunePriceUsd: null,
       entryAssetPriceUsd: null,
       pricingSource: 'current-only',
-      depositedTotalValueUsd: 24.6,
-      netProfitLossUsd: 215.4,
-      netProfitLossPercent: 875.609756097561,
-      hodlValueUsd: 24.6,
-      impermanentLossUsd: 215.4,
-      impermanentLossPercent: 875.609756097561,
+      depositedTotalValueUsd: null,
+      netProfitLoss: 'Current value only',
+      netProfitLossUsd: null,
+      netProfitLossPercent: null,
+      hodlValueUsd: null,
+      impermanentLossUsd: null,
+      impermanentLossPercent: null,
     });
     expect(result.current.positions[0].currentTotalValueUsd).toBeCloseTo(240, 6);
   });
@@ -258,10 +259,11 @@ describe('useLpPositions', () => {
       entryRunePriceUsd: null,
       entryAssetPriceUsd: null,
       pricingSource: 'current-only',
-      netProfitLossUsd: -24,
-      netProfitLossPercent: -100,
-      impermanentLossUsd: -24,
-      impermanentLossPercent: -100,
+      netProfitLoss: 'Current value only',
+      netProfitLossUsd: null,
+      netProfitLossPercent: null,
+      impermanentLossUsd: null,
+      impermanentLossPercent: null,
     });
     expect(midgard.getMemberDetails).toHaveBeenCalledTimes(2);
   });

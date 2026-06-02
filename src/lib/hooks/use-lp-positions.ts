@@ -317,6 +317,27 @@ export const useLpPositions = (address: string | null) => {
       runeEntryPriceUsd: entryRunePriceUsd,
       assetEntryPriceUsd: entryAssetPriceUsd,
     });
+    const trustedPerformance = hasHistoricalPricing
+      ? {
+          depositedTotalValueUsd: valuation.depositedTotalValueUsd,
+          netProfitLoss: valuation.netProfitLossUsd !== null ? formatPnlDisplay(valuation.netProfitLossUsd).text : 'Current value only',
+          netProfitLossUsd: valuation.netProfitLossUsd,
+          netProfitLossPercent: valuation.netProfitLossPercent,
+          hodlValueUsd: valuation.hodlValueUsd,
+          impermanentLossUsd: valuation.impermanentLossUsd,
+          impermanentLossPercent: valuation.impermanentLossPercent,
+          impermanentLossValue: valuation.impermanentLossUsd,
+        }
+      : {
+          depositedTotalValueUsd: null,
+          netProfitLoss: 'Current value only',
+          netProfitLossUsd: null,
+          netProfitLossPercent: null,
+          hodlValueUsd: null,
+          impermanentLossUsd: null,
+          impermanentLossPercent: null,
+          impermanentLossValue: null,
+        };
 
     return {
       address: poolRaw.assetAddress,
@@ -354,14 +375,14 @@ export const useLpPositions = (address: string | null) => {
       entryRunePriceUsd,
       entryAssetPriceUsd,
       currentTotalValueUsd: valuation.currentTotalValueUsd,
-      depositedTotalValueUsd: valuation.depositedTotalValueUsd,
-      netProfitLoss: valuation.netProfitLossUsd !== null ? formatPnlDisplay(valuation.netProfitLossUsd).text : 'Current value only',
-      netProfitLossUsd: valuation.netProfitLossUsd,
-      netProfitLossPercent: valuation.netProfitLossPercent,
-      hodlValueUsd: valuation.hodlValueUsd,
-      impermanentLossUsd: valuation.impermanentLossUsd,
-      impermanentLossPercent: valuation.impermanentLossPercent,
-      impermanentLossValue: valuation.impermanentLossUsd,
+      depositedTotalValueUsd: trustedPerformance.depositedTotalValueUsd,
+      netProfitLoss: trustedPerformance.netProfitLoss,
+      netProfitLossUsd: trustedPerformance.netProfitLossUsd,
+      netProfitLossPercent: trustedPerformance.netProfitLossPercent,
+      hodlValueUsd: trustedPerformance.hodlValueUsd,
+      impermanentLossUsd: trustedPerformance.impermanentLossUsd,
+      impermanentLossPercent: trustedPerformance.impermanentLossPercent,
+      impermanentLossValue: trustedPerformance.impermanentLossValue,
       pricingSource,
       runeEntryPrice: entryRunePriceUsd,
       asset2EntryPrice: entryAssetPriceUsd,

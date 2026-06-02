@@ -1,36 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { calculateAPY } from './calculations';
 
+// Regression coverage for historical audit findings around APY units.
 describe('calculateAPY', () => {
-  it('returns plausible APY within 0-100% for THORChain', () => {
-    // Audit P0-3: current_award = '0.6334' (63.34% APY as decimal)
-    // ORIGINAL code: runeToNumber('0.6334') = ERROR → catch → returns 0
-    // So apy = 0% (wrong!)
+  it('treats small decimal current_award values as already annualized APY fractions', () => {
     const apy = calculateAPY(100, '0.6334', 0, '100000000000');
 
-    // APY should be ~63.34% (not 0%)
-    expect(apy).toBeGreaterThan(0); // THIS WILL FAIL (apy = 0)
-    expect(apy).toBeLessThan(100);
+    expect(apy).toBeCloseTo(63.34, 2);
   });
 
-  it('calculates APY correctly using Midgard bondingAPY semantics', () => {
-    // current_award = '0.6334' (63.34% APY as decimal)
-    // With 100% share, 0% fee, APY should be ~63.34%
-    const apy = calculateAPY(100, '0.6334', 0, '100000000000');
+  it('applies provider share and operator fee to decimal APY inputs at the display percent boundary', () => {
+    const apy = calculateAPY(50, '0.125', 500, '100000000000');
 
-    // Should be close to 63.34%
-    expect(apy).toBeCloseTo(63.34, 0); // THIS WILL FAIL (apy = 0)
+    expect(apy).toBeCloseTo(5.9375, 4);
   });
 
-  it('handles current_award as 1e8 units (250 RUNE per churn)', () => {
-    // Some nodes might have current_award in 1e8 units
-    // 250000000 = 250 RUNE per churn
-    // Original code: runeToNumber('250000000') = 250 RUNE
-    // Then annualize: 250 * 730 = 182500 RUNE/year
-    // APY = (182500 / 1000) * 100 = 18250% (way too high!)
-    const apy = calculateAPY(100, '250000000', 0, '100000000000');
+  it('converts raw 1e8 RUNE current_award values before annualizing', () => {
+    const apy = calculateAPY(100, '10000000', 0, '146000000000');
 
-    // Should be less than 100%
-    expect(apy).toBeLessThan(100); // THIS WILL FAIL (apy = 18250%)
+    expect(apy).toBeCloseTo(1, 4);
   });
 });

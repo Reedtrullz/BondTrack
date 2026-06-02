@@ -85,6 +85,9 @@ describe('LpSummaryCard', () => {
     );
 
     expect(screen.getByText('Pending Add')).toBeInTheDocument();
-    expect(screen.getByText(/LP yield/)).toBeInTheDocument();
+    expect(screen.getByText('Current value only')).toBeInTheDocument();
+    expect(screen.getByText('Historical entry unavailable')).toBeInTheDocument();
+    expect(screen.getByText('Requires historical entry pricing')).toBeInTheDocument();
+    expect(screen.queryByText(/LP yield/)).not.toBeInTheDocument();
   });
 });

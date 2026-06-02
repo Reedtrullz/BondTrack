@@ -87,7 +87,7 @@ export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
             {formatPercent(position.netProfitLossPercent)}
           </div>
           {position.pricingSource === 'current-only' && (
-            <div className="text-[10px] text-amber-600 dark:text-amber-400">LP yield</div>
+            <div className="text-[10px] text-amber-600 dark:text-amber-400">Historical entry unavailable</div>
           )}
         </div>
       </td>

@@ -2,6 +2,8 @@ import useSWR from 'swr';
 import { getRunePriceHistory, getHistoricalRunePrice, type RunePriceHistoryRaw } from '@/lib/api/midgard';
 import { MOCK_RUNE_PRICE, isDevelopmentMode } from '../mock-data';
 
+const MOCK_RUNE_PRICE_HISTORY_BASE_MS = Date.UTC(2026, 0, 1);
+
 export interface RunePriceInterval {
   runePriceUSD: number;
   timestamp: Date;
@@ -42,7 +44,7 @@ export function useRunePriceHistory(interval = 'day', count = 30) {
     }
   );
 
-  const mockNow = Date.now();
+  const mockNow = MOCK_RUNE_PRICE_HISTORY_BASE_MS;
   const intervalMs = interval === 'hour' ? 3600 * 1000 : 24 * 3600 * 1000;
   const mockIntervals: RunePriceInterval[] = Array.from({ length: count }, (_, index) => {
     // Add a slight deterministic variation to the mock price

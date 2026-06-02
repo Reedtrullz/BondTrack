@@ -399,7 +399,7 @@ export default function PortfolioPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-amber-600/80 dark:text-amber-500/80">
             <Eye className="w-4 h-4" />
-            <span className="text-xs font-bold uppercase tracking-widest font-serif italic">Heimdall's Sight</span>
+            <span className="text-xs font-bold uppercase tracking-widest font-serif italic">Heimdall&apos;s Sight</span>
           </div>
           <button
             onClick={() => setShowIntelligence(!showIntelligence)}

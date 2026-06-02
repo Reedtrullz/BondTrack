@@ -23,7 +23,7 @@ interface PnLDashboardProps {
     bondGrowth: number;
     firstBondDate?: Date | null;
   } | null;
-  actionsError?: any;
+  actionsError?: { message?: string } | null;
   isLoadingActions?: boolean;
 }
 

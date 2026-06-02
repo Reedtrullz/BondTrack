@@ -103,9 +103,9 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
         <MetricCard label="Current Value" value={formatUsd(position.currentTotalValueUsd, 0)} />
         <MetricCard
           label="Net P/L"
-          value={formatUsd(position.netProfitLossUsd ?? 0, 0)}
+          value={position.netProfitLossUsd === null ? 'Current value only' : formatUsd(position.netProfitLossUsd, 0)}
           detail={position.pricingSource === 'current-only'
-            ? `${formatPercent(position.netProfitLossPercent)} · LP yield`
+            ? 'Historical entry unavailable'
             : position.pricingSource === 'estimated'
               ? `${formatPercent(position.netProfitLossPercent)} · estimated entry`
               : formatPercent(position.netProfitLossPercent)}
@@ -123,8 +123,12 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
         />
         <MetricCard
           label="Impermanent Loss"
-          value={formatUsd(position.impermanentLossUsd ?? 0, 0)}
-          detail={formatPercent(position.impermanentLossPercent)}
+          value={position.impermanentLossUsd === null ? '--' : formatUsd(position.impermanentLossUsd, 0)}
+          detail={
+            position.impermanentLossPercent === null
+              ? 'Requires historical entry pricing'
+              : formatPercent(position.impermanentLossPercent)
+          }
           valueClassName={ilTone}
         />
         <MetricCard 
