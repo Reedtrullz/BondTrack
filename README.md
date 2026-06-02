@@ -101,6 +101,10 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 | `NEXT_PUBLIC_THORCHAIN_RPC` | THORChain RPC | `https://rpc.thorchain.info` |
 | `VERSION` | App version (set by Ansible/GitHub SHA) | `latest` |
 
+## THORChain Data Conventions
+
+Before changing API clients, live-data charts, RUNE/APY math, or LP valuation copy, read [docs/thorchain-data-conventions.md](docs/thorchain-data-conventions.md). It is shared with tcwiki and defines endpoint routing, `1e8` RUNE units, APY decimal-vs-percent boundaries, and `current-only` LP valuation provenance.
+
 ## Deployment
 
 Heimdall uses a **push-based deployment model** from your local machine to the VPS via Ansible.
