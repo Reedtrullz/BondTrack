@@ -7,6 +7,8 @@
 Heimdall is a professional investment command center for THORChain bond
 providers. Live at https://bond.thorchain.no.
 
+**Canonical status:** `Reedtrullz/Heimdall` at `/Users/reidar/Projectos/Heimdall` is the canonical THORChain dashboard. The older `THORNode Watcher` / BondTrack checkout is archive-only and should only be read for historical QA/audit artifacts.
+
 ## Tech Stack
 - **Framework:** Next.js 16.2.4 (App Router, Turbopack, `output: 'standalone'`)
 - **Language:** TypeScript 5

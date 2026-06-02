@@ -3,6 +3,11 @@
 This file is for autonomous coding agents (Claude Code, Codex, OpenCode, etc.).
 Human-friendly intro is in `README.md`. Deep AI context is in `CLAUDE.md`.
 
+## Canonical routing
+- This checkout (`/Users/reidar/Projectos/Heimdall`, repo `Reedtrullz/Heimdall`) is the canonical THORChain dashboard.
+- The older `THORNode Watcher` / BondTrack checkout is archive-only. Do not implement features, fixes, docs, CI, or deployments there unless explicitly recovering historical artifacts.
+- Keep Heimdall branding. Do not rename the product back to BondTrack.
+
 ## Golden rules
 1. **One CI workflow only.** Edit `.github/workflows/ci.yml`. Do not create
    a second workflow with `name: "CI/CD Pipeline"` or `name: "CI"`.

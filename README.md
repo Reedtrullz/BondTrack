@@ -2,6 +2,8 @@
 
 A professional investment command center for THORChain bond providers — monitor bonded RUNE, node health, rewards, risk metrics, and LP positions with institutional-grade precision.
 
+> **Canonical project:** This repository (`Reedtrullz/Heimdall`, local path `/Users/reidar/Projectos/Heimdall`) is the canonical THORChain dashboard. Do not revive or implement new work in the older `THORNode Watcher` / BondTrack checkout; keep it archive-only for historical QA/audit artifacts.
+
 ![Next.js](https://img.shields.io/badge/Next.js-16.2.4-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
 ![Tailwind](https://img.shields.io/badge/Tailwind-4.0-cyan)
