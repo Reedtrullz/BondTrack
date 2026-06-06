@@ -308,30 +308,21 @@ git commit -m "fix: remove broken escape sequence in ansible rollback healthchec
 
 ---
 
-### Task 8: Fix opencode.yml actions/checkout version
+### Task 8: Historical opencode checkout version note
 
-**Objective:** `@v6` doesn't exist — change to `@v4`.
+**Objective:** This task captured the 2026-05 state where `actions/checkout@v6` did not exist yet. **Superseded 2026-06-06:** `actions/checkout@v6` now exists and is the Node 24-capable version used by `.github/workflows/opencode.yml`.
 
 **Files:**
-- Modify: `.github/workflows/opencode.yml:24`
+- Current file: `.github/workflows/opencode.yml:24`
 
-**Step 1: Replace line 24**
+**Current expected line**
 
-Change:
 ```yaml
         uses: actions/checkout@v6
 ```
-To:
-```yaml
-        uses: actions/checkout@v4
-```
 
-**Step 2: Commit**
+Do not reapply the old downgrade-to-`@v4` instruction from this historical plan.
 
-```bash
-git add .github/workflows/opencode.yml
-git commit -m "fix: actions/checkout@v6 → @v4 (v6 does not exist)"
-```
 
 ---
 
@@ -545,7 +536,7 @@ Append after the last job (after `report-status`):
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Log in to GHCR
         uses: docker/login-action@v3

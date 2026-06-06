@@ -37,6 +37,11 @@ Human-friendly intro is in `README.md`. Deep AI context is in `CLAUDE.md`.
    verified in GHCR instead of trusting a cached local image. The manual
    `compose.production.yml` path requires `IMAGE_SHA=<short-sha>` and derives
    both image and runtime version as `sha-$IMAGE_SHA`; do not use `latest`.
+10. **Use Node 24-capable GitHub Actions.** First-party JavaScript actions in
+    `.github/workflows/ci.yml` and `.github/workflows/opencode.yml` should stay
+    on `actions/checkout@v6`, `actions/setup-node@v6`, and
+    `actions/upload-artifact@v7` so CI avoids Node.js 20 runtime deprecation
+    warnings.
 
 ## Required commands before pushing
 ```bash
