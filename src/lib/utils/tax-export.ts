@@ -10,6 +10,9 @@ import {
 
 export type TaxConfidence = 'high' | 'estimated' | 'low';
 
+const LP_CURRENT_POSITION_ESTIMATE_NOTE =
+  'current-position estimate; historical LP add/withdraw reconstruction is not implemented';
+
 export interface TaxReportRow {
   date: string;
   type: 'bond' | 'lp';
@@ -19,6 +22,13 @@ export interface TaxReportRow {
   costBasis: number;
   gainLoss: number;
   confidence?: TaxConfidence;
+  confidenceLabel?: string;
+}
+
+interface PreparedTaxAction {
+  action: ActionRaw;
+  timestamp: number;
+  taxActionType: 'bond' | 'unbond' | 'leave';
 }
 
 interface BondLot {
@@ -51,6 +61,32 @@ function parseRuneAmount(raw: string | undefined): number {
   } catch {
     return 0;
   }
+}
+
+function getTaxActionType(action: ActionRaw): PreparedTaxAction['taxActionType'] | undefined {
+  const normalizedRefundType = action.metadata?.refund?.txType?.toLowerCase();
+  if (normalizedRefundType === 'bond' || normalizedRefundType === 'unbond' || normalizedRefundType === 'leave') {
+    return normalizedRefundType;
+  }
+
+  const normalizedActionType = action.type?.toLowerCase();
+  if (normalizedActionType === 'bond' || normalizedActionType === 'unbond' || normalizedActionType === 'leave') {
+    return normalizedActionType;
+  }
+
+  const memo = action.memo?.toUpperCase() ?? '';
+  if (memo.startsWith('BOND:')) return 'bond';
+  if (memo.startsWith('UNBOND:')) return 'unbond';
+  if (memo.startsWith('LEAVE:')) return 'leave';
+
+  return undefined;
+}
+
+function parseUnbondMemoRuneAmount(memo: string | undefined): number {
+  if (!memo) return 0;
+  const parts = memo.split(':');
+  if (parts.length < 3 || parts[0].toUpperCase() !== 'UNBOND') return 0;
+  return parseRuneAmount(parts[2]);
 }
 
 export function parseTaxDateRange(startDate: string, endDate: string): TaxDateRange {
@@ -99,6 +135,22 @@ function extractRuneAmount(action: ActionRaw, isInbound: boolean): number {
   return 0;
 }
 
+async function loadBondTaxActions(address: string, endTimestamp: number): Promise<PreparedTaxAction[]> {
+  // Increase limit to get more history for accurate FIFO calculations.
+  const actionsResponse = await getActions(address, 1000, 'bond,unbond,leave', 'txType');
+
+  return actionsResponse.actions
+    .map((action) => {
+      const timestamp = normalizeTimestamp(action.date);
+      const taxActionType = getTaxActionType(action);
+      return { action, timestamp, taxActionType };
+    })
+    .filter((item): item is PreparedTaxAction =>
+      item.timestamp > 0 && item.timestamp <= endTimestamp && item.taxActionType !== undefined
+    )
+    .sort((a, b) => a.timestamp - b.timestamp);
+}
+
 function getClosestPrice(timestamp: number, priceMap: Map<number, number>): { price: number; confidence: TaxConfidence } {
   let closestPrice = 0;
   let minDiff = Infinity;
@@ -123,31 +175,24 @@ function combineConfidence(values: TaxConfidence[]): TaxConfidence {
 }
 
 async function generateBondRows(
-  address: string,
+  actions: PreparedTaxAction[],
   startTimestamp: number,
   endTimestamp: number,
   priceMap: Map<number, number>
 ): Promise<TaxReportRow[]> {
-  // Increase limit to get more history for accurate FIFO calculations
-  const actionsResponse = await getActions(address, 1000, 'bond,unbond,leave', 'txType');
-
-  const actions = actionsResponse.actions
-    .map((action) => ({ action, timestamp: normalizeTimestamp(action.date) }))
-    .filter(({ timestamp }) => timestamp > 0 && timestamp <= endTimestamp)
-    .sort((a, b) => a.timestamp - b.timestamp);
-
   const rows: TaxReportRow[] = [];
   const lots: BondLot[] = [];
 
-  for (const { action, timestamp } of actions) {
+  for (const { action, timestamp, taxActionType } of actions) {
     const date = formatTaxDate(timestamp);
-    const memo = action.memo?.toUpperCase() ?? '';
-    const isBond = action.type === 'bond' || memo.startsWith('BOND:');
-    const isUnbond = action.type === 'unbond' || action.type === 'leave' || memo.startsWith('UNBOND:');
+    const isBond = taxActionType === 'bond';
+    const isUnbond = taxActionType === 'unbond' || taxActionType === 'leave';
 
-    if (!isBond && !isUnbond) continue;
-
-    const amount = extractRuneAmount(action, isBond);
+    let amount = extractRuneAmount(action, isBond);
+    if (amount <= 0 && isUnbond) {
+      amount = parseUnbondMemoRuneAmount(action.memo)
+        || parseUnbondMemoRuneAmount(action.metadata?.refund?.memo);
+    }
     if (amount <= 0) continue;
 
     const { price: runePrice, confidence: priceConfidence } = getClosestPrice(timestamp, priceMap);
@@ -301,6 +346,7 @@ async function generateLpRows(
         costBasis: 0,
         gainLoss: userEarnings * runePrice,
         confidence: combineConfidence([lpConfidence, priceConfidence]),
+        confidenceLabel: LP_CURRENT_POSITION_ESTIMATE_NOTE,
       });
     }
   }
@@ -315,10 +361,16 @@ export async function generateTaxReport(
 ): Promise<TaxReportRow[]> {
   const { startTimestamp, endTimestamp } = parseTaxDateRange(startDate, endDate);
 
+  const bondActions = await loadBondTaxActions(address, endTimestamp);
+  const earliestBondActionTimestamp = bondActions.length > 0
+    ? Math.min(...bondActions.map(({ timestamp }) => timestamp))
+    : startTimestamp;
+  const priceStartTimestamp = Math.min(startTimestamp, earliestBondActionTimestamp);
+
   const priceHistory = await getRunePriceHistory(
     'day',
     undefined,
-    startTimestamp,
+    priceStartTimestamp,
     endTimestamp
   );
   const priceMap = new Map<number, number>();
@@ -332,7 +384,7 @@ export async function generateTaxReport(
   }
 
   const [bondRows, lpRows] = await Promise.all([
-    generateBondRows(address, startTimestamp, endTimestamp, priceMap),
+    generateBondRows(bondActions, startTimestamp, endTimestamp, priceMap),
     generateLpRows(address, startTimestamp, endTimestamp, priceMap),
   ]);
 
@@ -356,16 +408,23 @@ export function exportToCSV(rows: TaxReportRow[]): string {
     return headers.join(',');
   }
 
-  const csvRows = rows.map((row) => [
-    escapeCsvField(row.date),
-    escapeCsvField(row.type),
-    escapeCsvField(row.asset),
-    row.amountRune.toFixed(8),
-    row.amountUSD.toFixed(2),
-    row.costBasis.toFixed(2),
-    row.gainLoss.toFixed(2),
-    escapeCsvField(row.confidence ?? 'high'),
-  ]);
+  const csvRows = rows.map((row) => {
+    const confidence = row.confidence ?? 'high';
+    const confidenceText = row.confidenceLabel
+      ? `${confidence} (${row.confidenceLabel})`
+      : confidence;
+
+    return [
+      escapeCsvField(row.date),
+      escapeCsvField(row.type),
+      escapeCsvField(row.asset),
+      row.amountRune.toFixed(8),
+      row.amountUSD.toFixed(2),
+      row.costBasis.toFixed(2),
+      row.gainLoss.toFixed(2),
+      escapeCsvField(confidenceText),
+    ];
+  });
 
   return [headers.join(','), ...csvRows.map((r) => r.join(','))].join('\n');
 }

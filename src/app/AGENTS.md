@@ -52,7 +52,7 @@ src/app/
 
 **Pages using `useSearchParams`**: Must be `'use client'` and wrapped in `Suspense`. `dashboard/layout.tsx` provides this.
 
-**API routes**: All proxies use `export const dynamic = 'force-dynamic'`. Rate-limited via `src/lib/api/rate-limit.ts`. Custom endpoints (address, pools, tax-report) aggregate Midgard data server-side.
+**API routes**: All proxies use `export const dynamic = 'force-dynamic'`. Rate-limited via `src/lib/api/rate-limit.ts`. Custom endpoints (address, pools, tax-report) aggregate Midgard data server-side. `/api/address/[address]` action amounts expose `amountBaseUnits` (string, 1e8 base units) and `amountRune` (number); do not return raw base units as an unlabeled `amount`.
 
 **Health endpoint**: `/api/health` returns `{ status, timestamp, version }`. Version: `process.env.VERSION` -> `"unknown"`.
 

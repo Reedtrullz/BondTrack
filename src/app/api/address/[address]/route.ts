@@ -62,13 +62,21 @@ export async function GET(
       const type: 'BOND' | 'UNBOND' = memo.startsWith('BOND:') ? 'BOND' : 'UNBOND';
 
       const runeCoin = action.tx?.coins?.find((c: { asset: string }) => c.asset === 'THOR.RUNE');
-      const amount = runeCoin ? parseFloat(runeCoin.amount) : 0;
+      const amountBaseUnits = runeCoin?.amount ?? '0';
+      const amountRune = (() => {
+        try {
+          return Number(BigInt(amountBaseUnits)) / 1e8;
+        } catch {
+          return 0;
+        }
+      })();
       const parts = memo.split(':');
       const nodeAddress = parts[1] || action.tx?.address || '';
 
       return {
         type,
-        amount,
+        amountBaseUnits,
+        amountRune,
         nodeAddress,
         timestamp: new Date(Number(BigInt(action.date) / 1000000n)),
         txHash: action.tx?.txID || '',

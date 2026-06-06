@@ -26,7 +26,7 @@
 
 **APY benchmarks**: Fetched from network data — compute real percentiles from active node APYs.
 
-**Tax export**: FIFO cost basis. Combines bond income + LP income. Server-side aggregation via `/api/tax-report`.
+**Tax export**: FIFO cost basis. Combines bond income + LP income. Server-side aggregation via `/api/tax-report`. Bond FIFO price history starts at the earliest included bond/unbond/leave action (not just the report start). LP rows are current-position estimates until historical add/withdraw reconstruction exists; they include a `confidenceLabel` note and should not be presented as a complete LP tax ledger.
 
 ## TEST COVERAGE
 Tests in `__tests__/` cover: calculations, config, network-security, lp-analytics, il-calculator, fee-calculations, fee-revenue, tax-export, mock-data. Plus colocated `calculations.test.ts` and `formatters.test.ts`.
