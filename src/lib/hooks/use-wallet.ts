@@ -191,7 +191,10 @@ export function useWallet() {
   }, [getExpectedChainId]);
 
   const connectRef = useRef(connect);
-  connectRef.current = connect;
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   useEffect(() => {
     if (mountedRef.current) return;
