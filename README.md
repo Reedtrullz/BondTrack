@@ -62,7 +62,7 @@ A professional investment command center for THORChain bond providers — monito
 - **Styling**: Tailwind CSS v4
 - **Data Fetching**: SWR
 - **Charts**: Recharts (with ResponsiveContainer fixes for clean rendering)
-- **Testing**: Vitest + Playwright (167 unit tests, 34 test files, all passing ✅)
+- **Testing**: Vitest (190 tests / 39 files) + Playwright (62 E2E tests), all passing ✅
 - **Icons**: lucide-react
 - **Deployment**: Ansible → VPS (GHCR, Docker, Caddy reverse proxy)
 - **Security**: Ansible Vault for sensitive variables
