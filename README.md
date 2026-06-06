@@ -4,7 +4,7 @@ A professional investment command center for THORChain bond providers — monito
 
 > **Canonical project:** This repository (`Reedtrullz/Heimdall`, local path `/Users/reidar/Projectos/Heimdall`) is the canonical THORChain dashboard. Do not revive or implement new work in the older `THORNode Watcher` / BondTrack checkout; keep it archive-only for historical QA/audit artifacts.
 
-![Next.js](https://img.shields.io/badge/Next.js-16.2.4-black)
+![Next.js](https://img.shields.io/badge/Next.js-16.2.7-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
 ![Tailwind](https://img.shields.io/badge/Tailwind-4.0-cyan)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -57,7 +57,7 @@ A professional investment command center for THORChain bond providers — monito
 
 ## Tech Stack
 
-- **Framework**: Next.js 16.2.4 (App Router, Turbopack)
+- **Framework**: Next.js 16.2.7 (App Router, Turbopack)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS v4
 - **Data Fetching**: SWR

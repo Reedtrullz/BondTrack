@@ -10,7 +10,7 @@ providers. Live at https://bond.thorchain.no.
 **Canonical status:** `Reedtrullz/Heimdall` at `/Users/reidar/Projectos/Heimdall` is the canonical THORChain dashboard. The older `THORNode Watcher` / BondTrack checkout is archive-only and should only be read for historical QA/audit artifacts.
 
 ## Tech Stack
-- **Framework:** Next.js 16.2.4 (App Router, Turbopack, `output: 'standalone'`)
+- **Framework:** Next.js 16.2.7 (App Router, Turbopack, `output: 'standalone'`)
 - **Language:** TypeScript 5
 - **Styling:** Tailwind CSS v4 (lightningcss / @tailwindcss/oxide native deps)
 - **Data:** SWR
@@ -112,7 +112,7 @@ variables.
 ## Health Endpoint
 `GET /api/health` → `{ "status": "healthy", "timestamp": "...", "version": "..." }`
 
-Version priority: `process.env.VERSION` → `process.env.npm_package_version` → `"unknown"`.
+Version priority: `process.env.VERSION` → `"unknown"`.
 
 ## Conventions
 - Pages using `useSearchParams` must be `'use client'` and wrapped in `<Suspense>`.

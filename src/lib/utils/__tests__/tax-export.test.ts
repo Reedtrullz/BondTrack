@@ -84,7 +84,7 @@ describe('generateTaxReport', () => {
       ],
     });
 
-    mockGetRunePriceHistory.mockImplementation(async (_interval, _count, from, _to) => ({
+    mockGetRunePriceHistory.mockImplementation(async (_interval, _count, from) => ({
       meta: {} as never,
       intervals: [
         ...(from !== undefined && from <= prePeriodBondTimestamp
