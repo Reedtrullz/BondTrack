@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -16,7 +16,8 @@ import { useRunePriceHistory } from '@/lib/hooks/use-rune-price';
 import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
 import { useYieldBenchmarks } from '@/lib/hooks/use-yield-benchmarks';
 import { useAllNodes } from '@/lib/hooks/use-all-nodes';
-import { getFeeRevenue, getPools, type FeeRevenueRaw, type PoolDetailRaw } from '@/lib/api/midgard';
+import { usePools } from '@/lib/hooks/use-pools';
+import { useFeeRevenue } from '@/lib/hooks/use-fee-revenue';
 import { formatUsd, runeToNumber } from '@/lib/utils/formatters';
 import { PortfolioSummary } from '@/components/dashboard/portfolio-summary';
 import { FeeRevenueChart } from '@/components/dashboard/fee-revenue-chart';
@@ -70,12 +71,6 @@ function buildDashboardHref(path: string, address: string | null) {
 export default function PortfolioPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
-  const [marketPools, setMarketPools] = useState<PoolDetailRaw[]>([]);
-  const [marketLoading, setMarketLoading] = useState(true);
-  const [feeRevenue, setFeeRevenue] = useState<FeeRevenueRaw | null>(null);
-  const [feeRevenueLoading, setFeeRevenueLoading] = useState(true);
-  const [feeRevenueError, setFeeRevenueError] = useState<string | null>(null);
-
   const {
     positions: bondPositions,
     isLoading: bondLoading,
@@ -88,56 +83,12 @@ export default function PortfolioPage() {
   const { data: marketNetwork, isLoading: metricsLoading } = useNetworkMetrics();
   const { benchmarks, isLoading: benchmarksLoading } = useYieldBenchmarks();
   const { data: allNodes, isLoading: allNodesLoading } = useAllNodes();
+  const { pools: marketPools, isLoading: marketLoading } = usePools();
+  const { feeRevenue, isLoading: feeRevenueLoading, error: feeRevenueError } = useFeeRevenue();
 
   const [showFeeRevenue, setShowFeeRevenue] = useState(false);
   const [showMarket, setShowMarket] = useState(false);
   const [showIntelligence, setShowIntelligence] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadMarketPools() {
-      try {
-        const pools = await getPools();
-        if (active) {
-          setMarketPools(pools);
-        }
-      } catch (error) {
-        console.error(error);
-      } finally {
-        if (active) {
-          setMarketLoading(false);
-        }
-      }
-    }
-
-    async function loadFeeRevenue() {
-      setFeeRevenueError(null);
-
-      try {
-        const data = await getFeeRevenue();
-        if (active) {
-          setFeeRevenue(data);
-        }
-      } catch (error) {
-        if (active) {
-          setFeeRevenueError('Failed to load fee revenue');
-          console.error(error);
-        }
-      } finally {
-        if (active) {
-          setFeeRevenueLoading(false);
-        }
-      }
-    }
-
-    loadMarketPools();
-    loadFeeRevenue();
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const isLoading = bondLoading || priceLoading || metricsLoading || benchmarksLoading || allNodesLoading || marketLoading;
 

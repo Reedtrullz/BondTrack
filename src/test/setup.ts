@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom';
+import { mutate } from 'swr';
 import { vi } from 'vitest';
-import { cache } from 'swr/_internal';
 
 const localStorageMock = {
   getItem: vi.fn(),
@@ -31,8 +31,6 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
-beforeEach(() => {
-  for (const key of cache.keys()) {
-    cache.delete(key);
-  }
+beforeEach(async () => {
+  await mutate(() => true, undefined, { revalidate: false });
 });

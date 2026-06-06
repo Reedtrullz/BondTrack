@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   AreaChart,
   Area,
@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
-import { getRunePriceHistory, type RunePriceHistoryRaw } from '@/lib/api/midgard';
+import { useRunePriceHistory, type RunePriceInterval } from '@/lib/hooks/use-rune-price';
 import { SkeletonChart } from '@/components/shared/skeleton';
 
 type IntervalOption = 'day' | 'week' | 'month' | 'year';
@@ -33,14 +33,14 @@ function formatPrice(value: number): string {
   })}`;
 }
 
-function parsePriceData(raw: RunePriceHistoryRaw, isHourly: boolean): PriceDataPoint[] {
-  return raw.intervals.map((item) => {
-    const date = new Date(Number(item.startTime) * 1000);
+function parsePriceData(intervals: RunePriceInterval[], isHourly: boolean): PriceDataPoint[] {
+  return intervals.map((item) => {
+    const date = item.timestamp;
     return {
       date: isHourly
         ? date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
         : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-      price: Number(item.runePriceUSD),
+      price: item.runePriceUSD,
     };
   });
 }
@@ -72,29 +72,17 @@ const intervals: Array<{ value: IntervalOption; label: string; description: stri
 
 export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
   const [interval, setIntervalState] = useState<IntervalOption>(initialInterval);
-  const [data, setData] = useState<PriceDataPoint[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      setError(null);
-      try {
-        const apiInterval = interval === 'day' ? 'hour' : (interval === 'week' ? 'day' : (interval === 'month' ? 'day' : 'day'));
-        const count = interval === 'day' ? 24 : interval === 'week' ? 7 : interval === 'month' ? 30 : 365;
-        const isHourly = interval === 'day';
-        const raw = await getRunePriceHistory(apiInterval, count);
-        setData(parsePriceData(raw, isHourly));
-      } catch (err) {
-        setError('Failed to load price data');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
+  const { apiInterval, count, isHourly } = useMemo(() => {
+    const apiInterval = interval === 'day' ? 'hour' : 'day';
+    const count = interval === 'day' ? 24 : interval === 'week' ? 7 : interval === 'month' ? 30 : 365;
+    const isHourly = interval === 'day';
+    return { apiInterval, count, isHourly };
   }, [interval]);
+
+  const { intervals: priceIntervals, isLoading, error } = useRunePriceHistory(apiInterval, count);
+
+  const data = useMemo(() => parsePriceData(priceIntervals, isHourly), [priceIntervals, isHourly]);
 
   const setIntervalValue = (value: IntervalOption) => {
     if (value === interval) {
@@ -111,7 +99,7 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">RUNE Price</h3>
-          <p className="text-sm text-zinc-500">{loading ? `Loading ${activeInterval.label} range...` : activeInterval.description}</p>
+          <p className="text-sm text-zinc-500">{isLoading ? `Loading ${activeInterval.label} range...` : activeInterval.description}</p>
         </div>
         <div className="flex gap-1 rounded-full border border-zinc-200/80 bg-zinc-100/70 p-1 dark:border-zinc-800 dark:bg-zinc-900/80">
           {intervals.map((item) => (
@@ -132,11 +120,11 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
         </div>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <SkeletonChart height={160} />
       ) : error ? (
         <div className="h-[160px] sm:h-[200px] flex items-center justify-center text-red-500 text-sm">
-          {error}
+          Failed to load price data
         </div>
       ) : data.length === 0 ? (
         <div className="h-[160px] sm:h-[200px] flex items-center justify-center text-zinc-400 text-sm">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getTHORNameLookup } from '@/lib/api/midgard';
+import { useTHORName } from '@/lib/hooks/use-thorname';
 
 interface AddressInputProps {
   onAddressSubmit: (address: string) => void;
@@ -9,7 +9,9 @@ interface AddressInputProps {
 export function AddressInput({ onAddressSubmit, isLoading }: AddressInputProps) {
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
-  const [resolving, setResolving] = useState(false);
+
+  const thorName = value.trim().endsWith('.thor') ? value.trim() : null;
+  const { resolved, isLoading: resolving, error: thorError } = useTHORName(thorName);
 
   const validateAddress = (input: string): boolean => {
     if (!input.startsWith('thor1')) {
@@ -24,26 +26,7 @@ export function AddressInput({ onAddressSubmit, isLoading }: AddressInputProps) 
     return true;
   };
 
-  const resolveTHORName = async (name: string): Promise<string | null> => {
-    setResolving(true);
-    setError('');
-    try {
-      const result = await getTHORNameLookup(name);
-      if (!result.entry) {
-        setError('THORName not found');
-        return null;
-      }
-      setError('');
-      return result.entry.owner;
-    } catch {
-      setError('Failed to resolve THORName');
-      return null;
-    } finally {
-      setResolving(false);
-    }
-  };
-
-  const validate = async (input: string): Promise<string | null> => {
+  const validate = (input: string): string | null => {
     const trimmed = input.trim();
 
     if (!trimmed) {
@@ -53,7 +36,16 @@ export function AddressInput({ onAddressSubmit, isLoading }: AddressInputProps) 
 
     // THORName resolution
     if (trimmed.endsWith('.thor')) {
-      return resolveTHORName(trimmed);
+      if (resolving) {
+        setError('Resolving THORName...');
+        return null;
+      }
+      if (thorError || !resolved) {
+        setError('THORName not found');
+        return null;
+      }
+      setError('');
+      return resolved.owner;
     }
 
     // Standard thor1... address validation
@@ -64,9 +56,9 @@ export function AddressInput({ onAddressSubmit, isLoading }: AddressInputProps) 
     return null;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const address = await validate(value);
+    const address = validate(value);
     if (address) {
       onAddressSubmit(address);
     }
@@ -76,7 +68,7 @@ export function AddressInput({ onAddressSubmit, isLoading }: AddressInputProps) 
     setValue(e.target.value);
     if (error) {
       const trimmed = e.target.value.trim();
-      if (trimmed.endsWith('.thor') || trimmed.startsWith('thor1')) {
+      if (trimmed.endsWith('.thor') || trimmed.startsWith('thor1') || trimmed.startsWith('tthor1')) {
         setError('');
       }
     }

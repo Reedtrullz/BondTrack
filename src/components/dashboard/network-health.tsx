@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { getAllNodes } from '@/lib/api/thornode';
+import { useMemo } from 'react';
+import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { useCurrentBlockHeight } from '@/lib/hooks/use-current-block-height';
 import { formatCompactNumber } from '@/lib/utils/formatters';
 import { NETWORK } from '@/lib/config';
@@ -56,55 +56,35 @@ function formatCountdown(totalSeconds: number): string {
 }
 
 export function NetworkHealth() {
-  const [data, setData] = useState<NetworkHealthData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Get live block height from Midgard /v2/health
-  const { currentBlockHeight, isLoading: blockHeightLoading } = useCurrentBlockHeight();
+  const { data: nodes, isLoading: nodesLoading, error: nodesError } = useAllNodes();
+  const { currentBlockHeight, isLoading: blockHeightLoading, error: blockHeightError } = useCurrentBlockHeight();
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        // Fetch nodes for active validator count
-        const nodes = await getAllNodes();
-        const activeNodes = nodes.filter((n: NodeRaw) => n.status === 'active');
-        const activeValidators = activeNodes.length;
+  const data: NetworkHealthData | null = useMemo(() => {
+    if (!nodes || currentBlockHeight === 0) return null;
 
-        // Use live block height from Midgard (not static constant!)
-        const blockHeight = currentBlockHeight;
-        
-        if (blockHeight === 0) {
-          throw new Error('Unable to fetch current block height');
-        }
+    const activeNodes = nodes.filter((n: NodeRaw) => n.status === 'active');
+    const activeValidators = activeNodes.length;
+    const blockHeight = currentBlockHeight;
 
-        const blocksSinceChurn = blockHeight % NETWORK.CHURN_INTERVAL_BLOCKS;
-        const nextChurnBlocks = NETWORK.CHURN_INTERVAL_BLOCKS - blocksSinceChurn;
-        const nextChurnSeconds = nextChurnBlocks * 6;
+    const blocksSinceChurn = blockHeight % NETWORK.CHURN_INTERVAL_BLOCKS;
+    const nextChurnBlocks = NETWORK.CHURN_INTERVAL_BLOCKS - blocksSinceChurn;
+    const nextChurnSeconds = nextChurnBlocks * 6;
 
-        const securityLevel = getSecurityLevel(activeValidators);
+    const securityLevel = getSecurityLevel(activeValidators);
 
-        setData({
-          blockHeight,
-          activeValidators,
-          nextChurnBlocks,
-          nextChurnSeconds,
-          securityLevel,
-        });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch network data');
-      } finally {
-        setIsLoading(false);
-      }
-    }
+    return {
+      blockHeight,
+      activeValidators,
+      nextChurnBlocks,
+      nextChurnSeconds,
+      securityLevel,
+    };
+  }, [nodes, currentBlockHeight]);
 
-    // Only fetch when we have the block height
-    if (!blockHeightLoading && currentBlockHeight > 0) {
-      fetchData();
-    }
-  }, [currentBlockHeight, blockHeightLoading]);
+  const isLoading = nodesLoading || blockHeightLoading;
+  const error = nodesError || blockHeightError || (data === null && !isLoading ? 'Unable to fetch current block height' : null);
 
-  if (isLoading || blockHeightLoading) {
+  if (isLoading) {
     return (
       <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <div className="flex items-center justify-between mb-4">
@@ -125,7 +105,7 @@ export function NetworkHealth() {
       <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <div className="flex items-center gap-2 text-red-500 text-sm">
           <AlertTriangle className="w-4 h-4" />
-          <span>Error: {error || 'No network data'}</span>
+          <span>Error: {error instanceof Error ? error.message : error || 'No network data'}</span>
         </div>
       </div>
     );

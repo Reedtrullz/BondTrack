@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getBondDetails, getActions } from '@/lib/api/midgard';
 import { corsHeaders } from '@/lib/api/cors';
 import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
+import { isValidTHORChainAddress } from '@/lib/utils/address-validation';
 
 // Increase default limit to get more history for tax calculations
 const DEFAULT_ACTION_LIMIT = 500;
@@ -42,7 +43,7 @@ export async function GET(
     }
 
     // Validate THORChain address format
-    if (!/^thor1[ac-hj-np-z02-9]{38,}$/.test(address)) {
+    if (!isValidTHORChainAddress(address)) {
       return NextResponse.json({ error: 'Invalid THORChain address format' }, { status: 400, headers: corsHeaders(request) });
     }
 

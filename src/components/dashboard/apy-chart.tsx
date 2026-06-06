@@ -1,15 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { getEarningsHistory, getNetwork, type EarningsHistoryRaw, type NetworkRaw } from '@/lib/api/midgard';
-import { runeToNumber } from '@/lib/utils/formatters';
+import { useApyChartData } from '@/lib/hooks/use-apy-chart-data';
 import { SkeletonChart } from '@/components/shared/skeleton';
-
-interface APYDataPoint {
-  date: string;
-  apy: number;
-}
 
 interface CustomTooltipProps {
   active?: boolean;
@@ -22,36 +16,6 @@ function formatAPY(value: number): string {
     return `${value.toFixed(4)}%`;
   }
   return `${value.toFixed(2)}%`;
-}
-
-function normalizeApyPercent(raw: string | number | undefined): number {
-  const value = typeof raw === 'string' ? Number(raw) : raw;
-  if (!Number.isFinite(value) || !value || value <= 0) return 0;
-  return value > 1 ? value : value * 100;
-}
-
-async function calculateAPYHistory(earningsRaw: EarningsHistoryRaw, networkRaw: NetworkRaw): Promise<APYDataPoint[]> {
-  const intervals = earningsRaw.intervals || [];
-  const totalBondsRune = runeToNumber(networkRaw.bondMetrics?.totalActiveBond || '0');
-
-  if (intervals.length === 0 || totalBondsRune === 0) {
-    return [];
-  }
-
-  const baselineApy = normalizeApyPercent(networkRaw.bondingAPY);
-  const totalPeriodEarnings = intervals.reduce((sum, curr) => sum + Number(curr.bondingEarnings), 0);
-  const avgDailyEarnings = (totalPeriodEarnings / intervals.length) / 1e8;
-
-  return intervals.map((interval) => {
-    const dailyEarnings = Number(interval.bondingEarnings) / 1e8;
-    const ratio = avgDailyEarnings !== 0 ? dailyEarnings / avgDailyEarnings : 1;
-    const pointApy = baselineApy * ratio;
-    const date = new Date(Number(interval.startTime) * 1000);
-    return {
-      date: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-      apy: Math.max(0, pointApy),
-    };
-  }).reverse();
 }
 
 function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
@@ -73,33 +37,7 @@ interface APYChartProps {
 }
 
 export function APYChart({ count = 365 }: APYChartProps) {
-  const [data, setData] = useState<APYDataPoint[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      setError(null);
-      try {
-        const apiInterval = 'day';
-        const apiCount = count || 365;
-        const [earningsRaw, networkRaw] = await Promise.all([
-          getEarningsHistory(apiInterval, apiCount),
-          getNetwork(),
-        ]);
-
-        const apyData = await calculateAPYHistory(earningsRaw, networkRaw);
-        setData(apyData);
-      } catch (err) {
-        setError('Failed to load APY data');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
-  }, [count]);
+  const { data, isLoading, error } = useApyChartData(count);
 
   return (
     <div className="p-6 rounded-2xl bg-transparent border border-transparent shadow-none">
@@ -107,11 +45,11 @@ export function APYChart({ count = 365 }: APYChartProps) {
         <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Earnings History</h3>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <SkeletonChart height={160} />
       ) : error ? (
         <div className="h-[160px] sm:h-[200px] flex items-center justify-center text-red-500 text-sm">
-          {error}
+          Failed to load APY data
         </div>
       ) : data.length === 0 ? (
         <div className="h-[160px] sm:h-[200px] flex flex-col items-center justify-center text-center p-4">

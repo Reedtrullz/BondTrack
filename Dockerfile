@@ -1,11 +1,4 @@
-# Stage 1: Production dependencies
-FROM node:22-slim AS deps
-RUN apt-get update && apt-get install -y --no-install-recommends libc6 && rm -rf /var/lib/apt/lists/*
-WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
-
-# Stage 2: Build
+# Stage 1: Build
 FROM node:22-slim AS builder
 
 ARG NEXT_PUBLIC_THORNODE_API
@@ -46,7 +39,7 @@ RUN npm install --no-save --no-package-lock \
 COPY . .
 RUN npm run build
 
-# Stage 3: Production runner
+# Stage 2: Production runner
 FROM node:22-slim AS runner
 ARG VERSION
 WORKDIR /app
@@ -56,8 +49,7 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 ENV VERSION=${VERSION}
 
-RUN groupadd --system --gid 1001 nodejs \
-  && useradd --system --uid 1001 --gid nodejs nextjs
+RUN id -u node >/dev/null 2>&1 || useradd -m node
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
@@ -69,7 +61,7 @@ RUN npm install --no-save --no-package-lock \
   @img/sharp-linux-x64 \
   @img/sharp-libvips-linux-x64 2>/dev/null || true
 
-USER nextjs
+USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
