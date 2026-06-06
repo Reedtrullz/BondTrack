@@ -4,20 +4,23 @@ import type { Page } from '@playwright/test';
 const MOCK_ADDRESS = 'thor1test123456789abcdefghijklmnop';
 
 async function clickWalletButton(page: Page) {
+  await page.waitForTimeout(3000);
   await page.evaluate(() => {
     const buttons = Array.from(document.querySelectorAll('button'));
-    const walletBtn = buttons.find(b => b.textContent.includes('Connect Wallet'));
-    if (walletBtn) walletBtn.click();
+    const walletBtn = buttons.find(b => b.textContent?.includes('Connect Wallet'));
+    if (walletBtn) {
+      (walletBtn as HTMLElement).click();
+    }
   });
   await page.waitForTimeout(500);
 }
 
 async function clickWalletOption(page: Page, name: string) {
-  await page.evaluate((walletName: string) => {
+  await page.evaluate((optionName) => {
     const buttons = Array.from(document.querySelectorAll('button'));
-    const option = buttons.find(b => b.textContent.includes(walletName));
-    if (option) {
-      option.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    const optionBtn = buttons.find(b => b.textContent?.includes(optionName));
+    if (optionBtn) {
+      (optionBtn as HTMLElement).click();
     }
   }, name);
   await page.waitForTimeout(500);
@@ -108,16 +111,9 @@ test.describe('Wallet Connection', () => {
     await clickWalletOption(page, 'Keplr Wallet');
     await expect(page.locator(`text=${mockAddress.slice(0, 6)}`)).toBeVisible({ timeout: 5000 });
     await page.waitForTimeout(500);
-    await page.evaluate(() => {
-      const buttons = Array.from(document.querySelectorAll('button'));
-      const disconnectBtn = buttons.find(b => b.textContent.includes('Disconnect'));
-      if (disconnectBtn) disconnectBtn.click();
-    });
+    await page.getByRole('button', { name: 'Disconnect' }).first().click();
     await page.waitForTimeout(1000);
-    const hasConnectBtn = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('button')).some(b => b.textContent.includes('Connect Wallet'));
-    });
-    expect(hasConnectBtn).toBe(true);
+    await expect(page.getByRole('button', { name: 'Connect Wallet' }).first()).toBeVisible();
   });
 
   test('connects successfully with mocked XDEFI', async ({ page, context }) => {
