@@ -72,8 +72,76 @@ deploy story — see [Reedtrullz/inebotten-discord](https://github.com/Reedtrull
 | App code | `src/` |
 | E2E specs | `e2e/` |
 | Unit specs | colocated `*.test.ts(x)` |
+| Test infra | `src/test/` (MSW, helpers, setup) |
 | Workflows | `.github/workflows/ci.yml` |
 | Container | `Dockerfile`, `.dockerignore`, `compose.production.yml` |
 | Deploy | `ansible-playbook.yml`, `inventory/`, `group_vars/` |
 | Docs (live) | `README.md`, `CLAUDE.md`, `AGENTS.md`, `DEPLOYMENT.md`, `docs/` |
 | Docs (archive) | `docs/archive/` — read-only, prior audits |
+| Data conventions | `docs/thorchain-data-conventions.md` |
+
+## Project structure
+```
+Heimdall/
+├── src/
+│   ├── app/                    # Next.js App Router (16 routes + 8 API proxies)
+│   │   ├── api/                # Server-side proxies: thorchain, midgard, coingecko, coinapi, health, pools, address, tax-report
+│   │   ├── dashboard/          # 12 sub-routes: portfolio, overview, nodes, rewards, risk, transactions, lp, simulator, explorer, changelogs, settings
+│   │   └── learn/              # Educational content + dynamic [slug] articles
+│   ├── components/
+│   │   ├── dashboard/          # 40 domain widgets (charts, tables, monitors, tx tools)
+│   │   ├── layout/             # Shell, sidebar, theme toggle, bifrost status
+│   │   ├── shared/             # Reusable atoms: DashboardCard, StatusBadge, Skeleton, etc.
+│   │   ├── ui/                 # shadcn/Radix primitives: Button, Card, Tabs, Tooltip, etc.
+│   │   ├── wallet/             # Wallet connect + transaction preview
+│   │   └── alerts/             # Alert toast
+│   ├── lib/
+│   │   ├── api/                # THORNode + Midgard + CoinAPI + CoinGecko clients
+│   │   ├── hooks/              # 24 SWR data hooks
+│   │   ├── transactions/       # BOND/UNBOND signing + memo helpers
+│   │   ├── types/              # Domain types: node, lp, wallet
+│   │   ├── utils/              # Formatters, calculations, health score, IL, tax export
+│   │   ├── config.ts           # Endpoints + network constants
+│   │   ├── utils.ts            # cn() class merge helper
+│   │   └── mock-data.ts        # Dev/test mock data toggle
+│   └── test/                   # MSW server + handlers + test utilities
+├── e2e/                        # 12 Playwright specs
+└── docs/                       # Living docs + archived audits
+```
+
+## High-centrality files
+These files are imported most widely — changes here have outsized blast radius:
+
+| File | Importers | Role |
+|------|-----------|------|
+| `src/lib/types/node.ts` | ~37 | `BondPosition`, `NodeRaw`, `extractBondPositions()` |
+| `src/lib/utils/formatters.ts` | ~35 | `runeToNumber()`, `formatRuneAmount()`, `formatBasisPoints()` |
+| `src/lib/api/midgard.ts` | ~30 | Midgard client + raw types (604 lines — largest API file) |
+| `src/lib/api/thornode.ts` | ~25 | THORNode client + `NodeRaw`, `NetworkConstantsRaw` |
+| `src/lib/utils.ts` | ~26 | `cn()` class merge utility |
+| `src/lib/config.ts` | ~20 | `ENDPOINTS`, `NETWORK` constants |
+| `src/lib/utils/calculations.ts` | ~18 | Bond/LP/network math |
+
+## Data flow
+```
+Browser component/page
+  → SWR hook (src/lib/hooks/*)
+    → API client (src/lib/api/thornode.ts | midgard.ts)
+      → fetchThornode() | fetchMidgard() (src/lib/api/client.ts)
+        → /api/thorchain/* | /api/midgard/* (Next.js route handler)
+          → upstream THORNode | Midgard API
+```
+
+## Subdirectory AGENTS.md
+Each major directory has its own AGENTS.md with domain-specific conventions:
+- `e2e/AGENTS.md` — Playwright patterns
+- `src/app/AGENTS.md` — Routes + API proxy conventions
+- `src/components/dashboard/AGENTS.md` — 40 dashboard widgets
+- `src/components/layout/AGENTS.md` — Shell + navigation
+- `src/components/shared/AGENTS.md` — Reusable atoms
+- `src/components/ui/AGENTS.md` — shadcn/Radix primitives
+- `src/lib/api/AGENTS.md` — API client layer + proxy rules
+- `src/lib/hooks/AGENTS.md` — 24 SWR hooks
+- `src/lib/transactions/AGENTS.md` — BOND/UNBOND signing
+- `src/lib/utils/AGENTS.md` — Formatters + calculations
+- `src/test/AGENTS.md` — Test infrastructure + MSW

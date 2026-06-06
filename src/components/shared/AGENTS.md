@@ -2,7 +2,7 @@
 
 Reusable UI primitives and cross-cutting components used across dashboard pages.
 
-**9 components** — no external dependencies beyond project utils and Tailwind.
+**11 components** — no external dependencies beyond project utils and Tailwind.
 
 ## COMPONENTS
 
@@ -10,13 +10,15 @@ Reusable UI primitives and cross-cutting components used across dashboard pages.
 |-----------|---------|-----------|
 | `dashboard-card.tsx` | Consistent card wrapper with optional title, icon, highlight border | `title`, `icon`, `highlight` (`emerald`\| `amber`\| `red`\| `cyan`) |
 | `export-button.tsx` | Bond position CSV export trigger | `bondPositions` |
-| `api-health-banner.tsx` | Shows "X API is temporarily unavailable" when `useApiHealth` flips Midgard or THORNode to `degraded`/`down` (≥3 consecutive failed probes against `getHealth()` and `getAllNodes()`). If this banner reappears, the proxy routes — not the upstream APIs — are usually the culprit; see `src/lib/api/AGENTS.md` for the THORNode `thorchain/`-prefix normalisation rule. | — |
-| `address-input.tsx` | THORChain address input with validation | `value`, `onChange`, `onSubmit` |
+| `api-health-banner.tsx` | "X API is temporarily unavailable" banner. Triggers when `useApiHealth` flips to `degraded`/`down` (≥3 consecutive failed probes). If banner reappears, check proxy routes first — see `src/lib/api/AGENTS.md`. | — |
+| `address-input.tsx` | THORChain address input with validation + THORName lookup | `value`, `onChange`, `onSubmit` |
 | `status-badge.tsx` | Color-coded status pill (Active/Standby/Ready/Disabled/Jailed) | `status`, `isJailed?` |
 | `badge.tsx` | Generic numeric/status badge | `children`, `variant` |
 | `breadcrumbs.tsx` | Dashboard page breadcrumbs | — |
 | `recent-addresses.tsx` | Recently viewed addresses list | `addresses`, `onSelect` |
 | `loading-skeleton.tsx` | Pulse skeleton for loading states | `className` |
+| `skeleton.tsx` | Minimal skeleton primitive | `className` |
+| `metric-tooltip.tsx` | Info tooltip for metric explanations | `aria-label="Explain ..."` |
 
 ## CONVENTIONS
 
@@ -26,7 +28,9 @@ Reusable UI primitives and cross-cutting components used across dashboard pages.
 
 **LoadingSkeleton**: Use `animate-pulse bg-zinc-200 dark:bg-zinc-800` pattern. Prefer skeletons over spinners for data-heavy sections.
 
+**MetricTooltip**: Uses `aria-label="Explain ..."` for accessibility. Used across dashboard widgets for metric descriptions.
+
 ## ANTI-PATTERNS
 - Never create ad-hoc card divs — use `DashboardCard`
 - Never hardcode status colors — use `StatusBadge` or `Badge`
-- Never show raw loading text — use `LoadingSkeleton`
+- Never show raw loading text — use `LoadingSkeleton` or `Skeleton`

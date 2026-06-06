@@ -1,0 +1,16 @@
+HTTP/1.1 200 OK
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+vary: Origin
+access-control-allow-headers: Content-Type, Accept
+access-control-allow-methods: GET, OPTIONS
+access-control-allow-origin: https://thorchain.no
+cache-control: public, max-age=5
+content-type: application/json
+referrer-policy: strict-origin-when-cross-origin
+x-content-type-options: nosniff
+x-frame-options: DENY
+x-xss-protection: 1; mode=block
+Date: Sat, 06 Jun 2026 01:57:00 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+

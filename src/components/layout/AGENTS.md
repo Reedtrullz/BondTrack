@@ -8,9 +8,9 @@ Shell and navigation components that frame the dashboard experience.
 
 | Component | Purpose | Key Features |
 |-----------|---------|-------------|
-| `dashboard-shell.tsx` | Main app shell — header, refresh, THORName, wallet, API health | Address hydration, SWR cache refresh, THORName reverse lookup, RUNE balance display |
-| `sidebar.tsx` | Dashboard navigation — desktop + mobile drawer | 7 nav items, mobile hamburger, address-preserving links |
-| `theme-toggle.tsx` | Dark/light mode toggle | next-themes integration |
+| `dashboard-shell.tsx` | Main app shell — header, refresh, THORName, wallet, API health | Address hydration, SWR cache refresh, THORName reverse lookup (no-retry, `sessionStorage` cached), RUNE balance display |
+| `sidebar.tsx` | Dashboard navigation — desktop + mobile drawer | 7+ nav items, mobile hamburger, address-preserving links, `aria-label`/`aria-current` |
+| `theme-toggle.tsx` | Dark/light mode toggle | `next-themes` integration |
 | `bifrost-status.tsx` | Bifrost bridge status indicator | Live connection status |
 
 ## WHERE TO LOOK
@@ -24,11 +24,13 @@ Shell and navigation components that frame the dashboard experience.
 
 ## CONVENTIONS
 
-**Address preservation**: All sidebar links append `?address=` when an address is active. Never navigate without preserving address context.
+**Address preservation**: All sidebar links append `?address=` when active. Never navigate without preserving address context.
 
 **Mobile**: Sidebar is a slide-out drawer on mobile. `MobileMenuButton` toggles it.
 
 **Refresh**: Dashboard shell exposes a refresh button that revalidates all `SWR_KEYS`. Individual pages should not add their own refresh buttons.
+
+**THORName**: Reverse lookup cached in `sessionStorage`. "No result" is cached too to prevent retry spam. Never block dashboard rendering on lookup failure.
 
 ## ANTI-PATTERNS
 - Never add nav items without updating both desktop and mobile views

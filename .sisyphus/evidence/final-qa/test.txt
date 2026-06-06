@@ -1,0 +1,13 @@
+
+> heimdall@1.0.0 test
+> vitest run
+
+
+ RUN  v4.1.2 /Users/reidar/Projectos/Heimdall
+
+
+ Test Files  37 passed (37)
+      Tests  181 passed (181)
+   Start at  03:55:55
+   Duration  20.97s (transform 15.09s, setup 9.29s, import 31.74s, tests 12.49s, environment 105.15s)
+

@@ -1,0 +1,22 @@
+{
+  "active_plan": "/Users/reidar/Projectos/Heimdall/.sisyphus/plans/heimdall-review-fixes.md",
+  "started_at": "2026-06-05T22:04:02.995Z",
+  "session_ids": [
+    "ses_166567bbdffevAlaLpMzl99xi4"
+  ],
+  "session_origins": {
+    "ses_166567bbdffevAlaLpMzl99xi4": "direct"
+  },
+  "plan_name": "heimdall-review-fixes",
+  "agent": "atlas",
+  "task_sessions": {
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "**Plan Compliance Audit** — `oracle`",
+      "session_id": "ses_165547604ffeLZ446rqeZYoN37",
+      "agent": "oracle",
+      "updated_at": "2026-06-06T02:07:43.118Z"
+    }
+  }
+}

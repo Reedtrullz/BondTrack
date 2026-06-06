@@ -1,0 +1,71 @@
+
+> heimdall@1.0.0 e2e
+> playwright test
+
+[1A[2K[2m[WebServer] [22m[33m[1m⚠[22m[39m "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+
+
+Running 61 tests using 5 workers
+
+[1A[2K[1/61] [chromium] › e2e/api-health.spec.ts:300:7 › API health banner › shows THORNode error message when /api/thorchain fails with 500
+[1A[2K[2/61] [chromium] › e2e/comprehensive.spec.ts:6:7 › Visual Regression - Layout › homepage renders correctly
+[1A[2K[3/61] [chromium] › e2e/api-health.spec.ts:321:7 › API health banner › dismisses the banner after an error state
+[1A[2K[4/61] [chromium] › e2e/api-health.spec.ts:312:7 › API health banner › hides the banner when both APIs are healthy
+[1A[2K[5/61] [chromium] › e2e/api-health.spec.ts:288:7 › API health banner › shows Midgard error message when /api/midgard fails with 502
+[1A[2K[6/61] [chromium] › e2e/comprehensive.spec.ts:12:7 › Visual Regression - Layout › dashboard portfolio page renders correctly
+[1A[2K[7/61] [chromium] › e2e/comprehensive.spec.ts:17:7 › Visual Regression - Layout › sidebar is visible on all dashboard pages
+[1A[2K[8/61] [chromium] › e2e/comprehensive.spec.ts:27:7 › Accessibility › form inputs have placeholders
+[1A[2K[9/61] [chromium] › e2e/comprehensive.spec.ts:35:7 › Responsive Behavior › works on mobile viewport
+[1A[2K[10/61] [chromium] › e2e/comprehensive.spec.ts:41:7 › Responsive Behavior › works on tablet viewport
+[1A[2K[11/61] [chromium] › e2e/comprehensive.spec.ts:47:7 › Responsive Behavior › works on desktop viewport
+[1A[2K[12/61] [chromium] › e2e/comprehensive.spec.ts:55:7 › API Integration › handles API errors gracefully
+[1A[2K[13/61] [chromium] › e2e/comprehensive.spec.ts:72:7 › API Integration › retries failed requests
+[1A[2K[14/61] [chromium] › e2e/comprehensive.spec.ts:99:7 › Edge Cases › handles very long address input
+[1A[2K[15/61] [chromium] › e2e/comprehensive.spec.ts:108:7 › Edge Cases › handles special characters in address
+[1A[2K[16/61] [chromium] › e2e/comprehensive.spec.ts:116:7 › Edge Cases › handles empty dashboard URL without address
+[1A[2K[17/61] [chromium] › e2e/comprehensive.spec.ts:122:7 › Edge Cases › handles direct navigation to deep links
+[1A[2K[18/61] [chromium] › e2e/dashboard-navigation.spec.ts:10:7 › Dashboard Navigation › displays dashboard shell with sidebar
+[1A[2K[19/61] [chromium] › e2e/dashboard-navigation.spec.ts:15:7 › Dashboard Navigation › sidebar contains all navigation links
+[1A[2K[20/61] [chromium] › e2e/dashboard-navigation.spec.ts:25:7 › Dashboard Navigation › navigates to Portfolio page
+[1A[2K[21/61] [chromium] › e2e/dashboard-navigation.spec.ts:30:7 › Dashboard Navigation › navigates to Nodes page
+[1A[2K[22/61] [chromium] › e2e/dashboard-navigation.spec.ts:35:7 › Dashboard Navigation › navigates to Rewards page
+[1A[2K[23/61] [chromium] › e2e/dashboard-navigation.spec.ts:40:7 › Dashboard Navigation › navigates to Risk page
+[1A[2K[24/61] [chromium] › e2e/dashboard-navigation.spec.ts:45:7 › Dashboard Navigation › navigates to Transactions page
+[1A[2K[25/61] [chromium] › e2e/dashboard-navigation.spec.ts:50:7 › Dashboard Navigation › highlights active page in sidebar
+[1A[2K[26/61] [chromium] › e2e/dashboard-navigation.spec.ts:57:7 › Dashboard Navigation › displays wallet connect button in header
+[1A[2K[27/61] [chromium] › e2e/dashboard-pages.spec.ts:139:7 › Portfolio Page › displays portfolio summary
+[1A[2K[28/61] [chromium] › e2e/dashboard-pages.spec.ts:144:7 › Portfolio Page › displays bond positions section
+[1A[2K[29/61] [chromium] › e2e/homepage.spec.ts:8:7 › Homepage › displays app title and description
+[1A[2K[30/61] [chromium] › e2e/homepage.spec.ts:13:7 › Homepage › displays address input field
+[1A[2K[31/61] [chromium] › e2e/homepage.spec.ts:18:7 › Homepage › displays three feature cards
+[1A[2K[32/61] [chromium] › e2e/homepage.spec.ts:24:7 › Homepage › shows Lookup button
+[1A[2K[33/61] [chromium] › e2e/homepage.spec.ts:28:7 › Homepage › validates address starting with thor1
+[1A[2K[34/61] [chromium] › e2e/homepage.spec.ts:35:7 › Homepage › validates address length
+[1A[2K[35/61] [chromium] › e2e/homepage.spec.ts:42:7 › Homepage › displays Shield icon
+[1A[2K[36/61] [chromium] › e2e/lp-il.spec.ts:148:7 › LP IL dashboard › shows the IL column and at least one row
+[1A[2K[37/61] [chromium] › e2e/portfolio.spec.ts:240:7 › Portfolio dashboard › renders portfolio summary, allocation chart, and quick actions
+[1A[2K[38/61] [chromium] › e2e/redirects.spec.ts:6:7 › Dashboard redirects › redirects overview to portfolio and preserves query params
+[1A[2K[39/61] [chromium] › e2e/redirects.spec.ts:15:7 › Dashboard redirects › redirects overview to portfolio with arbitrary query params
+[1A[2K[40/61] [chromium] › e2e/redirects.spec.ts:24:7 › Dashboard redirects › redirects dashboard root to portfolio
+[1A[2K[41/61] [chromium] › e2e/risk-security.spec.ts:117:7 › Risk dashboard › renders the network security card and ratio badge
+[1A[2K[42/61] [chromium] › e2e/tax-export.spec.ts:179:7 › Tax export flow › opens the tax report modal from the export button
+[1A[2K[43/61] [chromium] › e2e/transactions.spec.ts:17:7 › Transaction Composer › displays BOND and UNBOND mode buttons
+[1A[2K[44/61] [chromium] › e2e/transactions.spec.ts:22:7 › Transaction Composer › defaults to BOND mode
+[1A[2K[45/61] [chromium] › e2e/transactions.spec.ts:27:7 › Transaction Composer › switches to UNBOND mode
+[1A[2K[46/61] [chromium] › e2e/transactions.spec.ts:32:7 › Transaction Composer › generates BOND memo without putting amount in provider-address slot
+[1A[2K[47/61] [chromium] › e2e/transactions.spec.ts:41:7 › Transaction Composer › generates advanced BOND memo only when provider field is explicitly supplied
+[1A[2K[48/61] [chromium] › e2e/transactions.spec.ts:50:7 › Transaction Composer › generates UNBOND memo with amount in 1e8 base units
+[1A[2K[49/61] [chromium] › e2e/transactions.spec.ts:58:7 › Transaction Composer › copy memo button works
+[1A[2K[50/61] [chromium] › e2e/transactions.spec.ts:65:7 › Transaction Composer › shows Connect Wallet prompt when disconnected
+[1A[2K[51/61] [chromium] › e2e/transactions.spec.ts:70:7 › Transaction Composer › shows minimum bond info
+[1A[2K[52/61] [chromium] › e2e/wallet.spec.ts:27:7 › Wallet Connection › shows connect wallet button when disconnected
+[1A[2K[53/61] [chromium] › e2e/wallet.spec.ts:38:7 › Wallet Connection › shows dropdown with all wallet options
+[1A[2K[54/61] [chromium] › e2e/wallet.spec.ts:53:7 › Wallet Connection › displays error message on connection failure
+[1A[2K[55/61] [chromium] › e2e/wallet.spec.ts:73:7 › Wallet Connection › connects successfully with mocked Keplr
+[1A[2K[56/61] [chromium] › e2e/wallet.spec.ts:92:7 › Wallet Connection › disconnect clears connection state
+[1A[2K[57/61] [chromium] › e2e/wallet.spec.ts:123:7 › Wallet Connection › connects successfully with mocked XDEFI
+[1A[2K[58/61] [chromium] › e2e/wallet.spec.ts:145:7 › Wallet Connection › connects successfully with mocked Vultisig
+[1A[2K[59/61] [chromium] › e2e/wallet.spec.ts:167:7 › Wallet Connection › shows correct wallet name when connected with Keplr
+[1A[2K[60/61] [chromium] › e2e/wallet.spec.ts:196:7 › Wallet Connection › shows correct wallet name when connected with XDEFI
+[1A[2K[61/61] [chromium] › e2e/wallet.spec.ts:228:7 › Wallet Connection › shows correct wallet name when connected with Vultisig
+[1A[2K  61 passed (45.4s)

@@ -1,54 +1,64 @@
 # App Router — Pages & API Routes
 
-Next.js 16 App Router entry points, dashboard pages, and server-side API proxies.
+Next.js 16 App Router entry points, dashboard pages, learn section, and server-side API proxies.
 
 ## STRUCTURE
 ```
 src/app/
-├── layout.tsx              # Root — fonts, ThemeProvider, analytics
+├── layout.tsx              # Root — fonts (Exo2, Open Sans), ThemeProvider
 ├── page.tsx                # Landing — address input, last-address redirect
-├── globals.css             # Tailwind + global styles
+├── globals.css             # Tailwind v4 + global styles
 ├── api/                    # Server-side proxy routes (CORS bypass)
-│   ├── midgard/[...path]/
-│   ├── thorchain/[...path]/
-│   ├── coingecko/[...path]/
-│   ├── coinapi/rune-price/
-│   ├── address/[address]/
-│   ├── pools/[pool]/
-│   └── tax-report/         # Tax CSV export (server-side aggregation)
-└── dashboard/
-    ├── layout.tsx          # Suspense + DashboardShell + address restore
-    ├── page.tsx            # Redirects to /dashboard/portfolio
-    ├── portfolio/          # Unified Bond + LP portfolio view
-    ├── overview/           # Portfolio summary + fee revenue + market overview
-    ├── nodes/
-    ├── rewards/            # PnL + tax export button
-    ├── risk/               # Network security gauge
-    ├── transactions/
-    ├── lp/                 # IL calculator column
-    └── changelogs/
+│   ├── midgard/[...path]/  # Midgard proxy + fallback endpoint
+│   ├── thorchain/[...path]/ # THORNode proxy + path normalization
+│   ├── coingecko/[...path]/ # CoinGecko proxy + caching
+│   ├── coinapi/rune-price/ # CoinAPI-backed historical price
+│   ├── address/[address]/  # Midgard bond+action aggregation
+│   ├── pools/[pool]/       # Pool earnings aggregation
+│   ├── health/             # Health check endpoint
+│   └── tax-report/         # Tax CSV export (server-side)
+├── dashboard/
+│   ├── layout.tsx          # Suspense + DashboardShell + address restore
+│   ├── page.tsx            # Redirects to /dashboard/portfolio
+│   ├── portfolio/          # Unified Bond + LP portfolio view
+│   ├── overview/           # Portfolio summary + fee revenue + market
+│   ├── nodes/              # Node health monitoring
+│   ├── rewards/            # PnL + tax export button
+│   ├── risk/               # Network security gauge + risk panels
+│   ├── transactions/       # BOND/UNBOND composer + history
+│   ├── lp/                 # LP positions + IL calculator
+│   ├── simulator/          # Bond projection simulator
+│   ├── explorer/           # Network-wide node explorer
+│   ├── changelogs/         # TCC/TCU changelog browser
+│   └── settings/
+│       └── notifications/  # Notification preferences
+└── learn/
+    ├── layout.tsx          # Learn section layout
+    ├── page.tsx            # Learn index
+    └── [slug]/page.tsx     # Dynamic article route
 ```
 
 ## WHERE TO LOOK
 | Task | Location |
 |------|----------|
 | Add dashboard page | `src/app/dashboard/<page>/page.tsx` |
-| Add portfolio page | `src/app/dashboard/portfolio/page.tsx` |
 | Add API route | `src/app/api/<name>/route.ts` |
-| Add tax export route | `src/app/api/tax-report/route.ts` |
 | Root layout changes | `src/app/layout.tsx` |
 | Address state logic | `src/app/dashboard/layout.tsx` |
-| Upgrade alert banner | `src/app/dashboard/layout.tsx` (injected in dashboard shell) |
+| Upgrade alert | `src/app/dashboard/layout.tsx` (injected in shell) |
+| Learn articles | `src/app/learn/[slug]/page.tsx` |
 
 ## CONVENTIONS
 
 **Pages using `useSearchParams`**: Must be `'use client'` and wrapped in `Suspense`. `dashboard/layout.tsx` provides this.
 
-**API routes**: All proxies use `export const dynamic = 'force-dynamic'`. Forward to external APIs with CORS headers. Custom endpoints (address, pools) aggregate Midgard data server-side.
+**API routes**: All proxies use `export const dynamic = 'force-dynamic'`. Rate-limited via `src/lib/api/rate-limit.ts`. Custom endpoints (address, pools, tax-report) aggregate Midgard data server-side.
 
-**Health endpoint**: `/api/health` returns `{ status, timestamp, version }`. Version comes from `process.env.VERSION` (set by Ansible/Docker) → falls back to `process.env.npm_package_version` → `"unknown"`. Dockerfile passes `VERSION` as ARG/ENV.
+**Health endpoint**: `/api/health` returns `{ status, timestamp, version }`. Version: `process.env.VERSION` -> `"unknown"`.
 
-**Address persistence**: Unified `BONDTRACK_ADDRESS` localStorage key. Dashboard layout restores last address on load. Old keys (`dashboard-address`, `thornode-watcher-last-address`) are migrated and deleted automatically.
+**Address persistence**: Unified `BONDTRACK_ADDRESS` localStorage key (legacy name; do not rename). Dashboard layout restores on load.
+
+**Changelogs layout**: `changelogs/layout.tsx` imports and renders `./page` directly inside Suspense — atypical but intentional.
 
 ## ANTI-PATTERNS
 - Never use `useSearchParams()` outside a `Suspense` boundary
