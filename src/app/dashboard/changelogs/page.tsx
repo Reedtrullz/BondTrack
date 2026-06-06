@@ -281,9 +281,8 @@ export default function ChangelogsPage() {
         }
         if (searchBuffer || typeFilter !== 'all') {
           const nextSearchQuery = '';
-          const nextTypeFilter: FilterType = 'all';
           const currentParams = new URLSearchParams(window.location.search);
-    const nextUrl = buildChangelogQuery(currentParams, nextSearchQuery, typeFilter);
+          const nextUrl = buildChangelogQuery(currentParams, nextSearchQuery, 'all');
 
           setSearchBuffer('');
           setTypeFilter('all');

@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Eye, Shield, BarChart3, AlertTriangle, ArrowRightLeft, Menu, X, ScrollText, Coins, PieChart, Wallet } from 'lucide-react';
@@ -26,10 +25,10 @@ const navItems = (addr: string | null) => {
 
 interface SidebarProps {
   isOpen?: boolean;
-  onClose?: () => void;
+  onCloseAction?: () => void;
 }
 
-export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
+export function Sidebar({ isOpen = false, onCloseAction }: SidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
@@ -38,7 +37,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       {isOpen && (
         <div 
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
-          onClick={onClose}
+          onClick={onCloseAction}
         />
       )}
       
@@ -52,7 +51,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       )}>
         <button 
-          onClick={onClose}
+          onClick={onCloseAction}
           className="absolute top-4 right-4 md:hidden p-2 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
         >
           <X className="w-5 h-5" />
@@ -85,7 +84,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={onClose}
+                onClick={onCloseAction}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                   "text-zinc-600 dark:text-zinc-400",
@@ -124,10 +123,10 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   );
 }
 
-export function MobileMenuButton({ onClick }: { onClick: () => void }) {
+export function MobileMenuButton({ onClickAction }: { onClickAction: () => void }) {
   return (
     <button
-      onClick={onClick}
+      onClick={onClickAction}
       className="md:hidden p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition"
       aria-label="Open menu"
     >

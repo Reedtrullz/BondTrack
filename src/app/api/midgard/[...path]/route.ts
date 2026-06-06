@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { corsHeaders } from '@/lib/api/cors';
 import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 
 const MIDGARD_ENDPOINTS = [
@@ -23,29 +24,16 @@ export const dynamic = 'force-dynamic';
 
 const MAX_REQUESTS = 300;
 const WINDOW_MS = 60 * 1000;
+const SUCCESS_CACHE_CONTROL = 'public, max-age=30';
 
 function isAllowedPath(path: string): boolean {
   return ALLOWED_PATHS.some((pattern) => pattern.test(path));
 }
 
-function corsHeaders(request: NextRequest): HeadersInit {
-  const origin = request.headers.get('origin');
-  const allowedOrigins = new Set([
-    'https://thorchain.no',
-    'https://bond.thorchain.no',
-    'https://dev.thorchain.no',
-    'http://localhost:3000',
-    'http://localhost:3001',
-  ]);
-
-  if (process.env.NEXT_PUBLIC_APP_URL) allowedOrigins.add(process.env.NEXT_PUBLIC_APP_URL);
-  if (process.env.VERCEL_URL) allowedOrigins.add(`https://${process.env.VERCEL_URL}`);
-
+function successHeaders(request: NextRequest): HeadersInit {
   return {
-    'Access-Control-Allow-Origin': origin && allowedOrigins.has(origin) ? origin : 'https://thorchain.no',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Accept',
-    'Vary': 'Origin',
+    ...corsHeaders(request, ['https://bond.thorchain.no']),
+    'Cache-Control': SUCCESS_CACHE_CONTROL,
   };
 }
 
@@ -65,7 +53,7 @@ export async function GET(
     return NextResponse.json(
       { error: 'Rate limit exceeded' },
       { status: 429, headers: {
-        ...corsHeaders(request),
+        ...corsHeaders(request, ['https://bond.thorchain.no']),
         'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
         'X-RateLimit-Limit': String(MAX_REQUESTS),
         'X-RateLimit-Remaining': '0',
@@ -77,7 +65,7 @@ export async function GET(
   if (!isAllowedPath(decodedPath)) {
     return NextResponse.json(
       { error: 'Proxy path is not allowed' },
-      { status: 403, headers: corsHeaders(request) }
+      { status: 403, headers: corsHeaders(request, ['https://bond.thorchain.no']) }
     );
   }
 
@@ -110,9 +98,9 @@ export async function GET(
       const data = await response.json();
 
       return NextResponse.json(data, {
-        headers: corsHeaders(request),
+        headers: successHeaders(request),
       });
-    } catch (error) {
+    } catch {
       errors.push('Upstream request failed');
       continue;
     }
@@ -124,12 +112,12 @@ export async function GET(
 
   return NextResponse.json(
     { error: 'All Midgard endpoints failed', details: errors },
-    { status: finalStatus, headers: corsHeaders(request) }
+    { status: finalStatus, headers: corsHeaders(request, ['https://bond.thorchain.no']) }
   );
 }
 
 export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
-    headers: corsHeaders(request),
+    headers: corsHeaders(request, ['https://bond.thorchain.no']),
   });
 }

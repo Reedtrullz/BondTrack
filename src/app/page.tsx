@@ -4,13 +4,10 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AddressInput } from '@/components/shared/address-input';
 import { RecentAddresses } from '@/components/shared/recent-addresses';
-import { Eye, Activity, BarChart3, TrendingUp, Zap, Globe, Lock, Wallet, Bell, ChevronRight } from 'lucide-react';
-import Link from 'next/link';
+import { Eye, Activity, TrendingUp, Zap, Globe, Lock, Wallet } from 'lucide-react';
 
 const BONDTRACK_ADDRESS = 'BONDTRACK_ADDRESS';
 const OLD_LAST_ADDRESS_KEY = 'heimdall-last-address';
-
-const LAST_ADDRESS_KEY = 'heimdall-last-address';
 
 export default function Home() {
   const router = useRouter();

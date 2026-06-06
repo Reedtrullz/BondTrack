@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { BondPosition } from '@/lib/types/node';
-import { cn } from '@/lib/utils';
 import { useNodeRankings } from '@/lib/hooks/use-node-rankings';
 import { AlertTriangle, ShieldCheck, Zap } from 'lucide-react';
 

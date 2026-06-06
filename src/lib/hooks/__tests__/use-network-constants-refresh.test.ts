@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useNetworkConstants } from '../use-network-constants';
 import * as thornode from '@/lib/api/thornode';
 import React from 'react';

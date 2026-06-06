@@ -1,11 +1,11 @@
 'use client';
 
-import { useMemo, Fragment } from 'react';
+import { useMemo } from 'react';
 import type { BondPosition, YieldGuardFlag } from '@/lib/types/node';
-import { formatRuneAmount, formatRuneWithUnit, numberToRune } from '@/lib/utils/formatters';
+import { formatRuneAmount, numberToRune } from '@/lib/utils/formatters';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Badge } from '@/components/shared/badge';
-import { AlertTriangle, TrendingDown, Clock, UserMinus, Gauge, Inbox, HelpCircle } from 'lucide-react';
+import { AlertTriangle, TrendingDown, Clock, UserMinus, Gauge, Inbox } from 'lucide-react';
 import { MetricTooltip, METRIC_EXPLANATIONS } from '@/components/shared/metric-tooltip';
 
 interface PositionTableProps {

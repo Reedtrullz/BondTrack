@@ -2,11 +2,11 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { SWRConfig } from 'swr';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useLpPositions } from '../lib/hooks/use-lp-positions';
-import * as midgard from '../lib/api/midgard';
+import { useLpPositions } from '../use-lp-positions';
+import * as midgard from '../../api/midgard';
 
-vi.mock('../lib/api/midgard');
-vi.mock('../lib/api/thornode', () => ({ getLiquidityProvider: vi.fn().mockResolvedValue(null) }));
+vi.mock('../../api/midgard');
+vi.mock('../../api/thornode', () => ({ getLiquidityProvider: vi.fn().mockResolvedValue(null) }));
 
 const wrapper = ({ children }: { children: React.ReactNode }) =>
   React.createElement(SWRConfig, { value: { provider: () => new Map() } }, children);

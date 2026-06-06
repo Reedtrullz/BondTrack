@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { TrendingUp, Coins, DollarSign, Globe, BarChart3, Info } from 'lucide-react';
+import { TrendingUp, Coins, BarChart3, Info } from 'lucide-react';
 import { BondPosition } from '@/lib/types/node';
 import { useHistoricalApy } from '@/lib/hooks/use-historical-apy';
 import { useRunePrice } from '@/lib/hooks/use-rune-price';
-import { formatRuneAmount, formatAmount, formatUsd, formatRuneFromNumber } from '@/lib/utils/formatters';
+import { formatUsd, formatRuneFromNumber } from '@/lib/utils/formatters';
 import { cn } from '@/lib/utils';
 
 interface CompoundGrowthForecastProps {
@@ -29,10 +29,6 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
   // Calculate the forecast APY based on user preference
   const forecastApy = useMemo(() => {
     if (!useHistoricalBaseline || !historicalApy) return weightedApy;
-    
-    // Calculate personal leakage factor (ratio of weighted vs network APY)
-    // We apply this same leakage to the historical network average
-    const leakageFactor = weightedApy > 0 ? weightedApy / (weightedApy + 1) : 1; // Simplified
     
     // Blend: 70% historical (stable) + 30% current (momentum)
     const blendedNetworkApy = (historicalApy * 0.7) + (weightedApy * 0.3);

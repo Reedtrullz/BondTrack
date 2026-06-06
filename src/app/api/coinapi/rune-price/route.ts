@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRunePriceAtDate, getRunePriceRange } from '@/lib/api/coinapi';
+import { corsHeaders } from '@/lib/api/cors';
 import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -14,26 +15,6 @@ const MAX_RANGE_MS = 370 * 24 * 60 * 60 * 1000;
 function parseIsoDate(value: string): Date | null {
   const date = new Date(value);
   return Number.isFinite(date.getTime()) ? date : null;
-}
-
-function corsHeaders(request: NextRequest): HeadersInit {
-  const origin = request.headers.get('origin');
-  const allowedOrigins = new Set([
-    'https://thorchain.no',
-    'https://dev.thorchain.no',
-    'http://localhost:3000',
-    'http://localhost:3001',
-  ]);
-
-  if (process.env.NEXT_PUBLIC_APP_URL) allowedOrigins.add(process.env.NEXT_PUBLIC_APP_URL);
-  if (process.env.VERCEL_URL) allowedOrigins.add(`https://${process.env.VERCEL_URL}`);
-
-  return {
-    'Access-Control-Allow-Origin': origin && allowedOrigins.has(origin) ? origin : 'https://thorchain.no',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Accept',
-    'Vary': 'Origin',
-  };
 }
 
 export async function GET(request: NextRequest) {
@@ -51,6 +32,7 @@ export async function GET(request: NextRequest) {
       { 
         status: 429,
         headers: {
+          ...corsHeaders(request),
           'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
           'X-RateLimit-Limit': String(RATE_LIMIT_REQUESTS),
           'X-RateLimit-Remaining': '0',

@@ -8,7 +8,6 @@ import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { NodeExplorer } from '@/components/dashboard/node-explorer';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Filter, ArrowUpDown } from 'lucide-react';
-import type { NodeRaw } from '@/lib/api/thornode';
 import { runeToNumber } from '@/lib/utils/formatters';
 
 type SortField = 'apy' | 'bond' | 'slash' | 'version';
@@ -16,8 +15,7 @@ type SortOrder = 'asc' | 'desc';
 type FeeFilter = 'all' | 'low' | 'medium' | 'high';
 
 export default function ExplorerPage() {
-  const searchParams = useSearchParams();
-  const address = searchParams.get('address');
+  const address = useSearchParams().get('address');
 
   const { data: allNodes, isLoading, error } = useAllNodes();
   const { positions } = useBondPositions(address);
@@ -25,8 +23,6 @@ export default function ExplorerPage() {
   const [feeFilter, setFeeFilter] = useState<FeeFilter>('all');
   const [sortField, setSortField] = useState<SortField>('apy');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [showFullCapacity, setShowFullCapacity] = useState(true);
-
   // Calculate APY for each node (per-node calculation)
   const nodesWithAPY = useMemo(() => {
     if (!allNodes) return [];

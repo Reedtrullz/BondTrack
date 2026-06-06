@@ -1,7 +1,5 @@
 import { test, expect } from '@playwright/test';
 
-const MOCK_ADDRESS = 'thor1test123456789abcdefghijklmnop';
-
 test.describe('Homepage', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');

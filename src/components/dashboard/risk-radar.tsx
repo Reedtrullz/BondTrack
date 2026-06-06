@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { BondPosition } from '@/lib/types/node';
 import { Activity } from 'lucide-react';
 import { formatRuneFromNumber } from '@/lib/utils/formatters';

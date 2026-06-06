@@ -11,8 +11,8 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['html', 'json'],
-      include: ['src/lib/hooks/**', 'src/lib/utils/**'],
-      exclude: ['**/AGENTS.md', '**/*.md'],
+        include: ['src/lib/hooks/**', 'src/lib/utils/**', 'src/components/**/*'],
+        exclude: ['**/AGENTS.md', '**/*.md', '**/.DS_Store'],
     },
   },
   resolve: {

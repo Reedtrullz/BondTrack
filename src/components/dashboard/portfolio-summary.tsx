@@ -12,14 +12,13 @@ interface PortfolioSummaryProps {
   totalBonded: number;
   runePrice: number;
   weightedAPY: number;
-  positionCount: number;
   positions: BondPosition[];
   benchmarks?: YieldBenchmarks;
   feeImpactRUNE?: number;
   feeImpactUSD?: number;
 }
 
-export function PortfolioSummary({ totalBonded, runePrice, weightedAPY, positionCount, positions, benchmarks, feeImpactRUNE, feeImpactUSD }: PortfolioSummaryProps) {
+export function PortfolioSummary({ totalBonded, runePrice, weightedAPY, positions, benchmarks, feeImpactRUNE, feeImpactUSD }: PortfolioSummaryProps) {
   const health = calculatePortfolioHealth(positions);
   const usdValue = totalBonded * runePrice;
   const annualEarnings = totalBonded * (weightedAPY / 100);

@@ -242,7 +242,6 @@ export default function PortfolioPage() {
         totalBonded={totalBondedRune}
         runePrice={runePrice}
         weightedAPY={weightedAPY}
-        positionCount={bondPositions.length}
         positions={bondPositions}
         benchmarks={benchmarks}
         feeImpactRUNE={0}

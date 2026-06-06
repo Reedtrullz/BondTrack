@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useSyncExternalStore } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { LoadingSkeleton } from '@/components/shared/loading-skeleton';
@@ -16,6 +16,17 @@ const BONDTRACK_ADDRESS = 'BONDTRACK_ADDRESS';
 const OLD_SESSION_KEY = 'dashboard-address';
 const OLD_LOCAL_KEY = 'thornode-watcher-last-address';
 
+function readSavedAddress() {
+  if (typeof window === 'undefined') return null;
+
+  return (
+    localStorage.getItem(BONDTRACK_ADDRESS) ??
+    sessionStorage.getItem(OLD_SESSION_KEY) ??
+    localStorage.getItem(OLD_LOCAL_KEY) ??
+    null
+  );
+}
+
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -23,19 +34,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const urlAddress = searchParams.get('address');
   const { alerts, dismissAlert, permission, requestPermission } = useAlerts();
   const { currentVersion, latestVersion, hasUpgrade } = useProtocolVersion();
-  const savedAddress = useSyncExternalStore(
-    () => () => undefined,
-    () => {
-      if (typeof window === 'undefined') return null;
-      return (
-        localStorage.getItem(BONDTRACK_ADDRESS) ??
-        sessionStorage.getItem(OLD_SESSION_KEY) ??
-        localStorage.getItem(OLD_LOCAL_KEY) ??
-        null
-      );
-    },
-    () => null
-  );
+  const [savedAddress, setSavedAddress] = useState<string | null>(() => readSavedAddress());
   const effectiveAddress = urlAddress ?? savedAddress;
   const isChangelogsRoute = pathname?.startsWith('/dashboard/changelogs');
   const requiresAddress = !isChangelogsRoute;
@@ -47,6 +46,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     if (current) {
       sessionStorage.removeItem(OLD_SESSION_KEY);
       localStorage.removeItem(OLD_LOCAL_KEY);
+      if (current !== savedAddress) {
+        setSavedAddress(current);
+      }
       return;
     }
 
@@ -71,6 +73,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined' || !urlAddress) return;
     localStorage.setItem(BONDTRACK_ADDRESS, urlAddress);
+    setSavedAddress(urlAddress);
   }, [urlAddress]);
 
   if (requiresAddress && !effectiveAddress) {

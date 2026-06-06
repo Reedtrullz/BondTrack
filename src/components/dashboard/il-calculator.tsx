@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Info, Calculator } from 'lucide-react';
-import { formatPercent, formatUsd } from '@/lib/utils/formatters';
+import { formatUsd } from '@/lib/utils/formatters';
 
 /**
  * IL Calculator: Calculates impermanent loss for LP positions

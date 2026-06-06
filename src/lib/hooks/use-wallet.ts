@@ -23,7 +23,6 @@ export interface NetworkMismatch {
 const THORCHAIN_CHAIN_ID = 'thorchain';
 
 const THORCHAIN_CHAIN_ID_MAINNET = 'thorchain-mainnet-v1';
-const THORCHAIN_CHAIN_ID_STAGENET = 'thorchain-stagenet-v2';
 
 interface VultisigWindow {
   thorchain?: {

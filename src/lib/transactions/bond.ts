@@ -41,7 +41,7 @@ export async function executeBondTransaction(
   if (params.walletType === 'keplr') {
     return executeWithKeplr(params, signerAddress);
   } else if (params.walletType === 'xdefi') {
-    return executeWithXdefi(params, signerAddress);
+    return executeWithXdefi(params);
   } else {
     return executeWithVultisig(params, signerAddress);
   }
@@ -57,7 +57,7 @@ export async function executeUnbondTransaction(
   if (params.walletType === 'keplr') {
     return executeWithKeplr(params, signerAddress);
   } else if (params.walletType === 'xdefi') {
-    return executeWithXdefi(params, signerAddress);
+    return executeWithXdefi(params);
   } else {
     return executeWithVultisig(params, signerAddress);
   }
@@ -150,8 +150,7 @@ async function executeWithKeplr(
 }
 
 async function executeWithXdefi(
-  params: TransactionParams,
-  _signerAddress: string
+  params: TransactionParams
 ): Promise<TransactionResult> {
   try {
     if (!window.xfi?.thorchain) {

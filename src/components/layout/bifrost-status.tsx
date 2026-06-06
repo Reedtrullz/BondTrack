@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Wifi, WifiOff, Zap } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function BifrostStatus() {
-  const [status, setStatus] = useState<'online' | 'degraded' | 'offline'>('online');
+  const [status] = useState<'online' | 'degraded' | 'offline'>('online');
   const [pulse, setPulse] = useState(false);
 
   useEffect(() => {

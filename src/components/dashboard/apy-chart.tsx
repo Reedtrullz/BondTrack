@@ -69,11 +69,10 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 }
 
 interface APYChartProps {
-  interval?: string;
   count?: number;
 }
 
-export function APYChart({ interval = 'year', count = 365 }: APYChartProps) {
+export function APYChart({ count = 365 }: APYChartProps) {
   const [data, setData] = useState<APYDataPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +99,7 @@ export function APYChart({ interval = 'year', count = 365 }: APYChartProps) {
       }
     }
     fetchData();
-  }, [interval]);
+  }, [count]);
 
   return (
     <div className="p-6 rounded-2xl bg-transparent border border-transparent shadow-none">

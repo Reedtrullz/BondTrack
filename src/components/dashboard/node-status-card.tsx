@@ -1,17 +1,16 @@
 import type { BondPosition } from '@/lib/types/node';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { AlertTriangle, Shield, Server, Info, ArrowRight, PlusCircle, MinusCircle } from 'lucide-react';
+import { AlertTriangle, Shield, Server, Info, PlusCircle, MinusCircle } from 'lucide-react';
 import { calculatePortfolioHealth, getGradeColor } from '@/lib/utils/health-score';
 import { useState } from 'react';
 import Link from 'next/link';
 
 interface NodeStatusCardProps {
   position: BondPosition;
-  currentBlockHeight?: number;
   address?: string | null;
 }
 
-export function NodeStatusCard({ position, currentBlockHeight, address }: NodeStatusCardProps) {
+export function NodeStatusCard({ position, address }: NodeStatusCardProps) {
   const health = calculatePortfolioHealth([position]);
   const [isHovered, setIsHovered] = useState(false);
 

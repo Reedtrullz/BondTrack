@@ -4,7 +4,7 @@ import { MOCK_EARNINGS_HISTORY, MOCK_RUNE_PRICE, isDevelopmentMode } from '../mo
 
 function buildMockEarningsHistory(count: number): EarningsHistoryRaw {
   const slice = MOCK_EARNINGS_HISTORY.slice(-count);
-  const intervals = slice.map((entry, index) => {
+  const intervals = slice.map((entry) => {
     const startTime = Math.floor(entry.time / 1000);
     const endTime = startTime + 24 * 60 * 60;
     const earnings = String(entry.earnings);

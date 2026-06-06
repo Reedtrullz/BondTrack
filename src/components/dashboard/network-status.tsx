@@ -5,7 +5,6 @@ import { useChurnCountdown } from '@/lib/hooks/use-churn-countdown';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Shield, Coins, Clock, ExternalLink } from 'lucide-react';
-import { runeToNumber } from '@/lib/utils/formatters';
 import { formatRuneAmount } from '@/lib/utils/formatters';
 
 export function NetworkStatus() {
@@ -14,8 +13,6 @@ export function NetworkStatus() {
   const { data: churn, isLoading: churnLoading } = useChurnCountdown();
 
   const activeNodes = network ? parseInt(network.activeNodeCount) : 0;
-  const totalBonded = network ? runeToNumber(network.totalPooledRune) : 0; // Note: totalPooledRune is across all pools, not total bonded. Use bondMetrics.totalActiveBond instead.
-  const totalActiveBond = network?.bondMetrics ? runeToNumber(network.bondMetrics.totalActiveBond) : 0;
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

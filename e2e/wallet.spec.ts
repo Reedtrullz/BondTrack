@@ -23,15 +23,6 @@ async function clickWalletOption(page: Page, name: string) {
   await page.waitForTimeout(500);
 }
 
-async function clickDropdownItem(page: Page, name: string) {
-  await page.evaluate((n: string) => {
-    const buttons = Array.from(document.querySelectorAll('button'));
-    const btn = buttons.find(b => b.textContent.includes(n));
-    if (btn) btn.click();
-  }, name);
-  await page.waitForTimeout(500);
-}
-
 test.describe('Wallet Connection', () => {
   test('shows connect wallet button when disconnected', async ({ page, context }) => {
     await context.addInitScript(() => {

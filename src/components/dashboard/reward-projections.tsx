@@ -1,4 +1,3 @@
-import { formatRuneAmount } from '@/lib/utils/formatters';
 import { TrendingUp, Calendar, Clock } from 'lucide-react';
 
 interface ProjectionTimeframe {
@@ -72,7 +71,7 @@ function calculateProjections(
   });
 }
 
-function formatProjectionAmount(amount: number, _timeframe: string): string {
+function formatProjectionAmount(amount: number): string {
   if (amount === 0) return '0.00';
   return parseFloat(amount.toFixed(2)).toString();
 }
@@ -121,14 +120,14 @@ export function RewardProjections({
                     <div className="flex justify-between items-center">
                       <div className="text-xs text-zinc-500">Net Reward</div>
                       <div className="text-sm font-semibold font-mono text-emerald-600 dark:text-emerald-400">
-                        +ᚱ{formatProjectionAmount(proj.netRuneReward, proj.timeframe)}
+                        +ᚱ{formatProjectionAmount(proj.netRuneReward)}
                       </div>
                     </div>
 
                     <div className="flex justify-between items-center">
                       <div className="text-xs text-zinc-400">Fee Leakage</div>
                       <div className="text-xs font-mono text-zinc-500">
-                        -ᚱ{formatProjectionAmount(proj.feeLeakage, proj.timeframe)}
+                        -ᚱ{formatProjectionAmount(proj.feeLeakage)}
                       </div>
                     </div>
 

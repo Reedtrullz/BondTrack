@@ -83,7 +83,7 @@ export function PnLDashboard({
         localStorage.setItem(storageKey, parsed.toString());
       }
     }
-  }, [storageKey]);
+  }, [storageKey, address]);
 
   const entryPriceKey = getEntryPriceKey(address);
   useEffect(() => {
@@ -103,7 +103,7 @@ export function PnLDashboard({
         localStorage.setItem(entryPriceKey, parsed.toString());
       }
     }
-  }, [entryPriceKey]);
+  }, [entryPriceKey, address]);
 
   const startEditing = () => {
     setInputValue(manualInitialBond?.toString() ?? '');

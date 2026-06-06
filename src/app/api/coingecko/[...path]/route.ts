@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { corsHeaders } from '@/lib/api/cors';
 import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -15,26 +16,6 @@ const ALLOWED_PATHS = [
 
 function isAllowedPath(path: string): boolean {
   return ALLOWED_PATHS.some((pattern) => pattern.test(path));
-}
-
-function corsHeaders(request: NextRequest): HeadersInit {
-  const origin = request.headers.get('origin');
-  const allowedOrigins = new Set([
-    'https://thorchain.no',
-    'https://dev.thorchain.no',
-    'http://localhost:3000',
-    'http://localhost:3001',
-  ]);
-
-  if (process.env.NEXT_PUBLIC_APP_URL) allowedOrigins.add(process.env.NEXT_PUBLIC_APP_URL);
-  if (process.env.VERCEL_URL) allowedOrigins.add(`https://${process.env.VERCEL_URL}`);
-
-  return {
-    'Access-Control-Allow-Origin': origin && allowedOrigins.has(origin) ? origin : 'https://thorchain.no',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Accept',
-    'Vary': 'Origin',
-  };
 }
 
 function validateRangeParams(searchParams: URLSearchParams): string | null {
@@ -104,7 +85,7 @@ export async function GET(
     return NextResponse.json(data, {
       headers: { ...corsHeaders(request), 'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400' },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Upstream request failed' },
       { status: 502, headers: corsHeaders(request) }

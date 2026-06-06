@@ -90,7 +90,6 @@ export function WalletConnect() {
     walletType,
     error,
     availableWallets,
-    networkMismatch,
     connect,
     disconnect,
     isNetworkMismatch,

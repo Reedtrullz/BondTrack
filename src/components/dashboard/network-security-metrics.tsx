@@ -100,8 +100,6 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
   // THORChain incentive pendulum: actual reward split formula
   // When bond > liquidity: nodeShare = 1 - 1/(bondToPool + 1)
   // When bond <= liquidity: nodeShare = bondToPool / (bondToPool + 1)
-  const securing = effectiveSecurityBond > 0 ? effectiveSecurityBond : totalBonds;
-  const secured = totalLiquidity;
   const nodeShareFraction = bondToPoolRatio > 1
     ? 1 - 1 / (bondToPoolRatio + 1)
     : bondToPoolRatio / (bondToPoolRatio + 1);

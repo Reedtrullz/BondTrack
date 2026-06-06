@@ -1,7 +1,6 @@
 'use client';
 
 import { TrendingUp, ArrowDownRight, Wallet } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface RewardVelocityProps {
   totalPerChurnReward: number;

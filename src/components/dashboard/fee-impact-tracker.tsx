@@ -13,7 +13,7 @@ interface PersonalFeeAuditProps {
 }
 
 export function PersonalFeeAudit({ positions, networkApy }: PersonalFeeAuditProps) {
-  const safePositions = positions ?? [];
+  const safePositions = useMemo(() => positions ?? [], [positions]);
   const audit = useMemo(() => calculatePersonalFeeLeakage(safePositions, 'monthly', networkApy), [safePositions, networkApy]);
   const hasRewards = audit.grossReward > 0;
 

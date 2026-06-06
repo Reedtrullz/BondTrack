@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Download, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { useLpPositions } from '@/lib/hooks/use-lp-positions';
 import type { LpPosition } from '@/lib/types/lp';
-import { formatUsd, formatRuneAmount, formatAmount } from '@/lib/utils/formatters';
 import { runeToNumber } from '@/lib/utils/formatters';
 
 interface TaxExportProps {

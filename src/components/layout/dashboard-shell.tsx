@@ -129,7 +129,7 @@ export function DashboardShell({
   if (!hasAddress) {
     return (
       <div className="flex min-h-screen">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar isOpen={sidebarOpen} onCloseAction={() => setSidebarOpen(false)} />
         <main className="flex-1 flex items-center justify-center p-4">
           <p className="text-zinc-500">No address provided. Go back to the home page.</p>
         </main>
@@ -139,11 +139,11 @@ export function DashboardShell({
 
   return (
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-zinc-900">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar isOpen={sidebarOpen} onCloseAction={() => setSidebarOpen(false)} />
       <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto">
         <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-3 mb-4 pb-3 border-b border-zinc-200/60 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl rounded-lg px-3 sm:px-4 -mx-3 sm:-mx-4 -mt-3 sm:-mt-4 md:-mt-6 pt-3 sm:pt-4 md:pt-6 shadow-sm">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-            <MobileMenuButton onClick={() => setSidebarOpen(true)} />
+        <MobileMenuButton onClickAction={() => setSidebarOpen(true)} />
             <div className="min-w-0">
               <Breadcrumbs />
               {address && (

@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Calculator, TrendingUp, Clock, Coins, BarChart3, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Calculator, TrendingUp, Coins, BarChart3, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { NETWORK } from '@/lib/config';
 import { formatRuneAmount, formatCompactNumber } from '@/lib/utils/formatters';
-import { calculatePortfolioHealth, getGradeColor, type HealthGrade } from '@/lib/utils/health-score';
+import { getGradeColor, type HealthGrade } from '@/lib/utils/health-score';
 import type { BondPosition } from '@/lib/types/node';
 
 interface SimulationResult {
@@ -97,10 +97,9 @@ function formatReward(value: number): string {
 
 interface BondSimulatorProps {
   currentPositions?: BondPosition[];
-  userAddress?: string | null;
 }
 
-export function BondSimulator({ currentPositions, userAddress }: BondSimulatorProps) {
+export function BondSimulator({ currentPositions }: BondSimulatorProps) {
   const [bondInput, setBondInput] = useState('100000');
   const [lockDays, setLockDays] = useState('180');
   const [networkApy, setNetworkApy] = useState('65');

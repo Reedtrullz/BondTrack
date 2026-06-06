@@ -31,6 +31,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
       - uses: ./.github/actions/install-deps
+      # Moderate+ production vulnerabilities should fail CI; omit dev deps to avoid tool noise.
+      - run: npm audit --omit=dev --audit-level=moderate
       - run: npm test
         env:
           CI: true

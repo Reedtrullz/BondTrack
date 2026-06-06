@@ -152,20 +152,6 @@ const mockConstants: NetworkConstantsRaw = {
   },
 };
 
-const mockBalances = {
-  balances: [
-    {
-      address: 'thor1provider123456789abcdef',
-      coins: [
-        {
-          denom: 'rune',
-          amount: '1253738138904',
-        },
-      ],
-    },
-  ],
-};
-
 export const thornodeHandlers = [
   http.get('/thorchain/nodes', () => {
     return HttpResponse.json<NodeRaw[]>(mockNodes);

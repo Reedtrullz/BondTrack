@@ -1,6 +1,5 @@
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { TrendingUp, BarChart3, Shield, AlertTriangle, Check, ArrowRight, Plus } from 'lucide-react';
+import { AlertTriangle, Check, ArrowRight, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NodeRaw } from '@/lib/api/thornode';
 import { formatRuneAmount } from '@/lib/utils/formatters';
@@ -12,8 +11,6 @@ interface NodeExplorerProps {
 }
 
 export function NodeExplorer({ nodes, userAddress, positions }: NodeExplorerProps) {
-  const searchParams = useSearchParams();
-
   const isNodeBonded = (nodeAddress: string) => {
     return positions.some(p => p.nodeAddress === nodeAddress);
   };

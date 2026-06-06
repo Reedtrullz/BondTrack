@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { BondPosition, NodeRaw } from '@/lib/types/node';
 import { YieldBenchmarks } from '@/lib/utils/yield-benchmarks';
-import { analyzeBondOptimization, type OptimizationSuggestion } from '@/lib/utils/bond-optimizer';
+import { analyzeBondOptimization } from '@/lib/utils/bond-optimizer';
 import { TrendingUp, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 

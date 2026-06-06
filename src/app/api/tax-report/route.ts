@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateTaxReport, exportToCSV, parseTaxDateRange } from '@/lib/utils/tax-export';
+import { corsHeaders } from '@/lib/api/cors';
 import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -8,26 +9,6 @@ const THOR_ADDRESS_PATTERN = /^thor1[0-9a-z]{38,59}$/;
 
 const MAX_REQUESTS = 10;
 const WINDOW_MS = 60 * 1000;
-
-function corsHeaders(request: NextRequest): HeadersInit {
-  const origin = request.headers.get('origin');
-  const allowedOrigins = new Set([
-    'https://thorchain.no',
-    'https://dev.thorchain.no',
-    'http://localhost:3000',
-    'http://localhost:3001',
-  ]);
-
-  if (process.env.NEXT_PUBLIC_APP_URL) allowedOrigins.add(process.env.NEXT_PUBLIC_APP_URL);
-  if (process.env.VERCEL_URL) allowedOrigins.add(`https://${process.env.VERCEL_URL}`);
-
-  return {
-    'Access-Control-Allow-Origin': origin && allowedOrigins.has(origin) ? origin : 'https://thorchain.no',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Accept',
-    'Vary': 'Origin',
-  };
-}
 
 export async function POST(request: NextRequest) {
   try {

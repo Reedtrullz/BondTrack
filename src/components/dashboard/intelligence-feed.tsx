@@ -5,7 +5,7 @@ import { BondPosition, NodeRaw } from '@/lib/types/node';
 import { YieldBenchmarks } from '@/lib/utils/yield-benchmarks';
 import { analyzeBondOptimization } from '@/lib/utils/bond-optimizer';
 import { generatePortfolioAlerts } from '@/lib/utils/portfolio-alerts';
-import { Eye, TrendingUp, ArrowRight, AlertCircle, CheckCircle2, Zap, ShieldCheck } from 'lucide-react';
+import { Eye, TrendingUp, ArrowRight, Zap, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 

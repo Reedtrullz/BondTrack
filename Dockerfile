@@ -16,6 +16,7 @@ ARG NEXT_PUBLIC_MIDGARD_FALLBACK
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_COINGECKO_API
 ARG NEXT_PUBLIC_THORCHAIN_NETWORK
+ARG VERSION
 
 ENV NEXT_PUBLIC_THORNODE_API=${NEXT_PUBLIC_THORNODE_API}
 ENV NEXT_PUBLIC_MIDGARD_API=${NEXT_PUBLIC_MIDGARD_API}
@@ -25,6 +26,7 @@ ENV NEXT_PUBLIC_MIDGARD_FALLBACK=${NEXT_PUBLIC_MIDGARD_FALLBACK}
 ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 ENV NEXT_PUBLIC_COINGECKO_API=${NEXT_PUBLIC_COINGECKO_API}
 ENV NEXT_PUBLIC_THORCHAIN_NETWORK=${NEXT_PUBLIC_THORCHAIN_NETWORK}
+ENV VERSION=${VERSION}
 
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -46,11 +48,13 @@ RUN npm run build
 
 # Stage 3: Production runner
 FROM node:22-slim AS runner
+ARG VERSION
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
+ENV VERSION=${VERSION}
 
 RUN groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs nextjs
@@ -67,4 +71,6 @@ RUN npm install --no-save --no-package-lock \
 
 USER nextjs
 EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
 CMD ["node", "server.js"]

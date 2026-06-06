@@ -32,7 +32,7 @@ export default function SimulatorPage() {
         </div>
       </div>
 
-      <BondSimulator currentPositions={positions} userAddress={address} />
+      <BondSimulator currentPositions={positions} />
     </div>
   );
 }
