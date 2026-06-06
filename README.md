@@ -237,9 +237,11 @@ The `master` branch uses a single GitHub Actions workflow at
   Builds the canonical `Dockerfile` with Buildx and publishes the GHCR
   `sha-<short>` tag.
 
-The workflow keeps GitHub first-party JavaScript actions on Node 24-capable
+The workflow keeps GitHub and Docker JavaScript actions on Node 24-capable
 majors (`actions/checkout@v6`, `actions/setup-node@v6`,
-`actions/upload-artifact@v7`) so CI does not regress to Node.js 20 deprecation
+`actions/upload-artifact@v7`, `docker/setup-buildx-action@v4`,
+`docker/build-push-action@v7`, `docker/login-action@v4`, and
+`docker/metadata-action@v6`) so CI does not regress to Node.js 20 deprecation
 warnings.
 
 Deploy verification should compare the exact immutable SHA tag in GHCR,

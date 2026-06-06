@@ -60,10 +60,12 @@ all three pass:
 - publishes GHCR tags, including immutable `sha-<short>` tags
 - uses Buildx with GitHub Actions cache (`cache-from`/`cache-to: type=gha`)
 
-Keep first-party GitHub JavaScript actions on Node 24-capable majors:
-`actions/checkout@v6`, `actions/setup-node@v6`, and
-`actions/upload-artifact@v7`. Do not downgrade them to `@v4` to silence a
-workflow issue; fetch the run logs and fix the actual failure.
+Keep GitHub and Docker JavaScript actions on Node 24-capable majors:
+`actions/checkout@v6`, `actions/setup-node@v6`, `actions/upload-artifact@v7`,
+`docker/setup-buildx-action@v4`, `docker/build-push-action@v7`,
+`docker/login-action@v4`, and `docker/metadata-action@v6`. Do not downgrade
+them to older Node 20-backed majors to silence a workflow issue; fetch the run
+logs and fix the actual failure.
 
 There is no separate "Publish" workflow and no cross-workflow `workflow_run`
 trigger — that pattern caused two-named-workflow races in the past.

@@ -109,4 +109,4 @@
 ## Plan review history
 
 - 2026-06-06: Derived from parent review findings with three read-only specialist audits (financial/API, deployment/CI, product/tests). Implement under subagent-driven-development with parent-side verification after every subagent.
-- 2026-06-06 follow-up: after staging CI passed at `79756d2`, continue with CI maintenance by upgrading first-party GitHub Actions to Node 24-capable majors (`checkout@v6`, `setup-node@v6`, `upload-artifact@v7`) and verifying the exact pushed SHA.
+- 2026-06-06 follow-up: after staging CI passed at `79756d2`, continue with CI maintenance by upgrading GitHub/Docker JavaScript actions to Node 24-capable majors (`checkout@v6`, `setup-node@v6`, `upload-artifact@v7`, `setup-buildx-action@v4`, `build-push-action@v7`, `login-action@v4`, `metadata-action@v6`) and verifying the exact pushed SHA has no Node.js 20 deprecation warnings.
