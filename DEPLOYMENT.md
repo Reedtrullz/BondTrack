@@ -5,7 +5,7 @@
 ```
 Local push → GitHub → CI workflow (test, build, e2e, publish)
                               ↓
-                   GHCR: ghcr.io/reedtrullz/heimdall:latest + :sha-<short>
+                   GHCR: ghcr.io/reedtrullz/heimdall:sha-<short>
                               ↓
                    ansible-playbook from local machine
                               ↓
@@ -33,16 +33,16 @@ images on it. CI builds, GHCR stores, Ansible deploys.
 
 ```bash
 cd /Users/reidar/Projectos/Heimdall
-git pull origin master
 ansible-playbook -i inventory/hosts.yml ansible-playbook.yml
 ```
 
 The playbook:
-1. Records the currently-running image (for rollback)
-2. Pulls `ghcr.io/reedtrullz/heimdall:latest`
+1. Records the currently-running image ID/digest/reference (for rollback)
+2. Pulls `ghcr.io/reedtrullz/heimdall:sha-<local short sha>` by default, or `ghcr.io/reedtrullz/heimdall:$IMAGE_TAG` when `IMAGE_TAG` is set and matches `sha-[0-9a-f]{7,40}`
 3. Stops + removes old container
 4. Starts new container with env vars from playbook + vault
 5. Polls `/api/health` until healthy (or rolls back)
+6. Sets runtime `VERSION` to the immutable image tag deployed
 
 ### Override variables
 ```bash
@@ -50,12 +50,18 @@ ansible-playbook -i inventory/hosts.yml ansible-playbook.yml \
   -e "thornode_api=https://custom-thornode.example.com"
 ```
 
-### Force a specific tag
-The playbook uses `:latest` by default. To pin a SHA:
+### Force a specific immutable tag
+The playbook does not default to `:latest`. To deploy an exact published SHA tag:
 ```bash
-ansible-playbook -i inventory/hosts.yml ansible-playbook.yml \
-  -e "docker_image=ghcr.io/reedtrullz/heimdall:sha-490cac0"
+IMAGE_TAG=sha-490cac0 ansible-playbook -i inventory/hosts.yml ansible-playbook.yml
 ```
+
+Use the exact short SHA tag published by CI. The playbook rejects mutable deploy
+tags such as `latest`.
+
+`compose.production.yml` is a manual/diagnostic fallback, not the normal release
+path. It requires `IMAGE_SHA=<exact-short-sha>` and derives both the image tag
+and runtime `VERSION` as `sha-$IMAGE_SHA`; do not use it with mutable tags.
 
 ## Verify
 
@@ -66,14 +72,18 @@ ssh deploy@198.23.137.16 "docker ps --filter name=heimdall --format '{{.Status}}
 # Health endpoint
 curl -s https://bond.thorchain.no/api/health | jq
 
+# Exact deployed image/version check; image tag and health version should match.
+ssh deploy@198.23.137.16 "docker ps --filter name=heimdall --format '{{.Image}}'"
+curl -s https://bond.thorchain.no/api/health | jq -r .version
+
 # Homepage
 curl -s -o /dev/null -w "%{http_code}\n" https://bond.thorchain.no
 ```
 
 ## Rollback
 
-Automatic: the playbook captures the previous image hash before swapping and
-restores it if the health check fails.
+Automatic: the playbook captures the previous image ID/digest/reference before
+swapping and restores it if the health check fails.
 
 Manual:
 ```bash
@@ -136,9 +146,9 @@ ansible -i inventory/hosts.yml vps -m ping
 
 **Deploy reports "ok" but the live site still runs old code:**
 - `community.docker.docker_image` with `source: pull` is idempotent by
-  image *name*. If `:latest` already exists locally, the pull is skipped
-  silently. The Heimdall playbook pins `force_source: yes` for that
-  reason — keep it.
+  image *name*. The Heimdall playbook pins `force_source: yes` so the selected
+  immutable tag is verified in GHCR instead of trusting a cached local image —
+  keep it.
 
 **"THORNode API is temporarily unavailable" banner appears:**
 - The browser hits `/api/thorchain/thorchain/nodes` (the client prepends

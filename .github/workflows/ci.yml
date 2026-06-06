@@ -13,7 +13,6 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
   actions: read
   checks: write
 
@@ -33,6 +32,7 @@ jobs:
       - uses: ./.github/actions/install-deps
       # Moderate+ production vulnerabilities should fail CI; omit dev deps to avoid tool noise.
       - run: npm audit --omit=dev --audit-level=moderate
+      - run: npm run lint -- --max-warnings=0
       - run: npm test
         env:
           CI: true
@@ -88,11 +88,47 @@ jobs:
           path: playwright-report/
           if-no-files-found: ignore
 
+  docker-build:
+    name: Docker build verification
+    needs: [test, build, e2e]
+    if: github.event_name == 'pull_request' || github.ref != 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set image version
+        run: echo "IMAGE_VERSION=sha-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      - name: Build image without pushing
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: ghcr.io/reedtrullz/heimdall:${{ env.IMAGE_VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ env.IMAGE_VERSION }}
+            NEXT_PUBLIC_THORNODE_API=https://gateway.liquify.com/chain/thorchain_api
+            NEXT_PUBLIC_MIDGARD_API=https://gateway.liquify.com/chain/thorchain_midgard
+            NEXT_PUBLIC_THORCHAIN_RPC=https://rpc.thorchain.info
+            NEXT_PUBLIC_MIDGARD_FALLBACK=https://midgard.thorchain.network
+            NEXT_PUBLIC_THORCHAIN_NETWORK=mainnet
+            NEXT_PUBLIC_COINGECKO_API=https://api.coingecko.com/api/v3
+
   publish:
     name: Build & publish image
     needs: [test, build, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      actions: read
     steps:
       - uses: actions/checkout@v4
 
@@ -106,14 +142,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set image version
+        run: echo "IMAGE_VERSION=sha-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
       - name: Extract image metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,prefix=sha-,format=short
+            type=raw,value=${{ env.IMAGE_VERSION }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -126,7 +164,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            VERSION=sha-${{ github.sha }}
+            VERSION=${{ env.IMAGE_VERSION }}
             NEXT_PUBLIC_THORNODE_API=https://gateway.liquify.com/chain/thorchain_api
             NEXT_PUBLIC_MIDGARD_API=https://gateway.liquify.com/chain/thorchain_midgard
             NEXT_PUBLIC_THORCHAIN_RPC=https://rpc.thorchain.info
@@ -143,4 +181,4 @@ jobs:
           echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Pull with: \`docker pull ghcr.io/${{ github.repository }}:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "Pull with: \`docker pull ghcr.io/${{ github.repository }}:${{ env.IMAGE_VERSION }}\`" >> $GITHUB_STEP_SUMMARY

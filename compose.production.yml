@@ -1,6 +1,8 @@
 services:
   heimdall:
-    image: ghcr.io/reedtrullz/heimdall:latest
+    # Production compose is a manual/diagnostic path. Set IMAGE_SHA to the
+    # exact short SHA that passed CI; compose adds the immutable sha- prefix.
+    image: ghcr.io/reedtrullz/heimdall:sha-${IMAGE_SHA:?Set IMAGE_SHA=<7-40 lowercase hex short SHA>}
     container_name: heimdall
     restart: unless-stopped
     ports:
@@ -9,7 +11,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - HOSTNAME=0.0.0.0
-      - VERSION=dev
+      - VERSION=sha-${IMAGE_SHA:?Set IMAGE_SHA=<7-40 lowercase hex short SHA>}
       - NEXT_PUBLIC_THORNODE_API=https://gateway.liquify.com/chain/thorchain_api
       - NEXT_PUBLIC_MIDGARD_API=https://gateway.liquify.com/chain/thorchain_midgard
       - NEXT_PUBLIC_THORCHAIN_RPC=https://rpc.thorchain.network

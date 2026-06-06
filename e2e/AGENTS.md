@@ -25,9 +25,9 @@ e2e/
 
 **Non-standard patterns**: Tests use `page.evaluate()` and `page.waitForTimeout()` for wallet UI interactions instead of pure locator-first patterns.
 
-**Base URL**: `http://localhost:3000` (production build launched via `npm run build && npm start`).
+**Base URL**: `http://localhost:3000` (production build launched via the standalone artifact: `node .next/standalone/server.js` after copying `public/` and `.next/static/` into `.next/standalone/`).
 
-**Production E2E**: Playwright boots a production build before running tests. `webServer.command` is `npm run build && npm start` with a 180s timeout to accommodate the build. `reuseExistingServer: !process.env.CI` allows local re-runs to skip the build when a server is already running. In CI the build always runs fresh.
+**Production E2E**: Playwright boots a production build before running tests. `webServer.command` runs `npm run build`, prepares the standalone artifact's `public/` and `.next/static/` directories, then starts `node .next/standalone/server.js` with a 180s timeout to accommodate the build. `reuseExistingServer: !process.env.CI` allows local re-runs to skip the build when a server is already running. In CI the build always runs fresh.
 
 **Mocking**: Most specs mock API routes inline with `page.route()` and fixture objects. Wallet tests use `context.addInitScript()` to inject `window.keplr`/`window.xfi` shims.
 

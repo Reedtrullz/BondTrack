@@ -91,6 +91,9 @@ npm run build
 
 Open [http://localhost:3000](http://localhost:3000) with your browser.
 
+Copy `.env.example` to `.env.local` when you need local overrides. Do not put
+secrets in `NEXT_PUBLIC_*` variables; they are bundled into client-side code.
+
 ## Environment Variables
 
 | Variable | Description | Default |
@@ -99,7 +102,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 | `NEXT_PUBLIC_MIDGARD_API` | Midgard API endpoint | `https://gateway.liquify.com/chain/thorchain_midgard` |
 | `NEXT_PUBLIC_MIDGARD_FALLBACK` | Secondary Midgard fallback | `https://midgard.thorchain.network` |
 | `NEXT_PUBLIC_THORCHAIN_RPC` | THORChain RPC | `https://rpc.thorchain.info` |
-| `VERSION` | App version (set by Ansible/GitHub SHA) | `latest` |
+| `VERSION` | Runtime app version; Ansible sets this to the immutable deployed image tag | `sha-<short>` |
 
 ## THORChain Data Conventions
 
@@ -113,7 +116,7 @@ Heimdall uses a **push-based deployment model** from your local machine to the V
 ```
 Developer Push → GitHub → CI workflow (test, build, e2e, publish)
                        ↓ (publish job runs after the others pass)
-                  GHCR (ghcr.io/reedtrullz/heimdall:latest + :sha-<short>)
+                  GHCR (ghcr.io/reedtrullz/heimdall:sha-<short>)
                        ↓
                   Local Machine (ansible-playbook) 
                        ↓
@@ -134,9 +137,19 @@ cd /Users/reidar/Projectos/Heimdall
 ansible-playbook -i inventory/hosts.yml ansible-playbook.yml
 ```
 
+By default the playbook deploys
+`ghcr.io/reedtrullz/heimdall:sha-<local short sha>` and sets runtime `VERSION`
+to the same immutable tag. Override with `IMAGE_TAG=sha-<exact-short-sha>` when
+deploying a specific published image; the playbook rejects mutable deploy tags
+such as `latest`.
+
+`compose.production.yml` is only a manual/diagnostic path and also refuses to
+default to a mutable image: run it with `IMAGE_SHA=<exact-short-sha>` so the
+image and runtime `VERSION` both resolve to `sha-$IMAGE_SHA`.
+
 ### Features
 - **Health Check**: Waits for `/api/health` to return `{"status":"healthy"}`
-- **Rollback**: Automatically reverts to previous image on health check failure
+- **Rollback**: Automatically reverts to the previous image ID/digest/reference on health check failure
 - **Vault**: Sensitive vars (e.g. CoinAPI key) stored in `group_vars/vps/vault.yml` (encrypted)
 See [DEPLOYMENT.md](DEPLOYMENT.md) for full details. The Inebotten
 Discord bot is a separate project — see
@@ -219,9 +232,15 @@ The `master` branch uses a single GitHub Actions workflow at
 - **test** — Vitest unit tests + coverage
 - **build** — Next.js production build
 - **e2e** — Playwright E2E tests
+- **docker-build** — non-pushing Docker build verification for PR, staging, and other non-`master` refs
 - **publish** — runs only on `push` to `master`, after the three above pass.
-  Builds the canonical `Dockerfile` with Buildx, pushes
-  `ghcr.io/reedtrullz/heimdall:latest` and `:sha-<short>` to GHCR.
+  Builds the canonical `Dockerfile` with Buildx and publishes the GHCR
+  `sha-<short>` tag.
+
+Deploy verification should compare the exact immutable SHA tag in GHCR,
+Ansible's selected `IMAGE_TAG`, `docker ps --format '{{.Image}}'`, and
+`/api/health`'s `version`. Do not treat this documentation as a production
+deployment claim.
 
 There is no separate publish workflow and no cross-workflow `workflow_run`
 trigger. See `CLAUDE.md` and `AGENTS.md` for the rationale.

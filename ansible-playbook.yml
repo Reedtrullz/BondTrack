@@ -2,11 +2,18 @@
   hosts: vps
   gather_facts: false
   vars:
-    docker_image: "ghcr.io/reedtrullz/heimdall:latest"
+    docker_image_repository: "ghcr.io/reedtrullz/heimdall"
     container_name: "heimdall"
-    image_tag: "{{ lookup('env', 'GITHUB_SHA') | default(lookup('pipe', 'git -C ' ~ playbook_dir ~ ' rev-parse --short HEAD 2>/dev/null || echo latest'), true) }}"
+    git_sha: "{{ lookup('pipe', 'git -C ' ~ playbook_dir ~ ' rev-parse --short HEAD 2>/dev/null || echo unknown') }}"
+    image_tag: "{{ lookup('env', 'IMAGE_TAG') | default('sha-' ~ git_sha, true) }}"
 
   pre_tasks:
+    - name: Validate immutable image tag
+      assert:
+        that:
+          - image_tag is match('^sha-[0-9a-f]{7,40}$')
+        fail_msg: "IMAGE_TAG must be an immutable sha-<7-40 lowercase hex> tag; mutable tags like latest are not allowed."
+
     - name: Get current container image
       community.docker.docker_container_info:
         name: "{{ container_name }}"
@@ -15,14 +22,15 @@
 
     - name: Set previous image fact
       set_fact:
-        previous_image: "{{ (current_container.container.Config.Image) if (current_container.container is defined) else 'none' }}"
+        previous_image: "{{ (current_container.container.Image | default(current_container.container.Config.Image | default('none', true), true)) if (current_container.container is defined) else 'none' }}"
+        previous_version: "{{ ((current_container.container.Config.Env | default([]) | select('match', '^VERSION=') | list | first | default('VERSION=', true) | regex_replace('^VERSION=', '')) | default(current_container.container.Config.Image | default('none', true), true)) if (current_container.container is defined) else 'none' }}"
 
   tasks:
-    - name: Pull latest image from GHCR
+    - name: Pull immutable image from GHCR
       community.docker.docker_image:
-        name: "{{ docker_image }}"
+        name: "{{ docker_image_repository }}:{{ image_tag }}"
         source: pull
-        force_source: yes  # always re-pull; otherwise :latest is treated as already-present
+        force_source: yes  # verify the immutable deploy tag is present in GHCR
 
     - name: Stop and remove existing container
       community.docker.docker_container:
@@ -32,7 +40,7 @@
     - name: Start new container
       community.docker.docker_container:
         name: "{{ container_name }}"
-        image: "{{ docker_image }}"
+        image: "{{ docker_image_repository }}:{{ image_tag }}"
         state: started
         restart_policy: unless-stopped
         ports:
@@ -42,7 +50,7 @@
           max-size: "10m"
           max-file: "3"
         healthcheck:
-          test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000', r => process.exit(r.statusCode === 200 ? 0 : 1))\""]
+          test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1))\""]
           interval: 30s
           timeout: 10s
           retries: 3
@@ -93,7 +101,7 @@
           max-size: "10m"
           max-file: "3"
         healthcheck:
-          test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000', r => process.exit(r.statusCode === 200 ? 0 : 1))\""]
+          test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1))\""]
           interval: 30s
           timeout: 10s
           retries: 3
@@ -102,6 +110,7 @@
           NODE_ENV: production
           PORT: "3000"
           HOSTNAME: "0.0.0.0"
+          VERSION: "{{ previous_version }}"
           NEXT_PUBLIC_THORNODE_API: "{{ thornode_api | default('https://gateway.liquify.com/chain/thorchain_api') }}"
           NEXT_PUBLIC_MIDGARD_API: "{{ midgard_api | default('https://gateway.liquify.com/chain/thorchain_midgard') }}"
           NEXT_PUBLIC_THORCHAIN_RPC: "{{ thorchain_rpc | default('https://rpc.thorchain.info') }}"

@@ -49,13 +49,15 @@ npm run build                 # production build
 Triggers on push/PR to `master` or `staging`.
 
 Jobs (run in parallel):
-1. **test** — `npm ci`, `npm test`, `npm run test:coverage`
+1. **test** — `npm ci`, `npm run lint -- --max-warnings=0`, `npm test`, `npm run test:coverage`
 2. **build** — `npm run build` (verifies Next.js build outside Docker)
 3. **e2e** — `npm run e2e` with Playwright
 
-Then **publish** runs only on `push` to `master`, after all three pass:
+Then **docker-build** runs a non-pushing `Dockerfile` build for PR, staging,
+and other non-`master` refs. **publish** runs only on `push` to `master`, after
+all three pass:
 - builds the canonical `Dockerfile`
-- pushes `ghcr.io/reedtrullz/heimdall:latest` and `:sha-<short>` to GHCR
+- publishes GHCR tags, including immutable `sha-<short>` tags
 - uses Buildx with GitHub Actions cache (`cache-from`/`cache-to: type=gha`)
 
 There is no separate "Publish" workflow and no cross-workflow `workflow_run`
@@ -85,11 +87,19 @@ Flow: local push → CI builds & publishes to GHCR → run Ansible from local �
 VPS pulls image → swaps container → health-checks `/api/health` → rolls back
 on failure. **Never `git pull` on the VPS.**
 
+Ansible defaults to `ghcr.io/reedtrullz/heimdall:sha-<local short sha>` or an
+explicit `IMAGE_TAG`. Runtime `VERSION` must equal that immutable deployed tag;
+verify by comparing the exact SHA tag with `/api/health` after a deploy. Do not
+use mutable `:latest` as the deploy identity.
+
 ## Environment Variables
 `NEXT_PUBLIC_*` vars are baked into the build at Docker build time (they need
 to be present in the client bundle). They're set as `build-args` in the CI
 publish step. Runtime-only vars (`PORT`, `HOSTNAME`, `NODE_ENV`, `VERSION`)
-are set in `compose.production.yml` / Ansible.
+are set in Ansible; the manual `compose.production.yml` fallback requires
+`IMAGE_SHA=<exact-short-sha>` and derives `VERSION=sha-$IMAGE_SHA`. See
+`.env.example` for local, non-secret documentation of public and server-side
+variables.
 
 | Variable | Purpose |
 |---|---|
@@ -97,7 +107,7 @@ are set in `compose.production.yml` / Ansible.
 | `NEXT_PUBLIC_MIDGARD_API` | Midgard API |
 | `NEXT_PUBLIC_COINGECKO_API` | CoinGecko API |
 | `NEXT_PUBLIC_THORCHAIN_NETWORK` | `mainnet` / `stagenet` |
-| `VERSION` | Image version label, set to `sha-<short>` by CI |
+| `VERSION` | Runtime image tag, set to the immutable deployed `sha-<short>` tag |
 
 ## Health Endpoint
 `GET /api/health` → `{ "status": "healthy", "timestamp": "...", "version": "..." }`
@@ -119,7 +129,7 @@ Version priority: `process.env.VERSION` → `process.env.npm_package_version` �
 - Don't commit secrets, `dogfood-output/`, or scratch `.md` reports to root — use `docs/archive/`.
 - Don't bake stale `gateway.liquify.com/chain/thorchain_mainnet` URLs as build args. The correct paths are `thorchain_api` (THORNode) and `thorchain_midgard` (Midgard) — they're already set in `ci.yml` and `ansible-playbook.yml`. The `_mainnet` path returns HTTP 500.
 - Don't change the `/api/thorchain/[...path]` proxy's leading-segment normalisation. The frontend client calls `fetchThornode('/thorchain/nodes')` so the browser hits `/api/thorchain/thorchain/nodes`; the proxy strips the duplicate `thorchain/` segment before its allowlist (`/^nodes$/`, `/^network$/`, …) runs, and `THORNODE_API_URL` already ends in `/thorchain`. Removing that step makes every request 403 and the "THORNode API is temporarily unavailable" banner reappears.
-- Don't drop `force_source: yes` from the docker_image task in `ansible-playbook.yml` — without it, Ansible silently skips the pull when `:latest` is already cached locally and you'll keep deploying yesterday's image.
+- Don't drop `force_source: yes` from the docker_image task in `ansible-playbook.yml` — it verifies the selected immutable tag is pulled instead of trusting a cached local image.
 
 ## Historical reports
 See `docs/archive/` for prior audits (LP, UI/UX, etc.) and `learnings.md`.

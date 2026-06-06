@@ -30,14 +30,19 @@ Human-friendly intro is in `README.md`. Deep AI context is in `CLAUDE.md`.
    `thorchain/` segment before its allowlist regex matches — the frontend
    calls `fetchThornode('/thorchain/nodes')` and `THORNODE_API_URL` already
    ends in `/thorchain`. Don't simplify it away.
-9. **Always `force_source: yes` on docker_image pull tasks.** Without it,
-   Ansible reports "ok" but skips the pull when `:latest` already exists
-   locally — every deploy after the first runs stale code.
+9. **Deploy immutable image tags.** Ansible defaults to
+   `ghcr.io/reedtrullz/heimdall:sha-<local short sha>` or an explicit
+   `IMAGE_TAG`; runtime `VERSION` must match that immutable tag. Keep
+   `force_source: yes` on docker_image pull tasks so the selected tag is
+   verified in GHCR instead of trusting a cached local image. The manual
+   `compose.production.yml` path requires `IMAGE_SHA=<short-sha>` and derives
+   both image and runtime version as `sha-$IMAGE_SHA`; do not use `latest`.
 
 ## Required commands before pushing
 ```bash
 nvm use            # Node 22, per .nvmrc
 npm ci
+npm run lint -- --max-warnings=0
 npm test
 npm run build      # mirrors CI's "build" job
 ```
@@ -61,6 +66,10 @@ ansible-playbook -i inventory/hosts.yml ansible-playbook.yml \
   --vault-password-file ~/.vault_pass.txt
 ```
 The CI publishes the image; Ansible just pulls and swaps containers.
+Verify deploy identity by comparing the exact `sha-<short>` tag selected by
+Ansible with `docker ps --format '{{.Image}}'` and `/api/health`'s `version`.
+Do not claim a production deployment unless that exact-SHA verification was
+performed against the intended target.
 
 The Inebotten Discord bot is a sibling project with its own repo and
 deploy story — see [Reedtrullz/inebotten-discord](https://github.com/Reedtrullz/inebotten-discord)
