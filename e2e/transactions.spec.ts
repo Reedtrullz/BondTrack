@@ -1,14 +1,68 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 const MOCK_ADDRESS = 'thor1test123456789abcdefghijklmnop';
 const MOCK_NODE = 'thor16xxh3km6dxka636qg6q7e3us5vlgvhrhjgw245';
 
+async function setupTransactionApiMocks(page: Page) {
+  await page.route('**/api/thorchain/**', async (route) => {
+    const url = new URL(route.request().url());
+
+    if (url.pathname === '/api/thorchain/thorchain/nodes') {
+      await route.fulfill({ json: [] });
+      return;
+    }
+
+    if (url.pathname === '/api/thorchain/thorchain/constants') {
+      await route.fulfill({
+        json: {
+          int_64_values: { OptimalBondD: 2500000000000 },
+          bool_values: {},
+          string_values: {},
+        },
+      });
+      return;
+    }
+
+    await route.fulfill({ status: 404, json: { error: `Unhandled THORChain mock: ${url.pathname}` } });
+  });
+
+  await page.route('**/api/midgard/**', async (route) => {
+    const url = new URL(route.request().url());
+
+    if (url.pathname === '/api/midgard/v2/health') {
+      await route.fulfill({ json: { lastThorNode: { height: 12345678 } } });
+      return;
+    }
+
+    if (url.pathname === `/api/midgard/v2/bonds/${MOCK_ADDRESS}`) {
+      await route.fulfill({ json: { address: MOCK_ADDRESS, totalBonded: '0', nodes: [] } });
+      return;
+    }
+
+    if (url.pathname === '/api/midgard/v2/actions') {
+      await route.fulfill({ json: { actions: [], count: '0' } });
+      return;
+    }
+
+    await route.fulfill({ status: 404, json: { error: `Unhandled Midgard mock: ${url.pathname}` } });
+  });
+}
+
 test.describe('Transaction Composer', () => {
   test.beforeEach(async ({ page, context }) => {
+    await setupTransactionApiMocks(page);
     await context.addInitScript(() => {
       Object.defineProperty(window, 'Notification', {
         value: class { static permission = 'denied'; static requestPermission = async () => 'denied'; },
         writable: true,
+      });
+      Object.defineProperty(navigator, 'clipboard', {
+        value: {
+          writeText: async (text: string) => {
+            (window as Window & { __copiedMemoText?: string }).__copiedMemoText = text;
+          },
+        },
+        configurable: true,
       });
     });
     await page.goto(`/dashboard/transactions?address=${MOCK_ADDRESS}`);
@@ -55,11 +109,16 @@ test.describe('Transaction Composer', () => {
     await expect(page.locator('code').filter({ hasText: `UNBOND:${MOCK_NODE}:1000000000` })).toBeVisible();
   });
 
-  test('copy memo button works', async ({ page }) => {
+  test('copy memo button copies the generated memo and shows success feedback', async ({ page }) => {
     await page.getByLabel('Node Address').fill(MOCK_NODE);
+    const generatedMemo = await page.locator('code').textContent();
+    expect(generatedMemo).toBe(`BOND:${MOCK_NODE}`);
+
     await page.getByRole('button', { name: 'Copy Memo' }).click();
-    const copyButton = page.getByRole('button', { name: /Copy Memo|Memo copied|Copy failed/ });
-    await expect(copyButton).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Memo copied' })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Success!' })).toBeVisible();
+    await expect(page.getByText(/Memo copied to your clipboard/i)).toBeVisible();
+    await expect.poll(() => page.evaluate(() => (window as Window & { __copiedMemoText?: string }).__copiedMemoText)).toBe(generatedMemo);
   });
 
   test('shows Connect Wallet prompt when disconnected', async ({ page }) => {

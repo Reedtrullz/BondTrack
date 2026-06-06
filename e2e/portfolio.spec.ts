@@ -207,6 +207,22 @@ async function setupMocks(page: Page) {
       return;
     }
 
+    if (url.pathname === '/api/midgard/v2/bonds/thor1test123456789abcdefghijklmnop') {
+      await route.fulfill({
+        json: {
+          address: MOCK_ADDRESS,
+          totalBonded: '1250000000000',
+          nodes: [{ address: mockNodes[0].node_address, bond: '1250000000000', status: 'Active' }],
+        },
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/midgard/v2/actions') {
+      await route.fulfill({ json: { actions: [], count: '0' } });
+      return;
+    }
+
     if (url.pathname === '/api/midgard/v2/member/thor1test123456789abcdefghijklmnop') {
       await route.fulfill({ json: mockMemberDetails });
       return;
@@ -251,5 +267,13 @@ test.describe('Portfolio dashboard', () => {
     await expect(page.getByRole('link', { name: 'View Risk' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'View Rewards' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'View LP' })).toBeVisible();
+  });
+
+  test('opens the transaction composer in unbond quick-action mode', async ({ page }) => {
+    await page.getByRole('link', { name: 'Unbond' }).click();
+
+    await expect(page).toHaveURL(/\/dashboard\/transactions\?.*action=unbond/);
+    await expect(page.getByText('Unbond mode')).toBeVisible();
+    await expect(page.getByText('Amount to Unbond')).toBeVisible();
   });
 });

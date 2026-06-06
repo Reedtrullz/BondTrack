@@ -31,7 +31,7 @@ src/app/
 │   ├── explorer/           # Network-wide node explorer
 │   ├── changelogs/         # TCC/TCU changelog browser
 │   └── settings/
-│       └── notifications/  # Notification preferences
+│       └── notifications/  # Local browser/in-app alert preferences; email/Telegram are visibly not connected yet
 └── learn/
     ├── layout.tsx          # Learn section layout
     ├── page.tsx            # Learn index

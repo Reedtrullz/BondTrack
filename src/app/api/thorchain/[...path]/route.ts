@@ -20,6 +20,7 @@ const ALLOWED_PATHS = [
   /^pool\/[A-Za-z0-9._:-]+$/,
   /^pool\/[A-Za-z0-9._:-]+\/liquidity_provider\/[A-Za-z0-9._:-]+$/,
   /^balance\/[A-Za-z0-9._:-]+$/,
+  /^cosmos\/bank\/v1beta1\/balances\/[A-Za-z0-9._:-]+$/,
   /^tx\/[A-Za-z0-9._:-]+$/,
   /^actions$/,
   /^ping$/,
@@ -35,6 +36,17 @@ export const dynamic = 'force-dynamic';
 
 function isAllowedPath(path: string): boolean {
   return ALLOWED_PATHS.some((pattern) => pattern.test(path));
+}
+
+function getUpstreamBaseUrl(baseUrl: string, decodedPath: string): string {
+  // Liquify serves Cosmos SDK endpoints at the THORNode API root, not under
+  // /thorchain. Keep /thorchain for normal THORChain endpoints while targeting
+  // /chain/thorchain_api/cosmos/... for wallet balance lookups.
+  if (decodedPath.startsWith('cosmos/') && /\/thorchain\/?$/.test(baseUrl)) {
+    return baseUrl.replace(/\/thorchain\/?$/, '');
+  }
+
+  return baseUrl;
 }
 
 function successHeaders(request: NextRequest): HeadersInit {
@@ -85,7 +97,8 @@ export async function GET(
   const errors: string[] = [];
 
   for (const baseUrl of THORNODE_ENDPOINTS) {
-    const targetUrl = `${baseUrl}/${pathStr}${searchParams}`;
+    const upstreamBaseUrl = getUpstreamBaseUrl(baseUrl, decodedPath);
+    const targetUrl = `${upstreamBaseUrl}/${pathStr}${searchParams}`;
 
     try {
       const controller = new AbortController();
@@ -99,7 +112,7 @@ export async function GET(
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        errors.push(`${baseUrl}: ${response.status}`);
+        errors.push(`${upstreamBaseUrl}: ${response.status}`);
         continue;
       }
 

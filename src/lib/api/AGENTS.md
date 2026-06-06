@@ -44,6 +44,8 @@ Keep these merged with the CORS headers on every proxy response. Do not add CSP 
 1. Strips a leading `thorchain/` segment before applying the allowlist regex (`/^nodes$/`, `/^network$/`, …).
 2. Appends what's left to `THORNODE_API_URL`, which already ends in `/thorchain`.
 
+Wallet balances are the one root-level Cosmos SDK exception: `/api/thorchain/cosmos/bank/v1beta1/balances/{address}` is allowed and strips the final `/thorchain` from the Liquify base so it targets `.../chain/thorchain_api/cosmos/...`, not `.../thorchain/cosmos/...`.
+
 If you remove the leading-segment strip, every request 403s, `useApiHealth` flips to `down`, and the "THORNode API is temporarily unavailable" banner appears.
 
 ### Liquify endpoint paths

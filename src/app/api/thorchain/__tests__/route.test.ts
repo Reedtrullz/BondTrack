@@ -108,4 +108,26 @@ describe('/api/thorchain proxy', () => {
       })
     );
   });
+
+  it('allows Cosmos bank balances at the THORNode API root, not under /thorchain', async () => {
+    const address = 'thor1validbalanceaddress1234567890abcdef';
+    const req = createMockRequest(`/cosmos/bank/v1beta1/balances/${address}`, { origin: 'http://localhost:3000' });
+
+    const res = await GET(req, {
+      params: Promise.resolve({ path: ['cosmos', 'bank', 'v1beta1', 'balances', address] }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockFetch).toHaveBeenCalledWith(
+      `https://gateway.liquify.com/chain/thorchain_api/cosmos/bank/v1beta1/balances/${address}`,
+      expect.objectContaining({
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+      })
+    );
+    expect(mockFetch).not.toHaveBeenCalledWith(
+      expect.stringContaining('/thorchain/cosmos/bank/v1beta1/balances/'),
+      expect.anything()
+    );
+  });
 });
