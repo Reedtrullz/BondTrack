@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateTaxReport, exportToCSV, parseTaxDateRange } from '@/lib/utils/tax-export';
+import { generateTaxReportWithWarnings, exportToCSV, parseTaxDateRange } from '@/lib/utils/tax-export';
 import { noStorePrivateHeaders } from '@/lib/api/cors';
 import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     parseTaxDateRange(startDate, endDate);
 
-    const rows = await generateTaxReport(address, startDate, endDate);
+    const { rows, warnings } = await generateTaxReportWithWarnings(address, startDate, endDate);
     const csv = exportToCSV(rows);
 
     return new NextResponse(csv, {
@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
         ...taxReportHeaders(request),
         'Content-Type': 'text/csv; charset=utf-8',
         'Content-Disposition': `attachment; filename=\"tax-report-${address.slice(0, 8)}-${startDate}-to-${endDate}.csv\"`,
+        'X-Heimdall-Tax-Warnings': warnings.length > 0 ? JSON.stringify(warnings) : '[]',
       },
     });
   } catch (error) {

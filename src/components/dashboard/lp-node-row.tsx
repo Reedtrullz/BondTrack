@@ -1,6 +1,7 @@
 import React from 'react';
 import type { LpPosition } from '../../lib/types/lp';
 import { formatDecimalPercent, formatPercent, formatRuneAmount, formatAmount } from '../../lib/utils/formatters';
+import { formatMidgardDate } from '@/lib/utils/midgard-time';
 import { LpStatusBadge } from './lp-status-badge';
 
 
@@ -10,17 +11,6 @@ function formatLiquidityUnits(raw: string): string {
   } catch {
     return '0';
   }
-}
-
-function formatMemberDate(raw: string): string {
-  const value = Number(raw);
-
-  if (!Number.isFinite(value) || value <= 0) {
-    return '--';
-  }
-
-  const timestamp = value > 1e12 ? value / 1e9 : value;
-  return new Date(timestamp * 1000).toLocaleDateString();
 }
 
 interface LpNodeRowProps {
@@ -89,6 +79,9 @@ export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
           {position.pricingSource === 'current-only' && (
             <div className="text-[10px] text-amber-600 dark:text-amber-400">Historical entry unavailable</div>
           )}
+          {position.pricingSource === 'estimated' && (
+            <div className="text-[10px] text-amber-600 dark:text-amber-400">Estimated entry pricing</div>
+          )}
         </div>
       </td>
 
@@ -121,8 +114,8 @@ export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
 
       <td className="px-4 py-4">
         <div className="space-y-1">
-          <div className="text-sm text-zinc-900 dark:text-zinc-100">{formatMemberDate(position.dateFirstAdded)}</div>
-          <div className="text-xs text-zinc-500 dark:text-zinc-400">Last {formatMemberDate(position.dateLastAdded)}</div>
+          <div className="text-sm text-zinc-900 dark:text-zinc-100">{formatMidgardDate(position.dateFirstAdded)}</div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400">Last {formatMidgardDate(position.dateLastAdded)}</div>
           <div className="text-xs text-amber-600 dark:text-amber-400">
             {position.hasPending ? 'Pending' : 'Active'}
           </div>

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { SWRConfig } from 'swr';
@@ -13,6 +13,11 @@ const wrapper = ({ children }: { children: React.ReactNode }) =>
 describe('useRunePrice', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('returns 0 for empty intervals', async () => {
@@ -58,5 +63,38 @@ describe('useRunePrice', () => {
 
     const { result } = renderHook(() => useRunePrice(), { wrapper });
     await waitFor(() => expect(result.current.price).toBe(5.0));
+  });
+
+  it('normalizes nanosecond timestamps and exposes fresh price metadata', async () => {
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(new Date('2023-11-14T23:00:00.000Z').getTime());
+    vi.mocked(midgard.getRunePriceHistory).mockResolvedValueOnce({
+      intervals: [
+        { startTime: '1700000000000000000', endTime: '1700003600000000000', runePriceUSD: '4.25' },
+      ],
+    } as unknown as midgard.RunePriceHistoryRaw);
+
+    const { result } = renderHook(() => useRunePrice(), { wrapper });
+
+    await waitFor(() => expect(result.current.price).toBe(4.25));
+    expect(result.current.updatedAt?.toISOString()).toBe('2023-11-14T23:13:20.000Z');
+    expect(result.current.updatedAtTimestampSeconds).toBe(1700003600);
+    expect(result.current.isStale).toBe(false);
+    nowSpy.mockRestore();
+  });
+
+  it('marks current RUNE price data stale when the latest interval is older than the freshness window', async () => {
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(new Date('2023-11-17T00:00:00.000Z').getTime());
+    vi.mocked(midgard.getRunePriceHistory).mockResolvedValueOnce({
+      intervals: [
+        { startTime: '1700000000', endTime: '1700003600', runePriceUSD: '4.25' },
+      ],
+    } as unknown as midgard.RunePriceHistoryRaw);
+
+    const { result } = renderHook(() => useRunePrice(), { wrapper });
+
+    await waitFor(() => expect(result.current.price).toBe(4.25));
+    expect(result.current.isStale).toBe(true);
+    expect(result.current.ageMs).toBeGreaterThan(result.current.staleAfterMs);
+    nowSpy.mockRestore();
   });
 });

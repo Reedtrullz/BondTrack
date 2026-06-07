@@ -85,6 +85,7 @@ export interface LpPortfolioSummary {
   totalNetProfitLossPercent: number | null;
   latestActivityTimestamp: number | null;
   historicalCount: number;
+  estimatedCount: number;
   currentOnlyCount: number;
 }
 
@@ -211,8 +212,11 @@ export function calculateLpPositionValuation(input: LpPositionValuationInput): L
 export function calculateLpPortfolioSummary(positions: LpPosition[]): LpPortfolioSummary {
   const totalValueUsd = positions.reduce((sum, position) => sum + position.currentTotalValueUsd, 0);
   const historicalPositions = positions.filter((position) => position.pricingSource === 'historical');
-  // Include ALL positions with non-null P/L in aggregate (both historical and fallback)
-  const positionsWithPnl = positions.filter((position) => position.netProfitLossUsd !== null);
+  const estimatedPositions = positions.filter((position) => position.pricingSource === 'estimated');
+  // Aggregate P/L only from true historical entry prices. Estimated entry prices
+  // are useful per-position context, but mixing them into portfolio P/L would
+  // present inferred cost basis as historical fact.
+  const positionsWithPnl = historicalPositions.filter((position) => position.netProfitLossUsd !== null);
   const pnlCurrentValueUsd = positionsWithPnl.reduce((sum, position) => sum + position.currentTotalValueUsd, 0);
   const totalCostBasis = positionsWithPnl.reduce((sum, position) => sum + (position.depositedTotalValueUsd ?? 0), 0);
   const totalNetProfitLossUsd = positionsWithPnl.length > 0 ? pnlCurrentValueUsd - totalCostBasis : null;
@@ -235,6 +239,7 @@ export function calculateLpPortfolioSummary(positions: LpPosition[]): LpPortfoli
     totalNetProfitLossPercent,
     latestActivityTimestamp,
     historicalCount: historicalPositions.length,
-    currentOnlyCount: positions.length - historicalPositions.length,
+    estimatedCount: estimatedPositions.length,
+    currentOnlyCount: positions.length - historicalPositions.length - estimatedPositions.length,
   };
 }

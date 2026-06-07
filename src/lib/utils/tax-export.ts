@@ -7,8 +7,24 @@ import {
   getPools,
   type ActionRaw,
 } from '@/lib/api/midgard';
+import { normalizeMidgardTimestampToSeconds } from '@/lib/utils/midgard-time';
+import { NETWORK } from '@/lib/config';
 
 export type TaxConfidence = 'high' | 'estimated' | 'low';
+export type TaxReportWarningCode = 'incomplete_action_history';
+
+export interface TaxReportWarning {
+  code: TaxReportWarningCode;
+  message: string;
+}
+
+export interface TaxReportResult {
+  rows: TaxReportRow[];
+  warnings: TaxReportWarning[];
+}
+
+const TAX_ACTION_PAGE_SIZE = NETWORK.MAX_ACTIONS_LIMIT;
+const TAX_ACTION_MAX_PAGES = Math.ceil(10_000 / TAX_ACTION_PAGE_SIZE);
 
 const LP_CURRENT_POSITION_ESTIMATE_NOTE =
   'current-position estimate; historical LP add/withdraw reconstruction is not implemented';
@@ -45,9 +61,7 @@ export interface TaxDateRange {
 }
 
 function normalizeTimestamp(dateStr: string | number): number {
-  const value = Number(dateStr);
-  if (!Number.isFinite(value) || value <= 0) return 0;
-  return value > 1e12 ? Math.floor(value / 1e9) : value;
+  return normalizeMidgardTimestampToSeconds(dateStr);
 }
 
 function formatTaxDate(timestampSeconds: number): string {
@@ -135,11 +149,39 @@ function extractRuneAmount(action: ActionRaw, isInbound: boolean): number {
   return 0;
 }
 
-async function loadBondTaxActions(address: string, endTimestamp: number): Promise<PreparedTaxAction[]> {
-  // Increase limit to get more history for accurate FIFO calculations.
-  const actionsResponse = await getActions(address, 1000, 'bond,unbond,leave', 'txType');
+async function loadBondTaxActions(address: string, endTimestamp: number): Promise<{ actions: PreparedTaxAction[]; warnings: TaxReportWarning[] }> {
+  const allActions: ActionRaw[] = [];
+  const warnings: TaxReportWarning[] = [];
+  let expectedCount: number | null = null;
 
-  return actionsResponse.actions
+  for (let page = 0; page < TAX_ACTION_MAX_PAGES; page += 1) {
+    const offset = page * TAX_ACTION_PAGE_SIZE;
+    const actionsResponse = await getActions(address, TAX_ACTION_PAGE_SIZE, 'bond,unbond,leave', 'txType', offset);
+    const pageActions = actionsResponse.actions ?? [];
+    allActions.push(...pageActions);
+
+    const parsedCount = Number(actionsResponse.count);
+    if (Number.isFinite(parsedCount) && parsedCount >= 0) {
+      expectedCount = parsedCount;
+    }
+
+    if (pageActions.length < TAX_ACTION_PAGE_SIZE) {
+      break;
+    }
+
+    if (expectedCount !== null && allActions.length >= expectedCount) {
+      break;
+    }
+  }
+
+  if ((expectedCount !== null && allActions.length < expectedCount) || (expectedCount === null && allActions.length >= TAX_ACTION_PAGE_SIZE * TAX_ACTION_MAX_PAGES)) {
+    warnings.push({
+      code: 'incomplete_action_history',
+      message: `Tax report loaded ${allActions.length} bond-related actions; older history may be incomplete.`,
+    });
+  }
+
+  const actions = allActions
     .map((action) => {
       const timestamp = normalizeTimestamp(action.date);
       const taxActionType = getTaxActionType(action);
@@ -149,6 +191,8 @@ async function loadBondTaxActions(address: string, endTimestamp: number): Promis
       item.timestamp > 0 && item.timestamp <= endTimestamp && item.taxActionType !== undefined
     )
     .sort((a, b) => a.timestamp - b.timestamp);
+
+  return { actions, warnings };
 }
 
 function getClosestPrice(timestamp: number, priceMap: Map<number, number>): { price: number; confidence: TaxConfidence } {
@@ -354,14 +398,14 @@ async function generateLpRows(
   return rows;
 }
 
-export async function generateTaxReport(
+async function buildTaxReportResult(
   address: string,
   startDate: string,
   endDate: string
-): Promise<TaxReportRow[]> {
+): Promise<TaxReportResult> {
   const { startTimestamp, endTimestamp } = parseTaxDateRange(startDate, endDate);
 
-  const bondActions = await loadBondTaxActions(address, endTimestamp);
+  const { actions: bondActions, warnings } = await loadBondTaxActions(address, endTimestamp);
   const earliestBondActionTimestamp = bondActions.length > 0
     ? Math.min(...bondActions.map(({ timestamp }) => timestamp))
     : startTimestamp;
@@ -388,9 +432,28 @@ export async function generateTaxReport(
     generateLpRows(address, startTimestamp, endTimestamp, priceMap),
   ]);
 
-  return [...bondRows, ...lpRows].sort(
+  const rows = [...bondRows, ...lpRows].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
+
+  return { rows, warnings };
+}
+
+export async function generateTaxReport(
+  address: string,
+  startDate: string,
+  endDate: string
+): Promise<TaxReportRow[]> {
+  const { rows } = await buildTaxReportResult(address, startDate, endDate);
+  return rows;
+}
+
+export async function generateTaxReportWithWarnings(
+  address: string,
+  startDate: string,
+  endDate: string
+): Promise<TaxReportResult> {
+  return buildTaxReportResult(address, startDate, endDate);
 }
 
 export function exportToCSV(rows: TaxReportRow[]): string {

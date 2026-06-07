@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 interface PortfolioSummaryProps {
   totalBonded: number;
   runePrice: number;
+  runePriceIsStale?: boolean;
+  runePriceUpdatedAt?: Date | null;
   weightedAPY: number;
   positions: BondPosition[];
   benchmarks?: YieldBenchmarks;
@@ -18,7 +20,7 @@ interface PortfolioSummaryProps {
   feeImpactUSD?: number;
 }
 
-export function PortfolioSummary({ totalBonded, runePrice, weightedAPY, positions, benchmarks, feeImpactRUNE, feeImpactUSD }: PortfolioSummaryProps) {
+export function PortfolioSummary({ totalBonded, runePrice, runePriceIsStale = false, runePriceUpdatedAt, weightedAPY, positions, benchmarks, feeImpactRUNE, feeImpactUSD }: PortfolioSummaryProps) {
   const health = calculatePortfolioHealth(positions);
   const usdValue = totalBonded * runePrice;
   const annualEarnings = totalBonded * (weightedAPY / 100);
@@ -27,6 +29,11 @@ export function PortfolioSummary({ totalBonded, runePrice, weightedAPY, position
   const apyColor = benchmarks 
     ? getYieldPerformanceColor(weightedAPY, benchmarks.networkAverageAPY)
     : 'text-zinc-900 dark:text-zinc-100';
+  const runePriceSubValue = runePriceIsStale
+    ? `Stale price${runePriceUpdatedAt ? ` · updated ${runePriceUpdatedAt.toLocaleString()}` : ''}`
+    : runePriceUpdatedAt
+      ? `Updated ${runePriceUpdatedAt.toLocaleString()}`
+      : undefined;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -57,6 +64,7 @@ export function PortfolioSummary({ totalBonded, runePrice, weightedAPY, position
         icon={<DollarSign className="w-4 h-4 text-cyan-500" />}
         label="RUNE Price"
         value={runePrice > 0 ? `$${runePrice.toFixed(4)}` : '--'}
+        subValue={runePriceSubValue}
         highlight="cyan"
       />
       <SummaryCard 

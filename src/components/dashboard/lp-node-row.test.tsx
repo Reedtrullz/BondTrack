@@ -66,4 +66,27 @@ describe('LpNodeRow', () => {
     expect(screen.getByText('Pending add')).toBeInTheDocument();
     expect(screen.getByText('Staged')).toBeInTheDocument();
   });
+
+  it('labels estimated entry pricing in table rows instead of presenting it as historical', () => {
+    render(
+      <table>
+        <tbody>
+          <LpNodeRow
+            position={{
+              ...basePosition,
+              pricingSource: 'estimated',
+              netProfitLoss: '+$4.68',
+              netProfitLossUsd: 4.68,
+              netProfitLossPercent: 17.33,
+              dateFirstAdded: '1700000000000000000',
+              dateLastAdded: '1700500000000000000',
+            }}
+          />
+        </tbody>
+      </table>
+    );
+
+    expect(screen.getByText('Estimated entry pricing')).toBeInTheDocument();
+    expect(screen.queryByText('Invalid Date')).not.toBeInTheDocument();
+  });
 });

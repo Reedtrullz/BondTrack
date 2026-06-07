@@ -77,4 +77,19 @@ describe('PnLDashboard', () => {
       expect(screen.queryByText(/manual/)).not.toBeInTheDocument();
     });
   });
+
+  it('labels stale RUNE price data before showing PnL cards', () => {
+    render(
+      <PnLDashboard
+        positions={positions}
+        currentRunePrice={1}
+        currentRunePriceIsStale
+        currentRunePriceUpdatedAt={new Date('2024-01-01T00:00:00.000Z')}
+        address="addr-a"
+      />
+    );
+
+    expect(screen.getByText(/Current RUNE price stale/)).toBeInTheDocument();
+    expect(screen.getByText(/Price PnL and total return use the last Midgard price/)).toBeInTheDocument();
+  });
 });

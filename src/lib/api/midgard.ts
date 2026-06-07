@@ -1,6 +1,7 @@
 import { fetchMidgard } from './client';
 import { getCoingeckoRunePrice } from './coingecko';
 import { NETWORK } from '../config';
+import { normalizeMidgardTimestampToSeconds } from '@/lib/utils/midgard-time';
 
 export interface BondDetailsRaw {
   address: string;
@@ -320,13 +321,8 @@ export async function getRunePriceHistory(interval = 'day', count?: number, from
 const HISTORY_COVERAGE_TOLERANCE_SECONDS = 86400;
 
 function normalizeHistoryTimestampValue(timestamp: number | string): number {
-  const numericTimestamp = Number(timestamp);
-
-  if (!Number.isFinite(numericTimestamp) || numericTimestamp <= 0) {
-    return Number.NaN;
-  }
-
-  return numericTimestamp > 1e12 ? numericTimestamp / 1e9 : numericTimestamp;
+  const seconds = normalizeMidgardTimestampToSeconds(timestamp);
+  return seconds > 0 ? seconds : Number.NaN;
 }
 
 function hasHistoryCoverage(timestamps: Array<number | string>, requestedTimestamp: number): boolean {
@@ -420,10 +416,17 @@ export async function getNetwork(): Promise<NetworkRaw> {
   return fetchMidgard<NetworkRaw>('/v2/network');
 }
 
-export async function getActions(address: string, limit: number = NETWORK.MAX_ACTIONS_LIMIT, actionTypes?: string, typeParam = 'type'): Promise<ActionsResponseRaw> {
+export async function getActions(
+  address: string,
+  limit: number = NETWORK.MAX_ACTIONS_LIMIT,
+  actionTypes?: string,
+  typeParam = 'type',
+  offset?: number
+): Promise<ActionsResponseRaw> {
   const params = new URLSearchParams();
   params.set('address', address);
   params.set('limit', String(limit));
+  if (offset !== undefined) params.set('offset', String(offset));
   if (actionTypes) params.set(typeParam, actionTypes);
   const qs = params.toString();
   return fetchMidgard<ActionsResponseRaw>(`/v2/actions${qs ? `?${qs}` : ''}`);

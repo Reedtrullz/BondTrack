@@ -87,4 +87,27 @@ describe('TaxExport', () => {
 
     createObjectURL.mockRestore();
   });
+
+  it('disables LP CSV export for estimated entry pricing instead of treating it as complete history', () => {
+    mockUseLpPositions.mockReturnValue({
+      positions: [{
+        ...basePosition,
+        pricingSource: 'estimated',
+      }],
+      isLoading: false,
+      isHistoricalEnrichmentLoading: false,
+      error: undefined,
+    });
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:tax-export');
+
+    render(<TaxExport address="thor1lpaddress" />);
+
+    expect(screen.getByText(/Estimated\/current-only LP CSV export is disabled/i)).toBeInTheDocument();
+    const button = screen.getByRole('button', { name: /Historical pricing unavailable/i });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(createObjectURL).not.toHaveBeenCalled();
+
+    createObjectURL.mockRestore();
+  });
 });

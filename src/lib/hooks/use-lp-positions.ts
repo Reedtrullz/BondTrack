@@ -7,8 +7,10 @@ import { calculateLpWithdrawableAmounts, formatPnlDisplay, calculateAssetPriceFr
 import { normalizeApy } from '../utils/fee-calculations';
 import { rawRuneToDisplayNumber } from '../utils/formatters';
 import { calculateLpPositionValuation, getCurrentAssetPriceUsd, getLpAssetSymbol } from '../utils/lp-analytics';
+import { getMidgardDataFreshness, normalizeMidgardTimestampToSeconds, type MidgardFreshness } from '../utils/midgard-time';
 
 type LpDataState = 'ready' | 'empty' | 'error';
+const LP_RUNE_PRICE_STALE_AFTER_MS = 36 * 60 * 60 * 1000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([
@@ -158,13 +160,7 @@ export function __clearLpHistoricalCachesForTests(): void {
 }
 
 function normalizeHistoryTimestamp(rawTimestamp: string): number {
-  const numericTimestamp = Number(rawTimestamp);
-
-  if (!Number.isFinite(numericTimestamp) || numericTimestamp <= 0) {
-    return 0;
-  }
-
-  return numericTimestamp > 1e12 ? Math.floor(numericTimestamp / 1e9) : numericTimestamp;
+  return normalizeMidgardTimestampToSeconds(rawTimestamp);
 }
 
 interface CurrentLpDataWithThorNode {
@@ -172,6 +168,7 @@ interface CurrentLpDataWithThorNode {
   pools: PoolDetailRaw[];
   thorNodeLpData: Map<string, LiquidityProviderRaw>;
   runePriceUSD: number;
+  runePriceFreshness: MidgardFreshness;
 }
 
 async function fetchHistoricalPriceSnapshots(memberPools: MemberDetailsRaw['pools']): Promise<Map<string, HistoricalPriceSnapshot>> {
@@ -279,9 +276,16 @@ export const useLpPositions = (address: string | null) => {
         getRunePriceHistory('day', 1)
       ]);
 
-      const runePriceUSD = runePriceHistory?.intervals?.length
-        ? Number(runePriceHistory.intervals[runePriceHistory.intervals.length - 1].runePriceUSD)
+      const latestRunePriceInterval = runePriceHistory?.intervals?.length
+        ? runePriceHistory.intervals[runePriceHistory.intervals.length - 1]
+        : undefined;
+      const runePriceUSD = latestRunePriceInterval
+        ? Number(latestRunePriceInterval.runePriceUSD)
         : 0;
+      const runePriceFreshness = getMidgardDataFreshness(
+        latestRunePriceInterval?.endTime || latestRunePriceInterval?.startTime,
+        LP_RUNE_PRICE_STALE_AFTER_MS
+      );
 
       if (!Number.isFinite(runePriceUSD) || runePriceUSD <= 0) {
         throw new Error('Midgard LP pricing unavailable at /api/midgard/v2/history/rune');
@@ -303,7 +307,7 @@ export const useLpPositions = (address: string | null) => {
       });
       await Promise.allSettled(poolPromises);
 
-      return { memberDetails, pools, thorNodeLpData, runePriceUSD };
+      return { memberDetails, pools, thorNodeLpData, runePriceUSD, runePriceFreshness };
     },
     {
       refreshInterval: 30000,
@@ -372,13 +376,13 @@ export const useLpPositions = (address: string | null) => {
 
     const historicalEntryPrices = historicalPrices?.get(poolRaw.pool);
     const pricingSource = historicalEntryPrices?.pricingSource ?? 'current-only';
-    const hasHistoricalPricing = pricingSource === 'historical' || pricingSource === 'estimated';
+    const hasEntryPricing = pricingSource === 'historical' || pricingSource === 'estimated';
     const currentRunePriceUsd = rawCurrentRunePriceUsd;
     const currentAssetPriceUsd = rawCurrentAssetPriceUsd;
-    const entryRunePriceUsd = hasHistoricalPricing
+    const entryRunePriceUsd = hasEntryPricing
       ? historicalEntryPrices?.entryRunePriceUsd ?? null
       : null;
-    const entryAssetPriceUsd = hasHistoricalPricing
+    const entryAssetPriceUsd = hasEntryPricing
       ? historicalEntryPrices?.entryAssetPriceUsd ?? null
       : null;
     const valuation = calculateLpPositionValuation({
@@ -391,7 +395,7 @@ export const useLpPositions = (address: string | null) => {
       runeEntryPriceUsd: entryRunePriceUsd,
       assetEntryPriceUsd: entryAssetPriceUsd,
     });
-    const trustedPerformance = hasHistoricalPricing
+    const trustedPerformance = hasEntryPricing
       ? {
           depositedTotalValueUsd: valuation.depositedTotalValueUsd,
           netProfitLoss: valuation.netProfitLossUsd !== null ? formatPnlDisplay(valuation.netProfitLossUsd).text : 'Current value only',
@@ -486,5 +490,6 @@ export const useLpPositions = (address: string | null) => {
       }
     },
     loadingProgress,
+    runePriceFreshness: data?.runePriceFreshness,
   };
 };

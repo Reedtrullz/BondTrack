@@ -79,7 +79,7 @@ export default function PortfolioPage() {
     positions: lpPositions,
     error: lpError,
   } = useLpPositions(address);
-  const { price: runePrice, intervals: runePriceHistory, isLoading: priceLoading } = useRunePriceHistory('hour', 24 * 7 + 1);
+  const { price: runePrice, intervals: runePriceHistory, isLoading: priceLoading, isStale: runePriceIsStale, updatedAt: runePriceUpdatedAt } = useRunePriceHistory('hour', 24 * 7 + 1);
   const { data: marketNetwork, isLoading: metricsLoading } = useNetworkMetrics();
   const { benchmarks, isLoading: benchmarksLoading } = useYieldBenchmarks();
   const { data: allNodes, isLoading: allNodesLoading } = useAllNodes();
@@ -192,6 +192,8 @@ export default function PortfolioPage() {
       <PortfolioSummary
         totalBonded={totalBondedRune}
         runePrice={runePrice}
+        runePriceIsStale={runePriceIsStale}
+        runePriceUpdatedAt={runePriceUpdatedAt}
         weightedAPY={weightedAPY}
         positions={bondPositions}
         benchmarks={benchmarks}

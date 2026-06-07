@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { exportToCSV, generateTaxReport, parseTaxDateRange, type TaxReportRow } from '../tax-export';
+import { exportToCSV, generateTaxReport, generateTaxReportWithWarnings, parseTaxDateRange, type TaxReportRow } from '../tax-export';
 import {
   getActions,
   getEarningsHistory,
@@ -198,6 +198,33 @@ describe('generateTaxReport', () => {
       costBasis: 7.5,
       gainLoss: 2.5,
     }));
+  });
+
+  it('paginates bond actions and emits an incomplete-history warning when the cap is reached', async () => {
+    const pageAction = action({
+      type: 'bond',
+      date: midgardDate('2024-01-01'),
+      memo: 'BOND:thor1node',
+      in: [{ address: 'thor1owner', txID: 'bond-tx', coins: [{ asset: 'THOR.RUNE', amount: '100000000' }] }],
+    });
+    const fullPage = Array.from({ length: 50 }, (_, index) => ({
+      ...pageAction,
+      height: String(index + 1),
+      tx: { ...pageAction.tx, txID: `tx-${index}` },
+    }));
+
+    mockGetActions.mockResolvedValue({ count: '25000', actions: fullPage });
+    mockGetRunePriceHistory.mockResolvedValue({
+      meta: {} as never,
+      intervals: [{ startTime: String(timestamp('2024-01-01')), endTime: String(timestamp('2024-01-02')), runePriceUSD: '2' }],
+    });
+
+    const result = await generateTaxReportWithWarnings('thor1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '2024-01-01', '2024-01-31');
+
+    expect(mockGetActions).toHaveBeenCalledTimes(200);
+    expect(mockGetActions).toHaveBeenNthCalledWith(1, 'thor1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 50, 'bond,unbond,leave', 'txType', 0);
+    expect(mockGetActions).toHaveBeenNthCalledWith(200, 'thor1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 50, 'bond,unbond,leave', 'txType', 9950);
+    expect(result.warnings).toContainEqual(expect.objectContaining({ code: 'incomplete_action_history' }));
   });
 
   it('labels LP rows as current-position estimates', async () => {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { LpPosition } from '../../lib/types/lp';
 import { formatPercent, formatRuneAmount, formatUsd, formatAmount } from '../../lib/utils/formatters';
+import { normalizeMidgardTimestampToDate } from '@/lib/utils/midgard-time';
 import { LpStatusBadge } from './lp-status-badge';
 
 function getSignedTone(value: number | null | undefined): string {
@@ -45,12 +46,11 @@ export const LpSummaryCard: React.FC<{
 
   // Calculate Time in Pool
   const [timeInPool] = useState(() => {
-    const firstAddedTs = Number(position.dateFirstAdded);
-    if (!Number.isFinite(firstAddedTs) || firstAddedTs <= 0) {
+    const firstAddedDate = normalizeMidgardTimestampToDate(position.dateFirstAdded);
+    if (!firstAddedDate) {
       return 'Unknown';
     }
-    const ts = firstAddedTs > 1e12 ? firstAddedTs / 1000 : firstAddedTs * 1000;
-    const days = Math.floor((Date.now() - ts) / (1000 * 60 * 60 * 24));
+    const days = Math.floor((Date.now() - firstAddedDate.getTime()) / (1000 * 60 * 60 * 24));
     if (days < 1) {
       return '< 1 day';
     } else if (days < 30) {
@@ -150,7 +150,7 @@ export const LpSummaryCard: React.FC<{
         <MetricCard 
           label="Time in Pool" 
           value={timeInPool} 
-          detail={`Added ${new Date(Number(position.dateFirstAdded) > 1e12 ? Number(position.dateFirstAdded) / 1000 : Number(position.dateFirstAdded) * 1000).toLocaleDateString()}`}
+          detail={`Added ${normalizeMidgardTimestampToDate(position.dateFirstAdded)?.toLocaleDateString() ?? 'Unknown'}`}
         />
       </div>
     </div>

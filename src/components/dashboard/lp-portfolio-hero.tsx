@@ -15,14 +15,14 @@ export function LpPortfolioHero({ summary }: LpPortfolioHeroProps) {
     ? '$0'
     : formatUsd(summary.totalNetProfitLossUsd, 0);
   const netProfitLossDetail = summary.totalNetProfitLossPercent === null
-    ? summary.currentOnlyCount > 0
-      ? `LP yield · ${summary.currentOnlyCount} position${summary.currentOnlyCount === 1 ? '' : 's'} without entry prices`
+    ? summary.currentOnlyCount > 0 || summary.estimatedCount > 0
+      ? `Incomplete · excludes ${summary.estimatedCount} estimated and ${summary.currentOnlyCount} current-only position${summary.estimatedCount + summary.currentOnlyCount === 1 ? '' : 's'}`
       : 'No positions'
-    : summary.currentOnlyCount > 0
-      ? `${formatPercent(summary.totalNetProfitLossPercent)} · includes LP yield estimates`
+    : summary.currentOnlyCount > 0 || summary.estimatedCount > 0
+      ? `${formatPercent(summary.totalNetProfitLossPercent)} · historical only`
       : formatPercent(summary.totalNetProfitLossPercent);
-  const positionsDetail = summary.currentOnlyCount > 0
-    ? `${summary.historicalCount} with full history · ${summary.currentOnlyCount} current-only`
+  const positionsDetail = summary.currentOnlyCount > 0 || summary.estimatedCount > 0
+    ? `${summary.historicalCount} historical · ${summary.estimatedCount} estimated · ${summary.currentOnlyCount} current-only`
     : `${summary.historicalCount} with full history`;
 
   return (

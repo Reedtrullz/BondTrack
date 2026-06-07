@@ -9,6 +9,8 @@ import { getEntryPriceStorageKey, getInitialBondStorageKey } from '@/lib/storage
 interface PnLDashboardProps {
   positions: BondPosition[];
   currentRunePrice: number;
+  currentRunePriceIsStale?: boolean;
+  currentRunePriceUpdatedAt?: Date | null;
   address: string | null;
   entryRunePrice?: number;
   earningsHistory?: {
@@ -39,6 +41,8 @@ function getEntryPriceKey(address: string | null): string {
 export function PnLDashboard({
   positions,
   currentRunePrice,
+  currentRunePriceIsStale = false,
+  currentRunePriceUpdatedAt,
   address,
   entryRunePrice,
   earningsHistory,
@@ -158,6 +162,9 @@ export function PnLDashboard({
     if (earningsHistory?.intervals?.length) return Number(earningsHistory.intervals[0].runePriceUSD);
     return currentRunePrice;
   }, [manualEntryPrice, entryRunePrice, earningsHistory, currentRunePrice]);
+  const currentRunePriceTrustLabel = currentRunePriceIsStale
+    ? `Current RUNE price stale${currentRunePriceUpdatedAt ? ` · updated ${currentRunePriceUpdatedAt.toLocaleString()}` : ''}`
+    : null;
   
   const initialBondValueUSD = useMemo(() => effectiveInitialBond * effectiveEntryPrice, [effectiveInitialBond, effectiveEntryPrice]);
   const currentBondValueUSD = useMemo(() => currentBond * currentRunePrice, [currentBond, currentRunePrice]);
@@ -171,6 +178,11 @@ export function PnLDashboard({
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-medium text-zinc-500">Profit & Loss</h3>
+      {currentRunePriceTrustLabel ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+          {currentRunePriceTrustLabel}. Price PnL and total return use the last Midgard price.
+        </div>
+      ) : null}
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <PnLCard
@@ -304,7 +316,7 @@ export function PnLDashboard({
             </span>
           }
           value={`$${pricePnL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          subValue={`Entry: $${entryPriceDisplay.toFixed(4)} → $${currentRunePrice.toFixed(4)}`}
+          subValue={`Entry: $${entryPriceDisplay.toFixed(4)} → $${currentRunePrice.toFixed(4)}${currentRunePriceIsStale ? ' (stale)' : ''}`}
           positive={pricePnL >= 0}
         />
         <PnLCard

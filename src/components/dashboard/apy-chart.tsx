@@ -40,7 +40,10 @@ export function APYChart({ count = 365 }: APYChartProps) {
   return (
     <div className="p-6 rounded-2xl bg-transparent border border-transparent shadow-none">
       <div className="mb-6">
-        <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Earnings History</h3>
+        <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Estimated APY Trend</h3>
+        <p className="mt-1 text-[10px] text-zinc-500">
+          Current-baseline estimate from Midgard earnings, not true historical APY.
+        </p>
       </div>
 
       {isLoading ? (
@@ -97,7 +100,7 @@ export function APYChart({ count = 365 }: APYChartProps) {
         </ResponsiveContainer>
       )}
       <div className="mt-2 text-[10px] text-zinc-500 italic">
-        APR is backward-calculated from historical earnings and does not guarantee future returns.
+        Estimated APY is backward-calculated from historical earnings against the current network APY baseline and does not guarantee future returns.
       </div>
     </div>
   );

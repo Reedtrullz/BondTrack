@@ -16,31 +16,39 @@ import { formatUsd } from '@/lib/utils/formatters';
 export default function LpPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
-  const { positions, isLoading, isHistoricalEnrichmentLoading, error, retry } = useLpPositions(address);
+  const { positions, isLoading, isHistoricalEnrichmentLoading, error, retry, runePriceFreshness } = useLpPositions(address);
   const [activeTab, setActiveTab] = useState('positions');
 
-  // Calculate total LP stats
-  const totalStats = positions?.reduce(
+  // Calculate total LP stats. Aggregate performance only uses true historical entry pricing.
+  const trustedHistoricalPositions = positions?.filter((pos) => pos.pricingSource === 'historical') ?? [];
+  const totalStats = trustedHistoricalPositions.reduce(
     (acc, pos) => {
-      acc.totalValue += pos.currentTotalValueUsd ?? 0;
       acc.totalPnl += pos.netProfitLossUsd ?? 0;
       acc.totalIl += pos.impermanentLossUsd ?? 0;
       return acc;
     },
-    { totalValue: 0, totalPnl: 0, totalIl: 0 }
-  ) ?? { totalValue: 0, totalPnl: 0, totalIl: 0 };
+    { totalPnl: 0, totalIl: 0 }
+  );
+  const totalLpValue = positions?.reduce((sum, pos) => sum + (pos.currentTotalValueUsd ?? 0), 0) ?? 0;
+  const estimatedPositions = positions?.filter(p => p.pricingSource === 'estimated') ?? [];
   const hasUntrustedPerformance = isHistoricalEnrichmentLoading || (positions?.some(
     (position) =>
       position.pricingSource === 'current-only' ||
+      position.pricingSource === 'estimated' ||
       position.netProfitLossUsd === null ||
       position.impermanentLossUsd === null
   ) ?? false);
-  const performancePendingLabel = isHistoricalEnrichmentLoading ? 'Enriching...' : 'Unavailable';
+  const hasTrustedHistoricalPerformance = trustedHistoricalPositions.length > 0;
+  const performancePendingLabel = isHistoricalEnrichmentLoading ? 'Enriching...' : hasTrustedHistoricalPerformance ? 'Historical only' : 'Incomplete';
 
   // Count positions lacking historical pricing
   const positionsWithoutHistory = positions?.filter(p => p.pricingSource === 'current-only') ?? [];
   const showHistoricalEnrichmentNotice = isHistoricalEnrichmentLoading && positionsWithoutHistory.length > 0;
   const showPricingWarning = !showHistoricalEnrichmentNotice && positionsWithoutHistory.length > 0;
+  const showEstimatedWarning = estimatedPositions.length > 0;
+  const staleRunePriceLabel = runePriceFreshness?.isStale
+    ? `RUNE price feed is stale${runePriceFreshness.updatedAt ? ` (updated ${runePriceFreshness.updatedAt.toLocaleString()})` : ''}. LP current values use the last Midgard price.`
+    : null;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -93,6 +101,27 @@ export default function LpPage() {
         </div>
       )}
 
+      {showEstimatedWarning && (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+          <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" />
+          <div>
+            <p className="font-medium">
+              Estimated entry pricing is used for {estimatedPositions.length} position{estimatedPositions.length !== 1 ? 's' : ''}.
+            </p>
+            <p className="mt-1 text-sm opacity-90">
+              Estimated position P/L is labeled per pool and excluded from aggregate Net P/L totals.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {staleRunePriceLabel && (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+          <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" />
+          <p className="text-sm font-medium">{staleRunePriceLabel}</p>
+        </div>
+      )}
+
       {/* Error State */}
       {error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
@@ -128,7 +157,7 @@ export default function LpPage() {
               <CardContent className="p-4">
                 <div className="text-sm text-zinc-500">Total LP Value</div>
                 <div className="text-2xl font-bold font-display text-zinc-900 dark:text-zinc-100">
-                  {formatUsd(totalStats.totalValue)}
+                  {formatUsd(totalLpValue)}
                 </div>
               </CardContent>
             </Card>
@@ -146,6 +175,11 @@ export default function LpPage() {
                     ? performancePendingLabel
                     : `${totalStats.totalPnl >= 0 ? '+' : ''}${formatUsd(totalStats.totalPnl)}`}
                 </div>
+                {hasUntrustedPerformance && hasTrustedHistoricalPerformance ? (
+                  <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    {`${totalStats.totalPnl >= 0 ? '+' : ''}${formatUsd(totalStats.totalPnl)} from historical positions; estimated/current-only excluded`}
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
             <Card className="border-zinc-200 bg-white/80 shadow-md backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80">

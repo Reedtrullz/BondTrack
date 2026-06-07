@@ -167,6 +167,28 @@ describe('LpDashboardPage', () => {
     expect(screen.getByText(/BTC\.BTC summary/i)).toBeInTheDocument();
   });
 
+  it('shows a stale RUNE price banner when LP current values use stale Midgard price data', async () => {
+    mockUseLpPositions.mockReturnValue({
+      positions: [basePosition],
+      isLoading: false,
+      state: 'ready',
+      error: undefined,
+      retry: vi.fn(),
+      runePriceFreshness: {
+        updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+        updatedAtTimestampSeconds: 1704067200,
+        ageMs: 200_000_000,
+        isStale: true,
+        staleAfterMs: 129_600_000,
+      },
+    });
+
+    render(<LpDashboardPage />);
+
+    expect(await screen.findByText(/RUNE price feed is stale/)).toBeInTheDocument();
+    expect(screen.getByText(/LP current values use the last Midgard price/)).toBeInTheDocument();
+  });
+
   it('shows a warning banner when any position lacks historical pricing', async () => {
     mockUseLpPositions.mockReturnValue({
       positions: [{
@@ -196,7 +218,7 @@ describe('LpDashboardPage', () => {
 
     expect(await screen.findByText(/Historical entry pricing is unavailable for 1 position\./)).toBeInTheDocument();
     expect(screen.getByText(/Net P\/L and impermanent loss are hidden/i)).toBeInTheDocument();
-    expect(screen.getAllByText('Unavailable')).toHaveLength(2);
+    expect(screen.getAllByText('Incomplete')).toHaveLength(2);
   });
 
   it('labels in-flight historical enrichment without presenting performance as finally unavailable', async () => {

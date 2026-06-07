@@ -79,7 +79,7 @@ export default function RewardsPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
   const { positions, isLoading, error } = useBondPositions(address);
-  const { price: runePrice } = useRunePrice();
+  const { price: runePrice, isStale: runePriceIsStale, updatedAt: runePriceUpdatedAt } = useRunePrice();
   const { data: networkData } = useNetworkMetrics();
   const { history: bondHistory, isLoading: isLoadingActions, error: actionsError } = useBondHistory(address);
   const { price: entryRunePrice } = useHistoricalRunePrice(bondHistory?.firstBondDate || null);
@@ -90,6 +90,7 @@ export default function RewardsPage() {
   const [taxEndDate, setTaxEndDate] = useState('');
   const [taxExportLoading, setTaxExportLoading] = useState(false);
   const [taxError, setTaxError] = useState<string | null>(null);
+  const [taxWarning, setTaxWarning] = useState<string | null>(null);
   const safePositions = useMemo(() => positions ?? [], [positions]);
   const networkApy = normalizeApyPercent(networkData?.bondingAPY);
   const weightedApy = useMemo(() => {
@@ -121,6 +122,7 @@ export default function RewardsPage() {
 
     setTaxExportLoading(true);
     setTaxError(null);
+    setTaxWarning(null);
     try {
       const response = await fetch('/api/tax-report', {
         method: 'POST',
@@ -133,6 +135,8 @@ export default function RewardsPage() {
         throw new Error(payload.error || 'Failed to generate tax report');
       }
 
+      const warningsHeader = response.headers.get('X-Heimdall-Tax-Warnings');
+      const warnings = warningsHeader ? JSON.parse(warningsHeader) as Array<{ message?: string }> : [];
       const csv = await response.text();
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -141,7 +145,11 @@ export default function RewardsPage() {
       anchor.download = `tax-report-${address.slice(0, 8)}-${taxStartDate}-to-${taxEndDate}.csv`;
       anchor.click();
       URL.revokeObjectURL(url);
-      setShowTaxModal(false);
+      if (warnings.length > 0) {
+        setTaxWarning(warnings.map((warning) => warning.message).filter(Boolean).join(' ') || 'Tax report downloaded, but older history may be incomplete.');
+      } else {
+        setShowTaxModal(false);
+      }
     } catch (err) {
       setTaxError(err instanceof Error ? err.message : 'Tax export failed.');
       console.error('Tax export failed:', err);
@@ -211,6 +219,8 @@ export default function RewardsPage() {
             <PnLDashboard
               positions={safePositions}
               currentRunePrice={runePrice || 0}
+              currentRunePriceIsStale={runePriceIsStale}
+              currentRunePriceUpdatedAt={runePriceUpdatedAt}
               address={address}
               entryRunePrice={entryRunePrice || undefined}
               bondHistory={bondHistory ?? undefined}
@@ -224,6 +234,7 @@ export default function RewardsPage() {
                 size="sm"
                 onClick={() => {
                   setTaxError(null);
+                  setTaxWarning(null);
                   setShowTaxModal(true);
                 }}
               >
@@ -346,6 +357,11 @@ export default function RewardsPage() {
               {taxError ? (
                 <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300" role="alert">
                   {taxError}
+                </div>
+              ) : null}
+              {taxWarning ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300" role="status">
+                  {taxWarning}
                 </div>
               ) : null}
               <div className="flex gap-3 pt-2">

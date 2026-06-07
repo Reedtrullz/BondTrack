@@ -1,6 +1,7 @@
 import { useEarningsHistory } from './use-earnings';
 import { useNetworkMetrics } from './use-network-metrics';
 import { runeToNumber } from '@/lib/utils/formatters';
+import { normalizeMidgardTimestampToDate } from '@/lib/utils/midgard-time';
 
 export interface APYDataPoint {
   date: string;
@@ -13,7 +14,7 @@ function normalizeApyPercent(raw: string | number | undefined): number {
   return value > 1 ? value : value * 100;
 }
 
-function calculateAPYHistory(
+export function calculateAPYHistory(
   earningsRaw: { intervals?: Array<{ startTime: string; bondingEarnings: string }> },
   networkRaw: { bondMetrics?: { totalActiveBond?: string }; bondingAPY?: string | number }
 ): APYDataPoint[] {
@@ -33,12 +34,16 @@ function calculateAPYHistory(
       const dailyEarnings = Number(interval.bondingEarnings) / 1e8;
       const ratio = avgDailyEarnings !== 0 ? dailyEarnings / avgDailyEarnings : 1;
       const pointApy = baselineApy * ratio;
-      const date = new Date(Number(interval.startTime) * 1000);
+      const date = normalizeMidgardTimestampToDate(interval.startTime);
+      if (!date) {
+        return null;
+      }
       return {
         date: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
         apy: Math.max(0, pointApy),
       };
     })
+    .filter((point): point is APYDataPoint => point !== null)
     .reverse();
 }
 

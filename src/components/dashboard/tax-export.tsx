@@ -7,10 +7,15 @@ import { Download, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { useLpPositions } from '@/lib/hooks/use-lp-positions';
 import type { LpPosition } from '@/lib/types/lp';
 import { runeToNumber } from '@/lib/utils/formatters';
+import { normalizeMidgardTimestampToDate } from '@/lib/utils/midgard-time';
 
 interface TaxExportProps {
   address: string | null;
   isHistoricalEnrichmentLoading?: boolean;
+}
+
+function formatTaxPositionDate(rawTimestamp: string): string {
+  return normalizeMidgardTimestampToDate(rawTimestamp)?.toISOString().split('T')[0] ?? 'Unknown';
 }
 
 export default function TaxExport({ address, isHistoricalEnrichmentLoading: parentHistoricalEnrichmentLoading }: TaxExportProps) {
@@ -27,7 +32,7 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
   );
   const positionsWithIncompleteHistoricalPricing = positions?.filter(
     (position) =>
-      position.pricingSource === 'current-only' ||
+      position.pricingSource !== 'historical' ||
       position.depositedTotalValueUsd === null ||
       position.netProfitLossUsd === null ||
       position.impermanentLossUsd === null
@@ -68,11 +73,9 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
 
       // Generate CSV rows
       const rows = positions.map((pos: LpPosition) => {
-        const depositDate = pos.dateFirstAdded 
-          ? new Date(parseInt(pos.dateFirstAdded) * 1000).toISOString().split('T')[0]
-          : 'Unknown';
+        const depositDate = formatTaxPositionDate(pos.dateFirstAdded);
         const withdrawalDate = pos.dateLastAdded
-          ? new Date(parseInt(pos.dateLastAdded) * 1000).toISOString().split('T')[0]
+          ? formatTaxPositionDate(pos.dateLastAdded)
           : 'Open Position';
 
         const entryValue = pos.depositedTotalValueUsd ?? 0;
@@ -178,7 +181,7 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
           </div>
         ) : hasIncompleteHistoricalPricing ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
-            Historical entry pricing is unavailable for {positionsWithIncompleteHistoricalPricing.length} position{positionsWithIncompleteHistoricalPricing.length !== 1 ? 's' : ''}. LP CSV export is disabled to avoid incomplete tax data.
+            Complete historical entry pricing is unavailable for {positionsWithIncompleteHistoricalPricing.length} position{positionsWithIncompleteHistoricalPricing.length !== 1 ? 's' : ''}. Estimated/current-only LP CSV export is disabled to avoid incomplete tax data.
           </div>
         ) : null}
 
