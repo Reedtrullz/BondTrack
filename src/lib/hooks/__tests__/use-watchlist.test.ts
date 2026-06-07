@@ -57,12 +57,22 @@ describe('useWatchlist', () => {
   });
 
   it('ignores invalid localStorage data', async () => {
-    localStorage.setItem(STORAGE_KEY, 'not valid json');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const { result } = renderHook(() => useWatchlist());
-    await waitFor(() => expect(result.current.isLoaded).toBe(true));
+    try {
+      localStorage.setItem(STORAGE_KEY, 'not valid json');
 
-    expect(result.current.addresses).toEqual([]);
+      const { result } = renderHook(() => useWatchlist());
+      await waitFor(() => expect(result.current.isLoaded).toBe(true));
+
+      expect(result.current.addresses).toEqual([]);
+      expect(consoleError).toHaveBeenCalledWith(
+        'Storage error while loading watchlist addresses:',
+        expect.any(SyntaxError)
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   it('adds address to watchlist', async () => {

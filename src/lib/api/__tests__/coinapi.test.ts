@@ -1,22 +1,40 @@
 import { readFileSync } from 'node:fs';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { getCurrentRunePrice } from '../coinapi';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('CoinAPI Security', () => {
   const originalEnv = process.env.COINAPI_KEY;
 
   beforeEach(() => {
+    vi.resetModules();
     delete process.env.COINAPI_KEY;
   });
 
   afterEach(() => {
-    process.env.COINAPI_KEY = originalEnv;
+    vi.restoreAllMocks();
+    if (originalEnv === undefined) {
+      delete process.env.COINAPI_KEY;
+    } else {
+      process.env.COINAPI_KEY = originalEnv;
+    }
   });
 
   it('should return null when COINAPI_KEY is not configured (graceful fallback)', async () => {
-    // After fix: no hardcoded key, so coinApiFetch throws, getCurrentRunePrice catches and returns null
-    const price = await getCurrentRunePrice();
-    expect(price).toBeNull();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      const { getCurrentRunePrice } = await import('../coinapi');
+
+      // After fix: no hardcoded key, so coinApiFetch throws, getCurrentRunePrice catches and returns null
+      const price = await getCurrentRunePrice();
+
+      expect(price).toBeNull();
+      expect(consoleError).toHaveBeenCalledWith(
+        'CoinAPI fetch error:',
+        expect.objectContaining({ message: 'CoinAPI key is not configured' })
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   it('should not have a hardcoded fallback API key in source', () => {
