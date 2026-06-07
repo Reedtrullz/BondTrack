@@ -38,7 +38,7 @@ docs/archive/                 Historical audits, learnings (read-only)
 ## Development
 ```bash
 nvm use                       # picks up .nvmrc (Node 22)
-npm install
+npm ci
 npm run dev                   # http://localhost:3000
 npm test                      # vitest run
 npm run e2e                   # playwright (needs dev server)
@@ -71,14 +71,19 @@ There is no separate "Publish" workflow and no cross-workflow `workflow_run`
 trigger — that pattern caused two-named-workflow races in the past.
 
 ## Docker
-Single `Dockerfile`, three stages:
-1. `deps` — `npm ci --include=optional` + force-installs the linux/x64
-   prebuilt binaries Tailwind v4 / Turbopack need (`lightningcss-linux-x64-gnu`,
-   `@tailwindcss/oxide-linux-x64-gnu`). Lockfile generated on macOS/arm64
-   sometimes omits these.
-2. `builder` — runs `npm run build`. Build args = `NEXT_PUBLIC_*` and `VERSION`.
-3. `runner` — copies only `.next/standalone`, `.next/static`, `public/`. Runs
-   as non-root `node`. Includes `HEALTHCHECK` hitting `/api/health`.
+Single `Dockerfile`, two stages:
+1. `builder` — `npm ci` (npm includes optional dependencies by default), then exact-version installs of the
+   linux/x64 native prebuilts Tailwind v4 / Turbopack / Vitest / Sharp need
+   (`lightningcss-linux-x64-gnu@1.32.0`,
+   `@tailwindcss/oxide-linux-x64-gnu@4.3.0`,
+   `@rolldown/binding-linux-x64-gnu@1.0.3`,
+   `@unrs/resolver-binding-linux-x64-gnu@1.11.1`,
+   `@img/sharp-linux-x64@0.34.5`,
+   `@img/sharp-libvips-linux-x64@1.2.4`). Build args include every declared
+   public `NEXT_PUBLIC_*` value plus `VERSION`.
+2. `runner` — copies only `.next/standalone`, `.next/static`, `public/`. Runs
+   as non-root `node`. Includes an explicit-error `HEALTHCHECK` hitting
+   `http://127.0.0.1:3000/api/health`.
 
 Local build:
 ```bash
@@ -88,7 +93,9 @@ docker run --rm -p 3000:3000 heimdall
 
 ## Deployment
 ```bash
-ansible-playbook -i inventory/hosts.yml ansible-playbook.yml
+IMAGE_TAG=sha-<exact-short-sha> ansible-playbook \
+  -i inventory/hosts.yml ansible-playbook.yml \
+  --vault-password-file ~/.vault_pass.txt
 ```
 Flow: local push → CI builds & publishes to GHCR → run Ansible from local →
 VPS pulls image → swaps container → health-checks `/api/health` → rolls back
@@ -100,20 +107,31 @@ verify by comparing the exact SHA tag with `/api/health` after a deploy. Do not
 use mutable `:latest` as the deploy identity.
 
 ## Environment Variables
-`NEXT_PUBLIC_*` vars are baked into the build at Docker build time (they need
-to be present in the client bundle). They're set as `build-args` in the CI
-publish step. Runtime-only vars (`PORT`, `HOSTNAME`, `NODE_ENV`, `VERSION`)
-are set in Ansible; the manual `compose.production.yml` fallback requires
-`IMAGE_SHA=<exact-short-sha>` and derives `VERSION=sha-$IMAGE_SHA`. See
-`.env.example` for local, non-secret documentation of public and server-side
-variables.
+`NEXT_PUBLIC_*` vars are baked into the browser bundle at Docker build time and
+are passed as `build-args` by both Docker CI jobs. Runtime Ansible/Compose
+entries with the same names are retained for server-side rendering and
+diagnostics, but changing them cannot mutate already-built client JavaScript.
+Runtime-only vars (`PORT`, `HOSTNAME`, `NODE_ENV`, `VERSION`) and server-only
+secrets/proxy vars (`COINAPI_KEY`, `THORNODE_API_URL`, `MIDGARD_API_URL`,
+`MIDGARD_FALLBACK_URL`) are set in Ansible; `COINAPI_KEY` comes from the
+existing `vault_coinapi_key` without reading or documenting the secret. The
+manual `compose.production.yml` fallback requires `IMAGE_SHA=<exact-short-sha>`
+and should be run through `scripts/compose-production.sh` so non-hex values are
+rejected before Compose interpolation. See `.env.example` for local,
+non-secret documentation of public and server-side variables.
 
 | Variable | Purpose |
 |---|---|
 | `NEXT_PUBLIC_THORNODE_API` | THORNode API |
 | `NEXT_PUBLIC_MIDGARD_API` | Midgard API |
+| `NEXT_PUBLIC_THORCHAIN_RPC` | THORChain RPC |
+| `NEXT_PUBLIC_TRACK_API` | THORChain tracker URL |
+| `NEXT_PUBLIC_MIDGARD_FALLBACK` | Secondary Midgard fallback |
+| `NEXT_PUBLIC_APP_URL` | App/CORS origin |
 | `NEXT_PUBLIC_COINGECKO_API` | CoinGecko API |
 | `NEXT_PUBLIC_THORCHAIN_NETWORK` | `mainnet` / `stagenet` |
+| `NEXT_PUBLIC_USE_MOCK_DATA` | Local/test mock-data toggle |
+| `COINAPI_KEY` | Server-side CoinAPI key from vault |
 | `VERSION` | Runtime image tag, set to the immutable deployed `sha-<short>` tag |
 
 ## Health Endpoint

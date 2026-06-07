@@ -1,5 +1,7 @@
 # Critical Fixes from 2026-05-24 Comprehensive Audit
 
+> **SUPERSEDED / HISTORICAL PLAN — DO NOT EXECUTE VERBATIM.** This plan predates the current Docker/GHCR/Ansible release governance. Use active docs and source configuration for current commands and image names.
+
 > **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
 
 **Goal:** Fix all 20 P0/Critical findings from the 4-track audit (security, code quality, infrastructure, financial correctness).

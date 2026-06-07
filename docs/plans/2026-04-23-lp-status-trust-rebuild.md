@@ -1,5 +1,7 @@
 # LP Status Trust Rebuild Implementation Plan
 
+> **SUPERSEDED / HISTORICAL PLAN — DO NOT EXECUTE VERBATIM.** This plan is retained as historical product/audit context. Use active docs and current source for implementation and release commands.
+
 > **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
 
 **Goal:** Rebuild the LP Status page so its numbers are financially trustworthy, its summary metrics are meaningful, and its UX explains LP positions in investor language instead of raw protocol language.

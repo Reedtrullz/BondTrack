@@ -33,27 +33,39 @@ images on it. CI builds, GHCR stores, Ansible deploys.
 
 ```bash
 cd /Users/reidar/Projectos/Heimdall
-ansible-playbook -i inventory/hosts.yml ansible-playbook.yml
+IMAGE_TAG=sha-<exact-short-sha> ansible-playbook \
+  -i inventory/hosts.yml ansible-playbook.yml \
+  --vault-password-file ~/.vault_pass.txt
 ```
 
 The playbook:
 1. Records the currently-running image ID/digest/reference (for rollback)
 2. Pulls `ghcr.io/reedtrullz/heimdall:sha-<local short sha>` by default, or `ghcr.io/reedtrullz/heimdall:$IMAGE_TAG` when `IMAGE_TAG` is set and matches `sha-[0-9a-f]{7,40}`
 3. Stops + removes old container
-4. Starts new container with env vars from playbook + vault
+4. Starts new container with env vars from playbook + vault (`vault_coinapi_key` is exposed to the container only as server-side `COINAPI_KEY`)
 5. Polls `/api/health` until healthy (or rolls back)
 6. Sets runtime `VERSION` to the immutable image tag deployed
 
 ### Override variables
 ```bash
 ansible-playbook -i inventory/hosts.yml ansible-playbook.yml \
+  --vault-password-file ~/.vault_pass.txt \
   -e "thornode_api=https://custom-thornode.example.com"
 ```
+
+Public `NEXT_PUBLIC_*` variables are baked into the Docker image at build time
+by CI build args. Ansible runtime values with those names are retained for
+server-side rendering/diagnostics and to document the contract, but they cannot
+rewrite browser JavaScript in an already-built image. Server-only values such as
+`THORNODE_API_URL`, `MIDGARD_API_URL`, `MIDGARD_FALLBACK_URL`, and `COINAPI_KEY`
+are runtime-only.
 
 ### Force a specific immutable tag
 The playbook does not default to `:latest`. To deploy an exact published SHA tag:
 ```bash
-IMAGE_TAG=sha-490cac0 ansible-playbook -i inventory/hosts.yml ansible-playbook.yml
+IMAGE_TAG=sha-490cac0 ansible-playbook \
+  -i inventory/hosts.yml ansible-playbook.yml \
+  --vault-password-file ~/.vault_pass.txt
 ```
 
 Use the exact short SHA tag published by CI. The playbook rejects mutable deploy
@@ -61,7 +73,13 @@ tags such as `latest`.
 
 `compose.production.yml` is a manual/diagnostic fallback, not the normal release
 path. It requires `IMAGE_SHA=<exact-short-sha>` and derives both the image tag
-and runtime `VERSION` as `sha-$IMAGE_SHA`; do not use it with mutable tags.
+and runtime `VERSION` as `sha-$IMAGE_SHA`; do not use it with mutable tags. Use
+the wrapper so non-hex values fail before Compose interpolation:
+
+```bash
+IMAGE_SHA=490cac0 scripts/compose-production.sh config
+IMAGE_SHA=490cac0 scripts/compose-production.sh up -d
+```
 
 ## Verify
 
@@ -125,7 +143,7 @@ ansible-vault edit group_vars/vps/vault.yml
 **Container unhealthy:**
 ```bash
 ssh deploy@198.23.137.16 "docker logs --tail 100 heimdall"
-ssh deploy@198.23.137.16 "docker exec heimdall wget -qO- localhost:3000/api/health"
+ssh deploy@198.23.137.16 "docker exec heimdall node -e \"require('http').get('http://127.0.0.1:3000/api/health', r => { process.exitCode = r.statusCode === 200 ? 0 : 1; r.resume(); }).on('error', () => process.exit(1))\""
 ```
 
 **GHCR auth on VPS:**
@@ -140,8 +158,9 @@ ansible -i inventory/hosts.yml vps -m ping
 ```
 
 **CI fails on Docker step but local build works:**
-- Ensure new dependencies' linux-x64 prebuilts are added to the
-  `npm install --no-save` line in `Dockerfile`.
+- Ensure new dependencies' linux-x64 prebuilts are added with exact versions to
+  `.github/actions/install-deps/action.yml` and both native install lines in
+  `Dockerfile`.
 - Don't switch to Alpine. See `CLAUDE.md` "Don't" section.
 
 **Deploy reports "ok" but the live site still runs old code:**

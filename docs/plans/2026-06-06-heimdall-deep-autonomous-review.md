@@ -1,5 +1,7 @@
 # Heimdall Deep Autonomous Review & Work Queue — 2026-06-06
 
+> **SUPERSEDED / HISTORICAL PLAN — DO NOT EXECUTE VERBATIM.** This review is retained for audit context only. Use the current work queue and active docs (`README.md`, `DEPLOYMENT.md`, `CLAUDE.md`, `.github/workflows/ci.yml`, `Dockerfile`, and `ansible-playbook.yml`) for release operations.
+
 > **For Hermes:** Use `subagent-driven-development` for implementation batches. Keep each change on `staging`, use Node 22 (`source ~/.nvm/nvm.sh && nvm use 22`), commit in small focused chunks, and do **not** claim CI/deploy/live success without exact-SHA verification.
 
 **Goal:** Comprehensive read-only review of the entire Heimdall project and extraction of every credible autonomous task that can be done while the user is away.

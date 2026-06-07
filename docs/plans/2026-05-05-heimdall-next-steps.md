@@ -1,5 +1,7 @@
 # Next Steps: Heimdall Post-Plan Cleanup & Integration
 
+> **SUPERSEDED / HISTORICAL PLAN — DO NOT EXECUTE VERBATIM.** This plan predates the current Docker/GHCR/Ansible release governance. Use active docs and source configuration for current commands and image names.
+
 > **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
 
 **Goal:** Fix remaining issues (health endpoint version, npm vulnerabilities), verify deployment pipeline works, and push all completed work to GitHub.

@@ -14,15 +14,16 @@ concurrency:
 permissions:
   contents: read
   actions: read
-  checks: write
 
 env:
   NODE_VERSION: '22'
+  IMAGE_REPOSITORY: ghcr.io/reedtrullz/heimdall
 
 jobs:
   test:
     name: Unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -50,6 +51,7 @@ jobs:
   build:
     name: Next.js build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -70,6 +72,7 @@ jobs:
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -93,6 +96,7 @@ jobs:
     needs: [test, build, e2e]
     if: github.event_name == 'pull_request' || github.ref != 'refs/heads/master'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
 
@@ -108,7 +112,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: false
-          tags: ghcr.io/reedtrullz/heimdall:${{ env.IMAGE_VERSION }}
+          tags: ${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
@@ -116,15 +120,19 @@ jobs:
             NEXT_PUBLIC_THORNODE_API=https://gateway.liquify.com/chain/thorchain_api
             NEXT_PUBLIC_MIDGARD_API=https://gateway.liquify.com/chain/thorchain_midgard
             NEXT_PUBLIC_THORCHAIN_RPC=https://rpc.thorchain.info
+            NEXT_PUBLIC_TRACK_API=https://track.thorchain.org/
             NEXT_PUBLIC_MIDGARD_FALLBACK=https://midgard.thorchain.network
+            NEXT_PUBLIC_APP_URL=https://thorchain.no
             NEXT_PUBLIC_THORCHAIN_NETWORK=mainnet
             NEXT_PUBLIC_COINGECKO_API=https://api.coingecko.com/api/v3
+            NEXT_PUBLIC_USE_MOCK_DATA=false
 
   publish:
     name: Build & publish image
     needs: [test, build, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
@@ -149,7 +157,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ${{ env.IMAGE_REPOSITORY }}
           tags: |
             type=raw,value=${{ env.IMAGE_VERSION }}
 
@@ -168,9 +176,12 @@ jobs:
             NEXT_PUBLIC_THORNODE_API=https://gateway.liquify.com/chain/thorchain_api
             NEXT_PUBLIC_MIDGARD_API=https://gateway.liquify.com/chain/thorchain_midgard
             NEXT_PUBLIC_THORCHAIN_RPC=https://rpc.thorchain.info
+            NEXT_PUBLIC_TRACK_API=https://track.thorchain.org/
             NEXT_PUBLIC_MIDGARD_FALLBACK=https://midgard.thorchain.network
+            NEXT_PUBLIC_APP_URL=https://thorchain.no
             NEXT_PUBLIC_THORCHAIN_NETWORK=mainnet
             NEXT_PUBLIC_COINGECKO_API=https://api.coingecko.com/api/v3
+            NEXT_PUBLIC_USE_MOCK_DATA=false
 
       - name: Summary
         run: |
@@ -181,4 +192,4 @@ jobs:
           echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Pull with: \`docker pull ghcr.io/${{ github.repository }}:${{ env.IMAGE_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "Pull with: \`docker pull ${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_VERSION }}\`" >> $GITHUB_STEP_SUMMARY

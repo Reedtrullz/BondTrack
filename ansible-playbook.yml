@@ -38,6 +38,7 @@
         state: absent
 
     - name: Start new container
+      no_log: "{{ vault_coinapi_key | default('', true) | length > 0 }}"
       community.docker.docker_container:
         name: "{{ container_name }}"
         image: "{{ docker_image_repository }}:{{ image_tag }}"
@@ -50,7 +51,7 @@
           max-size: "10m"
           max-file: "3"
         healthcheck:
-          test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1))\""]
+          test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
           interval: 30s
           timeout: 10s
           retries: 3
@@ -65,14 +66,20 @@
           NEXT_PUBLIC_THORCHAIN_RPC: "{{ thorchain_rpc | default('https://rpc.thorchain.info') }}"
           NEXT_PUBLIC_TRACK_API: "{{ track_api | default('https://track.thorchain.org/') }}"
           NEXT_PUBLIC_MIDGARD_FALLBACK: "{{ midgard_fallback | default('https://midgard.thorchain.network') }}"
+          NEXT_PUBLIC_APP_URL: "{{ app_url | default('https://thorchain.no') }}"
+          NEXT_PUBLIC_THORCHAIN_NETWORK: "{{ thorchain_network | default('mainnet') }}"
+          NEXT_PUBLIC_COINGECKO_API: "{{ coingecko_api | default('https://api.coingecko.com/api/v3') }}"
+          NEXT_PUBLIC_USE_MOCK_DATA: "{{ use_mock_data | default('false') }}"
           # Server-side proxy route reads this; not bundled into client JS.
           THORNODE_API_URL: "{{ thornode_api | default('https://gateway.liquify.com/chain/thorchain_api') }}/thorchain"
           MIDGARD_API_URL: "{{ midgard_api | default('https://gateway.liquify.com/chain/thorchain_midgard') }}"
           MIDGARD_FALLBACK_URL: "{{ midgard_fallback | default('https://midgard.thorchain.network') }}"
+          # Existing Ansible Vault variable; do not store or log the value in docs.
+          COINAPI_KEY: "{{ vault_coinapi_key | default('', true) }}"
 
     - name: Wait for application to become healthy
       uri:
-        url: "http://localhost:3001/api/health"
+        url: "http://127.0.0.1:3001/api/health"
         return_content: yes
         timeout: 5
       register: health_check
@@ -89,6 +96,7 @@
         - previous_image == "none"
 
     - name: Rollback to previous image on failure
+      no_log: "{{ vault_coinapi_key | default('', true) | length > 0 }}"
       community.docker.docker_container:
         name: "{{ container_name }}"
         image: "{{ previous_image }}"
@@ -101,7 +109,7 @@
           max-size: "10m"
           max-file: "3"
         healthcheck:
-          test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1))\""]
+          test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
           interval: 30s
           timeout: 10s
           retries: 3
@@ -116,9 +124,14 @@
           NEXT_PUBLIC_THORCHAIN_RPC: "{{ thorchain_rpc | default('https://rpc.thorchain.info') }}"
           NEXT_PUBLIC_TRACK_API: "{{ track_api | default('https://track.thorchain.org/') }}"
           NEXT_PUBLIC_MIDGARD_FALLBACK: "{{ midgard_fallback | default('https://midgard.thorchain.network') }}"
+          NEXT_PUBLIC_APP_URL: "{{ app_url | default('https://thorchain.no') }}"
+          NEXT_PUBLIC_THORCHAIN_NETWORK: "{{ thorchain_network | default('mainnet') }}"
+          NEXT_PUBLIC_COINGECKO_API: "{{ coingecko_api | default('https://api.coingecko.com/api/v3') }}"
+          NEXT_PUBLIC_USE_MOCK_DATA: "{{ use_mock_data | default('false') }}"
           THORNODE_API_URL: "{{ thornode_api | default('https://gateway.liquify.com/chain/thorchain_api') }}/thorchain"
           MIDGARD_API_URL: "{{ midgard_api | default('https://gateway.liquify.com/chain/thorchain_midgard') }}"
           MIDGARD_FALLBACK_URL: "{{ midgard_fallback | default('https://midgard.thorchain.network') }}"
+          COINAPI_KEY: "{{ vault_coinapi_key | default('', true) }}"
       when:
         - health_check is not succeeded or health_check.json.status != "healthy"
         - previous_image != "none"

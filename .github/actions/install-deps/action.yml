@@ -7,7 +7,8 @@ description: |
   silently skips the missing linux variants, which then crash at import time.
 
   Centralising this in one composite action means new native deps only need
-  to be added in a single place, not in three workflow jobs + the Dockerfile.
+  to be added in a single workflow helper plus the Dockerfile, not in every
+  CI job.
 
 runs:
   using: composite
@@ -20,11 +21,11 @@ runs:
       shell: bash
       run: |
         # If you add a new native dep that ships its prebuilts as optionalDeps,
-        # add the linux-x64 package name here AND in Dockerfile's deps stage.
+        # add the pinned linux-x64 package name here AND in Dockerfile.
         npm install --no-save --no-package-lock \
-          lightningcss-linux-x64-gnu \
-          @tailwindcss/oxide-linux-x64-gnu \
-          @rolldown/binding-linux-x64-gnu \
-          @unrs/resolver-binding-linux-x64-gnu \
-          @img/sharp-linux-x64 \
-          @img/sharp-libvips-linux-x64
+          lightningcss-linux-x64-gnu@1.32.0 \
+          @tailwindcss/oxide-linux-x64-gnu@4.3.0 \
+          @rolldown/binding-linux-x64-gnu@1.0.3 \
+          @unrs/resolver-binding-linux-x64-gnu@1.11.1 \
+          @img/sharp-linux-x64@0.34.5 \
+          @img/sharp-libvips-linux-x64@1.2.4

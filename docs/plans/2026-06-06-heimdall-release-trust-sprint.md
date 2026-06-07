@@ -1,5 +1,7 @@
 # Heimdall Release Trust Sprint Implementation Plan
 
+> **SUPERSEDED / HISTORICAL PLAN — DO NOT EXECUTE VERBATIM.** This plan is retained for audit context only. Use the current work queue and active docs (`README.md`, `DEPLOYMENT.md`, `CLAUDE.md`, `.github/workflows/ci.yml`, `Dockerfile`, and `ansible-playbook.yml`) for release operations.
+
 > **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
 
 **Goal:** Make the current staging candidate honest and safe enough for a future production release by fixing deploy identity, financial/tax correctness, and visible trust gaps discovered in the 2026-06-06 review.

@@ -70,8 +70,11 @@ A professional investment command center for THORChain bond providers — monito
 ## Getting Started
 
 ```bash
+# Use the project Node version
+nvm use
+
 # Install dependencies
-npm install
+npm ci
 
 # Start development server
 npm run dev
@@ -102,7 +105,18 @@ secrets in `NEXT_PUBLIC_*` variables; they are bundled into client-side code.
 | `NEXT_PUBLIC_MIDGARD_API` | Midgard API endpoint | `https://gateway.liquify.com/chain/thorchain_midgard` |
 | `NEXT_PUBLIC_MIDGARD_FALLBACK` | Secondary Midgard fallback | `https://midgard.thorchain.network` |
 | `NEXT_PUBLIC_THORCHAIN_RPC` | THORChain RPC | `https://rpc.thorchain.info` |
+| `NEXT_PUBLIC_TRACK_API` | THORChain tracker URL | `https://track.thorchain.org/` |
+| `NEXT_PUBLIC_COINGECKO_API` | CoinGecko API base URL | `https://api.coingecko.com/api/v3` |
+| `NEXT_PUBLIC_THORCHAIN_NETWORK` | THORChain network label baked into the client bundle | `mainnet` |
+| `NEXT_PUBLIC_APP_URL` | Canonical app URL used by CORS/server diagnostics | `https://thorchain.no` |
+| `NEXT_PUBLIC_USE_MOCK_DATA` | Local/test-only mock data toggle | `false` |
+| `COINAPI_KEY` | Optional server-side CoinAPI key; never expose as `NEXT_PUBLIC_*` | unset |
 | `VERSION` | Runtime app version; Ansible sets this to the immutable deployed image tag | `sha-<short>` |
+
+`NEXT_PUBLIC_*` variables are build-time public configuration: Docker/CI passes
+them as `--build-arg` so browser JavaScript is baked deterministically. Runtime
+Ansible or Compose entries with the same names are for server-side rendering and
+diagnostics only; they do **not** rewrite an already-built client bundle.
 
 ## THORChain Data Conventions
 
@@ -134,7 +148,9 @@ brew install ansible
 
 # 2. Run deployment playbook
 cd /Users/reidar/Projectos/Heimdall
-ansible-playbook -i inventory/hosts.yml ansible-playbook.yml
+IMAGE_TAG=sha-<exact-short-sha> ansible-playbook \
+  -i inventory/hosts.yml ansible-playbook.yml \
+  --vault-password-file ~/.vault_pass.txt
 ```
 
 By default the playbook deploys
@@ -144,8 +160,14 @@ deploying a specific published image; the playbook rejects mutable deploy tags
 such as `latest`.
 
 `compose.production.yml` is only a manual/diagnostic path and also refuses to
-default to a mutable image: run it with `IMAGE_SHA=<exact-short-sha>` so the
-image and runtime `VERSION` both resolve to `sha-$IMAGE_SHA`.
+default to a mutable image: run it through the validation wrapper with
+`IMAGE_SHA=<exact-short-sha>` so the image and runtime `VERSION` both resolve to
+`sha-$IMAGE_SHA`:
+
+```bash
+IMAGE_SHA=<exact-short-sha> scripts/compose-production.sh config
+IMAGE_SHA=<exact-short-sha> scripts/compose-production.sh up -d
+```
 
 ### Features
 - **Health Check**: Waits for `/api/health` to return `{"status":"healthy"}`
