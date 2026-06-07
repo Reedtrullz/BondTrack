@@ -4,6 +4,11 @@ import path from 'path';
 export default defineConfig({
   test: {
     environment: 'jsdom',
+    environmentOptions: {
+      jsdom: {
+        url: 'http://localhost/',
+      },
+    },
     globals: true,
     passWithNoTests: false,
     include: ['src/**/*.{test,spec}.{ts,tsx}'],

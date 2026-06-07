@@ -1,12 +1,21 @@
 import '@testing-library/jest-dom';
 import { mutate } from 'swr';
-import { vi } from 'vitest';
+import { beforeEach, vi } from 'vitest';
+
+const localStorageStore: Record<string, string> = {};
+const clearLocalStorageStore = () => {
+  Object.keys(localStorageStore).forEach((key) => delete localStorageStore[key]);
+};
 
 const localStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
+  getItem: vi.fn((key: string) => localStorageStore[key] ?? null),
+  setItem: vi.fn((key: string, value: string) => {
+    localStorageStore[key] = String(value);
+  }),
+  removeItem: vi.fn((key: string) => {
+    delete localStorageStore[key];
+  }),
+  clear: vi.fn(clearLocalStorageStore),
 };
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
@@ -32,5 +41,6 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 beforeEach(async () => {
+  clearLocalStorageStore();
   await mutate(() => true, undefined, { revalidate: false });
 });
