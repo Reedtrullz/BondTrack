@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 
 const MOCK_ADDRESS = 'thor1test123456789abcdefghijklmnop';
 const MOCK_SECONDARY_ADDRESS = 'thor1otherprovider123456789abcdef';

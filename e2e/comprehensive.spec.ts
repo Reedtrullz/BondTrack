@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 const MOCK_ADDRESS = 'thor1test123456789abcdefghijklmnop';
 
@@ -89,9 +89,8 @@ test.describe('API Integration', () => {
 
     await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
 
-    await page.waitForTimeout(5000);
-
-    expect(requestCount).toBeGreaterThanOrEqual(1);
+    await expect(page.getByRole('heading', { name: /Portfolio/ })).toBeVisible({ timeout: 15000 });
+    await expect.poll(() => requestCount, { timeout: 10000 }).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -115,8 +114,7 @@ test.describe('Edge Cases', () => {
 
   test('handles empty dashboard URL without address', async ({ page }) => {
     await page.goto('/dashboard');
-    await page.waitForTimeout(1000);
-    expect(page.url()).toContain('/dashboard');
+    await expect(page).toHaveURL(/\/dashboard/);
   });
 
   test('handles direct navigation to deep links', async ({ page }) => {

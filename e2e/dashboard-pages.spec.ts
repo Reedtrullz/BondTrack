@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 const MOCK_ADDRESS = "thor1test123456789abcdefghijklmnop";
 
@@ -105,7 +105,11 @@ test.describe("Portfolio Page", () => {
         return;
       }
       
-      await route.continue();
+      await route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ error: `Unhandled Midgard mock: ${new URL(url).pathname}` })
+      });
     });
 
     // Mock CoinAPI/RUNE price
@@ -130,7 +134,11 @@ test.describe("Portfolio Page", () => {
         return;
       }
       
-      await route.continue();
+      await route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ error: `Unhandled THORChain mock: ${new URL(url).pathname}` })
+      });
     });
 
     await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);

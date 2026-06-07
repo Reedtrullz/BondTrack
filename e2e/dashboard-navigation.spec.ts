@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 const MOCK_ADDRESS = 'thor1test123456789abcdefghijklmnop';
 

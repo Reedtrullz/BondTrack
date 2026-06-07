@@ -61,17 +61,21 @@ function VultisigIcon({ className }: { className?: string }) {
 
 function WalletOption({
   name,
+  testId,
   icon,
   onClick,
   disabled,
 }: {
   name: string;
+  testId: string;
   icon: React.ReactNode;
   onClick: () => void;
   disabled?: boolean;
 }) {
   return (
     <button
+      type="button"
+      data-testid={testId}
       onClick={onClick}
       disabled={disabled}
       className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -108,6 +112,12 @@ export function WalletConnect() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (isConnected) {
+      setDropdownOpen(false);
+    }
+  }, [isConnected]);
+
   if (isNetworkMismatch && isConnected === false) {
     return (
       <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
@@ -121,6 +131,9 @@ export function WalletConnect() {
     return (
       <div className="relative flex items-center" ref={dropdownRef}>
         <button
+          type="button"
+          data-testid="wallet-account-menu-button"
+          aria-label={`${formatWalletName(walletType)} wallet ${truncateAddress(address)}`}
           onClick={() => setDropdownOpen(!dropdownOpen)}
           className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors"
         >
@@ -136,6 +149,7 @@ export function WalletConnect() {
           <ChevronDown className="h-4 w-4 text-zinc-400" />
         </button>
         <button
+          type="button"
           onClick={disconnect}
           className="ml-2 inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
         >
@@ -149,6 +163,7 @@ export function WalletConnect() {
               Connected with {formatWalletName(walletType)}
             </div>
             <button
+              type="button"
               onClick={() => {
                 disconnect();
                 setDropdownOpen(false);
@@ -167,6 +182,7 @@ export function WalletConnect() {
   return (
     <div className="relative" ref={dropdownRef}>
       <Button
+        data-testid="wallet-connect-button"
         onClick={() => setDropdownOpen(!dropdownOpen)}
         variant="default"
         size="sm"
@@ -192,10 +208,11 @@ export function WalletConnect() {
             <div className="px-1">
               <WalletOption
                 name="Keplr Wallet"
-	                icon={<KeplrIcon className="h-5 w-5" />}
-	                onClick={() => {
-	                  connect('keplr');
-	                }}
+                testId="wallet-option-keplr"
+                icon={<KeplrIcon className="h-5 w-5" />}
+                onClick={() => {
+                  connect('keplr');
+                }}
                 disabled={isConnecting}
               />
             </div>
@@ -205,10 +222,11 @@ export function WalletConnect() {
             <div className="px-1">
               <WalletOption
                 name="XDEFI Wallet"
-	                icon={<XdefiIcon className="h-5 w-5" />}
-	                onClick={() => {
-	                  connect('xdefi');
-	                }}
+                testId="wallet-option-xdefi"
+                icon={<XdefiIcon className="h-5 w-5" />}
+                onClick={() => {
+                  connect('xdefi');
+                }}
                 disabled={isConnecting}
               />
             </div>
@@ -218,10 +236,11 @@ export function WalletConnect() {
             <div className="px-1">
               <WalletOption
                 name="Vultisig Wallet"
-	                icon={<VultisigIcon className="h-5 w-5" />}
-	                onClick={() => {
-	                  connect('vultisig');
-	                }}
+                testId="wallet-option-vultisig"
+                icon={<VultisigIcon className="h-5 w-5" />}
+                onClick={() => {
+                  connect('vultisig');
+                }}
                 disabled={isConnecting}
               />
             </div>

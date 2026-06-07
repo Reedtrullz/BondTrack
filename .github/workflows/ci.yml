@@ -34,6 +34,7 @@ jobs:
       # Moderate+ production vulnerabilities should fail CI; omit dev deps to avoid tool noise.
       - run: npm audit --omit=dev --audit-level=moderate
       - run: npm run lint -- --max-warnings=0
+      - run: npm run typecheck
       - run: npm test
         env:
           CI: true
@@ -46,6 +47,12 @@ jobs:
         with:
           name: coverage-${{ github.sha }}
           path: coverage/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: vitest-results-${{ github.sha }}
+          path: test-results/vitest/
           if-no-files-found: ignore
 
   build:
@@ -89,6 +96,12 @@ jobs:
         with:
           name: playwright-report-${{ github.sha }}
           path: playwright-report/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: playwright-results-${{ github.sha }}
+          path: test-results/playwright/
           if-no-files-found: ignore
 
   docker-build:

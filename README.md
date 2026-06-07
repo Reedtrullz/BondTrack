@@ -82,7 +82,13 @@ npm run dev
 # Run unit tests
 npm test
 
-# Run E2E tests (requires dev server running)
+# Run production E2E tests; release verification should use CI=true to force a fresh server/build
+CI=true npm run e2e
+
+# Reuse an already-running local server only when explicitly requested
+npm run e2e:reuse
+
+# Run E2E tests with the default config (fresh production server unless PLAYWRIGHT_REUSE_SERVER=true)
 npm run e2e
 
 # Run E2E tests with UI

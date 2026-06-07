@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures';
 
 const MOCK_ADDRESS = 'thor1test123456789abcdefghijklmnop';
 const MOCK_NODE = 'thor16xxh3km6dxka636qg6q7e3us5vlgvhrhjgw245';
