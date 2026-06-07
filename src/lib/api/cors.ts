@@ -14,7 +14,11 @@ const BASE_ALLOWED_ORIGINS = [
   'http://localhost:3001',
 ];
 
-export function corsHeaders(request: NextRequest, extraOrigins: string[] = []): HeadersInit {
+export function corsHeaders(
+  request: NextRequest,
+  extraOrigins: string[] = [],
+  methods: string[] = ['GET', 'OPTIONS']
+): HeadersInit {
   const origin = request.headers.get('origin');
   const allowedOrigins = new Set([...BASE_ALLOWED_ORIGINS, ...extraOrigins]);
 
@@ -23,9 +27,22 @@ export function corsHeaders(request: NextRequest, extraOrigins: string[] = []): 
 
   return {
     'Access-Control-Allow-Origin': origin && allowedOrigins.has(origin) ? origin : 'https://thorchain.no',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': methods.join(', '),
     'Access-Control-Allow-Headers': 'Content-Type, Accept',
     'Vary': 'Origin',
     ...SECURITY_HEADERS,
+  };
+}
+
+export function noStorePrivateHeaders(
+  request: NextRequest,
+  extraOrigins: string[] = [],
+  methods: string[] = ['GET', 'OPTIONS']
+): HeadersInit {
+  return {
+    ...corsHeaders(request, extraOrigins, methods),
+    'Cache-Control': 'no-store, private',
+    'Pragma': 'no-cache',
+    'Expires': '0',
   };
 }

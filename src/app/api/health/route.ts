@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { corsHeaders } from '@/lib/api/cors';
+import { noStorePrivateHeaders } from '@/lib/api/cors';
 import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { error: 'Rate limit exceeded' },
       { status: 429, headers: {
-        ...corsHeaders(request),
+        ...noStorePrivateHeaders(request),
         'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
         'X-RateLimit-Limit': String(MAX_REQUESTS),
         'X-RateLimit-Remaining': '0',
@@ -30,12 +30,12 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
       version: process.env.VERSION || 'unknown',
     },
-    { headers: corsHeaders(request) }
+    { headers: noStorePrivateHeaders(request) }
   );
 }
 
 export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
-    headers: corsHeaders(request),
+    headers: noStorePrivateHeaders(request),
   });
 }

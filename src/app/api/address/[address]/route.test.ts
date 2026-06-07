@@ -33,6 +33,21 @@ describe('/api/address/[address]', () => {
     });
   });
 
+  it('rejects non-positive, fractional, weird, or too-large limits before fetching Midgard data', async () => {
+    for (const limit of ['0', '-1', '1.5', '10abc', '1001']) {
+      vi.clearAllMocks();
+      const response = await GET(
+        new NextRequest(`http://localhost/api/address/${address}?limit=${encodeURIComponent(limit)}`),
+        { params: Promise.resolve({ address }) }
+      );
+
+      expect(response.status).toBe(400);
+      expect(response.headers.get('Cache-Control')).toBe('no-store, private');
+      expect(mockGetActions).not.toHaveBeenCalled();
+      expect(mockGetBondDetails).not.toHaveBeenCalled();
+    }
+  });
+
   it('labels bond action amounts as base units and human RUNE instead of returning raw unlabeled amount', async () => {
     mockGetActions.mockResolvedValue({
       count: '1',

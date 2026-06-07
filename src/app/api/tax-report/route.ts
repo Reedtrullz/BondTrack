@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateTaxReport, exportToCSV, parseTaxDateRange } from '@/lib/utils/tax-export';
-import { corsHeaders } from '@/lib/api/cors';
+import { noStorePrivateHeaders } from '@/lib/api/cors';
 import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -9,6 +9,11 @@ const THOR_ADDRESS_PATTERN = /^thor1[0-9a-z]{38,59}$/;
 
 const MAX_REQUESTS = 10;
 const WINDOW_MS = 60 * 1000;
+const TAX_REPORT_METHODS = ['POST', 'OPTIONS'];
+
+function taxReportHeaders(request: NextRequest): HeadersInit {
+  return noStorePrivateHeaders(request, [], TAX_REPORT_METHODS);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,14 +28,14 @@ export async function POST(request: NextRequest) {
     if (!address || typeof address !== 'string' || !THOR_ADDRESS_PATTERN.test(address)) {
       return NextResponse.json(
         { error: 'A valid THORChain address is required' },
-        { status: 400, headers: corsHeaders(request) }
+        { status: 400, headers: taxReportHeaders(request) }
       );
     }
 
     if (!startDate || !endDate) {
       return NextResponse.json(
         { error: 'Start date and end date are required' },
-        { status: 400, headers: corsHeaders(request) }
+        { status: 400, headers: taxReportHeaders(request) }
       );
     }
 
@@ -41,7 +46,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Rate limit exceeded' },
         { status: 429, headers: {
-          ...corsHeaders(request),
+          ...taxReportHeaders(request),
           'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
           'X-RateLimit-Limit': String(MAX_REQUESTS),
           'X-RateLimit-Remaining': '0',
@@ -58,7 +63,7 @@ export async function POST(request: NextRequest) {
     return new NextResponse(csv, {
       status: 200,
       headers: {
-        ...corsHeaders(request),
+        ...taxReportHeaders(request),
         'Content-Type': 'text/csv; charset=utf-8',
         'Content-Disposition': `attachment; filename=\"tax-report-${address.slice(0, 8)}-${startDate}-to-${endDate}.csv\"`,
       },
@@ -72,7 +77,13 @@ export async function POST(request: NextRequest) {
       message.includes('Start date must be before');
     return NextResponse.json(
       { error: isValidationError ? message : 'Internal server error' },
-      { status: isValidationError ? 400 : 500, headers: corsHeaders(request) }
+      { status: isValidationError ? 400 : 500, headers: taxReportHeaders(request) }
     );
   }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    headers: taxReportHeaders(request),
+  });
 }

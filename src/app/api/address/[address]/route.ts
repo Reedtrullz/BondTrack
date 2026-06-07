@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBondDetails, getActions } from '@/lib/api/midgard';
-import { corsHeaders } from '@/lib/api/cors';
+import { noStorePrivateHeaders } from '@/lib/api/cors';
 import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 import { isValidTHORChainAddress } from '@/lib/utils/address-validation';
 
@@ -11,6 +11,17 @@ export const dynamic = 'force-dynamic';
 
 const MAX_REQUESTS = 30;
 const WINDOW_MS = 60 * 1000;
+const MAX_ACTION_LIMIT = 1000;
+
+function parseActionLimit(value: string | null): number | string {
+  if (value === null) return DEFAULT_ACTION_LIMIT;
+  if (!/^\d+$/.test(value)) return 'limit must be a whole number';
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > MAX_ACTION_LIMIT) {
+    return `limit must be between 1 and ${MAX_ACTION_LIMIT}`;
+  }
+  return parsed;
+}
 
 export async function GET(
   request: NextRequest,
@@ -20,10 +31,14 @@ export async function GET(
     const { address: pathAddress } = await params;
     const { searchParams } = new URL(request.url);
     const address = pathAddress || searchParams.get('address');
-    const limit = parseInt(searchParams.get('limit') || String(DEFAULT_ACTION_LIMIT), 10);
+    const limit = parseActionLimit(searchParams.get('limit'));
 
     if (!address) {
-      return NextResponse.json({ error: 'Address parameter is required' }, { status: 400, headers: corsHeaders(request) });
+      return NextResponse.json({ error: 'Address parameter is required' }, { status: 400, headers: noStorePrivateHeaders(request) });
+    }
+
+    if (typeof limit === 'string') {
+      return NextResponse.json({ error: limit }, { status: 400, headers: noStorePrivateHeaders(request) });
     }
 
     // Rate limit
@@ -33,7 +48,7 @@ export async function GET(
       return NextResponse.json(
         { error: 'Rate limit exceeded' },
         { status: 429, headers: {
-          ...corsHeaders(request),
+          ...noStorePrivateHeaders(request),
           'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
           'X-RateLimit-Limit': String(MAX_REQUESTS),
           'X-RateLimit-Remaining': '0',
@@ -44,12 +59,12 @@ export async function GET(
 
     // Validate THORChain address format
     if (!isValidTHORChainAddress(address)) {
-      return NextResponse.json({ error: 'Invalid THORChain address format' }, { status: 400, headers: corsHeaders(request) });
+      return NextResponse.json({ error: 'Invalid THORChain address format' }, { status: 400, headers: noStorePrivateHeaders(request) });
     }
 
     const [bondDetails, actions] = await Promise.all([
       getBondDetails(address),
-      getActions(address, Math.min(limit, 1000)) // Cap at 1000 for safety
+      getActions(address, limit)
     ]);
 
     const bondActions = actions.actions.filter(action => {
@@ -92,9 +107,9 @@ export async function GET(
       totalBond: bondDetails.totalBonded,
       nodeCount: bondDetails.nodes.length,
       actionCount: parsedActions.length
-    }, { headers: corsHeaders(request) });
+    }, { headers: noStorePrivateHeaders(request) });
   } catch (error) {
     console.error('Error fetching address data:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500, headers: corsHeaders(request) });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500, headers: noStorePrivateHeaders(request) });
   }
 }

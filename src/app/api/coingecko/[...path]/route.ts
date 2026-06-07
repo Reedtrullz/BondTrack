@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { corsHeaders } from '@/lib/api/cors';
+import { corsHeaders, noStorePrivateHeaders } from '@/lib/api/cors';
 import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -19,12 +19,21 @@ function isAllowedPath(path: string): boolean {
 }
 
 function validateRangeParams(searchParams: URLSearchParams): string | null {
+  const allowed = new Set(['vs_currency', 'from', 'to']);
+  for (const key of searchParams.keys()) {
+    if (!allowed.has(key)) return `Query parameter '${key}' is not allowed`;
+    if (searchParams.getAll(key).length > 1) return `Query parameter '${key}' may only be supplied once`;
+  }
+
   const vsCurrency = searchParams.get('vs_currency');
-  const from = Number(searchParams.get('from'));
-  const to = Number(searchParams.get('to'));
+  const fromParam = searchParams.get('from');
+  const toParam = searchParams.get('to');
+  const from = Number(fromParam);
+  const to = Number(toParam);
 
   if (vsCurrency !== 'usd') return 'Only usd vs_currency is supported';
-  if (!Number.isFinite(from) || !Number.isFinite(to)) return 'from and to must be numeric Unix timestamps';
+  if (!fromParam || !toParam || !/^\d+$/.test(fromParam) || !/^\d+$/.test(toParam)) return 'from and to must be numeric Unix timestamps';
+  if (!Number.isSafeInteger(from) || !Number.isSafeInteger(to)) return 'from and to must be numeric Unix timestamps';
   if (from <= 0 || to <= from) return 'Invalid CoinGecko time range';
   if (to - from > MAX_RANGE_SECONDS) return 'CoinGecko time range may not exceed 370 days';
 
@@ -45,7 +54,7 @@ export async function GET(
     return NextResponse.json(
       { error: 'Rate limit exceeded' },
       { status: 429, headers: {
-        ...corsHeaders(request),
+        ...noStorePrivateHeaders(request),
         'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
         'X-RateLimit-Limit': String(MAX_REQUESTS),
         'X-RateLimit-Remaining': '0',
@@ -55,13 +64,13 @@ export async function GET(
   }
 
   if (!isAllowedPath(decodedPath)) {
-    return NextResponse.json({ error: 'Proxy path is not allowed' }, { status: 403, headers: corsHeaders(request) });
+    return NextResponse.json({ error: 'Proxy path is not allowed' }, { status: 403, headers: noStorePrivateHeaders(request) });
   }
 
   const { searchParams } = new URL(request.url);
   const rangeError = validateRangeParams(searchParams);
   if (rangeError) {
-    return NextResponse.json({ error: rangeError }, { status: 400, headers: corsHeaders(request) });
+    return NextResponse.json({ error: rangeError }, { status: 400, headers: noStorePrivateHeaders(request) });
   }
 
   const encodedPath = path.map((part) => encodeURIComponent(part)).join('/');
@@ -75,9 +84,10 @@ export async function GET(
     });
 
     if (!response.ok) {
+      console.warn('CoinGecko upstream error', { path: decodedPath, status: response.status });
       return NextResponse.json(
-        { error: `CoinGecko error: ${response.status}` },
-        { status: response.status, headers: corsHeaders(request) }
+        { error: 'CoinGecko request failed' },
+        { status: response.status, headers: noStorePrivateHeaders(request) }
       );
     }
 
@@ -88,7 +98,7 @@ export async function GET(
   } catch {
     return NextResponse.json(
       { error: 'Upstream request failed' },
-      { status: 502, headers: corsHeaders(request) }
+      { status: 502, headers: noStorePrivateHeaders(request) }
     );
   }
 }
