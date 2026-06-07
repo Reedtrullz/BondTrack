@@ -2,6 +2,7 @@
 
 import { X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { FocusDialog } from '@/components/ui/focus-dialog';
 import type { BondPosition } from '@/lib/types/node';
 
 export interface TransactionPreviewData {
@@ -34,10 +35,8 @@ export function TransactionPreview({
   const titleId = 'transaction-preview-title';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby={titleId}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
-
-      <div className="relative z-10 w-full max-w-md mx-4 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-800">
+    <FocusDialog open titleId={titleId} onClose={onCancel}>
+      <div className="w-full max-w-md mx-4 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-800">
         <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800">
           <h2 id={titleId} className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
             Confirm Transaction
@@ -135,6 +134,6 @@ export function TransactionPreview({
           </Button>
         </div>
       </div>
-    </div>
+    </FocusDialog>
   );
 }

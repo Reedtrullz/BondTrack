@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { useRunePriceHistory, type RunePriceInterval } from '@/lib/hooks/use-rune-price';
 import { SkeletonChart } from '@/components/shared/skeleton';
+import { ChartDataTable } from '@/components/shared/chart-data-table';
 import { formatUsd } from '@/lib/utils/formatters';
 
 type IntervalOption = 'day' | 'week' | 'month' | 'year';
@@ -98,6 +99,7 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
         <div className="flex gap-1 rounded-full border border-zinc-200/80 bg-zinc-100/70 p-1 dark:border-zinc-800 dark:bg-zinc-900/80">
           {intervals.map((item) => (
             <button
+              type="button"
               key={item.value}
               onClick={() => setIntervalValue(item.value)}
               aria-label={`Show ${item.label} RUNE price trend`}
@@ -125,8 +127,9 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
           No data available
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={160} minWidth={0} minHeight={0}>
-          <AreaChart key={interval} data={data} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+        <>
+          <ResponsiveContainer width="100%" height={160} minWidth={0} minHeight={0}>
+            <AreaChart key={interval} data={data} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
             <defs>
               <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
@@ -162,8 +165,14 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
               dot={false}
               activeDot={{ r: 4, fill: '#3b82f6' }}
             />
-          </AreaChart>
-        </ResponsiveContainer>
+            </AreaChart>
+          </ResponsiveContainer>
+          <ChartDataTable
+            caption={`${activeInterval.label} RUNE price history`}
+            columns={['Date', 'RUNE price']}
+            rows={data.map((point) => [point.date, formatUsd(point.price, 4, 2)])}
+          />
+        </>
       )}
     </div>
   );

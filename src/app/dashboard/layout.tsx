@@ -11,7 +11,8 @@ import { useProtocolVersion } from '@/lib/hooks/use-protocol-version';
 import { UpgradeAlertBanner } from '@/components/dashboard/upgrade-alert-banner';
 import Link from 'next/link';
 import { Home } from 'lucide-react';
-import { clearLegacyDashboardAddressKeys, readDashboardAddress, STORAGE_KEYS, writeDashboardAddress } from '@/lib/storage/keys';
+import { clearLegacyDashboardAddressKeys, readDashboardAddress, removeDashboardAddress, STORAGE_KEYS, writeDashboardAddress } from '@/lib/storage/keys';
+import { isValidTHORChainAddress } from '@/lib/utils/address-validation';
 
 function readSavedAddress() {
   if (typeof window === 'undefined') return null;
@@ -23,10 +24,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const urlAddress = searchParams.get('address');
+  const invalidUrlAddress = Boolean(urlAddress && !isValidTHORChainAddress(urlAddress));
   const { alerts, dismissAlert, permission, requestPermission } = useAlerts();
   const { currentVersion, latestVersion, hasUpgrade } = useProtocolVersion();
   const [savedAddress, setSavedAddress] = useState<string | null>(() => readSavedAddress());
-  const effectiveAddress = urlAddress ?? savedAddress;
+  const effectiveAddress = invalidUrlAddress ? null : (urlAddress ?? savedAddress);
   const isChangelogsRoute = pathname?.startsWith('/dashboard/changelogs');
   const requiresAddress = !isChangelogsRoute;
 
@@ -35,6 +37,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
     const current = localStorage.getItem(STORAGE_KEYS.dashboardAddress);
     if (current) {
+      if (!isValidTHORChainAddress(current)) {
+        removeDashboardAddress();
+        setSavedAddress(null);
+        return;
+      }
       clearLegacyDashboardAddressKeys();
       if (current !== savedAddress) {
         setSavedAddress(current);
@@ -61,6 +68,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (typeof window === 'undefined' || !urlAddress) return;
+    if (!isValidTHORChainAddress(urlAddress)) {
+      return;
+    }
     writeDashboardAddress(urlAddress);
     setSavedAddress(urlAddress);
   }, [urlAddress]);
@@ -74,10 +84,12 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
               <Home className="w-8 h-8 text-zinc-400" />
             </div>
             <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-              Enter an address to get started
+              {invalidUrlAddress ? 'Address link is invalid' : 'Enter an address to get started'}
             </h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Provide a THORChain address to view your portfolio, node health, and rewards.
+              {invalidUrlAddress
+                ? 'The dashboard URL contains a malformed address. Heimdall ignored that link and did not change your saved address.'
+                : 'Provide a THORChain address to view your portfolio, node health, and rewards.'}
             </p>
             <Link
               href="/"

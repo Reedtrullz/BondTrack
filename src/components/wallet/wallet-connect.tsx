@@ -78,6 +78,7 @@ function WalletOption({
       data-testid={testId}
       onClick={onClick}
       disabled={disabled}
+      role="menuitem"
       className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
     >
       {icon}
@@ -101,6 +102,9 @@ export function WalletConnect() {
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuId = isConnected ? 'wallet-account-menu' : 'wallet-connect-menu';
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -118,6 +122,32 @@ export function WalletConnect() {
     }
   }, [isConnected]);
 
+  useEffect(() => {
+    if (!dropdownOpen) return;
+
+    const firstMenuItem = menuRef.current?.querySelector<HTMLElement>('button:not([disabled])');
+    firstMenuItem?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setDropdownOpen(false);
+      triggerRef.current?.focus();
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [dropdownOpen]);
+
+  const toggleDropdown = () => {
+    setDropdownOpen((open) => !open);
+  };
+
+  const closeDropdownAndReturnFocus = () => {
+    setDropdownOpen(false);
+    triggerRef.current?.focus();
+  };
+
   if (isNetworkMismatch && isConnected === false) {
     return (
       <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
@@ -131,11 +161,15 @@ export function WalletConnect() {
     return (
       <div className="relative flex items-center" ref={dropdownRef}>
         <button
+          ref={triggerRef}
           type="button"
           data-testid="wallet-account-menu-button"
           aria-label={`${formatWalletName(walletType)} wallet ${truncateAddress(address)}`}
-          onClick={() => setDropdownOpen(!dropdownOpen)}
+          onClick={toggleDropdown}
           className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors"
+          aria-haspopup="menu"
+          aria-expanded={dropdownOpen}
+          aria-controls={menuId}
         >
           {walletType === 'keplr' ? (
             <KeplrIcon className="h-5 w-5" />
@@ -158,7 +192,13 @@ export function WalletConnect() {
         </button>
 
         {dropdownOpen && (
-          <div className="absolute right-0 top-full mt-2 w-48 rounded-lg border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 z-50">
+          <div
+            ref={menuRef}
+            id={menuId}
+            role="menu"
+            aria-label="Connected wallet actions"
+            className="absolute right-0 top-full mt-2 w-48 rounded-lg border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 z-50"
+          >
             <div className="px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-700">
               Connected with {formatWalletName(walletType)}
             </div>
@@ -166,8 +206,9 @@ export function WalletConnect() {
               type="button"
               onClick={() => {
                 disconnect();
-                setDropdownOpen(false);
+                closeDropdownAndReturnFocus();
               }}
+              role="menuitem"
               className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-zinc-100 dark:text-red-400 dark:hover:bg-zinc-800"
             >
               <LogOut className="h-4 w-4" />
@@ -182,18 +223,29 @@ export function WalletConnect() {
   return (
     <div className="relative" ref={dropdownRef}>
       <Button
+        ref={triggerRef}
+        type="button"
         data-testid="wallet-connect-button"
-        onClick={() => setDropdownOpen(!dropdownOpen)}
+        onClick={toggleDropdown}
         variant="default"
         size="sm"
         disabled={isConnecting}
+        aria-haspopup="menu"
+        aria-expanded={dropdownOpen}
+        aria-controls={menuId}
       >
         <Wallet className="mr-2 h-4 w-4" />
         {isConnecting ? 'Connecting...' : 'Connect Wallet'}
       </Button>
 
       {dropdownOpen && (
-        <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-zinc-200 bg-white py-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 z-50">
+        <div
+          ref={menuRef}
+          id={menuId}
+          role="menu"
+          aria-label="Wallet connection options"
+          className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-zinc-200 bg-white py-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 z-50"
+        >
           <div className="px-3 py-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
             Select wallet
           </div>
@@ -212,6 +264,7 @@ export function WalletConnect() {
                 icon={<KeplrIcon className="h-5 w-5" />}
                 onClick={() => {
                   connect('keplr');
+                  setDropdownOpen(false);
                 }}
                 disabled={isConnecting}
               />
@@ -226,6 +279,7 @@ export function WalletConnect() {
                 icon={<XdefiIcon className="h-5 w-5" />}
                 onClick={() => {
                   connect('xdefi');
+                  setDropdownOpen(false);
                 }}
                 disabled={isConnecting}
               />
@@ -240,6 +294,7 @@ export function WalletConnect() {
                 icon={<VultisigIcon className="h-5 w-5" />}
                 onClick={() => {
                   connect('vultisig');
+                  setDropdownOpen(false);
                 }}
                 disabled={isConnecting}
               />

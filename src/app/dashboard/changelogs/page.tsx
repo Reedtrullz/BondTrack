@@ -48,7 +48,36 @@ function HighlightText({ text, highlight }: { text: string; highlight: string })
   );
 }
 
+function parseStoredExpandedIds(raw: string | null): string[] | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.every((value) => typeof value === 'string') ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
+function parseStoredExpandedEntries(raw: string | null): Record<string, string[]> | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return null;
+    }
+
+    const cleaned: Record<string, string[]> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (!Array.isArray(value) || !value.every((entryId) => typeof entryId === 'string')) {
+        return null;
+      }
+      cleaned[key] = value;
+    }
+    return cleaned;
+  } catch {
+    return null;
+  }
+}
 
 export default function ChangelogsPage() {
   const { changelogs, isLoading } = useChangelogs();
@@ -66,18 +95,20 @@ export default function ChangelogsPage() {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem(STORAGE_KEY) !== null;
   });
+  const [expandedStateError, setExpandedStateError] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const savedExp = localStorage.getItem(STORAGE_KEY);
+    const savedEntries = localStorage.getItem(ENTRY_STORAGE_KEY);
+    return (savedExp !== null && parseStoredExpandedIds(savedExp) === null)
+      || (savedEntries !== null && parseStoredExpandedEntries(savedEntries) === null);
+  });
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
     if (typeof window === 'undefined') return new Set();
 
     const savedExp = localStorage.getItem(STORAGE_KEY);
-    if (!savedExp) return new Set();
-
-    try {
-      return new Set(JSON.parse(savedExp));
-    } catch {
-      return new Set();
-    }
+    const parsed = parseStoredExpandedIds(savedExp);
+    return new Set(parsed ?? []);
   });
   const [expandedEntryIds, setExpandedEntryIds] = useState<Record<string, string[]>>({});
 
@@ -95,20 +126,11 @@ export default function ChangelogsPage() {
     if (typeof window !== 'undefined') {
       const savedEntries = localStorage.getItem(ENTRY_STORAGE_KEY);
       if (savedEntries) {
-        try {
-          const parsed = JSON.parse(savedEntries);
-          if (parsed && typeof parsed === 'object') {
-            // Clean up malformed data (from previous Set-based version)
-            const cleaned: Record<string, string[]> = {};
-            Object.entries(parsed).forEach(([key, value]) => {
-              if (Array.isArray(value)) {
-                cleaned[key] = value;
-              }
-            });
-            setExpandedEntryIds(cleaned);
-          }
-        } catch (err) {
-          console.error('Failed to parse changelogs expanded state:', err);
+        const parsed = parseStoredExpandedEntries(savedEntries);
+        if (parsed) {
+          setExpandedEntryIds(parsed);
+        } else {
+          setExpandedStateError(true);
         }
       }
     }
@@ -133,10 +155,10 @@ export default function ChangelogsPage() {
   }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && expandedIds.size > 0) {
+    if (typeof window !== 'undefined' && hasResolvedExpandedPreference) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify([...expandedIds]));
     }
-  }, [expandedIds]);
+  }, [expandedIds, hasResolvedExpandedPreference]);
 
   useEffect(() => {
     if (hasResolvedExpandedPreference || changelogs.length === 0) {
@@ -217,6 +239,18 @@ export default function ChangelogsPage() {
     const nextUrl = buildChangelogQuery(currentParams, searchBuffer, nextTypeFilter);
     router.replace(nextUrl, { scroll: false });
   }, [router, searchBuffer]);
+
+  const resetExpandedState = useCallback(() => {
+    const allIds = new Set(changelogs.map((item) => item.id));
+    setExpandedIds(allIds);
+    setExpandedEntryIds({});
+    setExpandedStateError(false);
+    setHasResolvedExpandedPreference(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([...allIds]));
+      localStorage.removeItem(ENTRY_STORAGE_KEY);
+    }
+  }, [changelogs]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -308,6 +342,19 @@ export default function ChangelogsPage() {
         </div>
       </div>
 
+      {expandedStateError && (
+        <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between" role="status">
+          <span>Saved changelog display state was corrupted. Reset it to restore expandable sections.</span>
+          <button
+            type="button"
+            onClick={resetExpandedState}
+            className="rounded-md border border-amber-300 px-3 py-1 text-xs font-semibold hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900/40"
+          >
+            Reset changelog display state
+          </button>
+        </div>
+      )}
+
       {/* Search & Filters */}
       <div className="space-y-4">
         <div className="relative">
@@ -322,6 +369,8 @@ export default function ChangelogsPage() {
           />
           {searchBuffer && (
             <button
+              type="button"
+              aria-label="Clear changelog search"
               onClick={() => updateSearchQuery('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-white"
             >
@@ -348,6 +397,7 @@ export default function ChangelogsPage() {
                 style={{
                   backgroundColor: isActive ? TC.blue : 'transparent',
                 }}
+                aria-pressed={isActive}
               >
                 {option.icon}
                 {option.label}
@@ -390,6 +440,7 @@ export default function ChangelogsPage() {
           <div className="flex flex-wrap gap-2">
             {years.map((year) => (
               <button
+                type="button"
                 key={year}
                 onClick={() => scrollToYear(String(year))}
                 className="rounded-lg border border-zinc-200 bg-zinc-100 px-4 py-1.5 text-sm font-semibold text-zinc-600 transition-all hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:text-white"
@@ -427,6 +478,7 @@ export default function ChangelogsPage() {
               </p>
               {hasActiveFilters && (
                   <button
+                    type="button"
                     onClick={clearFilters}
                     className="text-cyan-600 hover:underline dark:text-cyan-400"
                   >
@@ -438,6 +490,7 @@ export default function ChangelogsPage() {
             filteredChangelogs.map((item) => {
               const year = item.sortDate ? item.sortDate.split('-')[0] : '';
               const isExpanded = expandedIds.has(item.id);
+              const sectionPanelId = `changelog-${item.id}-content`;
               
               return (
                 <div 
@@ -468,7 +521,10 @@ export default function ChangelogsPage() {
                     }}
                   >
                     <button
+                      type="button"
                       onClick={() => toggleExpand(item.id)}
+                      aria-expanded={isExpanded}
+                      aria-controls={sectionPanelId}
                       className={`flex w-full items-center justify-between px-6 py-4 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${
                         isExpanded ? '' : 'border-b border-zinc-200 dark:border-zinc-800'
                       }`}
@@ -509,68 +565,56 @@ export default function ChangelogsPage() {
                     </button>
 
                     {/* Expandable content */}
-                    <div 
+                    <div
+                      id={sectionPanelId}
+                      hidden={!isExpanded}
+                      aria-hidden={!isExpanded}
                       className={`overflow-hidden transition-all duration-300 ease-in-out ${
                         isExpanded ? 'max-h-[3000px] opacity-100' : 'max-h-0 opacity-0'
                       }`}
                     >
                       <div className="p-6 space-y-4">
                         {item.content.map((entry, entryIndex) => {
-                  const isEntryExpanded = (Array.isArray(expandedEntryIds[item.id]) && expandedEntryIds[item.id].includes(String(entryIndex))) || searchBuffer.length > 0;
+                          const isEntryExpanded = (Array.isArray(expandedEntryIds[item.id]) && expandedEntryIds[item.id].includes(String(entryIndex))) || searchBuffer.length > 0;
+                          const entryPanelId = `changelog-${item.id}-entry-${entryIndex}`;
                           
                           return (
-                            <div 
-                              key={entryIndex} 
-                              className="relative rounded-lg transition-all duration-200"
+                            <div
+                              key={entryIndex}
+                              className={`relative rounded-lg transition-all duration-200 ${
+                                isEntryExpanded ? 'bg-zinc-50 shadow-sm dark:bg-zinc-900/40' : ''
+                              }`}
+                              style={{ borderLeft: `3px solid ${getTypeBadgeStyle(entry.type).text}` }}
                             >
                               <button
+                                type="button"
                                 onClick={() => toggleEntryExpand(item.id, entryIndex)}
                                 aria-label={entry.title}
+                                aria-expanded={isEntryExpanded}
+                                aria-controls={entryPanelId}
                                 className={`w-full text-left group flex items-start gap-4 p-3 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/30 transition-colors ${
-                                  isEntryExpanded ? 'bg-zinc-50 dark:bg-zinc-900/40 shadow-sm border border-zinc-100 dark:border-zinc-800/50' : ''
+                                  isEntryExpanded ? 'border border-zinc-100 dark:border-zinc-800/50' : ''
                                 }`}
-                                style={{ borderLeft: `3px solid ${getTypeBadgeStyle(entry.type).text}` }}
                               >
                                 <div className="flex-1">
                                   <div className="flex flex-wrap items-center gap-2">
-                                    <span 
+                                    <span
                                       className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border border-zinc-200/50 dark:border-zinc-800/50"
-                                      style={{ 
+                                      style={{
                                         backgroundColor: getTypeBadgeStyle(entry.type).bg,
                                         color: getTypeBadgeStyle(entry.type).text,
                                       }}
                                     >
                                       {getTypeIcon(entry.type)} {getTypeLabel(entry.type)}
                                     </span>
-                                    <h3 
+                                    <h3
                                       className="font-bold text-zinc-900 dark:text-white font-serif italic leading-tight"
                                     >
                                       <HighlightText text={entry.title} highlight={urlSearchQuery} />
                                     </h3>
                                   </div>
-                                  
-                                  {isEntryExpanded ? (
-                                    <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                                      <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                                        <HighlightText text={entry.description} highlight={urlSearchQuery} />
-                                      </p>
-                                      {entry.links && entry.links.length > 0 && (
-                                        <div className="flex flex-wrap gap-3 pt-1">
-                                          {entry.links.map((link, linkIndex) => (
-                                            <a
-                                              key={linkIndex}
-                                              href={link.url}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="inline-flex items-center gap-1 text-xs text-cyan-600 transition-colors hover:underline dark:text-cyan-400 font-medium"
-                                            >
-                                              {link.text} <LinkIcon className="w-3 h-3" />
-                                            </a>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ) : (
+
+                                  {!isEntryExpanded && (
                                     <p className="mt-1 text-xs text-zinc-400 line-clamp-1 opacity-70">
                                       {entry.description}
                                     </p>
@@ -580,6 +624,28 @@ export default function ChangelogsPage() {
                                   <ChevronDown className="w-4 h-4 text-zinc-400" />
                                 </div>
                               </button>
+                              <div id={entryPanelId} hidden={!isEntryExpanded} className="px-3 pb-3">
+                                <div className="mt-1 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                                  <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                    <HighlightText text={entry.description} highlight={urlSearchQuery} />
+                                  </p>
+                                  {entry.links && entry.links.length > 0 && (
+                                    <div className="flex flex-wrap gap-3 pt-1">
+                                      {entry.links.map((link, linkIndex) => (
+                                        <a
+                                          key={linkIndex}
+                                          href={link.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1 text-xs text-cyan-600 transition-colors hover:underline dark:text-cyan-400 font-medium"
+                                        >
+                                          {link.text} <LinkIcon className="w-3 h-3" />
+                                        </a>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           );
                         })}

@@ -2,12 +2,16 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { getHealth } from '@/lib/api/midgard';
 import { getAllNodes } from '@/lib/api/thornode';
 
-export type ApiHealthStatus = 'healthy' | 'degraded' | 'down';
+export type ApiHealthStatus = 'unknown' | 'healthy' | 'degraded' | 'down';
 
 export interface ApiHealthState {
   midgard: ApiHealthStatus;
   thornode: ApiHealthStatus;
   lastChecked: Date | null;
+  lastSuccessful: {
+    midgard: Date | null;
+    thornode: Date | null;
+  };
 }
 
 const CONSECUTIVE_FAILURES_FOR_DOWN = 3;
@@ -38,9 +42,13 @@ function updateStatusFromFailure(
 }
 
 export function useApiHealth(): ApiHealthState {
-  const [midgardStatus, setMidgardStatus] = useState<ApiHealthStatus>('healthy');
-  const [thornodeStatus, setThornodeStatus] = useState<ApiHealthStatus>('healthy');
+  const [midgardStatus, setMidgardStatus] = useState<ApiHealthStatus>('unknown');
+  const [thornodeStatus, setThornodeStatus] = useState<ApiHealthStatus>('unknown');
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  const [lastSuccessful, setLastSuccessful] = useState<ApiHealthState['lastSuccessful']>({
+    midgard: null,
+    thornode: null,
+  });
 
   const midgardFailures = useRef(0);
   const thornodeFailures = useRef(0);
@@ -50,10 +58,13 @@ export function useApiHealth(): ApiHealthState {
       await getHealth();
       midgardFailures.current = 0;
       setMidgardStatus('healthy');
+      setLastSuccessful((previous) => ({ ...previous, midgard: new Date() }));
     } catch (error) {
       if (isHttpOrNetworkError(error)) {
         updateStatusFromFailure(midgardFailures, setMidgardStatus);
       }
+    } finally {
+      setLastChecked(new Date());
     }
   }, []);
 
@@ -62,27 +73,22 @@ export function useApiHealth(): ApiHealthState {
       await getAllNodes();
       thornodeFailures.current = 0;
       setThornodeStatus('healthy');
+      setLastSuccessful((previous) => ({ ...previous, thornode: new Date() }));
     } catch (error) {
       if (isHttpOrNetworkError(error)) {
         updateStatusFromFailure(thornodeFailures, setThornodeStatus);
       }
+    } finally {
+      setLastChecked(new Date());
     }
   }, []);
 
   useEffect(() => {
     checkMidgard();
     checkThornode();
-    setLastChecked(new Date());
 
-    const midgardInterval = setInterval(() => {
-      checkMidgard();
-      setLastChecked(new Date());
-    }, MIDGARD_INTERVAL_MS);
-
-    const thornodeInterval = setInterval(() => {
-      checkThornode();
-      setLastChecked(new Date());
-    }, THORNODE_INTERVAL_MS);
+    const midgardInterval = setInterval(checkMidgard, MIDGARD_INTERVAL_MS);
+    const thornodeInterval = setInterval(checkThornode, THORNODE_INTERVAL_MS);
 
     return () => {
       clearInterval(midgardInterval);
@@ -94,5 +100,6 @@ export function useApiHealth(): ApiHealthState {
     midgard: midgardStatus,
     thornode: thornodeStatus,
     lastChecked,
+    lastSuccessful,
   };
 }

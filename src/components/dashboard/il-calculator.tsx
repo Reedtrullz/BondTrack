@@ -223,14 +223,6 @@ export default function IlCalculator() {
           <Button variant="outline" onClick={handleReset}>
             Reset
           </Button>
-          <Button 
-            onClick={() => {
-              // In a real app, this would save the calculation or link to a position
-              alert('Calculation saved to history (mock)');
-            }}
-          >
-            Save Calculation
-          </Button>
         </div>
 
         <div className="flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">

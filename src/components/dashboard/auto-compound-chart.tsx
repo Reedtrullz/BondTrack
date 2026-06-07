@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { TrendingUp, Coins, BarChart3, Info } from 'lucide-react';
+import { TrendingUp, Coins, BarChart3, Info, Zap } from 'lucide-react';
 import { BondPosition } from '@/lib/types/node';
 import { useHistoricalApy } from '@/lib/hooks/use-historical-apy';
 import { useRunePrice } from '@/lib/hooks/use-rune-price';
 import { formatUsd, formatRuneFromNumber } from '@/lib/utils/formatters';
 import { cn } from '@/lib/utils';
+import { ChartDataTable } from '@/components/shared/chart-data-table';
 
 interface CompoundGrowthForecastProps {
   positions: BondPosition[];
@@ -88,6 +89,8 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
         <div className="flex flex-wrap items-center gap-3">
           {/* Historical Toggle */}
           <button
+            type="button"
+            aria-pressed={useHistoricalBaseline}
             onClick={() => setUseHistoricalBaseline(!useHistoricalBaseline)}
             className={cn(
               "flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all",
@@ -104,6 +107,8 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
           {/* Currency Toggle */}
           <div className="flex items-center bg-zinc-100 dark:bg-zinc-900 p-1 rounded-xl border border-zinc-200 dark:border-zinc-800">
             <button
+              type="button"
+              aria-pressed={viewMode === 'rune'}
               onClick={() => setViewMode('rune')}
               className={cn(
                 "px-3 py-1 rounded-lg text-xs font-bold transition-all",
@@ -113,6 +118,8 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
               ᚱ RUNE
             </button>
             <button
+              type="button"
+              aria-pressed={viewMode === 'usd'}
               onClick={() => setViewMode('usd')}
               className={cn(
                 "px-3 py-1 rounded-lg text-xs font-bold transition-all",
@@ -131,7 +138,9 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
           <span className="text-[10px] font-bold text-zinc-400 uppercase whitespace-nowrap mr-2">Moon Scenarios:</span>
           {[currentRunePrice, 10, 20, 50, 100].map((price) => (
             <button
+              type="button"
               key={price}
+              aria-pressed={targetPrice === price || (price === currentRunePrice && targetPrice === null)}
               onClick={() => setTargetPrice(price === currentRunePrice ? null : price as number)}
               className={cn(
                 "px-3 py-1 rounded-lg border text-xs font-mono transition-all whitespace-nowrap",
@@ -227,6 +236,15 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
           </AreaChart>
         </ResponsiveContainer>
       </div>
+      <ChartDataTable
+        caption={`12-month compound growth forecast in ${viewMode.toUpperCase()}`}
+        columns={['Month', 'Passive HODL', 'Compounded balance']}
+        rows={projectionData.map((point) => [
+          point.month,
+          viewMode === 'usd' ? formatUsd(point.passive) : formatRuneFromNumber(point.passive),
+          viewMode === 'usd' ? formatUsd(point.active) : formatRuneFromNumber(point.active),
+        ])}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800/50">
@@ -272,9 +290,3 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
     </div>
   );
 }
-
-const Zap = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-  </svg>
-);

@@ -11,7 +11,7 @@ interface ApiHealthBannerProps {
 }
 
 function getMessage(service: 'Midgard' | 'THORNode', status: ApiHealthStatus): string | null {
-  if (status === 'healthy') return null;
+  if (status === 'healthy' || status === 'unknown') return null;
   if (status === 'down') {
     return `${service} API is unreachable — data may be unavailable`;
   }

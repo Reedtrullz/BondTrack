@@ -10,6 +10,11 @@ import {
   STORAGE_KEYS,
 } from './keys';
 
+const validCanonicalAddress = `thor1${'q'.repeat(38)}`;
+const validLegacyAddress = `thor1${'p'.repeat(38)}`;
+const validOlderLocalAddress = `thor1${'r'.repeat(38)}`;
+const validSessionAddress = `thor1${'s'.repeat(38)}`;
+
 function createMemoryStorage(): Storage {
   const store = new Map<string, string>();
   return {
@@ -44,19 +49,19 @@ describe('storage key registry and migrations', () => {
   });
 
   it('migrates the old landing-page last-address key into the canonical dashboard address key', () => {
-    local.setItem('heimdall-last-address', 'thor1legacyaddress');
+    local.setItem('heimdall-last-address', validLegacyAddress);
 
-    expect(migrateDashboardAddressStorage(local, session)).toBe('thor1legacyaddress');
-    expect(local.getItem(STORAGE_KEYS.dashboardAddress)).toBe('thor1legacyaddress');
+    expect(migrateDashboardAddressStorage(local, session)).toBe(validLegacyAddress);
+    expect(local.getItem(STORAGE_KEYS.dashboardAddress)).toBe(validLegacyAddress);
     expect(local.getItem('heimdall-last-address')).toBeNull();
   });
 
   it('migrates the old dashboard session key and clears all legacy address keys', () => {
-    session.setItem('dashboard-address', 'thor1sessionaddress');
-    local.setItem('thornode-watcher-last-address', 'thor1olderlocal');
+    session.setItem('dashboard-address', validSessionAddress);
+    local.setItem('thornode-watcher-last-address', validOlderLocalAddress);
 
-    expect(migrateDashboardAddressStorage(local, session)).toBe('thor1olderlocal');
-    expect(local.getItem(STORAGE_KEYS.dashboardAddress)).toBe('thor1olderlocal');
+    expect(migrateDashboardAddressStorage(local, session)).toBe(validOlderLocalAddress);
+    expect(local.getItem(STORAGE_KEYS.dashboardAddress)).toBe(validOlderLocalAddress);
     for (const key of LEGACY_STORAGE_KEYS.dashboardAddressLocal) {
       expect(local.getItem(key)).toBeNull();
     }
@@ -66,12 +71,12 @@ describe('storage key registry and migrations', () => {
   });
 
   it('keeps an existing canonical address and only removes stale legacy copies', () => {
-    local.setItem(STORAGE_KEYS.dashboardAddress, 'thor1canonical');
-    local.setItem('heimdall-last-address', 'thor1legacyaddress');
-    session.setItem('dashboard-address', 'thor1sessionaddress');
+    local.setItem(STORAGE_KEYS.dashboardAddress, validCanonicalAddress);
+    local.setItem('heimdall-last-address', validLegacyAddress);
+    session.setItem('dashboard-address', validSessionAddress);
 
-    expect(migrateDashboardAddressStorage(local, session)).toBe('thor1canonical');
-    expect(local.getItem(STORAGE_KEYS.dashboardAddress)).toBe('thor1canonical');
+    expect(migrateDashboardAddressStorage(local, session)).toBe(validCanonicalAddress);
+    expect(local.getItem(STORAGE_KEYS.dashboardAddress)).toBe(validCanonicalAddress);
     expect(local.getItem('heimdall-last-address')).toBeNull();
     expect(session.getItem('dashboard-address')).toBeNull();
   });
@@ -93,8 +98,8 @@ describe('storage key registry and migrations', () => {
   });
 
   it('exposes a direct legacy cleanup helper for pages that already found a canonical value', () => {
-    local.setItem('heimdall-last-address', 'thor1legacyaddress');
-    session.setItem('dashboard-address', 'thor1sessionaddress');
+    local.setItem('heimdall-last-address', validLegacyAddress);
+    session.setItem('dashboard-address', validSessionAddress);
 
     clearLegacyDashboardAddressKeys(local, session);
 

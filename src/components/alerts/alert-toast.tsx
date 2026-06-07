@@ -164,7 +164,13 @@ export function AlertToast({ alerts, onDismiss, permission, onRequestPermission 
       )}
 
       {alerts.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-50 flex max-w-sm flex-col gap-2">
+        <div
+          className="fixed bottom-4 right-4 z-50 flex max-w-sm flex-col gap-2"
+          role="region"
+          aria-label="Node alerts"
+          aria-live="polite"
+          aria-relevant="additions removals"
+        >
           {alerts.slice(0, 3).map(alert => (
             <div
               key={alert.id}
@@ -180,10 +186,12 @@ export function AlertToast({ alerts, onDismiss, permission, onRequestPermission 
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => onDismiss(alert.id)}
                 className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 transition"
+                aria-label={`Dismiss alert: ${alert.message}`}
               >
-                <X className="h-4 w-4 text-zinc-400" />
+                <X className="h-4 w-4 text-zinc-400" aria-hidden="true" />
               </button>
             </div>
           ))}

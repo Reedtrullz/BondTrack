@@ -6,6 +6,7 @@ import { AddressInput } from '@/components/shared/address-input';
 import { RecentAddresses } from '@/components/shared/recent-addresses';
 import { Eye, Activity, TrendingUp, Zap, Globe, Lock, Wallet } from 'lucide-react';
 import { readDashboardAddress, writeDashboardAddress } from '@/lib/storage/keys';
+import { isValidTHORChainAddress } from '@/lib/utils/address-validation';
 
 export default function Home() {
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function Home() {
     if (typeof window === 'undefined') return;
 
     const lastAddress = readDashboardAddress();
-    if (lastAddress && lastAddress.startsWith('thor1')) {
+    if (lastAddress && isValidTHORChainAddress(lastAddress)) {
       router.replace(`/dashboard?address=${encodeURIComponent(lastAddress)}`);
     }
   }, [router]);
@@ -113,7 +114,7 @@ function FeatureCard({ icon, title, description, color }: {
   };
   
   return (
-    <div className={`p-4 rounded-xl border ${colors[color]} bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:scale-[1.02] cursor-pointer group`}>
+    <div className={`p-4 rounded-xl border ${colors[color]} bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm transition-all duration-300 group`}>
       <div className="mb-2">{icon}</div>
       <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">{title}</h3>
       <p className="text-xs text-zinc-500 mt-0.5">{description}</p>

@@ -30,7 +30,7 @@ export function Breadcrumbs() {
   if (breadcrumbItems.length === 0) return null;
 
   return (
-    <nav className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-2 overflow-x-auto no-scrollbar whitespace-nowrap">
+    <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-2 overflow-x-auto no-scrollbar whitespace-nowrap">
       <Link 
         href={`/dashboard/overview${addressParam}`}
         className="flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
@@ -43,7 +43,7 @@ export function Breadcrumbs() {
         <div key={item.href} className="flex items-center gap-1.5">
           <ChevronRight className="w-3 h-3 opacity-50" />
           {item.isLast ? (
-            <span className="text-zinc-900 dark:text-zinc-100 font-semibold truncate max-w-[120px]">
+            <span aria-current="page" className="text-zinc-900 dark:text-zinc-100 font-semibold truncate max-w-[120px]">
               {item.label}
             </span>
           ) : (

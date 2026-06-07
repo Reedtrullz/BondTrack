@@ -127,4 +127,34 @@ describe('ChangelogsPage', () => {
       expect(contentWrapper.className).toContain('opacity-0');
     });
   });
+
+  it('persists collapse-all by storing an empty expanded set', async () => {
+    render(<ChangelogsPage />);
+
+    const cardToggle = await screen.findByRole('button', { name: /march 2026 update/i });
+    await waitFor(() => expect(cardToggle.getAttribute('aria-expanded')).toBe('true'));
+
+    fireEvent.click(cardToggle);
+
+    await waitFor(() => {
+      expect(cardToggle.getAttribute('aria-expanded')).toBe('false');
+      expect(localStorage.getItem('changelogs-expanded')).toBe('[]');
+    });
+  });
+
+  it('offers a reset when saved expanded state is corrupted', async () => {
+    localStorage.setItem('changelogs-expanded', '{not json');
+    localStorage.setItem('changelogs-expanded-entries', '{also broken');
+
+    render(<ChangelogsPage />);
+
+    const resetButton = await screen.findByRole('button', { name: /reset changelog display state/i });
+    fireEvent.click(resetButton);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /reset changelog display state/i })).not.toBeInTheDocument();
+      expect(localStorage.getItem('changelogs-expanded')).toBe('["mar-2026"]');
+      expect(localStorage.getItem('changelogs-expanded-entries')).toBeNull();
+    });
+  });
 });

@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Learn | BondTrack',
+  title: 'Learn | Heimdall',
   description: 'Educational resources for THORChain bond providers and LP participants',
 };
 

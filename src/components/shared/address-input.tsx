@@ -1,10 +1,15 @@
 import { useState } from 'react';
 import { useTHORName } from '@/lib/hooks/use-thorname';
+import { isValidTHORChainAddress } from '@/lib/utils/address-validation';
 
 interface AddressInputProps {
   onAddressSubmit: (address: string) => void;
   isLoading?: boolean;
 }
+
+const inputId = 'address-input';
+const helpId = 'address-input-help';
+const errorId = 'address-input-error';
 
 export function AddressInput({ onAddressSubmit, isLoading }: AddressInputProps) {
   const [value, setValue] = useState('');
@@ -13,47 +18,39 @@ export function AddressInput({ onAddressSubmit, isLoading }: AddressInputProps) 
   const thorName = value.trim().endsWith('.thor') ? value.trim() : null;
   const { resolved, isLoading: resolving, error: thorError } = useTHORName(thorName);
 
-  const validateAddress = (input: string): boolean => {
-    if (!input.startsWith('thor1')) {
-      setError('Address must start with "thor1"');
-      return false;
-    }
-    if (input.length < 42 || input.length > 65) {
-      setError('Invalid address length');
-      return false;
-    }
-    setError('');
-    return true;
-  };
-
   const validate = (input: string): string | null => {
     const trimmed = input.trim();
 
     if (!trimmed) {
-      setError('Address is required');
+      setError('Enter a THORChain address or THORName.');
       return null;
     }
 
-    // THORName resolution
     if (trimmed.endsWith('.thor')) {
       if (resolving) {
-        setError('Resolving THORName...');
+        setError('Still resolving that THORName. Try again in a moment.');
         return null;
       }
       if (thorError || !resolved) {
-        setError('THORName not found');
+        setError('THORName not found. Check the name and try again.');
         return null;
       }
       setError('');
       return resolved.owner;
     }
 
-    // Standard thor1... address validation
-    if (validateAddress(trimmed)) {
-      return trimmed;
+    if (!trimmed.startsWith('thor1') && !trimmed.startsWith('tthor1')) {
+      setError('Address must start with thor1 or tthor1.');
+      return null;
     }
 
-    return null;
+    if (!isValidTHORChainAddress(trimmed)) {
+      setError('Enter a valid THORChain address.');
+      return null;
+    }
+
+    setError('');
+    return trimmed;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -66,21 +63,18 @@ export function AddressInput({ onAddressSubmit, isLoading }: AddressInputProps) 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value);
-    if (error) {
-      const trimmed = e.target.value.trim();
-      if (trimmed.endsWith('.thor') || trimmed.startsWith('thor1') || trimmed.startsWith('tthor1')) {
-        setError('');
-      }
-    }
+    if (error) setError('');
   };
 
   const busy = isLoading || resolving;
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-xl mx-auto">
-      <div className="flex gap-2">
+    <form onSubmit={handleSubmit} className="w-full max-w-xl mx-auto" noValidate>
+      <div className="flex flex-col gap-2 sm:flex-row">
         <div className="flex-1">
+          <label htmlFor={inputId} className="sr-only">THORChain address or THORName</label>
           <input
+            id={inputId}
             type="text"
             value={value}
             onChange={handleChange}
@@ -89,8 +83,16 @@ export function AddressInput({ onAddressSubmit, isLoading }: AddressInputProps) 
               error ? 'border-red-500' : 'border-zinc-300 dark:border-zinc-700'
             }`}
             disabled={busy}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? `${helpId} ${errorId}` : helpId}
+            autoComplete="off"
           />
-          {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
+          <p id={helpId} className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Paste a THORChain mainnet/testnet address or a registered THORName.
+          </p>
+          <p id={errorId} role="alert" aria-live="polite" className="mt-1 min-h-5 text-sm text-red-500">
+            {error}
+          </p>
         </div>
         <button
           type="submit"

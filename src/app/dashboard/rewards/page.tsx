@@ -16,6 +16,7 @@ import { calculateWeightedApy } from '@/lib/utils/fee-calculations';
 import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
 import { Button } from '@/components/ui/button';
 import { DashboardCard } from '@/components/shared/dashboard-card';
+import { FocusDialog } from '@/components/ui/focus-dialog';
 
 function normalizeApyPercent(raw: string | number | undefined): number | undefined {
   if (raw === undefined || raw === null) return undefined;
@@ -321,13 +322,15 @@ export default function RewardsPage() {
       </DashboardCard>
 
       {showTaxModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+        <FocusDialog
+          open
+          titleId="tax-export-title"
+          descriptionId="tax-export-description"
+          onClose={() => setShowTaxModal(false)}
+          className="px-4"
+        >
           <div
             className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg dark:bg-zinc-900"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="tax-export-title"
-            aria-describedby="tax-export-description"
           >
             <h3 id="tax-export-title" className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Export Tax Report</h3>
             <p id="tax-export-description" className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
@@ -392,7 +395,7 @@ export default function RewardsPage() {
               </div>
             </div>
           </div>
-        </div>
+        </FocusDialog>
       )}
     </div>
   );

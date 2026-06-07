@@ -5,6 +5,7 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tool
 import { BondPosition } from '@/lib/types/node';
 import { Activity } from 'lucide-react';
 import { formatRuneFromNumber } from '@/lib/utils/formatters';
+import { ChartDataTable } from '@/components/shared/chart-data-table';
 
 interface RiskRadarProps {
   positions: BondPosition[];
@@ -52,6 +53,7 @@ export function RiskRadar({ positions }: RiskRadarProps) {
       {positions.length > 1 && (
         <div className="px-2 pt-2 pb-1">
           <select
+            aria-label="Select node for risk radar"
             value={selectedPositionIndex}
             onChange={(e) => setSelectedPositionIndex(Number(e.target.value))}
             className="w-full px-2 py-1.5 text-xs font-mono rounded border bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -85,6 +87,11 @@ export function RiskRadar({ positions }: RiskRadarProps) {
           />
         </RadarChart>
       </ResponsiveContainer>
+      <ChartDataTable
+        caption={`Risk radar metrics for ${position.nodeAddress}`}
+        columns={['Metric', 'Score']}
+        rows={data.map((point) => [point.subject, `${point.value.toFixed(0)} / ${point.fullMark}`])}
+      />
       
       <div className="absolute bottom-2 left-0 right-0 text-center">
         <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-600">

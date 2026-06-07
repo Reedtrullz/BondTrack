@@ -52,26 +52,31 @@ export function DashboardShell({
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
   const [thorName, setThorName] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
-  const [tickAtRefresh, setTickAtRefresh] = useState(0);
-  const { midgard, thornode } = useApiHealth();
+  const [now, setNow] = useState<number | null>(null);
+  const { midgard, thornode, lastChecked, lastSuccessful } = useApiHealth();
   const { balance } = useWalletBalance(address);
 
   const hasAddress = requireAddress ? !!address : true;
 
-  const elapsedMs = (tick - tickAtRefresh) * 10_000;
-  const freshnessLabel = formatElapsed(elapsedMs);
+  const latestSuccessful = [lastSuccessful.midgard, lastSuccessful.thornode]
+    .filter((date): date is Date => date instanceof Date)
+    .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+  const freshnessLabel = latestSuccessful && now !== null
+    ? `Confirmed ${formatElapsed(now - latestSuccessful.getTime())}`
+    : lastChecked
+      ? 'Source health degraded or unknown'
+      : 'Checking source health';
 
   useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 10_000);
+    setNow(Date.now());
+    const interval = setInterval(() => setNow(Date.now()), 10_000);
     return () => clearInterval(interval);
   }, []);
 
   const handleRefresh = useCallback(() => {
     SWR_KEYS.forEach((key) => mutate(key));
-    setTickAtRefresh(tick);
-    setTick((t) => t + 1);
-  }, [tick]);
+    setNow(Date.now());
+  }, []);
 
   useEffect(() => {
     if (!address) {
@@ -142,7 +147,7 @@ export function DashboardShell({
       <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto">
         <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-3 mb-4 pb-3 border-b border-zinc-200/60 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl rounded-lg px-3 sm:px-4 -mx-3 sm:-mx-4 -mt-3 sm:-mt-4 md:-mt-6 pt-3 sm:pt-4 md:pt-6 shadow-sm">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-        <MobileMenuButton onClickAction={() => setSidebarOpen(true)} />
+        <MobileMenuButton onClickAction={() => setSidebarOpen(true)} isOpen={sidebarOpen} />
             <div className="min-w-0">
               <Breadcrumbs />
               {address && (
@@ -155,14 +160,19 @@ export function DashboardShell({
                       <span className="font-mono">{formatRuneFromNumber(balance)}</span> available
                     </span>
                   )}
+                  <span className="mt-0.5 flex items-center gap-1 text-[10px] text-zinc-500 dark:text-zinc-400 sm:hidden">
+                    <Wifi className="h-3 w-3 text-emerald-500" aria-hidden="true" />
+                    <Clock className="h-3 w-3" aria-hidden="true" />
+                    {freshnessLabel}
+                  </span>
                 </>
               )}
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <span className="hidden sm:flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/60 px-2.5 py-1.5 rounded-full">
-              <Wifi className="h-3 w-3 text-emerald-500" />
-              <Clock className="h-3 w-3" />
+              <Wifi className="h-3 w-3 text-emerald-500" aria-hidden="true" />
+              <Clock className="h-3 w-3" aria-hidden="true" />
               <span className="font-medium">{freshnessLabel}</span>
             </span>
             <ChurnCountdown />

@@ -24,6 +24,10 @@ vi.mock('./theme-toggle', () => ({
   ThemeToggle: () => <button type="button">Theme</button>,
 }));
 
+vi.mock('./bifrost-status', () => ({
+  BifrostStatus: () => <div>Source health mocked</div>,
+}));
+
 describe('Sidebar', () => {
   beforeEach(() => {
     mocks.pathname = '/dashboard/portfolio';

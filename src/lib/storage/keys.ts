@@ -1,3 +1,5 @@
+import { isValidTHORChainAddress } from '@/lib/utils/address-validation';
+
 export const STORAGE_KEYS = {
   dashboardAddress: 'BONDTRACK_ADDRESS',
   watchlist: 'heimdall-watchlist',
@@ -19,7 +21,7 @@ export const LEGACY_STORAGE_KEYS = {
 } as const;
 
 function isValidStoredThorAddress(value: string | null): value is string {
-  return typeof value === 'string' && value.startsWith('thor1');
+  return typeof value === 'string' && isValidTHORChainAddress(value);
 }
 
 function safeGet(storage: Storage | undefined, key: string): string | null {
@@ -70,6 +72,9 @@ export function migrateDashboardAddressStorage(
   if (isValidStoredThorAddress(currentAddress)) {
     clearLegacyDashboardAddressKeys(localStorageRef, sessionStorageRef);
     return currentAddress;
+  }
+  if (currentAddress) {
+    safeRemove(localStorageRef, STORAGE_KEYS.dashboardAddress);
   }
 
   const legacyAddress = [

@@ -69,6 +69,11 @@ export function useWatchlist() {
     });
   }, [saveToStorage]);
 
+  const clearAddresses = useCallback(() => {
+    setAddresses([]);
+    saveToStorage([]);
+  }, [saveToStorage]);
+
   const getAddresses = useCallback((): string[] => {
     return addresses;
   }, [addresses]);
@@ -82,6 +87,7 @@ export function useWatchlist() {
     isLoaded,
     addAddress,
     removeAddress,
+    clearAddresses,
     getAddresses,
     isAddressSaved,
   };

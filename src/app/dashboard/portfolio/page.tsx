@@ -27,6 +27,7 @@ import { MarketOverview } from '@/components/dashboard/market-overview';
 import { IntelligenceFeed } from '@/components/dashboard/intelligence-feed';
 import { ExportButton } from '@/components/shared/export-button';
 import { DashboardCard } from '@/components/shared/dashboard-card';
+import { ChartDataTable } from '@/components/shared/chart-data-table';
 import { Button } from '@/components/ui/button';
 import {
   TrendingUp,
@@ -211,7 +212,8 @@ export default function PortfolioPage() {
         {/* Right: Asset Allocation */}
         <DashboardCard title="Asset Allocation">
           {totalSum > 0 ? (
-            <ResponsiveContainer width="100%" height={280} minWidth={0} minHeight={0}>
+            <>
+              <ResponsiveContainer width="100%" height={280} minWidth={0} minHeight={0}>
               <PieChart>
                 <Pie
                   data={pieData}
@@ -234,7 +236,13 @@ export default function PortfolioPage() {
                 />
                 <Legend verticalAlign="bottom" height={36} />
               </PieChart>
-            </ResponsiveContainer>
+              </ResponsiveContainer>
+              <ChartDataTable
+                caption="Portfolio asset allocation"
+                columns={['Asset group', 'Value']}
+                rows={pieData.map((item) => [item.name, formatUsd(item.value, 2)])}
+              />
+            </>
           ) : (
             <div className="h-[280px] flex items-center justify-center text-zinc-500 dark:text-zinc-400 text-sm">
               No portfolio data available

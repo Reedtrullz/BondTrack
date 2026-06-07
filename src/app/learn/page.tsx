@@ -30,7 +30,7 @@ const articles = [
   {
     slug: 'health-score-guide',
     title: 'Health Score Guide',
-    description: 'How BondTrack calculates your portfolio health score',
+    description: 'How Heimdall calculates your portfolio health score',
     readTime: '4 min read',
   },
 ];

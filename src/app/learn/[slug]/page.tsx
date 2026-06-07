@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 
 interface Article {
   slug: string;
@@ -150,13 +151,13 @@ APY measures the annual return on your bond, including compounding. THORChain no
   'health-score-guide': {
     slug: 'health-score-guide',
     title: 'Health Score Guide',
-    description: 'How BondTrack calculates your portfolio health score',
+    description: 'How Heimdall calculates your portfolio health score',
     date: '2026-05-03',
     readTime: '4 min read',
     content: `
 # Health Score Guide
 
-BondTrack's Health Score (A-F) helps you quickly assess the health of your bonded portfolio. This guide explains how the score is calculated and what it means.
+Heimdall's Health Score (A-F) helps you quickly assess the health of your bonded portfolio. This guide explains how the score is calculated and what it means.
 
 ## Score Scale
 - **A (90-100)**: Excellent — Strong bonds, low risk
@@ -185,8 +186,40 @@ BondTrack's Health Score (A-F) helps you quickly assess the health of your bonde
   },
 };
 
-export default function ArticlePage({ params }: { params: { slug: string } }) {
-  const article = articles[params.slug];
+function renderInlineMarkdown(text: string): ReactNode[] {
+  const tokens = text.split(/(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*)/g).filter(Boolean);
+
+  return tokens.map((token, index) => {
+    const linkMatch = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(token);
+    if (linkMatch) {
+      const [, label, href] = linkMatch;
+      if (href.startsWith('/')) {
+        return (
+          <Link key={`${href}-${index}`} href={href} className="text-cyan-600 underline underline-offset-4 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300">
+            {label}
+          </Link>
+        );
+      }
+
+      return (
+        <a key={`${href}-${index}`} href={href} target="_blank" rel="noopener noreferrer" className="text-cyan-600 underline underline-offset-4 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300">
+          {label}
+        </a>
+      );
+    }
+
+    const strongMatch = /^\*\*([^*]+)\*\*$/.exec(token);
+    if (strongMatch) {
+      return <strong key={`${strongMatch[1]}-${index}`}>{strongMatch[1]}</strong>;
+    }
+
+    return <span key={`${token}-${index}`}>{token}</span>;
+  });
+}
+
+export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const article = articles[slug];
 
   if (!article) {
     notFound();
@@ -230,13 +263,13 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
             } else if (line.startsWith('### ')) {
               return <h3 key={i} className="font-display text-xl font-bold mt-6">{line.slice(4)}</h3>;
             } else if (line.startsWith('- ')) {
-              return <li key={i} className="ml-6">{line.slice(2)}</li>;
+              return <li key={i} className="ml-6">{renderInlineMarkdown(line.slice(2))}</li>;
             } else if (line.startsWith('1. ')) {
-              return <li key={i} className="ml-6 list-decimal">{line.slice(3)}</li>;
+              return <li key={i} className="ml-6 list-decimal">{renderInlineMarkdown(line.slice(3))}</li>;
             } else if (line.trim() === '') {
               return <br key={i} />;
             } else {
-              return <p key={i} className="my-4">{line}</p>;
+              return <p key={i} className="my-4">{renderInlineMarkdown(line)}</p>;
             }
           })}
         </CardContent>
