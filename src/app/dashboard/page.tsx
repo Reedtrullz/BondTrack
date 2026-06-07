@@ -1,13 +1,12 @@
 import { redirect } from 'next/navigation';
 
-export default function DashboardPage(props: {
+export default async function DashboardPage(props: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const searchParams = props.searchParams;
-  const address = searchParams.then(s => s.address);
+  const searchParams = await props.searchParams;
+  const addressParam = searchParams.address;
+  const address = Array.isArray(addressParam) ? addressParam[0] : addressParam;
+  const qs = address ? `?address=${encodeURIComponent(address)}` : '';
 
-  return address.then(addr => {
-    const qs = addr ? `?address=${encodeURIComponent(addr as string)}` : '';
-    redirect(`/dashboard/portfolio${qs}`);
-  });
+  redirect(`/dashboard/portfolio${qs}`);
 }

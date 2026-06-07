@@ -264,7 +264,6 @@ export function WalletConnect() {
                 icon={<KeplrIcon className="h-5 w-5" />}
                 onClick={() => {
                   connect('keplr');
-                  setDropdownOpen(false);
                 }}
                 disabled={isConnecting}
               />
@@ -279,7 +278,6 @@ export function WalletConnect() {
                 icon={<XdefiIcon className="h-5 w-5" />}
                 onClick={() => {
                   connect('xdefi');
-                  setDropdownOpen(false);
                 }}
                 disabled={isConnecting}
               />
@@ -294,7 +292,6 @@ export function WalletConnect() {
                 icon={<VultisigIcon className="h-5 w-5" />}
                 onClick={() => {
                   connect('vultisig');
-                  setDropdownOpen(false);
                 }}
                 disabled={isConnecting}
               />

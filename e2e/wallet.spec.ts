@@ -1,6 +1,6 @@
 import { test, expect, type Page } from './fixtures';
 
-const MOCK_ADDRESS = 'thor1test123456789abcdefghijklmnop';
+const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
 
 async function setupWalletPageApiMocks(page: Page) {
   await page.route('**/api/midgard/**', async (route) => {
@@ -26,7 +26,7 @@ async function setupWalletPageApiMocks(page: Page) {
       return;
     }
 
-    if (url.pathname === '/api/midgard/v2/member/thor1test123456789abcdefghijklmnop') {
+    if (url.pathname === '/api/midgard/v2/member/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq') {
       await route.fulfill({ json: { pools: [], runeAddress: MOCK_ADDRESS } });
       return;
     }
@@ -80,12 +80,20 @@ async function setupWalletPageApiMocks(page: Page) {
 }
 
 async function openWalletMenu(page: Page) {
-  await page.getByTestId('wallet-connect-button').click();
-  await expect(page.getByText('Select wallet', { exact: true })).toBeVisible();
+  const trigger = page.getByTestId('wallet-connect-button');
+  const menuHeading = page.getByText('Select wallet', { exact: true });
+
+  await expect(trigger).toBeVisible();
+  await expect(async () => {
+    await trigger.click();
+    await expect(menuHeading).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 10_000 });
 }
 
 async function chooseWallet(page: Page, wallet: 'keplr' | 'xdefi' | 'vultisig') {
-  await page.getByTestId(`wallet-option-${wallet}`).click();
+  await page.getByTestId(`wallet-option-${wallet}`).evaluate((element) => {
+    (element as HTMLElement).click();
+  });
 }
 
 async function gotoWalletPage(page: Page) {

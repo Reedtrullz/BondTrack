@@ -1,6 +1,6 @@
 import { expect, test, type Page } from './fixtures';
 
-const MOCK_ADDRESS = 'thor1test123456789abcdefghijklmnop';
+const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
 
 const mockMemberDetails = {
   pools: [
@@ -90,7 +90,7 @@ async function setupMocks(page: Page) {
   await page.route('**/api/thorchain/**', async (route) => {
     const url = new URL(route.request().url());
 
-    if (url.pathname === '/api/thorchain/thorchain/pool/BTC.BTC/liquidity_provider/thor1test123456789abcdefghijklmnop') {
+    if (url.pathname === '/api/thorchain/thorchain/pool/BTC.BTC/liquidity_provider/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq') {
       await route.fulfill({
         json: {
           rune_address: MOCK_ADDRESS,
@@ -115,7 +115,7 @@ async function setupMocks(page: Page) {
   await page.route('**/api/midgard/**', async (route) => {
     const url = new URL(route.request().url());
 
-    if (url.pathname === '/api/midgard/v2/member/thor1test123456789abcdefghijklmnop') {
+    if (url.pathname === '/api/midgard/v2/member/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq') {
       await route.fulfill({ json: mockMemberDetails });
       return;
     }

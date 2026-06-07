@@ -66,7 +66,7 @@ export default function LpPage() {
             LP Positions
           </h1>
           <p className="mt-1 text-zinc-500 dark:text-zinc-400">
-            Manage liquidity positions, calculate impermanent loss, and export tax data
+            Manage liquidity positions, calculate impermanent loss, and download position snapshots
           </p>
         </div>
       </div>
@@ -185,8 +185,18 @@ export default function LpPage() {
             <Card className="border-zinc-200 bg-white/80 shadow-md backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80">
               <CardContent className="p-4">
                 <div className="text-sm text-zinc-500">Total Impermanent Loss</div>
-                <div className="text-2xl font-bold font-display text-[var(--color-danger)]">
-                  {hasUntrustedPerformance ? performancePendingLabel : `-${formatUsd(totalStats.totalIl)}`}
+                <div className={`text-2xl font-bold font-display ${
+                  hasUntrustedPerformance
+                    ? 'text-zinc-500 dark:text-zinc-400'
+                    : totalStats.totalIl < 0
+                      ? 'text-[var(--color-danger)]'
+                      : totalStats.totalIl > 0
+                        ? 'text-[var(--color-success)]'
+                        : 'text-zinc-600 dark:text-zinc-400'
+                }`}>
+                  {hasUntrustedPerformance
+                    ? performancePendingLabel
+                    : `${totalStats.totalIl > 0 ? '+' : ''}${formatUsd(totalStats.totalIl)}`}
                 </div>
               </CardContent>
             </Card>
@@ -205,7 +215,7 @@ export default function LpPage() {
               </TabsTrigger>
               <TabsTrigger value="tax-export" className="gap-2">
                 <FileSpreadsheet className="h-4 w-4" />
-                Tax Export
+                Position CSV
               </TabsTrigger>
             </TabsList>
 
@@ -234,7 +244,7 @@ export default function LpPage() {
               <IlCalculator />
             </TabsContent>
 
-            {/* Tax Export Tab */}
+            {/* Position CSV Tab */}
             <TabsContent value="tax-export">
               <TaxExport
                 address={address}

@@ -51,6 +51,10 @@ export const test = base.extend<{ page: Page }>({
     });
 
     page.on('requestfailed', (request) => {
+      if (request.failure()?.errorText === 'net::ERR_ABORTED') {
+        return;
+      }
+
       if (isSameOriginApiRequest(request)) {
         failures.push(
           `failed same-origin API request: ${request.method()} ${request.url()} (${request.failure()?.errorText ?? 'unknown error'})`

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from './fixtures';
 
-const MOCK_ADDRESS = 'thor1test123456789abcdefghijklmnop';
+const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
 const MOCK_SECONDARY_ADDRESS = 'thor1otherprovider123456789abcdef';
 
 const mockNodes = [
@@ -207,7 +207,7 @@ async function setupMocks(page: Page) {
       return;
     }
 
-    if (url.pathname === '/api/midgard/v2/bonds/thor1test123456789abcdefghijklmnop') {
+    if (url.pathname === '/api/midgard/v2/bonds/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq') {
       await route.fulfill({
         json: {
           address: MOCK_ADDRESS,
@@ -223,7 +223,7 @@ async function setupMocks(page: Page) {
       return;
     }
 
-    if (url.pathname === '/api/midgard/v2/member/thor1test123456789abcdefghijklmnop') {
+    if (url.pathname === '/api/midgard/v2/member/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq') {
       await route.fulfill({ json: mockMemberDetails });
       return;
     }
@@ -262,7 +262,7 @@ test.describe('Portfolio dashboard', () => {
     // Look for any element containing '$' near the Total Bonded card
     await expect(page.getByText(/\$[0-9,]+/).first()).toBeVisible({ timeout: 10000 });
 
-    await expect(page.getByText('Asset Allocation')).toBeVisible();
+    await expect(page.getByText('Asset Allocation', { exact: true })).toBeVisible();
     await expect(page.getByText('Quick Actions')).toBeVisible();
     await expect(page.getByRole('link', { name: 'View Risk' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'View Rewards' })).toBeVisible();

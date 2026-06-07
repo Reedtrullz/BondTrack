@@ -12,13 +12,11 @@ test.describe('Dashboard redirects', () => {
     await expect(page).toHaveURL(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
   });
 
-  test('redirects overview to portfolio with arbitrary query params', async ({ page }) => {
-    await Promise.all([
-      page.waitForURL('/dashboard/portfolio?address=test123'),
-      page.goto('/dashboard/overview?address=test123'),
-    ]);
+  test('shows the address-required state for overview without an address', async ({ page }) => {
+    await page.goto('/dashboard/overview?view=test123');
 
-    await expect(page).toHaveURL('/dashboard/portfolio?address=test123');
+    await expect(page).toHaveURL('/dashboard/overview?view=test123');
+    await expect(page.getByText('Enter an address to get started')).toBeVisible();
   });
 
   test('redirects dashboard root to portfolio', async ({ page }) => {
@@ -32,5 +30,14 @@ test.describe('Dashboard redirects', () => {
     ]);
 
     await expect(page).toHaveURL('/dashboard/portfolio?address=thor12mpnw4stg9fw8yngs3rpzzc6zdprepev3e0346');
+  });
+
+  test('restores saved address without dropping deep-link query params', async ({ page }) => {
+    await page.addInitScript((address) => {
+      localStorage.setItem('BONDTRACK_ADDRESS', address);
+    }, MOCK_ADDRESS);
+
+    await page.goto('/dashboard/transactions?action=unbond');
+    await expect(page).toHaveURL(`/dashboard/transactions?action=unbond&address=${MOCK_ADDRESS}`);
   });
 });

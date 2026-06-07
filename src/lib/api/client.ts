@@ -1,3 +1,5 @@
+import { ENDPOINTS } from '@/lib/config';
+
 const RETRY_DELAYS = [1000, 2000, 4000];
 const MAX_RETRIES = 3;
 
@@ -12,6 +14,28 @@ class RetryableError extends Error {
 
 async function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function normalizeBaseUrl(baseUrl: string): string {
+  return baseUrl.replace(/\/+$/, '');
+}
+
+function isBrowserRuntime(): boolean {
+  return typeof window !== 'undefined';
+}
+
+function resolveThornodeBase(path: string): string {
+  const configuredBase = normalizeBaseUrl(process.env.THORNODE_API_URL || ENDPOINTS.thornode);
+
+  if ((path.startsWith('/thorchain/') || path.startsWith('/cosmos/')) && /\/thorchain$/i.test(configuredBase)) {
+    return configuredBase.replace(/\/thorchain$/i, '');
+  }
+
+  return configuredBase;
+}
+
+function resolveMidgardBase(): string {
+  return normalizeBaseUrl(process.env.MIDGARD_API_URL || ENDPOINTS.midgard);
 }
 
 async function fetchApi<T>(baseUrl: string, path: string, init?: RequestInit, retryCount = 0): Promise<T> {
@@ -49,21 +73,21 @@ async function fetchApi<T>(baseUrl: string, path: string, init?: RequestInit, re
 }
 
 export async function fetchThornode<T>(path: string, init?: RequestInit): Promise<T> {
-  const localProxy = '/api/thorchain';
+  const baseUrl = isBrowserRuntime() ? '/api/thorchain' : resolveThornodeBase(path);
 
   try {
-    return await fetchApi<T>(localProxy, path, init);
+    return await fetchApi<T>(baseUrl, path, init);
   } catch (error) {
-    throw new Error(`THORNode proxy failed: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`THORNode ${isBrowserRuntime() ? 'proxy' : 'upstream'} failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
 export async function fetchMidgard<T>(path: string, init?: RequestInit): Promise<T> {
-  const localProxy = '/api/midgard';
+  const baseUrl = isBrowserRuntime() ? '/api/midgard' : resolveMidgardBase();
 
   try {
-    return await fetchApi<T>(localProxy, path, init);
+    return await fetchApi<T>(baseUrl, path, init);
   } catch (error) {
-    throw new Error(`Midgard proxy failed: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Midgard ${isBrowserRuntime() ? 'proxy' : 'upstream'} failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures';
 
-const MOCK_ADDRESS = 'thor1test123456789abcdefghijklmnop';
+const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
 
 test.describe('Dashboard Navigation', () => {
   test.beforeEach(async ({ page }) => {

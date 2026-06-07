@@ -1,6 +1,6 @@
 import { test, expect, type Page } from './fixtures';
 
-const MOCK_ADDRESS = 'thor1test123456789abcdefghijklmnop';
+const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
 const MOCK_NODE = 'thor16xxh3km6dxka636qg6q7e3us5vlgvhrhjgw245';
 
 async function setupTransactionApiMocks(page: Page) {

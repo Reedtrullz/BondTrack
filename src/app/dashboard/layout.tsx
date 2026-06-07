@@ -27,10 +27,19 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const invalidUrlAddress = Boolean(urlAddress && !isValidTHORChainAddress(urlAddress));
   const { alerts, dismissAlert, permission, requestPermission } = useAlerts();
   const { currentVersion, latestVersion, hasUpgrade } = useProtocolVersion();
-  const [savedAddress, setSavedAddress] = useState<string | null>(() => readSavedAddress());
+  const [savedAddress, setSavedAddress] = useState<string | null>(null);
   const effectiveAddress = invalidUrlAddress ? null : (urlAddress ?? savedAddress);
   const isChangelogsRoute = pathname?.startsWith('/dashboard/changelogs');
   const requiresAddress = !isChangelogsRoute;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const migratedAddress = readSavedAddress();
+    if (migratedAddress) {
+      setSavedAddress(migratedAddress);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -60,11 +69,13 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
     if (!urlAddress) {
       if (savedAddress) {
-        router.replace(`?address=${encodeURIComponent(savedAddress)}`);
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('address', savedAddress);
+        router.replace(`?${params.toString()}`);
         return;
       }
     }
-  }, [urlAddress, router, savedAddress]);
+  }, [urlAddress, router, savedAddress, searchParams]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !urlAddress) return;

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Download, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { useLpPositions } from '@/lib/hooks/use-lp-positions';
 import type { LpPosition } from '@/lib/types/lp';
-import { runeToNumber } from '@/lib/utils/formatters';
+import { rawRuneToDisplayNumber } from '@/lib/utils/formatters';
 import { normalizeMidgardTimestampToDate } from '@/lib/utils/midgard-time';
 
 interface TaxExportProps {
@@ -18,6 +18,14 @@ function formatTaxPositionDate(rawTimestamp: string): string {
   return normalizeMidgardTimestampToDate(rawTimestamp)?.toISOString().split('T')[0] ?? 'Unknown';
 }
 
+function formatCsvCell(cell: string | number | null): string {
+  return `"${String(cell ?? '').replace(/"/g, '""')}"`;
+}
+
+function rawBaseAmountToDisplayNumber(raw: string | number | undefined): number {
+  return rawRuneToDisplayNumber(raw);
+}
+
 export default function TaxExport({ address, isHistoricalEnrichmentLoading: parentHistoricalEnrichmentLoading }: TaxExportProps) {
   const {
     positions,
@@ -26,7 +34,6 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
     error,
   } = useLpPositions(address);
   const [exporting, setExporting] = useState(false);
-  const [taxYear, setTaxYear] = useState<string>(new Date().getFullYear().toString());
   const isHistoricalEnrichmentLoading = Boolean(
     parentHistoricalEnrichmentLoading || hookHistoricalEnrichmentLoading
   );
@@ -50,13 +57,13 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
     setExporting(true);
 
     try {
-      // CSV headers
+      const exportedAt = new Date().toISOString();
       const headers = [
-        'Tax Year',
+        'Exported At',
         'Pool',
         'Asset Symbol',
-        'Deposit Date',
-        'Withdrawal Date',
+        'First Added Date',
+        'Last Added Date',
         'RUNE Deposited',
         'Asset Deposited',
         'RUNE Withdrawn',
@@ -67,11 +74,10 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
         'PnL Percent (%)',
         'Impermanent Loss (%)',
         'Impermanent Loss (USD)',
-        'Taxable Event',
+        'Pricing Confidence',
         'Notes',
       ];
 
-      // Generate CSV rows
       const rows = positions.map((pos: LpPosition) => {
         const depositDate = formatTaxPositionDate(pos.dateFirstAdded);
         const withdrawalDate = pos.dateLastAdded
@@ -85,49 +91,44 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
         const ilPercent = pos.impermanentLossPercent ?? 0;
         const ilUsd = pos.impermanentLossUsd ?? 0;
 
-        // Simple taxable event logic (mock)
-        const taxableEvent = pnl > 0 ? 'Capital Gain' : pnl < 0 ? 'Capital Loss' : 'No Gain/Loss';
-
         return [
-          taxYear,
+          exportedAt,
           pos.pool,
           pos.assetSymbol,
           depositDate,
           withdrawalDate,
-          runeToNumber(pos.runeDeposit),
-          parseFloat(pos.asset2Deposit) || 0,
-          runeToNumber(pos.runeWithdrawn),
-          parseFloat(pos.asset2Withdrawn) || 0,
+          rawBaseAmountToDisplayNumber(pos.runeDeposit),
+          rawBaseAmountToDisplayNumber(pos.asset2Deposit),
+          rawBaseAmountToDisplayNumber(pos.runeWithdrawn),
+          rawBaseAmountToDisplayNumber(pos.asset2Withdrawn),
           entryValue,
           currentValue,
           pnl,
           pnlPercent.toFixed(2),
           ilPercent.toFixed(2),
           ilUsd,
-          taxableEvent,
-          'LP Position ' + (pnl > 0 ? 'Profit' : 'Loss'),
+          pos.pricingSource,
+          'LP position snapshot only; not a realized-tax ledger',
         ];
       });
 
-      // Combine headers and rows
       const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+        headers.map(formatCsvCell).join(','),
+        ...rows.map((row) => row.map(formatCsvCell).join(',')),
       ].join('\n');
 
-      // Trigger download
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `bondsense-lp-tax-export-${taxYear}-${new Date().toISOString().split('T')[0]}.csv`;
+      link.download = `heimdall-lp-position-snapshot-${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Error generating CSV:', err);
-      alert('Failed to generate tax export. Please try again.');
+      console.error('Error generating LP position CSV:', err);
+      alert('Failed to generate LP position CSV. Please try again.');
     } finally {
       setExporting(false);
     }
@@ -139,7 +140,7 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
         <CardContent className="p-6">
           <div className="flex items-center gap-2 text-zinc-500">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading LP positions for tax export...
+            Loading LP positions for CSV export...
           </div>
         </CardContent>
       </Card>
@@ -151,9 +152,9 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
       <Card className="border-zinc-200 bg-white/80 shadow-md backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80">
         <CardContent className="p-6">
           <div className="rounded-lg bg-zinc-50 p-4 text-sm text-zinc-500 dark:bg-zinc-800/50">
-            {!address 
-              ? 'Connect a wallet to export LP tax data.'
-              : error 
+            {!address
+              ? 'Connect a wallet to export an LP position snapshot.'
+              : error
                 ? 'Error loading LP positions: ' + error
                 : 'No LP positions found for this address.'}
           </div>
@@ -167,12 +168,12 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
       <CardHeader>
         <CardTitle className="flex items-center gap-2 font-display">
           <FileSpreadsheet className="h-5 w-5 text-[var(--color-primary)]" />
-          LP Tax Export
+          LP Position CSV
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Export your LP position data as a CSV file for tax reporting. Includes deposits, withdrawals, PnL, and impermanent loss data.
+          Download a point-in-time LP position snapshot with deposits, withdrawals, PnL, and impermanent loss. This is not a complete tax report or realized-event ledger.
         </p>
 
         {isHistoricalEnrichmentLoading ? (
@@ -181,27 +182,12 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
           </div>
         ) : hasIncompleteHistoricalPricing ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
-            Complete historical entry pricing is unavailable for {positionsWithIncompleteHistoricalPricing.length} position{positionsWithIncompleteHistoricalPricing.length !== 1 ? 's' : ''}. Estimated/current-only LP CSV export is disabled to avoid incomplete tax data.
+            Complete historical entry pricing is unavailable for {positionsWithIncompleteHistoricalPricing.length} position{positionsWithIncompleteHistoricalPricing.length !== 1 ? 's' : ''}. Estimated/current-only LP CSV export is disabled to avoid incomplete position data.
           </div>
         ) : null}
 
         <div className="flex items-end gap-4">
-          <div className="space-y-2">
-            <label htmlFor="tax-year" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Tax Year
-            </label>
-            <input
-              id="tax-year"
-              type="number"
-              value={taxYear}
-              onChange={(e) => setTaxYear(e.target.value)}
-              className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-              min="2020"
-              max={new Date().getFullYear() + 1}
-            />
-          </div>
-
-          <Button 
+          <Button
             onClick={generateCsv}
             disabled={isExportDisabled}
             className="gap-2"
@@ -233,13 +219,12 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
         <div className="rounded-lg bg-zinc-50 p-4 text-xs text-zinc-500 dark:bg-zinc-800/50">
           <p className="font-medium">Included Columns:</p>
           <ul className="mt-1 list-disc pl-4">
-            <li>Tax Year, Pool, Asset Symbol</li>
-            <li>Deposit/Withdrawal Dates, RUNE/Asset Amounts</li>
-            <li>Entry/Current Value (USD), Net PnL, Impermanent Loss</li>
-            <li>Taxable Event Classification (mock)</li>
+            <li>Export timestamp, pool, and asset symbol</li>
+            <li>First/last add dates plus RUNE/asset deposit and withdrawal amounts</li>
+            <li>Entry/current value, Net PnL, impermanent loss, and pricing confidence</li>
           </ul>
-          <p className="mt-2 text-yellow-600 dark:text-yellow-400">
-            Note: This is a mock tax export for demonstration. Consult a tax professional for actual reporting requirements.
+          <p className="mt-2 text-amber-600 dark:text-amber-400">
+            Note: This CSV is a position snapshot only. It intentionally omits taxable-event classification because historical LP add/withdraw reconstruction is not implemented here.
           </p>
         </div>
       </CardContent>

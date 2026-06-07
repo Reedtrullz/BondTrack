@@ -29,14 +29,14 @@ test.describe('Homepage', () => {
     const input = page.getByPlaceholder('thor1...');
     await input.fill('invalid123');
     await page.getByRole('button', { name: 'Lookup' }).click();
-    await expect(page.getByText('Address must start with "thor1"')).toBeVisible();
+    await expect(page.getByText('Address must start with thor1 or tthor1.')).toBeVisible();
   });
 
   test('validates address length', async ({ page }) => {
     const input = page.getByPlaceholder('thor1...');
     await input.fill('thor1short');
     await page.getByRole('button', { name: 'Lookup' }).click();
-    await expect(page.getByText('Invalid address length')).toBeVisible();
+    await expect(page.getByText('Enter a valid THORChain address.')).toBeVisible();
   });
 
   test('displays Shield icon', async ({ page }) => {

@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures';
 
-const MOCK_ADDRESS = 'thor1test123456789abcdefghijklmnop';
+const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
 
 test.describe('Visual Regression - Layout', () => {
   test('homepage renders correctly', async ({ page }) => {
@@ -101,7 +101,7 @@ test.describe('Edge Cases', () => {
     const input = page.getByPlaceholder('thor1...');
     await input.fill(longAddress);
     await page.getByRole('button', { name: 'Lookup' }).click();
-    await expect(page.getByText('Invalid address length')).toBeVisible();
+    await expect(page.getByText('Enter a valid THORChain address.')).toBeVisible();
   });
 
   test('handles special characters in address', async ({ page }) => {
@@ -109,7 +109,7 @@ test.describe('Edge Cases', () => {
     const input = page.getByPlaceholder('thor1...');
     await input.fill('thor1!@#$%^&*()');
     await page.getByRole('button', { name: 'Lookup' }).click();
-    await expect(page.getByText('Invalid address length')).toBeVisible();
+    await expect(page.getByText('Enter a valid THORChain address.')).toBeVisible();
   });
 
   test('handles empty dashboard URL without address', async ({ page }) => {

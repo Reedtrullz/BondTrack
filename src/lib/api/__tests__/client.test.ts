@@ -18,6 +18,7 @@ describe('API client proxy fetchers', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     vi.useRealTimers();
   });
 
@@ -78,5 +79,35 @@ describe('API client proxy fetchers', () => {
 
     await expectation;
     expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it('uses absolute upstream URLs when called from a server runtime', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(jsonResponse({ health: 'ok' }));
+    vi.stubGlobal('window', undefined);
+    vi.stubEnv('MIDGARD_API_URL', 'https://midgard.example');
+
+    await expect(fetchMidgard('/v2/health')).resolves.toEqual({ health: 'ok' });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://midgard.example/v2/health',
+      expect.objectContaining({
+        headers: { Accept: 'application/json' },
+      })
+    );
+  });
+
+  it('normalizes THORNode server bases that already include the thorchain segment', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(jsonResponse({ nodes: [] }));
+    vi.stubGlobal('window', undefined);
+    vi.stubEnv('THORNODE_API_URL', 'https://thornode.example/thorchain');
+
+    await fetchThornode('/thorchain/nodes');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://thornode.example/thorchain/nodes',
+      expect.any(Object)
+    );
   });
 });

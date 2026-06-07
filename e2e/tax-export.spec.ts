@@ -1,6 +1,6 @@
 import { expect, test, type Page } from './fixtures';
 
-const MOCK_ADDRESS = 'thor1test123456789abcdefghijklmnop';
+const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
 
 const mockNodes = [
   {
@@ -146,7 +146,7 @@ async function setupMocks(page: Page) {
       return;
     }
 
-    if (url.pathname === '/api/midgard/v2/bonds/thor1test123456789abcdefghijklmnop') {
+    if (url.pathname === '/api/midgard/v2/bonds/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq') {
       await route.fulfill({ json: mockBondDetails });
       return;
     }
