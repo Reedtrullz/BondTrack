@@ -5,6 +5,7 @@ import { BondPosition } from '@/lib/types/node';
 import { cn } from '@/lib/utils';
 import { useNodeRankings } from '@/lib/hooks/use-node-rankings';
 import { AlertTriangle, ShieldCheck, Zap } from 'lucide-react';
+import { formatCompactNumber } from '@/lib/utils/formatters';
 
 interface RiskHeatmapProps {
   positions: BondPosition[];
@@ -58,11 +59,6 @@ export function RiskHeatmap({ positions, onNodeSelect }: RiskHeatmapProps) {
     return 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400';
   };
 
-  const formatRune = (val: number) => {
-    if (val >= 1000) return `${(val/1000).toFixed(1)}k`;
-    return val.toFixed(0);
-  };
-
   return (
     <div className="p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
       <div className="flex items-center justify-between mb-6">
@@ -107,7 +103,7 @@ export function RiskHeatmap({ positions, onNodeSelect }: RiskHeatmapProps) {
                   >
                     {cell.nodes.length > 0 && (
                       <div className="flex flex-col items-center">
-                        <span className="text-lg font-bold leading-none">{formatRune(cell.totalBond)}</span>
+                        <span className="text-lg font-bold leading-none">{formatCompactNumber(cell.totalBond)}</span>
                         <span className="text-[9px] uppercase font-bold opacity-60">RUNE</span>
                         <div className="mt-1 px-1.5 py-0.5 rounded-full bg-white/50 dark:bg-black/30 text-[8px] font-bold">
                           {cell.nodes.length} Nodes

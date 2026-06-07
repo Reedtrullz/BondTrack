@@ -14,8 +14,7 @@ import { useWalletBalance } from '@/lib/hooks/use-wallet-balance';
 import { ChurnCountdown } from '@/components/dashboard/churn-countdown';
 import { formatRuneFromNumber } from '@/lib/utils/formatters';
 import { getTHORNameReverseLookupNoRetry as getTHORNameReverseLookup } from '@/lib/api/midgard';
-
-const THORNAME_CACHE_PREFIX = 'thorname-rlookup:';
+import { getThorNameReverseLookupStorageKey } from '@/lib/storage/keys';
 
 const SWR_KEYS = [
   'nodes',
@@ -83,7 +82,7 @@ export function DashboardShell({
     let cancelled = false;
 
     if (typeof window !== 'undefined') {
-      const cachedThorName = sessionStorage.getItem(`${THORNAME_CACHE_PREFIX}${address}`);
+      const cachedThorName = sessionStorage.getItem(getThorNameReverseLookupStorageKey(address));
 
       if (cachedThorName) {
         setThorName(cachedThorName === '__none__' ? null : cachedThorName);
@@ -105,7 +104,7 @@ export function DashboardShell({
 
         if (typeof window !== 'undefined') {
           sessionStorage.setItem(
-            `${THORNAME_CACHE_PREFIX}${address}`,
+            getThorNameReverseLookupStorageKey(address),
             resolvedThorName ?? '__none__'
           );
         }
@@ -117,7 +116,7 @@ export function DashboardShell({
           // Cache the absence to avoid repeated retries on failure
           if (typeof window !== 'undefined') {
             sessionStorage.setItem(
-              `${THORNAME_CACHE_PREFIX}${address}`,
+              getThorNameReverseLookupStorageKey(address),
               '__none__'
             );
           }

@@ -7,18 +7,33 @@ interface RateLimitEntry {
 
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
-// Prevent unbounded memory growth — cap the store at 10000 entries
-const MAX_ENTRIES = 10000;
+// Single-process, best-effort limiter. In serverless/multi-process deployments each
+// process keeps its own store, so this reduces accidental bursts but is not a
+// durable abuse-prevention boundary. Prevent unbounded memory growth by capping
+// the in-memory store at 10000 live entries.
+export const RATE_LIMIT_MAX_ENTRIES = 10000;
 
-// Clean up expired entries every 10 minutes
-setInterval(() => {
-  const now = Date.now();
+function cleanupExpiredEntries(now = Date.now()): void {
   for (const [key, entry] of rateLimitStore.entries()) {
     if (entry.resetAt < now) {
       rateLimitStore.delete(key);
     }
   }
-}, 10 * 60 * 1000);
+}
+
+export function __resetRateLimitStoreForTests(): void {
+  if (process.env.NODE_ENV !== 'test') return;
+  rateLimitStore.clear();
+}
+
+export function __getRateLimitStoreSizeForTests(): number {
+  if (process.env.NODE_ENV !== 'test') return 0;
+  return rateLimitStore.size;
+}
+
+// Clean up expired entries every 10 minutes
+const cleanupTimer = setInterval(() => cleanupExpiredEntries(), 10 * 60 * 1000);
+cleanupTimer.unref?.();
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -26,11 +41,18 @@ export interface RateLimitResult {
   resetAt: number;
 }
 
-// Simple IP validation — rejects obviously spoofed values
+// Simple IP validation — rejects obviously spoofed values. Trust still comes from
+// the deployment proxy that sets these headers; client-supplied spoofed headers
+// can only be treated as best effort here.
 function isValidIp(value: string): boolean {
-  // IPv4: 0.0.0.0 - 255.255.255.255
-  // IPv6: allow hex/colon patterns
-  return /^[\d.]+$/.test(value) || /^[0-9a-fA-F:.]+$/.test(value);
+  const trimmed = value.trim();
+  const ipv4Parts = trimmed.split('.');
+  if (ipv4Parts.length === 4 && ipv4Parts.every((part) => /^\d{1,3}$/.test(part))) {
+    return ipv4Parts.every((part) => Number(part) >= 0 && Number(part) <= 255);
+  }
+
+  // IPv6: allow only hex/colon patterns with at least one colon.
+  return trimmed.includes(':') && /^[0-9a-fA-F:]+$/.test(trimmed);
 }
 
 export function getClientIp(request: NextRequest): string {
@@ -65,8 +87,9 @@ export function checkRateLimit(
   const entry = rateLimitStore.get(identifier);
 
   if (!entry || entry.resetAt < now) {
+    cleanupExpiredEntries(now);
     // Enforce store size limit before adding new entries
-    if (!entry && rateLimitStore.size >= MAX_ENTRIES) {
+    if (!entry && rateLimitStore.size >= RATE_LIMIT_MAX_ENTRIES) {
       return {
         allowed: false,
         remaining: 0,

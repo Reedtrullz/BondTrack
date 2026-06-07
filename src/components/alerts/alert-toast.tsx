@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, ShieldAlert, Activity, AlertCircle, X, Bell, BellOff } from 'lucide-react';
 import type { Alert, AlertType } from '@/lib/hooks/use-alerts';
 import { Button } from '@/components/ui/button';
+import { STORAGE_KEYS } from '@/lib/storage/keys';
 
 interface AlertToastProps {
   alerts: Alert[];
@@ -12,7 +13,7 @@ interface AlertToastProps {
   onRequestPermission: () => Promise<boolean>;
 }
 
-const NOTIFICATION_PROMPT_DISMISSED_KEY = 'heimdall-notification-prompt-dismissed';
+const NOTIFICATION_PROMPT_DISMISSED_KEY = STORAGE_KEYS.notificationPromptDismissed;
 
 function getAlertIcon(type: AlertType) {
   switch (type) {

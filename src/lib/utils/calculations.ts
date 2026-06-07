@@ -1,5 +1,5 @@
 import { NETWORK } from '../config';
-import { runeToNumber } from './formatters';
+import { rawRuneToDisplayNumber } from './formatters';
 
 /**
  * Calculate a bond provider's share of a node's total bond.
@@ -32,10 +32,10 @@ export function calculateAPY(
     award = numericValue || 0;
   } else {
     // 1e8 units - convert to RUNE
-    award = Number(BigInt(currentAward || '0')) / 1e8;
+    award = rawRuneToDisplayNumber(currentAward);
   }
   
-  const bond = runeToNumber(bondAmount);
+  const bond = rawRuneToDisplayNumber(bondAmount);
   if (bond === 0) return 0;
 
   const operatorFeeDecimal = operatorFeeBps / 10000;
@@ -60,7 +60,7 @@ export function calculatePerChurnReward(
   currentAward: string,
   operatorFeeBps: number
 ): number {
-  const award = runeToNumber(currentAward);
+  const award = rawRuneToDisplayNumber(currentAward);
   const operatorFeeDecimal = operatorFeeBps / 10000;
   return (bondSharePercent / 100) * award * (1 - operatorFeeDecimal);
 }
@@ -174,10 +174,10 @@ export function calculateLpPnl(
   runeCurrentPrice: number,
   asset2CurrentPrice: number
 ): { pnl: number; pnlPercent: number; runePnl: number; asset2Pnl: number } {
-  const runeDepositedNum = runeToNumber(runeDeposited);
-  const asset2DepositedNum = runeToNumber(asset2Deposited);
-  const runeWithdrawableNum = runeToNumber(runeWithdrawable);
-  const asset2WithdrawableNum = runeToNumber(asset2Withdrawable);
+  const runeDepositedNum = rawRuneToDisplayNumber(runeDeposited);
+  const asset2DepositedNum = rawRuneToDisplayNumber(asset2Deposited);
+  const runeWithdrawableNum = rawRuneToDisplayNumber(runeWithdrawable);
+  const asset2WithdrawableNum = rawRuneToDisplayNumber(asset2Withdrawable);
   
   const runeDepositedValue = runeDepositedNum * runeEntryPrice;
   const asset2DepositedValue = asset2DepositedNum * asset2EntryPrice;
@@ -213,8 +213,8 @@ export function calculateLpWithdrawableAmounts(
     return { runeWithdrawable: '0', asset2Withdrawable: '0', runeDeposited: runeDeposit, asset2Deposited: asset2Deposit };
   }
   
-  const runeDepthNum = runeToNumber(runeDepth || '0');
-  const asset2DepthNum = runeToNumber(asset2Depth || '0');
+  const runeDepthNum = rawRuneToDisplayNumber(runeDepth || '0');
+  const asset2DepthNum = rawRuneToDisplayNumber(asset2Depth || '0');
   
   if (runeDepthNum <= 0 || asset2DepthNum <= 0) {
     return { runeWithdrawable: runeDeposit, asset2Withdrawable: asset2Deposit, runeDeposited: runeDeposit, asset2Deposited: asset2Deposit };
@@ -251,8 +251,8 @@ export function calculateAssetPriceFromPoolDepth(
   assetDepth: string,
   runePrice: number
 ): number {
-  const runeDepthNum = runeToNumber(runeDepth);
-  const assetDepthNum = runeToNumber(assetDepth);
+  const runeDepthNum = rawRuneToDisplayNumber(runeDepth);
+  const assetDepthNum = rawRuneToDisplayNumber(assetDepth);
   
   if (assetDepthNum === 0) return 0;
   

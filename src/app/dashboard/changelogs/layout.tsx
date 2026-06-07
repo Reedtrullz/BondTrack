@@ -17,6 +17,9 @@ function ChangelogsLoading() {
 }
 
 export default function ChangelogsLayout() {
+  // Intentional route boundary: changelogs/page.tsx uses useSearchParams(), so this
+  // client layout owns the Suspense fallback for this segment instead of relying
+  // on the parent dashboard Suspense to avoid a full-shell loading flash.
   return (
     <Suspense fallback={<ChangelogsLoading />}>
       <ChangelogsPage />

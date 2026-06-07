@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { SWRConfig } from 'swr';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useLpPositions } from '../use-lp-positions';
+import { __clearLpHistoricalCachesForTests, useLpPositions } from '../use-lp-positions';
 import * as midgard from '../../api/midgard';
 
 vi.mock('../../api/midgard');
@@ -65,6 +65,7 @@ const successfulPools = [
 describe('useLpPositions', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    __clearLpHistoricalCachesForTests();
     vi.mocked(midgard.getRunePriceHistory).mockResolvedValue({
       intervals: [{
         startTime: '1776902400',
@@ -335,5 +336,149 @@ describe('useLpPositions', () => {
       dateFirstAdded: '1700000000',
       dateLastAdded: '1700500000',
     });
+  });
+
+  it('caches historical RUNE day lookups while still requesting pool-specific history once per pool', async () => {
+    vi.mocked(midgard.getMemberDetails).mockResolvedValueOnce({
+      pools: [
+        {
+          ...successfulMemberDetails.pools[0],
+          pool: 'BTC.BTC',
+          assetAddress: 'bc1member',
+          dateFirstAdded: '1700000000',
+        },
+        {
+          ...successfulMemberDetails.pools[0],
+          pool: 'ETH.ETH',
+          assetAddress: '0xmember',
+          dateFirstAdded: '1700000100',
+        },
+      ],
+    } as never);
+    vi.mocked(midgard.getPools).mockResolvedValueOnce([
+      { ...successfulPools[0], asset: 'BTC.BTC', runeDepth: '250000000000', assetDepth: '500000000000' },
+      { ...successfulPools[0], asset: 'ETH.ETH', runeDepth: '250000000000', assetDepth: '500000000000' },
+    ] as never);
+    vi.mocked(midgard.getHistoricalRunePrice).mockResolvedValue(0.5 as never);
+    vi.mocked(midgard.getPoolHistoryAtTimestamp).mockResolvedValue({
+      timestamp: 1700000000,
+      runeDepth: '250000000000',
+      assetDepth: '500000000000',
+      liquidityUnits: '1000',
+    });
+
+    const { result } = renderHook(() => useLpPositions('thor1cache'), { wrapper });
+
+    await waitFor(() => expect(result.current.state).toBe('ready'));
+
+    expect(result.current.positions).toHaveLength(2);
+    expect(midgard.getHistoricalRunePrice).toHaveBeenCalledTimes(1);
+    expect(midgard.getPoolHistoryAtTimestamp).toHaveBeenCalledTimes(2);
+  });
+
+  it('evicts rejected historical RUNE day lookups so a later enrichment can retry the same day', async () => {
+    const memberWithHistory = {
+      pools: [{
+        ...successfulMemberDetails.pools[0],
+        dateFirstAdded: '1700000000',
+      }],
+    };
+    vi.mocked(midgard.getMemberDetails).mockResolvedValue(memberWithHistory as never);
+    vi.mocked(midgard.getPools).mockResolvedValue([
+      { ...successfulPools[0], liquidityUnits: '1000', runeDepth: '250000000000', assetDepth: '500000000000' },
+    ] as never);
+    vi.mocked(midgard.getHistoricalRunePrice)
+      .mockRejectedValueOnce(new Error('API error: 500 temporary historical price failure'))
+      .mockResolvedValueOnce(0.5 as never);
+    vi.mocked(midgard.getPoolHistoryAtTimestamp).mockResolvedValue({
+      timestamp: 1700000000,
+      runeDepth: '250000000000',
+      assetDepth: '500000000000',
+      liquidityUnits: '1000',
+    });
+
+    const first = renderHook(() => useLpPositions('thor1historicalfail'), { wrapper });
+
+    await waitFor(() => expect(first.result.current.isHistoricalEnrichmentLoading).toBe(false));
+    expect(first.result.current.positions[0].pricingSource).toBe('current-only');
+    expect(midgard.getHistoricalRunePrice).toHaveBeenCalledTimes(1);
+    first.unmount();
+
+    const second = renderHook(() => useLpPositions('thor1historicalretry'), { wrapper });
+
+    await waitFor(() => expect(second.result.current.positions[0].pricingSource).toBe('historical'));
+    expect(midgard.getHistoricalRunePrice).toHaveBeenCalledTimes(2);
+    expect(second.result.current.positions[0]).toMatchObject({
+      entryRunePriceUsd: 0.5,
+      pricingSource: 'historical',
+    });
+  });
+
+  it('evicts rejected pool history lookups so a later enrichment can retry the same pool/day', async () => {
+    const memberWithHistory = {
+      pools: [{
+        ...successfulMemberDetails.pools[0],
+        dateFirstAdded: '1700000000',
+      }],
+    };
+    vi.mocked(midgard.getMemberDetails).mockResolvedValue(memberWithHistory as never);
+    vi.mocked(midgard.getPools).mockResolvedValue([
+      { ...successfulPools[0], liquidityUnits: '1000', runeDepth: '250000000000', assetDepth: '500000000000' },
+    ] as never);
+    vi.mocked(midgard.getHistoricalRunePrice).mockResolvedValue(0.5 as never);
+    vi.mocked(midgard.getPoolHistoryAtTimestamp)
+      .mockRejectedValueOnce(new Error('API error: 500 temporary pool history failure'))
+      .mockResolvedValueOnce({
+        timestamp: 1700000000,
+        runeDepth: '250000000000',
+        assetDepth: '500000000000',
+        liquidityUnits: '1000',
+      });
+
+    const first = renderHook(() => useLpPositions('thor1poolhistoryfail'), { wrapper });
+
+    await waitFor(() => expect(first.result.current.isHistoricalEnrichmentLoading).toBe(false));
+    expect(first.result.current.positions[0].pricingSource).toBe('current-only');
+    expect(midgard.getPoolHistoryAtTimestamp).toHaveBeenCalledTimes(1);
+    first.unmount();
+
+    const second = renderHook(() => useLpPositions('thor1poolhistoryretry'), { wrapper });
+
+    await waitFor(() => expect(second.result.current.positions[0].pricingSource).toBe('historical'));
+    expect(midgard.getPoolHistoryAtTimestamp).toHaveBeenCalledTimes(2);
+  });
+
+  it('clears historical caches and refetches enrichment data when retry is requested', async () => {
+    vi.mocked(midgard.getMemberDetails).mockResolvedValue({
+      pools: [{
+        ...successfulMemberDetails.pools[0],
+        dateFirstAdded: '1700000000',
+      }],
+    } as never);
+    vi.mocked(midgard.getPools).mockResolvedValue([
+      { ...successfulPools[0], liquidityUnits: '1000', runeDepth: '250000000000', assetDepth: '500000000000' },
+    ] as never);
+    vi.mocked(midgard.getHistoricalRunePrice)
+      .mockRejectedValueOnce(new Error('API error: 500 temporary historical price failure'))
+      .mockResolvedValueOnce(0.5 as never);
+    vi.mocked(midgard.getPoolHistoryAtTimestamp).mockResolvedValue({
+      timestamp: 1700000000,
+      runeDepth: '250000000000',
+      assetDepth: '500000000000',
+      liquidityUnits: '1000',
+    });
+
+    const { result } = renderHook(() => useLpPositions('thor1retryhistorical'), { wrapper });
+
+    await waitFor(() => expect(result.current.isHistoricalEnrichmentLoading).toBe(false));
+    expect(result.current.positions[0].pricingSource).toBe('current-only');
+    expect(midgard.getHistoricalRunePrice).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await result.current.retry();
+    });
+
+    await waitFor(() => expect(result.current.positions[0].pricingSource).toBe('historical'));
+    expect(midgard.getHistoricalRunePrice).toHaveBeenCalledTimes(2);
   });
 });

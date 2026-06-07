@@ -90,4 +90,32 @@ describe('LpSummaryCard', () => {
     expect(screen.getByText('Requires historical entry pricing')).toBeInTheDocument();
     expect(screen.queryByText(/LP yield/)).not.toBeInTheDocument();
   });
+
+  it('labels degraded metrics as enriching while historical pricing is still loading', () => {
+    render(
+      <LpSummaryCard
+        isHistoricalEnrichmentLoading
+        position={{
+          ...basePosition,
+          netProfitLoss: 'Current value only',
+          netProfitLossUsd: null,
+          netProfitLossPercent: null,
+          impermanentLossUsd: null,
+          impermanentLossPercent: null,
+          impermanentLossValue: null,
+          entryRunePriceUsd: null,
+          entryAssetPriceUsd: null,
+          pricingSource: 'current-only',
+          runeEntryPrice: null,
+          asset2EntryPrice: null,
+        }}
+      />
+    );
+
+    expect(screen.getAllByText('Enriching...')).toHaveLength(2);
+    expect(screen.getByText('Historical entry loading')).toBeInTheDocument();
+    expect(screen.getByText('Awaiting historical entry pricing')).toBeInTheDocument();
+    expect(screen.queryByText('Historical entry unavailable')).not.toBeInTheDocument();
+    expect(screen.queryByText('Requires historical entry pricing')).not.toBeInTheDocument();
+  });
 });

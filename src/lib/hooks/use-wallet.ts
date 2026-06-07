@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import '@/lib/types/wallet';
+import { STORAGE_KEYS } from '@/lib/storage/keys';
 
 export type WalletType = 'keplr' | 'xdefi' | 'vultisig' | null;
 
@@ -202,7 +203,7 @@ export function useWallet() {
 
     const wallet = detectWallet();
     if (wallet && !state.isConnected) {
-      const stored = localStorage.getItem('wallet-connected');
+      const stored = localStorage.getItem(STORAGE_KEYS.walletConnected);
       if (stored === wallet) {
         connectRef.current(wallet);
       }
@@ -211,9 +212,9 @@ export function useWallet() {
 
   useEffect(() => {
     if (state.isConnected && state.walletType) {
-      localStorage.setItem('wallet-connected', state.walletType);
+      localStorage.setItem(STORAGE_KEYS.walletConnected, state.walletType);
     } else {
-      localStorage.removeItem('wallet-connected');
+      localStorage.removeItem(STORAGE_KEYS.walletConnected);
     }
   }, [state.isConnected, state.walletType]);
 

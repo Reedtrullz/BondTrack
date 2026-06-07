@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { STORAGE_KEYS } from '@/lib/storage/keys';
 
 export interface PendingTransaction {
   txHash: string;
@@ -11,7 +12,7 @@ export interface PendingTransaction {
   status: 'pending' | 'confirmed' | 'failed';
 }
 
-const STORAGE_KEY = 'heimdall-pending-txs';
+const STORAGE_KEY = STORAGE_KEYS.pendingTransactions;
 const TIMEOUT_MS = 10 * 60 * 1000;
 
 // Lazy initializer for pending transactions from localStorage

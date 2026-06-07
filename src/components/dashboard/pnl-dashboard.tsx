@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { BondPosition } from '@/lib/types/node';
 import { calculatePricePnL, calculateTotalReturn } from '@/lib/utils/calculations';
 import { TrendingUp, DollarSign, Percent, Wallet, Edit3, Check, X, AlertTriangle, Loader2 } from 'lucide-react';
+import { getEntryPriceStorageKey, getInitialBondStorageKey } from '@/lib/storage/keys';
 
 interface PnLDashboardProps {
   positions: BondPosition[];
@@ -28,23 +29,11 @@ interface PnLDashboardProps {
 }
 
 function getStorageKey(address: string | null): string | null {
-  if (!address) return null;
-  return `heimdall-initial-bond-${address}`;
+  return getInitialBondStorageKey(address);
 }
 
 function getEntryPriceKey(address: string | null): string {
-  if (!address) return '';
-  return `heimdall-entry-price-${address}`;
-}
-
-function getLegacyStorageKey(address: string | null): string | null {
-  if (!address) return null;
-  return `heimdall-initial-bond-${address}`;
-}
-
-function getLegacyEntryPriceKey(address: string | null): string | null {
-  if (!address) return null;
-  return `heimdall-entry-price-${address}`;
+  return getEntryPriceStorageKey(address) ?? '';
 }
 
 export function PnLDashboard({
@@ -75,7 +64,7 @@ export function PnLDashboard({
       return;
     }
 
-    const saved = localStorage.getItem(storageKey) ?? (getLegacyStorageKey(address) ? localStorage.getItem(getLegacyStorageKey(address)!) : null);
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       const parsed = parseFloat(saved);
       if (!isNaN(parsed) && parsed > 0) {
@@ -95,7 +84,7 @@ export function PnLDashboard({
       return;
     }
 
-    const saved = localStorage.getItem(entryPriceKey) ?? (getLegacyEntryPriceKey(address) ? localStorage.getItem(getLegacyEntryPriceKey(address)!) : null);
+    const saved = localStorage.getItem(entryPriceKey);
     if (saved) {
       const parsed = parseFloat(saved);
       if (!isNaN(parsed) && parsed > 0) {

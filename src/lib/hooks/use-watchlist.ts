@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { STORAGE_KEYS } from '@/lib/storage/keys';
 
-const STORAGE_KEY = 'heimdall-watchlist';
+const STORAGE_KEY = STORAGE_KEYS.watchlist;
 
 // THORChain address validation regex
 // Mainnet addresses start with 'thor' and are Base58 encoded (42-62 chars)

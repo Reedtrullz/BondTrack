@@ -1,46 +1,21 @@
 'use client';
 
-import { useChangelogs, getTypeLabel, getTypeIcon, getTypeBadgeStyle, ChangelogItem, ChangelogEntry } from '@/lib/hooks/use-changelogs';
-import { Search, ChevronDown, X, SearchX, Zap, FileText, Link as LinkIcon, Rocket, Wrench, ScrollText, Eye } from 'lucide-react';
+import { useChangelogs, getTypeLabel, getTypeIcon, getTypeBadgeStyle } from '@/lib/hooks/use-changelogs';
+import { Search, ChevronDown, X, SearchX, Link as LinkIcon, ScrollText, Eye } from 'lucide-react';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { STORAGE_KEYS } from '@/lib/storage/keys';
+import {
+  buildChangelogQuery,
+  extractYears,
+  FILTER_OPTIONS,
+  type FilterType,
+  matchesFilter,
+  parseTypeFilter,
+} from './filters';
 
-type FilterType = 'all' | ChangelogEntry['type'];
-
-const FILTER_OPTIONS: { value: FilterType; label: string; icon: React.ReactNode }[] = [
-  { value: 'all', label: 'All', icon: <Zap className="w-3 h-3" /> },
-  { value: 'update', label: 'Update', icon: <Zap className="w-3 h-3" /> },
-  { value: 'adr', label: 'ADR', icon: <FileText className="w-3 h-3" /> },
-  { value: 'chain', label: 'Chain', icon: <LinkIcon className="w-3 h-3" /> },
-  { value: 'feature', label: 'Feature', icon: <Rocket className="w-3 h-3" /> },
-  { value: 'bug', label: 'Bug', icon: <Wrench className="w-3 h-3" /> },
-];
-
-const STORAGE_KEY = 'changelogs-expanded';
-
-function buildChangelogQuery(currentParams: URLSearchParams, searchQuery: string, typeFilter: FilterType): string {
-  const params = new URLSearchParams(currentParams.toString());
-
-  if (searchQuery.trim()) {
-    params.set('q', searchQuery);
-  } else {
-    params.delete('q');
-  }
-
-  if (typeFilter !== 'all') {
-    params.set('type', typeFilter);
-  } else {
-    params.delete('type');
-  }
-
-  const queryString = params.toString();
-  return queryString ? `?${queryString}` : '';
-}
-
-function parseTypeFilter(value: string | null): FilterType {
-  const normalizedValue = value?.toLowerCase();
-  return FILTER_OPTIONS.some(option => option.value === normalizedValue) ? (normalizedValue as FilterType) : 'all';
-}
+const STORAGE_KEY = STORAGE_KEYS.changelogsExpanded;
+const ENTRY_STORAGE_KEY = STORAGE_KEYS.changelogsExpandedEntries;
 
 const TC = {
   blue: '#00CCFF',
@@ -49,32 +24,6 @@ const TC = {
   red: '#FF4954',
   turquoise: '#23DDC8',
 };
-
-function extractYears(changelogs: ChangelogItem[]): number[] {
-  const years = new Set<number>();
-  changelogs.forEach(item => {
-    if (item.sortDate) {
-      const year = parseInt(item.sortDate.split('-')[0], 10);
-      if (!isNaN(year)) years.add(year);
-    }
-  });
-  return Array.from(years).sort();
-}
-
-export function matchesFilter(entry: ChangelogEntry, searchQuery: string, typeFilter: FilterType): boolean {
-  const matchesType = typeFilter === 'all' || entry.type === typeFilter;
-  
-  if (!searchQuery.trim()) {
-    return matchesType;
-  }
-  
-  const query = searchQuery.toLowerCase();
-  const matchesSearch = 
-    entry.title.toLowerCase().includes(query) || 
-    entry.description.toLowerCase().includes(query);
-  
-  return matchesType && matchesSearch;
-}
 
 function HighlightText({ text, highlight }: { text: string; highlight: string }) {
   if (!highlight.trim()) return <>{text}</>;
@@ -144,7 +93,7 @@ export default function ChangelogsPage() {
   // Handle local state initialization on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedEntries = localStorage.getItem(`${STORAGE_KEY}-entries`);
+      const savedEntries = localStorage.getItem(ENTRY_STORAGE_KEY);
       if (savedEntries) {
         try {
           const parsed = JSON.parse(savedEntries);
@@ -177,7 +126,7 @@ export default function ChangelogsPage() {
 
       const next = { ...prev, [changelogId]: nextEntries };
       if (typeof window !== 'undefined') {
-        localStorage.setItem(`${STORAGE_KEY}-entries`, JSON.stringify(next));
+        localStorage.setItem(ENTRY_STORAGE_KEY, JSON.stringify(next));
       }
       return next;
     });

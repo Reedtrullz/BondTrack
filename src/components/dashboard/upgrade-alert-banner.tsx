@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getUpgradeAlertDismissedStorageKey } from '@/lib/storage/keys';
 
 interface UpgradeAlertBannerProps {
   currentVersion: string;
@@ -12,7 +13,7 @@ interface UpgradeAlertBannerProps {
 }
 
 function getDismissKey(latestVersion: string) {
-  return `dismissed_upgrade_v${latestVersion}`;
+  return getUpgradeAlertDismissedStorageKey(latestVersion);
 }
 
 export function UpgradeAlertBanner({ currentVersion, latestVersion, onDismiss }: UpgradeAlertBannerProps) {

@@ -10,13 +10,13 @@ import TaxExport from '@/components/dashboard/tax-export';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Coins, Calculator, FileSpreadsheet, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Coins, Calculator, FileSpreadsheet, ArrowLeft, AlertTriangle, Loader2 } from 'lucide-react';
 import { formatUsd } from '@/lib/utils/formatters';
 
 export default function LpPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
-  const { positions, isLoading, error, retry } = useLpPositions(address);
+  const { positions, isLoading, isHistoricalEnrichmentLoading, error, retry } = useLpPositions(address);
   const [activeTab, setActiveTab] = useState('positions');
 
   // Calculate total LP stats
@@ -29,16 +29,18 @@ export default function LpPage() {
     },
     { totalValue: 0, totalPnl: 0, totalIl: 0 }
   ) ?? { totalValue: 0, totalPnl: 0, totalIl: 0 };
-  const hasUntrustedPerformance = positions?.some(
+  const hasUntrustedPerformance = isHistoricalEnrichmentLoading || (positions?.some(
     (position) =>
       position.pricingSource === 'current-only' ||
       position.netProfitLossUsd === null ||
       position.impermanentLossUsd === null
-  ) ?? false;
+  ) ?? false);
+  const performancePendingLabel = isHistoricalEnrichmentLoading ? 'Enriching...' : 'Unavailable';
 
   // Count positions lacking historical pricing
   const positionsWithoutHistory = positions?.filter(p => p.pricingSource === 'current-only') ?? [];
-  const showPricingWarning = positionsWithoutHistory.length > 0;
+  const showHistoricalEnrichmentNotice = isHistoricalEnrichmentLoading && positionsWithoutHistory.length > 0;
+  const showPricingWarning = !showHistoricalEnrichmentNotice && positionsWithoutHistory.length > 0;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -60,6 +62,21 @@ export default function LpPage() {
           </p>
         </div>
       </div>
+
+      {/* Historical Enrichment Banner */}
+      {showHistoricalEnrichmentNotice && (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-blue-800 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300">
+          <Loader2 className="mt-0.5 h-5 w-5 flex-shrink-0 animate-spin" />
+          <div>
+            <p className="font-medium">
+              Historical entry pricing is still enriching for {positionsWithoutHistory.length} position{positionsWithoutHistory.length !== 1 ? 's' : ''}.
+            </p>
+            <p className="mt-1 text-sm opacity-90">
+              Current LP value is live; Net P/L and impermanent loss totals will appear once enrichment completes.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Pricing Warning Banner */}
       {showPricingWarning && (
@@ -126,7 +143,7 @@ export default function LpPage() {
                       : 'text-[var(--color-danger)]'
                 }`}>
                   {hasUntrustedPerformance
-                    ? 'Unavailable'
+                    ? performancePendingLabel
                     : `${totalStats.totalPnl >= 0 ? '+' : ''}${formatUsd(totalStats.totalPnl)}`}
                 </div>
               </CardContent>
@@ -135,7 +152,7 @@ export default function LpPage() {
               <CardContent className="p-4">
                 <div className="text-sm text-zinc-500">Total Impermanent Loss</div>
                 <div className="text-2xl font-bold font-display text-[var(--color-danger)]">
-                  {hasUntrustedPerformance ? 'Unavailable' : `-${formatUsd(totalStats.totalIl)}`}
+                  {hasUntrustedPerformance ? performancePendingLabel : `-${formatUsd(totalStats.totalIl)}`}
                 </div>
               </CardContent>
             </Card>
@@ -168,7 +185,11 @@ export default function LpPage() {
               ) : (
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                   {positions.map((position) => (
-                    <LpSummaryCard key={position.pool} position={position} />
+                    <LpSummaryCard
+                      key={position.pool}
+                      position={position}
+                      isHistoricalEnrichmentLoading={isHistoricalEnrichmentLoading}
+                    />
                   ))}
                 </div>
               )}
@@ -181,7 +202,10 @@ export default function LpPage() {
 
             {/* Tax Export Tab */}
             <TabsContent value="tax-export">
-              <TaxExport address={address} />
+              <TaxExport
+                address={address}
+                isHistoricalEnrichmentLoading={isHistoricalEnrichmentLoading}
+              />
             </TabsContent>
           </Tabs>
         </>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { BondPosition } from '@/lib/types/node';
+import { STORAGE_KEYS } from '@/lib/storage/keys';
 
 export type AlertType = 'SLASH_INCREASE' | 'JAIL' | 'CHURN_RISK' | 'NODE_STATUS_CHANGE';
 
@@ -21,7 +22,7 @@ export interface AlertPreferences {
   statusAlerts: boolean;
 }
 
-const STORAGE_KEY = 'heimdall-alerts';
+const STORAGE_KEY = STORAGE_KEYS.alerts;
 const RATE_LIMIT_MS = 5 * 60 * 1000;
 
 // Lazy initializer for alerts from localStorage

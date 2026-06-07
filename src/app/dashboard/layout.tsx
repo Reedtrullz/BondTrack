@@ -11,20 +11,11 @@ import { useProtocolVersion } from '@/lib/hooks/use-protocol-version';
 import { UpgradeAlertBanner } from '@/components/dashboard/upgrade-alert-banner';
 import Link from 'next/link';
 import { Home } from 'lucide-react';
-
-const BONDTRACK_ADDRESS = 'BONDTRACK_ADDRESS';
-const OLD_SESSION_KEY = 'dashboard-address';
-const OLD_LOCAL_KEY = 'thornode-watcher-last-address';
+import { clearLegacyDashboardAddressKeys, readDashboardAddress, STORAGE_KEYS, writeDashboardAddress } from '@/lib/storage/keys';
 
 function readSavedAddress() {
   if (typeof window === 'undefined') return null;
-
-  return (
-    localStorage.getItem(BONDTRACK_ADDRESS) ??
-    sessionStorage.getItem(OLD_SESSION_KEY) ??
-    localStorage.getItem(OLD_LOCAL_KEY) ??
-    null
-  );
+  return readDashboardAddress();
 }
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
@@ -42,10 +33,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const current = localStorage.getItem(BONDTRACK_ADDRESS);
+    const current = localStorage.getItem(STORAGE_KEYS.dashboardAddress);
     if (current) {
-      sessionStorage.removeItem(OLD_SESSION_KEY);
-      localStorage.removeItem(OLD_LOCAL_KEY);
+      clearLegacyDashboardAddressKeys();
       if (current !== savedAddress) {
         setSavedAddress(current);
       }
@@ -53,9 +43,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     }
 
     if (savedAddress) {
-      localStorage.setItem(BONDTRACK_ADDRESS, savedAddress);
-      sessionStorage.removeItem(OLD_SESSION_KEY);
-      localStorage.removeItem(OLD_LOCAL_KEY);
+      writeDashboardAddress(savedAddress);
+      clearLegacyDashboardAddressKeys();
     }
   }, [savedAddress]);
 
@@ -72,7 +61,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (typeof window === 'undefined' || !urlAddress) return;
-    localStorage.setItem(BONDTRACK_ADDRESS, urlAddress);
+    writeDashboardAddress(urlAddress);
     setSavedAddress(urlAddress);
   }, [urlAddress]);
 

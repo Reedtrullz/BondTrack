@@ -63,11 +63,12 @@ vi.mock('@/lib/hooks/use-lp-positions', () => ({
 }));
 
 vi.mock('@/components/dashboard/lp-summary-card', () => ({
-  LpSummaryCard: ({ position }: { position: { pool: string; poolStatus: string; runeDeposit: string; poolApy: number; ownershipPercent: number; dateFirstAdded: string; dateLastAdded: string } }) => (
+  LpSummaryCard: ({ position, isHistoricalEnrichmentLoading }: { position: { pool: string; poolStatus: string; runeDeposit: string; poolApy: number; ownershipPercent: number; dateFirstAdded: string; dateLastAdded: string }; isHistoricalEnrichmentLoading?: boolean }) => (
     <div>
       {position.pool} summary {position.poolStatus} {position.runeDeposit} {position.poolApy} {position.ownershipPercent}
       <span>Positions</span>
       <span>Last Activity</span>
+      <span>{isHistoricalEnrichmentLoading ? 'Card historical enrichment loading' : 'Card historical enrichment settled'}</span>
     </div>
   ),
 }));
@@ -196,5 +197,37 @@ describe('LpDashboardPage', () => {
     expect(await screen.findByText(/Historical entry pricing is unavailable for 1 position\./)).toBeInTheDocument();
     expect(screen.getByText(/Net P\/L and impermanent loss are hidden/i)).toBeInTheDocument();
     expect(screen.getAllByText('Unavailable')).toHaveLength(2);
+  });
+
+  it('labels in-flight historical enrichment without presenting performance as finally unavailable', async () => {
+    mockUseLpPositions.mockReturnValue({
+      positions: [{
+        ...basePosition,
+        pricingSource: 'current-only',
+        netProfitLoss: 'Current value only',
+        netProfitLossUsd: null,
+        netProfitLossPercent: null,
+        impermanentLossUsd: null,
+        impermanentLossPercent: null,
+        impermanentLossValue: null,
+        entryRunePriceUsd: null,
+        entryAssetPriceUsd: null,
+        runeEntryPrice: null,
+        asset2EntryPrice: null,
+      }],
+      isLoading: false,
+      isHistoricalEnrichmentLoading: true,
+      state: 'ready',
+      error: undefined,
+      retry: vi.fn(),
+    });
+
+    render(<LpDashboardPage />);
+
+    expect(await screen.findByText(/Historical entry pricing is still enriching for 1 position\./)).toBeInTheDocument();
+    expect(screen.getByText(/Net P\/L and impermanent loss totals will appear once enrichment completes/i)).toBeInTheDocument();
+    expect(screen.getAllByText('Enriching...')).toHaveLength(2);
+    expect(screen.queryByText(/Historical entry pricing is unavailable for 1 position\./)).not.toBeInTheDocument();
+    expect(screen.getByText('Card historical enrichment loading')).toBeInTheDocument();
   });
 });

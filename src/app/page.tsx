@@ -5,9 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AddressInput } from '@/components/shared/address-input';
 import { RecentAddresses } from '@/components/shared/recent-addresses';
 import { Eye, Activity, TrendingUp, Zap, Globe, Lock, Wallet } from 'lucide-react';
-
-const BONDTRACK_ADDRESS = 'BONDTRACK_ADDRESS';
-const OLD_LAST_ADDRESS_KEY = 'heimdall-last-address';
+import { readDashboardAddress, writeDashboardAddress } from '@/lib/storage/keys';
 
 export default function Home() {
   const router = useRouter();
@@ -15,20 +13,14 @@ export default function Home() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const oldAddress = localStorage.getItem(OLD_LAST_ADDRESS_KEY);
-    if (oldAddress && oldAddress.startsWith('thor1')) {
-      localStorage.setItem(BONDTRACK_ADDRESS, oldAddress);
-      localStorage.removeItem(OLD_LAST_ADDRESS_KEY);
-    }
-
-    const lastAddress = localStorage.getItem(BONDTRACK_ADDRESS);
+    const lastAddress = readDashboardAddress();
     if (lastAddress && lastAddress.startsWith('thor1')) {
       router.replace(`/dashboard?address=${encodeURIComponent(lastAddress)}`);
     }
   }, [router]);
 
   const handleAddressSubmit = (address: string) => {
-    localStorage.setItem(BONDTRACK_ADDRESS, address);
+    writeDashboardAddress(address);
     router.push(`/dashboard?address=${encodeURIComponent(address)}`);
   };
 

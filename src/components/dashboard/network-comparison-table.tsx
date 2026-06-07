@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
-import { runeToNumber } from '@/lib/utils/formatters';
+import { rawRuneToDisplayNumber, formatRuneDisplayNumber } from '@/lib/utils/formatters';
 import { ArrowUp, ArrowDown, Minus } from 'lucide-react';
 import React from 'react';
 
@@ -47,7 +47,7 @@ export function NetworkComparisonTable({ address }: { address: string | null }) 
     if (!allNodes || allNodes.length === 0) return null;
     const activeNodes = allNodes.filter(n => n.status === 'Active');
     if (activeNodes.length === 0) return null;
-    const totalBond = activeNodes.reduce((sum, n) => sum + runeToNumber(n.total_bond), 0);
+    const totalBond = activeNodes.reduce((sum, n) => sum + rawRuneToDisplayNumber(n.total_bond), 0);
     const totalSlash = activeNodes.reduce((sum, n) => sum + n.slash_points, 0);
     const totalFee = activeNodes.reduce((sum, n) => sum + Number(n.bond_providers?.node_operator_fee || 0), 0);
     const count = activeNodes.length;
@@ -62,7 +62,7 @@ export function NetworkComparisonTable({ address }: { address: string | null }) 
   if (isLoadingAll || isLoadingPositions) return null;
   if (!networkAverages || positions.length === 0) return null;
 
-  const formatRune = (v: number) => v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatRune = (v: number) => formatRuneDisplayNumber(v, 2);
 
   return (
     <div className="space-y-4">

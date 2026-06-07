@@ -10,15 +10,37 @@ import { runeToNumber } from '@/lib/utils/formatters';
 
 interface TaxExportProps {
   address: string | null;
+  isHistoricalEnrichmentLoading?: boolean;
 }
 
-export default function TaxExport({ address }: TaxExportProps) {
-  const { positions, isLoading, error } = useLpPositions(address);
+export default function TaxExport({ address, isHistoricalEnrichmentLoading: parentHistoricalEnrichmentLoading }: TaxExportProps) {
+  const {
+    positions,
+    isLoading,
+    isHistoricalEnrichmentLoading: hookHistoricalEnrichmentLoading,
+    error,
+  } = useLpPositions(address);
   const [exporting, setExporting] = useState(false);
   const [taxYear, setTaxYear] = useState<string>(new Date().getFullYear().toString());
+  const isHistoricalEnrichmentLoading = Boolean(
+    parentHistoricalEnrichmentLoading || hookHistoricalEnrichmentLoading
+  );
+  const positionsWithIncompleteHistoricalPricing = positions?.filter(
+    (position) =>
+      position.pricingSource === 'current-only' ||
+      position.depositedTotalValueUsd === null ||
+      position.netProfitLossUsd === null ||
+      position.impermanentLossUsd === null
+  ) ?? [];
+  const hasIncompleteHistoricalPricing = positionsWithIncompleteHistoricalPricing.length > 0;
+  const isExportDisabled = exporting
+    || !positions
+    || positions.length === 0
+    || isHistoricalEnrichmentLoading
+    || hasIncompleteHistoricalPricing;
 
   const generateCsv = () => {
-    if (!positions || positions.length === 0) return;
+    if (isExportDisabled) return;
 
     setExporting(true);
 
@@ -150,6 +172,16 @@ export default function TaxExport({ address }: TaxExportProps) {
           Export your LP position data as a CSV file for tax reporting. Includes deposits, withdrawals, PnL, and impermanent loss data.
         </p>
 
+        {isHistoricalEnrichmentLoading ? (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300">
+            Historical pricing is still enriching. LP CSV export is disabled until entry values, PnL, and impermanent loss are complete.
+          </div>
+        ) : hasIncompleteHistoricalPricing ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+            Historical entry pricing is unavailable for {positionsWithIncompleteHistoricalPricing.length} position{positionsWithIncompleteHistoricalPricing.length !== 1 ? 's' : ''}. LP CSV export is disabled to avoid incomplete tax data.
+          </div>
+        ) : null}
+
         <div className="flex items-end gap-4">
           <div className="space-y-2">
             <label htmlFor="tax-year" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -168,13 +200,23 @@ export default function TaxExport({ address }: TaxExportProps) {
 
           <Button 
             onClick={generateCsv}
-            disabled={exporting || positions.length === 0}
+            disabled={isExportDisabled}
             className="gap-2"
           >
             {exporting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Exporting...
+              </>
+            ) : isHistoricalEnrichmentLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Enriching historical pricing...
+              </>
+            ) : hasIncompleteHistoricalPricing ? (
+              <>
+                <FileSpreadsheet className="h-4 w-4" />
+                Historical pricing unavailable
               </>
             ) : (
               <>

@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { useRunePriceHistory, type RunePriceInterval } from '@/lib/hooks/use-rune-price';
 import { SkeletonChart } from '@/components/shared/skeleton';
+import { formatUsd } from '@/lib/utils/formatters';
 
 type IntervalOption = 'day' | 'week' | 'month' | 'year';
 
@@ -24,13 +25,6 @@ interface CustomTooltipProps {
   active?: boolean;
   payload?: Array<{ value: number }>;
   label?: string;
-}
-
-function formatPrice(value: number): string {
-  return `$${value.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 4,
-  })}`;
 }
 
 function parsePriceData(intervals: RunePriceInterval[], isHourly: boolean): PriceDataPoint[] {
@@ -51,7 +45,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
       <div className="bg-zinc-900 dark:bg-zinc-800 border border-zinc-700 dark:border-zinc-700 rounded-lg p-3 shadow-lg">
         <p className="text-xs text-zinc-400 mb-1">{label}</p>
         <p className="text-sm font-bold text-white">
-          {formatPrice(payload[0].value)}
+          {formatUsd(payload[0].value, 4, 2)}
         </p>
       </div>
     );

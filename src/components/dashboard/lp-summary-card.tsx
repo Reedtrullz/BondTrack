@@ -35,9 +35,13 @@ function getImpermanentLossTone(value: number | null | undefined): string {
   return 'text-zinc-600 dark:text-zinc-400';
 }
 
-export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) => {
+export const LpSummaryCard: React.FC<{
+  position: LpPosition;
+  isHistoricalEnrichmentLoading?: boolean;
+}> = ({ position, isHistoricalEnrichmentLoading = false }) => {
   const pnlTone = getSignedTone(position.netProfitLossUsd);
   const ilTone = getImpermanentLossTone(position.impermanentLossPercent);
+  const isPositionHistoricalEnriching = isHistoricalEnrichmentLoading && position.pricingSource === 'current-only';
 
   // Calculate Time in Pool
   const [timeInPool] = useState(() => {
@@ -103,12 +107,18 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
         <MetricCard label="Current Value" value={formatUsd(position.currentTotalValueUsd, 0)} />
         <MetricCard
           label="Net P/L"
-          value={position.netProfitLossUsd === null ? 'Current value only' : formatUsd(position.netProfitLossUsd, 0)}
-          detail={position.pricingSource === 'current-only'
-            ? 'Historical entry unavailable'
-            : position.pricingSource === 'estimated'
-              ? `${formatPercent(position.netProfitLossPercent)} · estimated entry`
-              : formatPercent(position.netProfitLossPercent)}
+          value={isPositionHistoricalEnriching
+            ? 'Enriching...'
+            : position.netProfitLossUsd === null
+              ? 'Current value only'
+              : formatUsd(position.netProfitLossUsd, 0)}
+          detail={isPositionHistoricalEnriching
+            ? 'Historical entry loading'
+            : position.pricingSource === 'current-only'
+              ? 'Historical entry unavailable'
+              : position.pricingSource === 'estimated'
+                ? `${formatPercent(position.netProfitLossPercent)} · estimated entry`
+                : formatPercent(position.netProfitLossPercent)}
           valueClassName={pnlTone}
         />
         <MetricCard 
@@ -123,9 +133,15 @@ export const LpSummaryCard: React.FC<{ position: LpPosition }> = ({ position }) 
         />
         <MetricCard
           label="Impermanent Loss"
-          value={position.impermanentLossUsd === null ? '--' : formatUsd(position.impermanentLossUsd, 0)}
+          value={isPositionHistoricalEnriching
+            ? 'Enriching...'
+            : position.impermanentLossUsd === null
+              ? '--'
+              : formatUsd(position.impermanentLossUsd, 0)}
           detail={
-            position.impermanentLossPercent === null
+            isPositionHistoricalEnriching
+              ? 'Awaiting historical entry pricing'
+              : position.impermanentLossPercent === null
               ? 'Requires historical entry pricing'
               : formatPercent(position.impermanentLossPercent)
           }

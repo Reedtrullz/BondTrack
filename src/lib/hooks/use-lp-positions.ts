@@ -1,11 +1,11 @@
 import React from 'react';
 import useSWR from 'swr';
-import { getMemberDetails, getPools, getRunePriceHistory, getHistoricalRunePrice, getPoolHistoryAtTimestamp, MemberDetailsRaw, PoolDetailRaw } from '../api/midgard';
+import { getMemberDetails, getPools, getRunePriceHistory, getHistoricalRunePrice, getPoolHistoryAtTimestamp, MemberDetailsRaw, PoolDetailRaw, PoolHistoryEntry } from '../api/midgard';
 import { getLiquidityProvider, LiquidityProviderRaw } from '../api/thornode';
 import { LpPoolStatus, LpPosition, LpPricingSource } from '../types/lp';
 import { calculateLpWithdrawableAmounts, formatPnlDisplay, calculateAssetPriceFromPoolDepth } from '../utils/calculations';
 import { normalizeApy } from '../utils/fee-calculations';
-import { runeToNumber } from '../utils/formatters';
+import { rawRuneToDisplayNumber } from '../utils/formatters';
 import { calculateLpPositionValuation, getCurrentAssetPriceUsd, getLpAssetSymbol } from '../utils/lp-analytics';
 
 type LpDataState = 'ready' | 'empty' | 'error';
@@ -108,6 +108,55 @@ interface HistoricalPriceSnapshot {
   pricingSource: LpPricingSource;
 }
 
+const SECONDS_PER_DAY = 86400;
+const historicalRunePriceCache = new Map<number, Promise<number | null>>();
+const historicalPoolHistoryCache = new Map<string, Promise<PoolHistoryEntry | null>>();
+
+function historicalDayKey(timestamp: number): number {
+  return Math.floor(timestamp / SECONDS_PER_DAY) * SECONDS_PER_DAY;
+}
+
+function getCachedHistoricalRunePrice(timestamp: number): Promise<number | null> {
+  const dayKey = historicalDayKey(timestamp);
+  let promise = historicalRunePriceCache.get(dayKey);
+  if (!promise) {
+    promise = getHistoricalRunePrice(timestamp).catch((error) => {
+      if (historicalRunePriceCache.get(dayKey) === promise) {
+        historicalRunePriceCache.delete(dayKey);
+      }
+      throw error;
+    });
+    historicalRunePriceCache.set(dayKey, promise);
+  }
+  return promise;
+}
+
+function getCachedPoolHistoryAtTimestamp(pool: string, timestamp: number): Promise<PoolHistoryEntry | null> {
+  const dayKey = historicalDayKey(timestamp);
+  const cacheKey = `${pool}:${dayKey}`;
+  let promise = historicalPoolHistoryCache.get(cacheKey);
+  if (!promise) {
+    promise = getPoolHistoryAtTimestamp(pool, timestamp).catch((error) => {
+      if (historicalPoolHistoryCache.get(cacheKey) === promise) {
+        historicalPoolHistoryCache.delete(cacheKey);
+      }
+      throw error;
+    });
+    historicalPoolHistoryCache.set(cacheKey, promise);
+  }
+  return promise;
+}
+
+function clearLpHistoricalCaches(): void {
+  historicalRunePriceCache.clear();
+  historicalPoolHistoryCache.clear();
+}
+
+export function __clearLpHistoricalCachesForTests(): void {
+  if (process.env.NODE_ENV !== 'test') return;
+  clearLpHistoricalCaches();
+}
+
 function normalizeHistoryTimestamp(rawTimestamp: string): number {
   const numericTimestamp = Number(rawTimestamp);
 
@@ -118,19 +167,112 @@ function normalizeHistoryTimestamp(rawTimestamp: string): number {
   return numericTimestamp > 1e12 ? Math.floor(numericTimestamp / 1e9) : numericTimestamp;
 }
 
-interface LpDataWithThorNode {
+interface CurrentLpDataWithThorNode {
   memberDetails: MemberDetailsRaw;
   pools: PoolDetailRaw[];
   thorNodeLpData: Map<string, LiquidityProviderRaw>;
   runePriceUSD: number;
-  historicalPrices: Map<string, HistoricalPriceSnapshot>;
+}
+
+async function fetchHistoricalPriceSnapshots(memberPools: MemberDetailsRaw['pools']): Promise<Map<string, HistoricalPriceSnapshot>> {
+  const historicalPrices = new Map<string, HistoricalPriceSnapshot>();
+  const pricePromises = memberPools.map(async (pool) => {
+    const firstAddedTimestamp = normalizeHistoryTimestamp(pool.dateFirstAdded);
+    if (firstAddedTimestamp <= 0) {
+      return;
+    }
+
+    try {
+      const [runeEntryPrice, poolHistory] = await Promise.all([
+        withTimeout(getCachedHistoricalRunePrice(firstAddedTimestamp), 4000),
+        withTimeout(getCachedPoolHistoryAtTimestamp(pool.pool, firstAddedTimestamp), 4000)
+      ]);
+
+      if (runeEntryPrice === null) {
+        historicalPrices.set(pool.pool, {
+          entryRunePriceUsd: null,
+          entryAssetPriceUsd: null,
+          pricingSource: 'current-only',
+        });
+        return;
+      }
+
+      if (!poolHistory?.runeDepth || !poolHistory?.assetDepth) {
+        // Fallback: Assume symmetric (50/50) deposit on Day 1 to estimate asset price
+        const runeDep = rawRuneToDisplayNumber(pool.runeDeposit);
+        const assetDep = rawRuneToDisplayNumber(pool.assetDeposit);
+
+        if (runeDep > 0 && assetDep > 0) {
+          const estimatedAssetEntryPrice = (runeDep * runeEntryPrice) / assetDep;
+          historicalPrices.set(pool.pool, {
+            entryRunePriceUsd: runeEntryPrice,
+            entryAssetPriceUsd: estimatedAssetEntryPrice,
+            pricingSource: 'estimated',
+          });
+        } else {
+          historicalPrices.set(pool.pool, {
+            entryRunePriceUsd: runeEntryPrice,
+            entryAssetPriceUsd: null,
+            pricingSource: 'current-only',
+          });
+        }
+        return;
+      }
+
+      const asset2EntryPrice = calculateAssetPriceFromPoolDepth(
+        poolHistory.runeDepth,
+        poolHistory.assetDepth,
+        runeEntryPrice
+      );
+
+      if (!Number.isFinite(asset2EntryPrice) || asset2EntryPrice <= 0) {
+        historicalPrices.set(pool.pool, {
+          entryRunePriceUsd: null,
+          entryAssetPriceUsd: null,
+          pricingSource: 'current-only',
+        });
+        return;
+      }
+
+      historicalPrices.set(pool.pool, {
+        entryRunePriceUsd: runeEntryPrice,
+        entryAssetPriceUsd: asset2EntryPrice,
+        pricingSource: 'historical',
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (!message.includes('404') && !message.includes('500') && !message.includes('502')) {
+        console.error(`Error fetching historical data for ${pool.pool}:`, err);
+      }
+      historicalPrices.set(pool.pool, {
+        entryRunePriceUsd: null,
+        entryAssetPriceUsd: null,
+        pricingSource: 'current-only',
+      });
+    }
+  });
+
+  await Promise.allSettled(pricePromises);
+  return historicalPrices;
+}
+
+function buildHistoricalSWRKey(address: string | null, memberDetails: MemberDetailsRaw | undefined): [string, string, string] | null {
+  if (!address || !memberDetails?.pools?.length) return null;
+  const poolSignature = memberDetails.pools
+    .map((pool) => `${pool.pool}:${normalizeHistoryTimestamp(pool.dateFirstAdded)}`)
+    .filter((entry) => !entry.endsWith(':0'))
+    .sort()
+    .join('|');
+  return poolSignature ? ['lp-historical', address, poolSignature] : null;
 }
 
 export const useLpPositions = (address: string | null) => {
   const [loadingProgress, setLoadingProgress] = React.useState(0);
-  const { data, error, isLoading, mutate } = useSWR<LpDataWithThorNode>(
-    address ? address : null,
-    async (addr) => {
+  const currentSWRKey: [string, string] | null = address ? ['lp-current', address] : null;
+  const { data, error, isLoading: isCurrentLoading, mutate: mutateCurrentPositions } = useSWR<CurrentLpDataWithThorNode>(
+    currentSWRKey,
+    async (key) => {
+      const addr = String(key[1]);
       const [memberDetails, pools, runePriceHistory] = await Promise.all([
         getMemberDetails(addr),
         getPools(),
@@ -161,89 +303,21 @@ export const useLpPositions = (address: string | null) => {
       });
       await Promise.allSettled(poolPromises);
 
-      // Fetch historical entry prices for all pools in parallel to avoid 502/504 timeouts
-      const historicalPrices = new Map<string, HistoricalPriceSnapshot>();
-      const pricePromises = memberPools.map(async (pool) => {
-        const firstAddedTimestamp = normalizeHistoryTimestamp(pool.dateFirstAdded);
-        if (firstAddedTimestamp > 0) {
-          try {
-            const [runeEntryPrice, poolHistory] = await Promise.all([
-              withTimeout(getHistoricalRunePrice(firstAddedTimestamp), 4000),
-              withTimeout(getPoolHistoryAtTimestamp(pool.pool, firstAddedTimestamp), 4000)
-            ]);
-
-            if (runeEntryPrice === null) {
-              historicalPrices.set(pool.pool, {
-                entryRunePriceUsd: null,
-                entryAssetPriceUsd: null,
-                pricingSource: 'current-only',
-              });
-              return;
-            }
-
-            if (!poolHistory?.runeDepth || !poolHistory?.assetDepth) {
-              // Fallback: Assume symmetric (50/50) deposit on Day 1 to estimate asset price
-              const runeDep = runeToNumber(pool.runeDeposit);
-              const assetDep = runeToNumber(pool.assetDeposit);
-
-              if (runeDep > 0 && assetDep > 0) {
-                const estimatedAssetEntryPrice = (runeDep * runeEntryPrice) / assetDep;
-                historicalPrices.set(pool.pool, {
-                  entryRunePriceUsd: runeEntryPrice,
-                  entryAssetPriceUsd: estimatedAssetEntryPrice,
-                  pricingSource: 'estimated',
-                });
-              } else {
-                historicalPrices.set(pool.pool, {
-                  entryRunePriceUsd: runeEntryPrice,
-                  entryAssetPriceUsd: null,
-                  pricingSource: 'current-only',
-                });
-              }
-              return;
-            }
-
-            const asset2EntryPrice = calculateAssetPriceFromPoolDepth(
-              poolHistory.runeDepth,
-              poolHistory.assetDepth,
-              runeEntryPrice
-            );
-
-            if (!Number.isFinite(asset2EntryPrice) || asset2EntryPrice <= 0) {
-              historicalPrices.set(pool.pool, {
-                entryRunePriceUsd: null,
-                entryAssetPriceUsd: null,
-                pricingSource: 'current-only',
-              });
-              return;
-            }
-
-            historicalPrices.set(pool.pool, {
-              entryRunePriceUsd: runeEntryPrice,
-              entryAssetPriceUsd: asset2EntryPrice,
-              pricingSource: 'historical',
-            });
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            if (!message.includes('404') && !message.includes('500') && !message.includes('502')) {
-              console.error(`Error fetching historical data for ${pool.pool}:`, err);
-            }
-            historicalPrices.set(pool.pool, {
-              entryRunePriceUsd: null,
-              entryAssetPriceUsd: null,
-              pricingSource: 'current-only',
-            });
-          }
-        }
-      });
-
-      await Promise.allSettled(pricePromises);
-
-      return { memberDetails, pools, thorNodeLpData, runePriceUSD, historicalPrices };
+      return { memberDetails, pools, thorNodeLpData, runePriceUSD };
     },
     {
       refreshInterval: 30000,
       revalidateOnFocus: true,
+      shouldRetryOnError: false,
+    }
+  );
+
+  const historicalSWRKey = buildHistoricalSWRKey(address, data?.memberDetails);
+  const { data: historicalPrices, isLoading: isHistoricalLoading, mutate: mutateHistoricalPrices } = useSWR<Map<string, HistoricalPriceSnapshot>>(
+    historicalSWRKey,
+    () => fetchHistoricalPriceSnapshots(data?.memberDetails.pools ?? []),
+    {
+      revalidateOnFocus: false,
       shouldRetryOnError: false,
     }
   );
@@ -296,7 +370,7 @@ export const useLpPositions = (address: string | null) => {
       rawCurrentRunePriceUsd
     );
 
-    const historicalEntryPrices = data?.historicalPrices?.get(poolRaw.pool);
+    const historicalEntryPrices = historicalPrices?.get(poolRaw.pool);
     const pricingSource = historicalEntryPrices?.pricingSource ?? 'current-only';
     const hasHistoricalPricing = pricingSource === 'historical' || pricingSource === 'estimated';
     const currentRunePriceUsd = rawCurrentRunePriceUsd;
@@ -389,17 +463,28 @@ export const useLpPositions = (address: string | null) => {
     };
   });
 
+  const isHistoricalEnrichmentLoading = historicalSWRKey !== null && isHistoricalLoading && !historicalPrices;
+  const isLoading = isCurrentLoading;
   const state = errorState.state !== 'ready'
     ? errorState.state
+    : isLoading
+      ? 'empty'
     : positions.length > 0
       ? 'ready'
       : 'empty';
   return {
     positions,
     isLoading,
+    isHistoricalEnrichmentLoading,
     state,
     error: errorState.message,
-    retry: async () => mutate(),
+    retry: async () => {
+      clearLpHistoricalCaches();
+      await mutateCurrentPositions();
+      if (historicalSWRKey) {
+        await mutateHistoricalPrices(undefined, { revalidate: true });
+      }
+    },
     loadingProgress,
   };
 };

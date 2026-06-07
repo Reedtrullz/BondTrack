@@ -4,6 +4,7 @@ import React from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useApyChartData } from '@/lib/hooks/use-apy-chart-data';
 import { SkeletonChart } from '@/components/shared/skeleton';
+import { formatPercent } from '@/lib/utils/formatters';
 
 interface CustomTooltipProps {
   active?: boolean;
@@ -12,10 +13,7 @@ interface CustomTooltipProps {
 }
 
 function formatAPY(value: number): string {
-  if (value > 0 && value < 1) {
-    return `${value.toFixed(4)}%`;
-  }
-  return `${value.toFixed(2)}%`;
+  return formatPercent(value, value > 0 && value < 1 ? 4 : 2);
 }
 
 function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
