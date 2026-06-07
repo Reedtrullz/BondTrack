@@ -1,6 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { corsHeaders, noStorePrivateHeaders } from '@/lib/api/cors';
-import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
+import { NextRequest } from 'next/server';
+import {
+  createProxyErrorResponse,
+  createProxyOptionsResponse,
+  createProxySuccessResponse,
+  createProxyUpstreamFailureResponse,
+  proxyJsonFromUpstreams,
+  rateLimitProxyRequest,
+  upstreamFailureStatus,
+} from '@/lib/api/proxy';
 
 const THORNODE_ENDPOINTS = [
   process.env.THORNODE_API_URL || 'https://gateway.liquify.com/chain/thorchain_api/thorchain',
@@ -175,17 +182,6 @@ function getUpstreamBaseUrl(baseUrl: string, decodedPath: string): string {
   return baseUrl;
 }
 
-function successHeaders(request: NextRequest): HeadersInit {
-  return {
-    ...corsHeaders(request, ['https://bond.thorchain.no']),
-    'Cache-Control': SUCCESS_CACHE_CONTROL,
-  };
-}
-
-function errorHeaders(request: NextRequest): HeadersInit {
-  return noStorePrivateHeaders(request, ['https://bond.thorchain.no']);
-}
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
@@ -202,78 +198,54 @@ export async function GET(
   const searchParams = request.nextUrl.search;
 
   if (!isAllowedPath(decodedPath)) {
-    return NextResponse.json(
-      { error: 'Proxy path is not allowed' },
-      { status: 403, headers: errorHeaders(request) }
-    );
+    return createProxyErrorResponse(request, 'Proxy path is not allowed', 403, {
+      extraOrigins: ['https://bond.thorchain.no'],
+    });
   }
 
   const queryError = validateQuery(decodedPath, request.nextUrl.searchParams);
   if (queryError) {
-    return NextResponse.json(
-      { error: queryError },
-      { status: 400, headers: errorHeaders(request) }
-    );
+    return createProxyErrorResponse(request, queryError, 400, {
+      extraOrigins: ['https://bond.thorchain.no'],
+    });
   }
 
-  // Rate limit
-  const clientIp = getClientIp(request);
-  const rateLimit = checkRateLimit(`thorchain:${clientIp}`, MAX_REQUESTS, WINDOW_MS);
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded' },
-      { status: 429, headers: {
-        ...errorHeaders(request),
-        'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
-        'X-RateLimit-Limit': String(MAX_REQUESTS),
-        'X-RateLimit-Remaining': '0',
-        'X-RateLimit-Reset': String(Math.ceil(rateLimit.resetAt / 1000)),
-      }}
-    );
+  const rateLimited = rateLimitProxyRequest(request, {
+    prefix: 'thorchain',
+    maxRequests: MAX_REQUESTS,
+    windowMs: WINDOW_MS,
+    extraOrigins: ['https://bond.thorchain.no'],
+  });
+  if (rateLimited) return rateLimited;
+
+  const upstreamResult = await proxyJsonFromUpstreams({
+    endpoints: THORNODE_ENDPOINTS,
+    path: pathStr,
+    search: searchParams,
+    retryUpstreams: false,
+    fetchHeaders: { 'Accept': 'application/json' },
+    getUpstreamBaseUrl,
+  });
+
+  if (upstreamResult.ok) {
+    return createProxySuccessResponse(request, upstreamResult.data, {
+      extraOrigins: ['https://bond.thorchain.no'],
+      cacheControl: SUCCESS_CACHE_CONTROL,
+    });
   }
 
-  const errors: string[] = [];
-
-  for (const baseUrl of THORNODE_ENDPOINTS) {
-    const upstreamBaseUrl = getUpstreamBaseUrl(baseUrl, decodedPath);
-    const targetUrl = `${upstreamBaseUrl}/${pathStr}${searchParams}`;
-
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-      const response = await fetch(targetUrl, {
-        headers: { 'Accept': 'application/json' },
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        errors.push(`${upstreamBaseUrl}: ${response.status}`);
-        continue;
-      }
-
-      const data = await response.json();
-
-      return NextResponse.json(data, {
-        headers: successHeaders(request),
-      });
-    } catch {
-      errors.push(`${baseUrl}: request failed`);
-      continue;
-    }
-  }
-
-  console.warn('All THORNode endpoints failed', { path: decodedPath, errors });
-  return NextResponse.json(
-    { error: 'All THORNode endpoints failed' },
-    { status: 502, headers: errorHeaders(request) }
-  );
+  return createProxyUpstreamFailureResponse(request, {
+    message: 'All THORNode endpoints failed',
+    diagnosticLabel: 'All THORNode endpoints failed',
+    path: decodedPath,
+    errors: upstreamResult.errors,
+    status: upstreamFailureStatus(upstreamResult.statusCodes),
+    extraOrigins: ['https://bond.thorchain.no'],
+  });
 }
 
 export async function OPTIONS(request: NextRequest) {
-  return new NextResponse(null, {
-    headers: corsHeaders(request, ['https://bond.thorchain.no']),
+  return createProxyOptionsResponse(request, {
+    extraOrigins: ['https://bond.thorchain.no'],
   });
 }
