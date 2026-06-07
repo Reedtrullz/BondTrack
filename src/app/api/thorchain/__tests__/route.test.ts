@@ -20,6 +20,14 @@ function createMockRequest(path: string, headers: Record<string, string> = {}): 
   } as unknown as NextRequest;
 }
 
+function expectProxySuccessHeaders(response: Response) {
+  expect(response.headers.get('Cache-Control')).toBe('public, max-age=5');
+  expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
+  expect(response.headers.get('X-Frame-Options')).toBe('DENY');
+  expect(response.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
+  expect(response.headers.get('X-XSS-Protection')).toBe('1; mode=block');
+}
+
 describe('/api/thorchain proxy', () => {
   beforeEach(() => {
     vi.mocked(rateLimitModule.checkRateLimit).mockReturnValue({
@@ -45,6 +53,7 @@ describe('/api/thorchain proxy', () => {
     const json = await res.json();
     expect(json).toEqual({ test: 'data' });
     expect(mockFetch).toHaveBeenCalledTimes(1);
+    expectProxySuccessHeaders(res);
   });
 
   it('returns 403 for disallowed path', async () => {

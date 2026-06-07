@@ -30,6 +30,14 @@ describe('/api/midgard proxy', () => {
     });
   }
 
+  function expectProxySuccessHeaders(response: Response) {
+    expect(response.headers.get('Cache-Control')).toBe('public, max-age=30');
+    expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(response.headers.get('X-Frame-Options')).toBe('DENY');
+    expect(response.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
+    expect(response.headers.get('X-XSS-Protection')).toBe('1; mode=block');
+  }
+
   it('returns 200 with JSON for allowed path', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -47,7 +55,7 @@ describe('/api/midgard proxy', () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data).toEqual({ status: 'healthy' });
-    expect(response.headers.get('Cache-Control')).toBe('public, max-age=30');
+    expectProxySuccessHeaders(response);
   });
 
   it('returns 403 for disallowed path', async () => {
@@ -149,6 +157,7 @@ describe('/api/midgard proxy', () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data).toEqual({ status: 'fallback-healthy' });
+    expectProxySuccessHeaders(response);
     expect(mockFetch).toHaveBeenCalledTimes(2);
 
     const firstCall = mockFetch.mock.calls[0][0] as string;
