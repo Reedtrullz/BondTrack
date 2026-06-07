@@ -19,16 +19,15 @@ export function useHistoricalApy(days = 180) {
     if (!earnings?.intervals?.length || !network?.bondMetrics?.totalActiveBond) return null;
 
     const totalBondingEarnings = earnings.intervals.reduce(
-      (sum, interval) => sum + runeToNumber(interval.bondingEarnings), 
+      (sum, interval) => sum + runeToNumber(interval.bondingEarnings),
       0
     );
 
     const activeBond = runeToNumber(network.bondMetrics.totalActiveBond);
-    const earningsRune = totalBondingEarnings / 1e8;
 
     // Annualize based on the period
     const actualDays = earnings.intervals.length;
-    const periodicRate = earningsRune / activeBond;
+    const periodicRate = totalBondingEarnings / activeBond;
     const apy = (periodicRate / actualDays) * 365 * 100;
 
     return apy;

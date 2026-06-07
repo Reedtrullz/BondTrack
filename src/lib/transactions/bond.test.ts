@@ -4,6 +4,7 @@ import {
   generateUnbondMemo,
   parseRuneAmountToBaseUnits,
   validateBondAmount,
+  validateBondMemoOptions,
   validateThorAddress,
 } from './bond';
 
@@ -19,6 +20,69 @@ describe('transaction memo and amount helpers', () => {
     const provider = 'thor158qequwhhnggm4ch4psv55yqpxsugf67n62dy2';
 
     expect(generateBondMemo(node, provider, '1000')).toBe(`BOND:${node}:${provider}:1000`);
+  });
+
+  it('preserves valid BOND memo variants for provider and operator fee boundaries', () => {
+    const node = 'thor16xxh3km6dxka636qg6q7e3us5vlgvhrhjgw245';
+    const provider = 'thor158qequwhhnggm4ch4psv55yqpxsugf67n62dy2';
+
+    expect(generateBondMemo(node)).toBe(`BOND:${node}`);
+    expect(generateBondMemo(node, provider)).toBe(`BOND:${node}:${provider}:0`);
+    expect(generateBondMemo(node, provider, '')).toBe(`BOND:${node}:${provider}:0`);
+    expect(generateBondMemo(node, provider, '0')).toBe(`BOND:${node}:${provider}:0`);
+    expect(generateBondMemo(node, provider, '10000')).toBe(`BOND:${node}:${provider}:10000`);
+  });
+
+  it('rejects BOND operator fees without a valid provider address', () => {
+    expect(validateBondMemoOptions('', '1')).toEqual({
+      valid: false,
+      error: 'Provider address is required when operator fee is set',
+    });
+    expect(validateBondMemoOptions('   ', '1000')).toEqual({
+      valid: false,
+      error: 'Provider address is required when operator fee is set',
+    });
+    expect(validateBondMemoOptions('thor1bad', '1000')).toEqual({
+      valid: false,
+      error: 'Provider address must be a valid THORChain address',
+    });
+  });
+
+  it('rejects malformed or out-of-range BOND operator fees', () => {
+    const provider = 'thor158qequwhhnggm4ch4psv55yqpxsugf67n62dy2';
+
+    expect(validateBondMemoOptions(provider, '10001')).toEqual({
+      valid: false,
+      error: 'Operator fee must be between 0 and 10000 basis points',
+    });
+    expect(validateBondMemoOptions(provider, '-1')).toEqual({
+      valid: false,
+      error: 'Operator fee must be a whole number between 0 and 10000 basis points',
+    });
+    expect(validateBondMemoOptions(provider, '12.5')).toEqual({
+      valid: false,
+      error: 'Operator fee must be a whole number between 0 and 10000 basis points',
+    });
+    expect(validateBondMemoOptions(provider, 'abc')).toEqual({
+      valid: false,
+      error: 'Operator fee must be a whole number between 0 and 10000 basis points',
+    });
+    expect(validateBondMemoOptions(provider, '1000abc')).toEqual({
+      valid: false,
+      error: 'Operator fee must be a whole number between 0 and 10000 basis points',
+    });
+    expect(validateBondMemoOptions(provider, '   ')).toEqual({
+      valid: false,
+      error: 'Operator fee must be a whole number between 0 and 10000 basis points',
+    });
+  });
+
+  it('allows leading-zero BOND operator fees and memo generation preserves the entered digits', () => {
+    const node = 'thor16xxh3km6dxka636qg6q7e3us5vlgvhrhjgw245';
+    const provider = 'thor158qequwhhnggm4ch4psv55yqpxsugf67n62dy2';
+
+    expect(validateBondMemoOptions(provider, '001')).toEqual({ valid: true });
+    expect(generateBondMemo(node, provider, '001')).toBe(`BOND:${node}:${provider}:001`);
   });
 
   it('converts decimal RUNE amounts to exact 1e8 base units', () => {

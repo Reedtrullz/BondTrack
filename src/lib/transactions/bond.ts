@@ -270,6 +270,34 @@ export function validateUnbondAmount(amount: string, maxRuneAmount?: number): Va
   return { valid: true };
 }
 
+export function validateBondMemoOptions(providerAddress?: string, operatorFee?: string): ValidationResult {
+  const cleanProviderAddress = providerAddress?.trim() ?? '';
+  const hasProvider = cleanProviderAddress.length > 0;
+  const hasOperatorFee = operatorFee !== undefined && operatorFee !== '';
+
+  if (hasOperatorFee && !hasProvider) {
+    return { valid: false, error: 'Provider address is required when operator fee is set' };
+  }
+
+  if (hasProvider) {
+    const providerValidation = validateThorAddress(cleanProviderAddress, 'Provider address');
+    if (!providerValidation.valid) return providerValidation;
+  }
+
+  if (!hasOperatorFee) return { valid: true };
+
+  const cleanOperatorFee = operatorFee.trim();
+  if (!/^\d+$/.test(cleanOperatorFee)) {
+    return { valid: false, error: 'Operator fee must be a whole number between 0 and 10000 basis points' };
+  }
+
+  if (BigInt(cleanOperatorFee) > 10_000n) {
+    return { valid: false, error: 'Operator fee must be between 0 and 10000 basis points' };
+  }
+
+  return { valid: true };
+}
+
 export function canUnbondNode(position: BondPosition): { canUnbond: boolean; reason?: string } {
   if (position.status === 'Active') {
     return {
@@ -297,8 +325,8 @@ export function generateBondMemo(nodeAddress: string, providerAddress?: string, 
   const cleanProviderAddress = providerAddress?.trim();
   const cleanOperatorFee = operatorFee?.trim();
 
-  if (cleanProviderAddress || cleanOperatorFee) {
-    return `BOND:${cleanNodeAddress}:${cleanProviderAddress || ''}:${cleanOperatorFee || '0'}`;
+  if (cleanProviderAddress) {
+    return `BOND:${cleanNodeAddress}:${cleanProviderAddress}:${cleanOperatorFee || '0'}`;
   }
   return `BOND:${cleanNodeAddress}`;
 }

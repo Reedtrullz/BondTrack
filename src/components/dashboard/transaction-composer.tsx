@@ -10,6 +10,7 @@ import {
   executeBondTransaction,
   executeUnbondTransaction,
   validateBondAmount,
+  validateBondMemoOptions,
   validateUnbondAmount,
   validateThorAddress,
   canUnbondNode,
@@ -106,9 +107,9 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
   }, [nodeAddress]);
 
   const providerValidation = useMemo(() => {
-    if (!showAdvancedBondFields || !bondProviderAddress.trim()) return { valid: true };
-    return validateThorAddress(bondProviderAddress, 'Provider address');
-  }, [showAdvancedBondFields, bondProviderAddress]);
+    if (!showAdvancedBondFields) return { valid: true };
+    return validateBondMemoOptions(bondProviderAddress, nodeOperatorFee);
+  }, [showAdvancedBondFields, bondProviderAddress, nodeOperatorFee]);
 
   const bondAmountValidation = useMemo(() => validateBondAmount(bondAmount || '0'), [bondAmount]);
   const unbondAmountValidation = useMemo(
@@ -327,7 +328,7 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
                 </div>
                 <div className="space-y-1">
                   <label htmlFor="transaction-operator-fee" className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Operator Fee BPS (optional)</label>
-                  <input id="transaction-operator-fee" type="text" inputMode="numeric" placeholder="0" value={nodeOperatorFee} onChange={(e) => setNodeOperatorFee(e.target.value.replace(/\D/g, ''))} className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100" />
+                  <input id="transaction-operator-fee" type="text" inputMode="numeric" placeholder="0" value={nodeOperatorFee} onChange={(e) => setNodeOperatorFee(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100" />
                 </div>
               </div>
             )}
