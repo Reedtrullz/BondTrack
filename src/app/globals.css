@@ -240,3 +240,13 @@ h1, h2, h3, h4, h5, h6 {
 .text-glow-success {
   text-shadow: 0 0 20px rgba(51, 255, 153, 0.5);
 }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
