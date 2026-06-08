@@ -96,7 +96,7 @@ export async function GET(
         timestamp: new Date(Number(BigInt(action.date) / 1000000n)),
         txHash: action.tx?.txID || '',
         status: action.status || 'unknown',
-        pools: action.pools || []
+        affectedPools: action.pools || []
       };
     }).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 

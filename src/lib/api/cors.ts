@@ -26,7 +26,7 @@ export function corsHeaders(
   if (process.env.VERCEL_URL) allowedOrigins.add(`https://${process.env.VERCEL_URL}`);
 
   return {
-    'Access-Control-Allow-Origin': origin && allowedOrigins.has(origin) ? origin : 'https://thorchain.no',
+    'Access-Control-Allow-Origin': origin && allowedOrigins.has(origin) ? origin : 'null',
     'Access-Control-Allow-Methods': methods.join(', '),
     'Access-Control-Allow-Headers': 'Content-Type, Accept',
     'Vary': 'Origin',

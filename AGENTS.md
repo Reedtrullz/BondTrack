@@ -78,6 +78,23 @@ Ansible with `docker ps --format '{{.Image}}'` and `/api/health`'s `version`.
 Do not claim a production deployment unless that exact-SHA verification was
 performed against the intended target.
 
+## API access model
+
+Heimdall is a **public read-only** dashboard. There is no auth.
+
+- All `/api/*` routes accept any client IP. The Caddy proxy and Next.js
+  routes do not require a session, token, or API key.
+- Address-bound data (`/api/address/[address]`, `/api/pools/[pool]`,
+  `/api/tax-report`) is publicly queryable for any THORChain address. This
+  is intentional: the dashboard's purpose is to surface on-chain facts.
+- CoinAPI is the only third-party with a server-side secret
+  (`COINAPI_KEY`). It is used only for historical RUNE price enrichment;
+  absence of the key is a 503 from `/api/coinapi/rune-price`, not a
+  user-facing failure.
+- If a future feature requires per-user data (e.g. personalised watchlists
+  across devices), add a separate auth layer (Auth.js or an external IdP)
+  and document it here before shipping.
+
 The Inebotten Discord bot is a sibling project with its own repo and
 deploy story — see [Reedtrullz/inebotten-discord](https://github.com/Reedtrullz/inebotten-discord)
 (`deploy/` directory). It does not belong here.
@@ -132,7 +149,7 @@ These files are imported most widely — changes here have outsized blast radius
 |------|-----------|------|
 | `src/lib/types/node.ts` | ~37 | `BondPosition`, `NodeRaw`, `extractBondPositions()` |
 | `src/lib/utils/formatters.ts` | ~35 | `runeToNumber()`, `formatRuneAmount()`, `formatBasisPoints()` |
-| `src/lib/api/midgard.ts` | ~30 | Midgard client + raw types (604 lines — largest API file) |
+| `src/lib/api/midgard.ts` | ~30 | Midgard client + raw types (607 lines — largest API file) |
 | `src/lib/api/thornode.ts` | ~25 | THORNode client + `NodeRaw`, `NetworkConstantsRaw` |
 | `src/lib/utils.ts` | ~26 | `cn()` class merge utility |
 | `src/lib/config.ts` | ~20 | `ENDPOINTS`, `NETWORK` constants |

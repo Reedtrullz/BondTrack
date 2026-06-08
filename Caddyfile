@@ -1,3 +1,27 @@
+{
+  auto_https off
+}
+
 bond.thorchain.no {
-  reverse_proxy localhost:3001
+  reverse_proxy localhost:3001 {
+    header_up Host {host}
+    header_up X-Real-IP {remote_host}
+  }
+
+  header {
+    Strict-Transport-Security "max-age=63072000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    X-XSS-Protection "1; mode=block"
+    Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+    -Server
+  }
+
+  encode zstd gzip
+  log {
+    output file /var/log/caddy/heimdall.log {
+      roll_size 10mb
+      roll_keep 5
+    }
+  }
 }

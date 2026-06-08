@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getEarningsHistory } from '@/lib/api/midgard';
+import { getEarningsHistory, getNetwork } from '@/lib/api/midgard';
 import { noStorePrivateHeaders } from '@/lib/api/cors';
 import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 
@@ -71,11 +71,13 @@ export async function GET(
       };
     }).filter(interval => interval.assetLiquidityFees !== undefined);
 
+    const network = await getNetwork();
+
     return NextResponse.json({
       pool,
       meta: poolData,
       intervals: poolIntervals,
-      totalPooledRune: earnings.meta.pools.length > 0 ? earnings.meta.pools[0].totalLiquidityFeesRune : '0',
+      totalPooledRune: network?.totalPooledRune ?? '0',
       totalNetworkBond: earnings.meta.bondingEarnings
     }, { headers: noStorePrivateHeaders(request) });
   } catch (error) {

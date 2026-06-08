@@ -1,2 +1,0 @@
-{"error":"Proxy path is not allowed","path":"admin"}
-HTTP_CODE:403

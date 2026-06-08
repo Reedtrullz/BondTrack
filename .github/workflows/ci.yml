@@ -66,6 +66,16 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
       - uses: ./.github/actions/install-deps
+      # Prevent production builds from silently using mock data in a deployed
+      # environment. The value is inlined at client build time; this guard
+      # fails the workflow before npm run build when the env is set.
+      - name: Assert production builds never use mock data
+        run: |
+          if [ "${NEXT_PUBLIC_USE_MOCK_DATA:-}" = "true" ]; then
+            echo "::error::NEXT_PUBLIC_USE_MOCK_DATA must not be 'true' in production builds"
+            exit 1
+          fi
+          echo "Mock data guard passed"
       - run: npm run build
         env:
           CI: true

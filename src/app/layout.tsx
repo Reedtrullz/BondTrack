@@ -15,8 +15,13 @@ const openSans = Open_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Heimdall | THORChain Investment Command Center",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://bond.thorchain.no'),
+  title: {
+    default: "Heimdall | THORChain Investment Command Center",
+    template: "%s | Heimdall",
+  },
   description: "The all-seeing guardian of your THORChain node infrastructure.",
+  manifest: '/manifest.webmanifest',
 };
 
 export default function RootLayout({

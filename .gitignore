@@ -46,6 +46,9 @@ yarn-error.log*
 # Secrets
 .vault_pass.txt
 
+# Machine-generated evidence (not source of truth)
+.sisyphus/
+
 # Dogfood / scratch reports (regenerated locally)
 /dogfood-output
 

@@ -1,6 +1,6 @@
 # Transaction Signing
 
-**File**: `bond.ts` (310 lines, 12 exports, 14 functions)
+**File**: `bond.ts` (337 lines, 12 exports, 14 functions)
 
 ## FUNCTIONS
 | Function | Purpose |

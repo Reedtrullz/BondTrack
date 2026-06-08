@@ -1,2 +1,0 @@
-/api/thorchain
-HTTP_CODE:308
