@@ -5,6 +5,12 @@ import { getEarningsHistory } from '@/lib/api/midgard';
 
 vi.mock('@/lib/api/midgard', () => ({
   getEarningsHistory: vi.fn(),
+  getNetwork: vi.fn(() => ({
+    totalPooledRune: '5000000000000',
+    totalBond: '1000000000',
+    activeNodeCount: '100',
+    standbyNodeCount: '50',
+  })),
 }));
 
 vi.mock('@/lib/api/rate-limit', () => ({
