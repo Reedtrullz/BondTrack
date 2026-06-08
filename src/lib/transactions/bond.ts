@@ -1,7 +1,6 @@
 'use client';
 
 import type { OfflineSigner } from '@cosmjs/proto-signing';
-import type { BondPosition } from '@/lib/types/node';
 import '@/lib/types/wallet';
 import { ENDPOINTS } from '../config';
 import {

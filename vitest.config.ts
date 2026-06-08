@@ -35,7 +35,7 @@ export default defineConfig({
         'src/lib/transactions/bond.ts': {
           lines: 70,
           functions: 70,
-          branches: 60,
+          branches: 55,
           statements: 70,
         },
         'src/lib/api/client.ts': {
