@@ -4,8 +4,16 @@ import React from 'react';
 import { SWRConfig } from 'swr';
 import { useEarningsHistory } from '../use-earnings';
 import * as midgard from '@/lib/api/midgard';
+import * as mockDataModule from '../../mock-data';
 
 vi.mock('@/lib/api/midgard');
+vi.mock('../../mock-data', async () => {
+  const actual = await vi.importActual<typeof import('../../mock-data')>('../../mock-data');
+  return {
+    ...actual,
+    isDevelopmentMode: vi.fn(() => false),
+  };
+});
 
 const wrapper = ({ children }: { children: React.ReactNode }) =>
   React.createElement(SWRConfig, { value: { provider: () => new Map() } }, children);
@@ -54,6 +62,7 @@ const mockEarnings = {
 describe('useEarningsHistory', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(mockDataModule.isDevelopmentMode).mockReturnValue(false);
   });
 
   it('fetches earnings with default parameters', async () => {
@@ -83,5 +92,30 @@ describe('useEarningsHistory', () => {
 
     expect(result.current.error).toBeDefined();
     expect(result.current.earnings).toBeUndefined();
+  });
+
+  it('surfaces upstream 502 as a thrown error', async () => {
+    vi.mocked(midgard.getEarningsHistory).mockRejectedValueOnce('API error: 502');
+
+    const { result } = renderHook(() => useEarningsHistory(), { wrapper });
+    await waitFor(() => expect(result.current.error).not.toBeNull());
+
+    expect(result.current.earnings).toBeUndefined();
+  });
+
+  it('returns mock data when NEXT_PUBLIC_USE_MOCK_DATA=true', async () => {
+    vi.mocked(mockDataModule.isDevelopmentMode).mockReturnValue(true);
+    // Ensure the API is NOT called in mock mode
+    vi.mocked(midgard.getEarningsHistory).mockRejectedValueOnce(new Error('should not be called'));
+
+    const { result } = renderHook(() => useEarningsHistory(), { wrapper });
+
+    // Mock mode returns data synchronously — no loading state
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.error).toBeUndefined();
+    expect(result.current.earnings).toBeDefined();
+    expect(result.current.earnings?.meta).toBeDefined();
+    expect(Array.isArray(result.current.earnings?.intervals)).toBe(true);
+    expect(result.current.earnings!.intervals.length).toBeGreaterThan(0);
   });
 });

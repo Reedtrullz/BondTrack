@@ -4,8 +4,16 @@ import React from 'react';
 import { SWRConfig } from 'swr';
 import { useRunePrice } from '../use-rune-price';
 import * as midgard from '@/lib/api/midgard';
+import * as mockDataModule from '../../mock-data';
 
 vi.mock('@/lib/api/midgard');
+vi.mock('../../mock-data', async () => {
+  const actual = await vi.importActual<typeof import('../../mock-data')>('../../mock-data');
+  return {
+    ...actual,
+    isDevelopmentMode: vi.fn(() => false),
+  };
+});
 
 const wrapper = ({ children }: { children: React.ReactNode }) =>
   React.createElement(SWRConfig, { value: { provider: () => new Map() } }, children);
@@ -13,6 +21,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) =>
 describe('useRunePrice', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(mockDataModule.isDevelopmentMode).mockReturnValue(false);
     vi.useRealTimers();
   });
 
@@ -20,9 +29,15 @@ describe('useRunePrice', () => {
     vi.useRealTimers();
   });
 
-  it('returns 0 for empty intervals', async () => {
+  it('returns 0 price when Midgard returns no intervals', async () => {
     vi.mocked(midgard.getRunePriceHistory).mockResolvedValueOnce({
       intervals: [],
+      meta: {
+        startTime: '0',
+        endTime: '0',
+        startRunePriceUSD: '0',
+        endRunePriceUSD: '0',
+      },
     } as unknown as midgard.RunePriceHistoryRaw);
 
     const { result } = renderHook(() => useRunePrice(), { wrapper });
@@ -96,5 +111,18 @@ describe('useRunePrice', () => {
     expect(result.current.isStale).toBe(true);
     expect(result.current.ageMs).toBeGreaterThan(result.current.staleAfterMs);
     nowSpy.mockRestore();
+  });
+
+  it('returns mock price when NEXT_PUBLIC_USE_MOCK_DATA=true', () => {
+    vi.mocked(mockDataModule.isDevelopmentMode).mockReturnValue(true);
+    // Ensure the API is NOT called in mock mode
+    vi.mocked(midgard.getRunePriceHistory).mockRejectedValueOnce(new Error('should not be called'));
+
+    const { result } = renderHook(() => useRunePrice(), { wrapper });
+
+    // Mock mode returns data synchronously — no loading state
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.error).toBeUndefined();
+    expect(result.current.price).toBe(0.4972);
   });
 });

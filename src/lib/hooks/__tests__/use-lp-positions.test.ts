@@ -481,4 +481,91 @@ describe('useLpPositions', () => {
     await waitFor(() => expect(result.current.positions[0].pricingSource).toBe('historical'));
     expect(midgard.getHistoricalRunePrice).toHaveBeenCalledTimes(2);
   });
+
+  it('returns "empty" state for 404 member lookup', async () => {
+    vi.mocked(midgard.getMemberDetails).mockRejectedValueOnce(
+      new Error('Midgard proxy failed: API error: 404 Not Found at /api/midgard/v2/member/thor1empty404')
+    );
+    vi.mocked(midgard.getPools).mockResolvedValueOnce([] as never[]);
+
+    const { result } = renderHook(() => useLpPositions('thor1empty404'), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.state).toBe('empty');
+    expect(result.current.error).toBeUndefined();
+    expect(result.current.positions).toEqual([]);
+  });
+
+  it('returns error with upstream-failure copy for 5xx member lookup', async () => {
+    vi.mocked(midgard.getMemberDetails).mockRejectedValueOnce(
+      new Error('Midgard proxy failed: API error: 502 Bad Gateway at /api/midgard/v2/member/thor1502')
+    );
+    vi.mocked(midgard.getPools).mockResolvedValueOnce([] as never[]);
+
+    const { result } = renderHook(() => useLpPositions('thor1502'), { wrapper });
+
+    await waitFor(() => expect(result.current.state).toBe('error'));
+
+    expect(result.current.error).toMatch(/could not load this address/u);
+    expect(result.current.error).toMatch(/LP member record right now/u);
+    expect(result.current.positions).toEqual([]);
+  });
+
+  it('returns error with price-feed copy for historical pricing 5xx', async () => {
+    vi.mocked(midgard.getMemberDetails).mockResolvedValueOnce(successfulMemberDetails as never);
+    vi.mocked(midgard.getPools).mockResolvedValueOnce(successfulPools as never);
+    vi.mocked(midgard.getRunePriceHistory).mockRejectedValueOnce(
+      new Error('Midgard proxy failed: API error: 502 Bad Gateway at /api/midgard/v2/history/rune')
+    );
+
+    const { result } = renderHook(() => useLpPositions('thor1pricefeedfail'), { wrapper });
+
+    await waitFor(() => expect(result.current.state).toBe('error'));
+
+    expect(result.current.error).toMatch(/LP pricing is temporarily unavailable/i);
+    expect(result.current.positions).toEqual([]);
+  });
+
+  it('returns 0 ownership percent when memberUnits or poolUnits are zero', async () => {
+    vi.mocked(midgard.getMemberDetails).mockResolvedValueOnce({
+      pools: [{
+        ...successfulMemberDetails.pools[0],
+        liquidityUnits: '0',
+      }],
+    } as never);
+    vi.mocked(midgard.getPools).mockResolvedValueOnce([
+      {
+        ...successfulPools[0],
+        liquidityUnits: '1000',
+      },
+    ] as never);
+
+    const { result } = renderHook(() => useLpPositions('thor1zerounits'), { wrapper });
+
+    await waitFor(() => expect(result.current.state).toBe('ready'));
+
+    expect(result.current.positions[0].ownershipPercent).toBe(0);
+  });
+
+  it('returns 0 ownership percent when pool liquidityUnits is zero', async () => {
+    vi.mocked(midgard.getMemberDetails).mockResolvedValueOnce({
+      pools: [{
+        ...successfulMemberDetails.pools[0],
+        liquidityUnits: '100',
+      }],
+    } as never);
+    vi.mocked(midgard.getPools).mockResolvedValueOnce([
+      {
+        ...successfulPools[0],
+        liquidityUnits: '0',
+      },
+    ] as never);
+
+    const { result } = renderHook(() => useLpPositions('thor1zeropoolunits'), { wrapper });
+
+    await waitFor(() => expect(result.current.state).toBe('ready'));
+
+    expect(result.current.positions[0].ownershipPercent).toBe(0);
+  });
 });
