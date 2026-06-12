@@ -50,6 +50,18 @@ vi.mock('@/lib/hooks/use-current-block-height', () => ({
   useCurrentBlockHeight: () => mockUseCurrentBlockHeight(),
 }));
 
+vi.mock('@/lib/hooks/use-api-health', () => ({
+  useApiHealthContext: () => ({
+    midgard: 'healthy',
+    thornode: 'healthy',
+    lastChecked: new Date('2026-06-12T00:00:00.000Z'),
+    lastSuccessful: {
+      midgard: new Date('2026-06-12T00:00:00.000Z'),
+      thornode: new Date('2026-06-12T00:00:00.000Z'),
+    },
+  }),
+}));
+
 describe('RiskPage', () => {
   beforeEach(() => {
     mockUseBondPositions.mockReset();

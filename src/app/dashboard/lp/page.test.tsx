@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LpDashboardPage from './page';
 
@@ -167,7 +167,7 @@ describe('LpDashboardPage', () => {
     expect(screen.getByText(/BTC\.BTC summary/i)).toBeInTheDocument();
   });
 
-  it('shows a stale RUNE price banner when LP current values use stale Midgard price data', async () => {
+  it('shows stale RUNE price confidence when LP current values use stale Midgard price data', async () => {
     mockUseLpPositions.mockReturnValue({
       positions: [basePosition],
       isLoading: false,
@@ -185,11 +185,12 @@ describe('LpDashboardPage', () => {
 
     render(<LpDashboardPage />);
 
-    expect(await screen.findByText(/RUNE price feed is stale/)).toBeInTheDocument();
-    expect(screen.getByText(/LP current values use the last Midgard price/)).toBeInTheDocument();
+    const confidence = await screen.findByLabelText('LP data confidence');
+    expect(within(confidence).getByText('RUNE price')).toBeInTheDocument();
+    expect(within(confidence).getByText('Stale')).toBeInTheDocument();
   });
 
-  it('shows a warning banner when any position lacks historical pricing', async () => {
+  it('shows current-only confidence when any position lacks historical pricing', async () => {
     mockUseLpPositions.mockReturnValue({
       positions: [{
         ...basePosition,
@@ -216,8 +217,9 @@ describe('LpDashboardPage', () => {
 
     render(<LpDashboardPage />);
 
-    expect(await screen.findByText(/Historical entry pricing is unavailable for 1 position\./)).toBeInTheDocument();
-    expect(screen.getByText(/Net P\/L and impermanent loss are hidden/i)).toBeInTheDocument();
+    const confidence = await screen.findByLabelText('LP data confidence');
+    expect(within(confidence).getByText('Current-only')).toBeInTheDocument();
+    expect(within(confidence).getByText('History unavailable')).toBeInTheDocument();
     expect(screen.getAllByText('Incomplete')).toHaveLength(2);
   });
 
@@ -246,10 +248,11 @@ describe('LpDashboardPage', () => {
 
     render(<LpDashboardPage />);
 
-    expect(await screen.findByText(/Historical entry pricing is still enriching for 1 position\./)).toBeInTheDocument();
-    expect(screen.getByText(/Net P\/L and impermanent loss totals will appear once enrichment completes/i)).toBeInTheDocument();
+    const confidence = await screen.findByLabelText('LP data confidence');
+    expect(within(confidence).getByText('Current-only')).toBeInTheDocument();
+    expect(within(confidence).getByText('Enriching now')).toBeInTheDocument();
     expect(screen.getAllByText('Enriching...')).toHaveLength(2);
-    expect(screen.queryByText(/Historical entry pricing is unavailable for 1 position\./)).not.toBeInTheDocument();
+    expect(within(confidence).queryByText('History unavailable')).not.toBeInTheDocument();
     expect(screen.getByText('Card historical enrichment loading')).toBeInTheDocument();
   });
 });

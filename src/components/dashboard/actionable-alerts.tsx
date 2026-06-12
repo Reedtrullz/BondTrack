@@ -50,7 +50,7 @@ export function ActionableAlerts({ positions, address }: ActionableAlertsProps) 
               {alert.actionLink && (
                 <Link 
                   href={finalLink} 
-                  className="inline-flex items-center gap-1 mt-2 text-xs font-bold uppercase tracking-wider opacity-80 hover:opacity-100 transition-opacity"
+                  className="inline-flex items-center gap-1 mt-2 text-xs font-bold uppercase opacity-80 hover:opacity-100 transition-opacity"
                 >
                   {alert.actionLabel} <ArrowRight className="w-3 h-3" />
                 </Link>

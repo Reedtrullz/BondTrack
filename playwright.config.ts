@@ -23,7 +23,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run build && rm -rf .next/standalone/public .next/standalone/.next/static && mkdir -p .next/standalone/.next && cp -R public .next/standalone/public && cp -R .next/static .next/standalone/.next/static && PORT=3000 HOSTNAME=0.0.0.0 node .next/standalone/server.js',
+    command: 'npm run build && PORT=3000 HOSTNAME=0.0.0.0 npm start',
     url: 'http://localhost:3000',
     reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === 'true',
     timeout: 180000,

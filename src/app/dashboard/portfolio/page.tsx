@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -18,7 +18,11 @@ import { useYieldBenchmarks } from '@/lib/hooks/use-yield-benchmarks';
 import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { usePools } from '@/lib/hooks/use-pools';
 import { useFeeRevenue } from '@/lib/hooks/use-fee-revenue';
+import { useApiHealthContext } from '@/lib/hooks/use-api-health';
+import { buildDashboardInsightState } from '@/lib/dashboard/insights';
 import { formatUsd, runeToNumber } from '@/lib/utils/formatters';
+import { ActionQueue } from '@/components/dashboard/action-queue';
+import { InsightHeader } from '@/components/dashboard/insight-header';
 import { PortfolioSummary } from '@/components/dashboard/portfolio-summary';
 import { FeeRevenueChart } from '@/components/dashboard/fee-revenue-chart';
 import { FeeRevenueSummary } from '@/components/dashboard/fee-revenue-summary';
@@ -86,6 +90,7 @@ export default function PortfolioPage() {
   const { data: allNodes, isLoading: allNodesLoading } = useAllNodes();
   const { pools: marketPools, isLoading: marketLoading } = usePools();
   const { feeRevenue, isLoading: feeRevenueLoading, error: feeRevenueError } = useFeeRevenue();
+  const apiHealth = useApiHealthContext();
 
   const [showFeeRevenue, setShowFeeRevenue] = useState(false);
   const [showMarket, setShowMarket] = useState(false);
@@ -93,27 +98,14 @@ export default function PortfolioPage() {
 
   const isLoading = bondLoading || priceLoading || metricsLoading || benchmarksLoading || allNodesLoading || marketLoading;
 
-  if (isLoading) {
-    return (
-      <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 py-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div
-              key={i}
-              className="h-24 rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60 animate-pulse"
-            />
-          ))}
-        </div>
-        <div className="h-64 rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60 animate-pulse" />
-      </div>
-    );
-  }
-
   const totalBondedRune = bondPositions.reduce((sum, p) => sum + p.bondAmount, 0);
   const totalBondedValueUsd = totalBondedRune * runePrice;
 
   const lpDataUnavailable = Boolean(lpError);
-  const effectiveLpPositions = lpDataUnavailable ? [] : lpPositions;
+  const effectiveLpPositions = useMemo(
+    () => (lpDataUnavailable ? [] : lpPositions),
+    [lpDataUnavailable, lpPositions]
+  );
   const totalLpValueUsd = effectiveLpPositions.reduce(
     (sum, p) => sum + p.currentTotalValueUsd,
     0
@@ -124,6 +116,25 @@ export default function PortfolioPage() {
   const weightedAPY = bondPositions.length > 0 && totalBondedRune > 0
     ? bondPositions.reduce((sum, p) => sum + p.netAPY * p.bondAmount, 0) / totalBondedRune
     : 0;
+  const portfolioInsight = useMemo(() => buildDashboardInsightState({
+    address,
+    positions: bondPositions,
+    lpPositions: effectiveLpPositions,
+    network: marketNetwork,
+    apiHealth,
+    runePrice,
+    runePriceIsStale,
+    runePriceUpdatedAt,
+  }), [
+    address,
+    bondPositions,
+    effectiveLpPositions,
+    marketNetwork,
+    apiHealth,
+    runePrice,
+    runePriceIsStale,
+    runePriceUpdatedAt,
+  ]);
 
   const runePriceChange24h = (() => {
     if (runePriceHistory.length < 25) return null;
@@ -156,12 +167,28 @@ export default function PortfolioPage() {
     { name: 'LP', value: totalLpValueUsd, fill: COLORS[1] },
   ];
 
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 py-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div
+              key={i}
+              className="h-24 rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60 animate-pulse"
+            />
+          ))}
+        </div>
+        <div className="h-64 rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60 animate-pulse" />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 py-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
             Portfolio
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
@@ -189,6 +216,22 @@ export default function PortfolioPage() {
         </div>
       </div>
 
+      <InsightHeader
+        severity={portfolioInsight.severity}
+        statusLabel={portfolioInsight.statusLabel}
+        diagnosis={portfolioInsight.diagnosis}
+        topRisk={portfolioInsight.topRisk}
+        metrics={portfolioInsight.headerMetrics}
+        primaryAction={portfolioInsight.primaryAction}
+        eyebrow="Portfolio"
+      />
+
+      <ActionQueue
+        items={portfolioInsight.actions.slice(0, 3)}
+        title="Next portfolio actions"
+        compact
+      />
+
       {/* Hero Stats */}
       <PortfolioSummary
         totalBonded={totalBondedRune}
@@ -213,7 +256,7 @@ export default function PortfolioPage() {
         <DashboardCard title="Asset Allocation">
           {totalSum > 0 ? (
             <>
-              <ResponsiveContainer width="100%" height={280} minWidth={0} minHeight={0}>
+              <ResponsiveContainer width="100%" height={280} minWidth={1} minHeight={1}>
               <PieChart>
                 <Pie
                   data={pieData}
@@ -359,7 +402,7 @@ export default function PortfolioPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-amber-600/80 dark:text-amber-500/80">
             <Eye className="w-4 h-4" />
-            <span className="text-xs font-bold uppercase tracking-widest font-serif italic">Heimdall&apos;s Sight</span>
+            <span className="text-xs font-bold uppercase font-serif italic">Heimdall&apos;s Sight</span>
           </div>
           <button
             onClick={() => setShowIntelligence(!showIntelligence)}

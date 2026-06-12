@@ -7,7 +7,12 @@ import { NodeStatusCard } from '@/components/dashboard/node-status-card';
 import { NetworkComparisonTable } from '@/components/dashboard/network-comparison-table';
 import { DashboardCard } from '@/components/shared/dashboard-card';
 import { ExportButton } from '@/components/shared/export-button';
+import { ActionQueue } from '@/components/dashboard/action-queue';
+import { DisclosureSection } from '@/components/dashboard/disclosure-section';
+import { InsightHeader } from '@/components/dashboard/insight-header';
 import { NETWORK } from '@/lib/config';
+import { buildDashboardInsightState } from '@/lib/dashboard/insights';
+import { useApiHealthContext } from '@/lib/hooks/use-api-health';
 import { formatRuneFromNumber, formatBasisPoints } from '@/lib/utils/formatters';
 import type { BondPosition } from '@/lib/types/node';
 
@@ -43,7 +48,7 @@ function SortHeader({
 }) {
   return (
     <th
-      className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
+      className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
       onClick={() => onSort(field)}
     >
       {label} {sortField === field && (sortDirection === 'asc' ? '↑' : '↓')}
@@ -55,6 +60,7 @@ export default function NodesPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
   const { positions, isLoading } = useBondPositions(address);
+  const apiHealth = useApiHealthContext();
 
   const [sortField, setSortField] = React.useState<SortField>('riskScore');
   const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
@@ -102,6 +108,21 @@ export default function NodesPage() {
     });
   }, [positions, sortField, sortDirection]);
 
+  const nodeInsight = React.useMemo(() => buildDashboardInsightState({
+    address,
+    positions,
+    apiHealth,
+    network: null,
+  }), [address, positions, apiHealth]);
+  const exceptionPositions = React.useMemo(() => (
+    positions.filter((position) => (
+      position.isJailed ||
+      position.status !== 'Active' ||
+      position.slashPoints > 0 ||
+      (position.yieldGuardFlags?.length ?? 0) > 0
+    ))
+  ), [positions]);
+
   if (isLoading) {
     return <div className="animate-pulse space-y-4">{[...Array(3)].map((_, i) => <div key={i} className="h-48 rounded-lg bg-zinc-200 dark:bg-zinc-800" />)}</div>;
   }
@@ -114,15 +135,39 @@ export default function NodesPage() {
     <div className="space-y-8">
       <div className="space-y-4">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Nodes</h1>
+        <InsightHeader
+          severity={nodeInsight.severity}
+          statusLabel={nodeInsight.statusLabel}
+          diagnosis={nodeInsight.diagnosis}
+          topRisk={nodeInsight.topRisk}
+          metrics={nodeInsight.headerMetrics}
+          primaryAction={nodeInsight.primaryAction}
+          eyebrow="Node"
+        />
+        <ActionQueue
+          items={nodeInsight.actions.slice(0, 4)}
+          title="Node exceptions"
+          emptyTitle="No node exceptions"
+          emptyDetail="All tracked nodes are active, unjailed, and below slash warning thresholds."
+          compact
+        />
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Node Health</h2>
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Exception cards</h2>
           {positions.length > 0 && <ExportButton bondPositions={positions} />}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {positions.map((pos) => (
-            <NodeStatusCard key={pos.nodeAddress} position={pos} address={address} />
-          ))}
-        </div>
+        {exceptionPositions.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {exceptionPositions.map((pos) => (
+              <NodeStatusCard key={pos.nodeAddress} position={pos} address={address} />
+            ))}
+          </div>
+        ) : (
+          <DashboardCard className="p-5">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              No exception cards to show. Use the comparison table below for full node detail.
+            </p>
+          </DashboardCard>
+        )}
       </div>
 
       <DashboardCard>
@@ -185,6 +230,17 @@ export default function NodesPage() {
           </table>
         </div>
       </DashboardCard>
+
+      <DisclosureSection
+        title="All node cards"
+        summary="Detailed per-node cards are collapsed because the exception queue above is the primary operator view."
+      >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {positions.map((pos) => (
+            <NodeStatusCard key={pos.nodeAddress} position={pos} address={address} />
+          ))}
+        </div>
+      </DisclosureSection>
 
       <NetworkComparisonTable address={address} />
     </div>

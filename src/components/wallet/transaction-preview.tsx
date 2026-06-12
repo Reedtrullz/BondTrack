@@ -10,7 +10,7 @@ export interface TransactionPreviewData {
   nodeAddress: string;
   amount: string;
   memo: string;
-  estimatedFee: string;
+  feeNote: string;
   walletType: 'keplr' | 'xdefi' | 'vultisig';
 }
 
@@ -68,8 +68,8 @@ export function TransactionPreview({
               <span className="font-semibold">{data.amount} RUNE</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-zinc-500">Estimated Fee</span>
-              <span className="font-mono">{data.estimatedFee} RUNE</span>
+              <span className="text-zinc-500">Network Fee</span>
+              <span className="text-right text-xs text-zinc-600 dark:text-zinc-300">{data.feeNote}</span>
             </div>
             <div className="pt-2 border-t border-zinc-200 dark:border-zinc-700">
               <span className="text-xs text-zinc-500 block mb-1">Memo</span>
@@ -109,7 +109,7 @@ export function TransactionPreview({
 
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-xs text-blue-700 dark:text-blue-300">
-              By confirming, you authorize this transaction using your{' '}
+              By confirming, you authorize this THORChain deposit transaction using your{' '}
               {data.walletType === 'keplr' ? 'Keplr' : data.walletType === 'xdefi' ? 'XDEFI' : 'Vultisig'} wallet.
             </p>
           </div>
@@ -130,7 +130,7 @@ export function TransactionPreview({
             className="flex-1"
             variant={data.type === 'BOND' ? 'default' : 'default'}
           >
-            {isLoading ? 'Signing...' : 'Confirm & Sign'}
+            {isLoading ? 'Broadcasting...' : 'Confirm & Broadcast'}
           </Button>
         </div>
       </div>

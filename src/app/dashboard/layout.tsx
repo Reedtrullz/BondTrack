@@ -1,11 +1,16 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { LoadingSkeleton } from '@/components/shared/loading-skeleton';
 import { AlertToast } from '@/components/alerts/alert-toast';
-import { useAlerts } from '@/lib/hooks/use-alerts';
+import { AlertProvider, useAlertsContext } from '@/lib/hooks/use-alerts';
+import { ApiHealthProvider } from '@/lib/hooks/use-api-health';
+import { useBondPositionAlerts } from '@/lib/hooks/use-bond-position-alerts';
+import { useWatchlist } from '@/lib/hooks/use-watchlist';
+import { WalletProvider } from '@/lib/hooks/use-wallet';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useProtocolVersion } from '@/lib/hooks/use-protocol-version';
 import { UpgradeAlertBanner } from '@/components/dashboard/upgrade-alert-banner';
@@ -19,18 +24,44 @@ function readSavedAddress() {
   return readDashboardAddress();
 }
 
-function DashboardContent({ children }: { children: React.ReactNode }) {
+function DashboardContent({ children }: { children: ReactNode }) {
+  return (
+    <AlertProvider>
+      <DashboardContentInner>{children}</DashboardContentInner>
+    </AlertProvider>
+  );
+}
+
+function DashboardContentInner({ children }: { children: ReactNode }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
   const urlAddress = searchParams.get('address');
   const invalidUrlAddress = Boolean(urlAddress && !isValidTHORChainAddress(urlAddress));
-  const { alerts, dismissAlert, permission, requestPermission } = useAlerts();
+  const {
+    alerts,
+    dismissAlert,
+    permission,
+    requestPermission,
+    triggerAlert,
+    checkSlash,
+    checkJail,
+    checkStatusChange,
+  } = useAlertsContext();
+  const { addAddress } = useWatchlist();
   const { currentVersion, latestVersion, hasUpgrade } = useProtocolVersion();
   const [savedAddress, setSavedAddress] = useState<string | null>(null);
   const effectiveAddress = invalidUrlAddress ? null : (urlAddress ?? savedAddress);
   const isChangelogsRoute = pathname?.startsWith('/dashboard/changelogs');
   const requiresAddress = !isChangelogsRoute;
+  const alertChecks = useMemo(() => ({
+    triggerAlert,
+    checkSlash,
+    checkJail,
+    checkStatusChange,
+  }), [triggerAlert, checkSlash, checkJail, checkStatusChange]);
+
+  useBondPositionAlerts(effectiveAddress, alertChecks);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -83,8 +114,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       return;
     }
     writeDashboardAddress(urlAddress);
+    addAddress(urlAddress);
     setSavedAddress(urlAddress);
-  }, [urlAddress]);
+  }, [addAddress, urlAddress]);
 
   if (requiresAddress && !effectiveAddress) {
     return (
@@ -117,22 +149,26 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   return (
     <ErrorBoundary>
-      <DashboardShell requireAddress={requiresAddress ? !!effectiveAddress : false}>
-        {hasUpgrade && currentVersion && (
-          <UpgradeAlertBanner
-            currentVersion={currentVersion}
-            latestVersion={latestVersion}
-            onDismiss={() => undefined}
-          />
-        )}
-        {children}
-      </DashboardShell>
-      <AlertToast 
-        alerts={alerts} 
-        onDismiss={dismissAlert}
-        permission={permission}
-        onRequestPermission={requestPermission}
-      />
+      <WalletProvider>
+        <ApiHealthProvider>
+          <DashboardShell requireAddress={requiresAddress ? !!effectiveAddress : false}>
+            {hasUpgrade && currentVersion && (
+              <UpgradeAlertBanner
+                currentVersion={currentVersion}
+                latestVersion={latestVersion}
+                onDismiss={() => undefined}
+              />
+            )}
+            {children}
+          </DashboardShell>
+        </ApiHealthProvider>
+        <AlertToast
+          alerts={alerts}
+          onDismiss={dismissAlert}
+          permission={permission}
+          onRequestPermission={requestPermission}
+        />
+      </WalletProvider>
     </ErrorBoundary>
   );
 }
@@ -140,7 +176,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <Suspense fallback={

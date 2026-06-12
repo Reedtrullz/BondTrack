@@ -27,7 +27,9 @@ describe('AlertToast notification prompt', () => {
     expect(screen.getByText('Enable notifications')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Not now' })).toBeInTheDocument();
     expect(promptCard.parentElement).toHaveClass('bottom-4');
-    expect(promptCard.parentElement).not.toHaveClass('top-20');
+    expect(promptCard.parentElement).toHaveAttribute('data-placement', 'peripheral');
+    expect(promptCard.parentElement).not.toHaveClass('left-1/2');
+    expect(promptCard.parentElement).not.toHaveClass('-translate-x-1/2');
   });
 
   it('shows follow-up guidance when permission is not granted', async () => {

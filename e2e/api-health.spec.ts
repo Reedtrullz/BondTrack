@@ -194,6 +194,11 @@ async function setupPortfolioMocks(
       return;
     }
 
+    if (url.pathname.startsWith('/api/midgard/v2/thorname/rlookup/')) {
+      await route.fulfill({ json: { entry: null } });
+      return;
+    }
+
     if (url.pathname === '/api/midgard/v2/network') {
       await route.fulfill({ json: mockNetwork });
       return;
@@ -285,10 +290,12 @@ async function waitForApiHealthResponse(page: Page, path: string, status: number
 }
 
 test.describe('API health banner', () => {
-  test('shows Midgard error message when /api/midgard fails with 502', async ({ page }) => {
+  test('shows Midgard error message when /api/midgard fails with 502', async ({ page, allowApiErrors }) => {
+    allowApiErrors([/\/api\/midgard\/v2\/health$/]);
     await setupPortfolioMocks(page, { midgardHealthStatus: 502 });
+    const midgardResponse = waitForApiHealthResponse(page, '/api/midgard/v2/health', 502);
     await gotoPortfolio(page);
-    await waitForApiHealthResponse(page, '/api/midgard/v2/health', 502);
+    await midgardResponse;
 
     const banner = page.getByTestId('api-health-banner');
     await expect(banner).toBeVisible({ timeout: 15000 });
@@ -297,10 +304,12 @@ test.describe('API health banner', () => {
     );
   });
 
-  test('shows THORNode error message when /api/thorchain fails with 500', async ({ page }) => {
+  test('shows THORNode error message when /api/thorchain fails with 500', async ({ page, allowApiErrors }) => {
+    allowApiErrors([/\/api\/thorchain\/thorchain\/nodes$/]);
     await setupPortfolioMocks(page, { thornodeHealthStatus: 500 });
+    const thornodeResponse = waitForApiHealthResponse(page, '/api/thorchain/thorchain/nodes', 500);
     await gotoPortfolio(page);
-    await waitForApiHealthResponse(page, '/api/thorchain/thorchain/nodes', 500);
+    await thornodeResponse;
 
     const banner = page.getByTestId('api-health-banner');
     await expect(banner).toBeVisible({ timeout: 15000 });
@@ -311,17 +320,20 @@ test.describe('API health banner', () => {
 
   test('hides the banner when both APIs are healthy', async ({ page }) => {
     await setupPortfolioMocks(page, {});
+    const midgardResponse = waitForApiHealthResponse(page, '/api/midgard/v2/health', 200);
+    const thornodeResponse = waitForApiHealthResponse(page, '/api/thorchain/thorchain/nodes', 200);
     await gotoPortfolio(page);
-    await waitForApiHealthResponse(page, '/api/midgard/v2/health', 200);
-    await waitForApiHealthResponse(page, '/api/thorchain/thorchain/nodes', 200);
+    await Promise.all([midgardResponse, thornodeResponse]);
 
     await expect(page.getByTestId('api-health-banner')).toHaveCount(0);
   });
 
-  test('dismisses the banner after an error state', async ({ page }) => {
+  test('dismisses the banner after an error state', async ({ page, allowApiErrors }) => {
+    allowApiErrors([/\/api\/midgard\/v2\/health$/]);
     await setupPortfolioMocks(page, { midgardHealthStatus: 502 });
+    const midgardResponse = waitForApiHealthResponse(page, '/api/midgard/v2/health', 502);
     await gotoPortfolio(page);
-    await waitForApiHealthResponse(page, '/api/midgard/v2/health', 502);
+    await midgardResponse;
 
     const banner = page.getByTestId('api-health-banner');
     await expect(banner).toBeVisible({ timeout: 15000 });

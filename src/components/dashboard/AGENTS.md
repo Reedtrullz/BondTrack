@@ -74,7 +74,7 @@
 
 **Styling**: Tailwind zinc palette, `border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-lg`. Numbers: `font-mono`. Labels: `text-zinc-500 text-sm`.
 
-**Charts**: Always `<ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={0}>`. Midgard timestamps are nanoseconds — divide by `1e9`.
+**Charts**: Always use `<ResponsiveContainer>` with a stable positive height and `minWidth={1}` / `minHeight={1}` so Recharts never receives zero or negative layout measurements. Midgard timestamps are nanoseconds — divide by `1e9`.
 
 **States**: Skeleton loaders (`animate-pulse bg-zinc-200 dark:bg-zinc-800`), centered `text-zinc-500` empty states, honest degraded states for upstream failures.
 

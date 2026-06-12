@@ -48,7 +48,7 @@ export function NetworkSecurityCard({ ratio, activeRatio, health, status }: Netw
     <div className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500 dark:text-zinc-400">
+          <p className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
             Network Security
           </p>
           <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
@@ -63,7 +63,7 @@ export function NetworkSecurityCard({ ratio, activeRatio, health, status }: Netw
 
       <div className="mt-6 flex items-end justify-between gap-4">
         <div>
-          <div className={cn('text-4xl font-semibold tracking-tight', styles.ratio)}>
+          <div className={cn('text-4xl font-semibold', styles.ratio)}>
             {ratio > 0 ? `${ratio.toFixed(2)}x` : '--'}
           </div>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">

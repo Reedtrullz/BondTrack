@@ -6,12 +6,13 @@ const STORAGE_KEY = 'heimdall-watchlist';
 
 const createAddress = (char: string) => `thor1${char.repeat(39)}`;
 
-const STORED_ADDRESSES = [createAddress('a'), createAddress('b')];
+const STORED_ADDRESSES = [createAddress('a'), createAddress('p')];
 const NEW_ADDRESS = createAddress('c');
 const EXISTING_ADDRESS = createAddress('d');
 const REMOVE_ADDRESS = createAddress('e');
 const KEEP_ADDRESS = createAddress('f');
 const SAVED_ADDRESS = createAddress('g');
+const BECH32_ZERO_ADDRESS = 'thor12mpnw4stg9fw8yngs3rpzzc6zdprepev3e0346';
 
 const createLocalStorageMock = () => {
   const store = new Map<string, string>();
@@ -87,8 +88,21 @@ describe('useWatchlist', () => {
     expect(localStorage.getItem(STORAGE_KEY)).toContain(NEW_ADDRESS);
   });
 
-  it('does not add duplicate addresses', async () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([EXISTING_ADDRESS]));
+  it('accepts valid bech32 THORChain addresses that contain zeroes', async () => {
+    const { result } = renderHook(() => useWatchlist());
+    await waitFor(() => expect(result.current.isLoaded).toBe(true));
+
+    act(() => {
+      result.current.addAddress(BECH32_ZERO_ADDRESS);
+    });
+
+    expect(result.current.addresses).toContain(BECH32_ZERO_ADDRESS);
+    expect(localStorage.getItem(STORAGE_KEY)).toContain(BECH32_ZERO_ADDRESS);
+  });
+
+  it('moves duplicate addresses to the newest position', async () => {
+    const OLD_ADDRESS = createAddress('z');
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([EXISTING_ADDRESS, OLD_ADDRESS]));
 
     const { result } = renderHook(() => useWatchlist());
     await waitFor(() => expect(result.current.isLoaded).toBe(true));
@@ -97,7 +111,8 @@ describe('useWatchlist', () => {
       result.current.addAddress(EXISTING_ADDRESS);
     });
 
-    expect(result.current.addresses.length).toBe(1);
+    expect(result.current.addresses).toEqual([OLD_ADDRESS, EXISTING_ADDRESS]);
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')).toEqual([OLD_ADDRESS, EXISTING_ADDRESS]);
   });
 
   it('removes address from watchlist', async () => {

@@ -18,10 +18,10 @@ services:
       # image's client bundle.
       - NEXT_PUBLIC_THORNODE_API=https://gateway.liquify.com/chain/thorchain_api
       - NEXT_PUBLIC_MIDGARD_API=https://gateway.liquify.com/chain/thorchain_midgard
-      - NEXT_PUBLIC_THORCHAIN_RPC=https://rpc.thorchain.info
+      - NEXT_PUBLIC_THORCHAIN_RPC=https://gateway.liquify.com/chain/thorchain_rpc
       - NEXT_PUBLIC_TRACK_API=https://track.thorchain.org/
       - NEXT_PUBLIC_MIDGARD_FALLBACK=https://midgard.thorchain.network
-      - NEXT_PUBLIC_APP_URL=https://thorchain.no
+      - NEXT_PUBLIC_APP_URL=https://bond.thorchain.no
       - NEXT_PUBLIC_THORCHAIN_NETWORK=mainnet
       - NEXT_PUBLIC_COINGECKO_API=https://api.coingecko.com/api/v3
       - NEXT_PUBLIC_USE_MOCK_DATA=false

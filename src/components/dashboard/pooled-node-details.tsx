@@ -64,7 +64,7 @@ export function PooledNodeDetails({ position }: PooledNodeDetailsProps) {
             {/* Other providers list */}
             {otherProviders.length > 0 && (
               <div className="space-y-2">
-                <div className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
+                <div className="text-xs font-medium text-zinc-500 uppercase">
                   Other Providers
                 </div>
                 <div className="space-y-1.5">

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { useAlerts, type AlertPreferences } from '@/lib/hooks/use-alerts';
+import { useAlertsContext, type AlertPreferences } from '@/lib/hooks/use-alerts';
 
 type LocalAlertSetting = {
   id: keyof AlertPreferences;
@@ -56,7 +56,7 @@ function permissionLabel(permission: NotificationPermission) {
 }
 
 export default function NotificationPreferences() {
-  const { preferences, permission, requestPermission, updatePreferences } = useAlerts();
+  const { preferences, permission, requestPermission, updatePreferences } = useAlertsContext();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -132,7 +132,7 @@ export default function NotificationPreferences() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="inline-flex rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+            <div className="inline-flex rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-semibold uppercase text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
               Not active yet
             </div>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -149,7 +149,7 @@ export default function NotificationPreferences() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="inline-flex rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+            <div className="inline-flex rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-semibold uppercase text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
               Not active yet
             </div>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">

@@ -45,7 +45,7 @@ export function RiskRadar({ positions }: RiskRadarProps) {
   ];
 
   return (
-    <div className="w-full h-[280px] relative group">
+    <div className="w-full min-w-0 min-h-[280px] relative group">
       <div className="absolute top-0 right-0 p-2 z-10">
         <Activity className="w-4 h-4 text-zinc-400 group-hover:text-amber-500 transition-colors" />
       </div>
@@ -67,7 +67,7 @@ export function RiskRadar({ positions }: RiskRadarProps) {
         </div>
       )}
 
-      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+      <ResponsiveContainer width="100%" height={260} minWidth={1} minHeight={1}>
         <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
           <PolarGrid stroke="#3f3f46" strokeDasharray="3 3" />
           <PolarAngleAxis 
@@ -94,7 +94,7 @@ export function RiskRadar({ positions }: RiskRadarProps) {
       />
       
       <div className="absolute bottom-2 left-0 right-0 text-center">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-600">
+        <span className="text-[10px] font-bold uppercase text-zinc-500 dark:text-zinc-600">
           Shield Strength Radar
         </span>
       </div>

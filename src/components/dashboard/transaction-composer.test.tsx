@@ -10,14 +10,14 @@ const mocks = vi.hoisted(() => ({
   wallet: {
     address: 'thor1walletaddress000000000000000000000000000',
     walletType: 'keplr' as 'keplr' | 'xdefi' | 'vultisig',
-    chainId: 'thorchain-mainnet-v1',
+    chainId: 'thorchain-1',
     isConnected: true,
     isConnecting: false,
     error: null,
     networkMismatch: {
       hasMismatch: false,
-      expected: 'thorchain-mainnet-v1',
-      actual: 'thorchain-mainnet-v1',
+      expected: 'thorchain-1',
+      actual: 'thorchain-1',
     },
     availableWallets: 'keplr' as const,
     connect: vi.fn(),
@@ -42,7 +42,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/lib/hooks/use-wallet', () => ({
-  useWallet: () => mocks.wallet,
+  useWalletContext: () => mocks.wallet,
 }));
 
 vi.mock('@/lib/transactions/bond', async (importOriginal) => {
@@ -84,6 +84,28 @@ beforeEach(() => {
 });
 
 describe('TransactionComposer BOND advanced validation', () => {
+  it('does not show validation errors before the operator edits the composer', () => {
+    render(<TransactionComposer positions={[]} />);
+
+    expect(screen.getByLabelText('Node Address')).toHaveAttribute('aria-invalid', 'false');
+    expect(screen.getByLabelText('Bond Amount')).toHaveAttribute('aria-invalid', 'false');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('shows field validation after the operator edits invalid values', async () => {
+    const user = userEvent.setup();
+
+    render(<TransactionComposer positions={[]} />);
+
+    await user.type(screen.getByLabelText('Node Address'), 'bad-node');
+    await user.type(screen.getByLabelText('Bond Amount'), '0');
+
+    expect(screen.getAllByText('Node address must be a valid THORChain address').length).toBeGreaterThan(0);
+    expect(screen.getByText('Amount must be a positive RUNE value with up to 8 decimals')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Node address must be a valid THORChain address');
+  });
+
   it('blocks signing and surfaces validation when operator fee is entered without provider', async () => {
     const user = userEvent.setup();
 
@@ -125,7 +147,7 @@ describe('TransactionComposer BOND advanced validation', () => {
     await user.type(screen.getByLabelText('Node Address'), NODE_ADDRESS);
     await user.type(screen.getByLabelText('Bond Amount'), '2');
     await user.click(screen.getByRole('button', { name: 'Sign & Broadcast' }));
-    await user.click(screen.getByRole('button', { name: 'Confirm & Sign' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm & Broadcast' }));
 
     expect(transactionMocks.executeBondTransaction).toHaveBeenCalledWith({
       type: 'BOND',
@@ -150,7 +172,7 @@ describe('TransactionComposer BOND advanced validation', () => {
     await user.type(screen.getByLabelText('Provider Address (optional)'), PROVIDER_ADDRESS);
     await user.type(screen.getByLabelText('Operator Fee BPS (optional)'), '1000');
     await user.click(screen.getByRole('button', { name: 'Sign & Broadcast' }));
-    await user.click(screen.getByRole('button', { name: 'Confirm & Sign' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm & Broadcast' }));
 
     expect(transactionMocks.executeBondTransaction).toHaveBeenCalledWith({
       type: 'BOND',
@@ -172,7 +194,7 @@ describe('TransactionComposer BOND advanced validation', () => {
     await user.type(screen.getByLabelText('Amount to Unbond'), '10');
     await user.click(screen.getByRole('button', { name: 'Sign & Broadcast' }));
     expect(screen.getAllByText(`UNBOND:${NODE_ADDRESS}:1000000000`)).toHaveLength(2);
-    await user.click(screen.getByRole('button', { name: 'Confirm & Sign' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm & Broadcast' }));
 
     expect(transactionMocks.executeUnbondTransaction).toHaveBeenCalledWith({
       type: 'UNBOND',

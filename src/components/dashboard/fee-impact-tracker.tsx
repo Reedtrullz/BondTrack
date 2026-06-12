@@ -40,7 +40,7 @@ export function PersonalFeeAudit({ positions, networkApy }: PersonalFeeAuditProp
     <div className="p-8 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">Personal Fee Audit</h3>
+          <h3 className="text-xs font-bold text-zinc-400 uppercase mb-1">Personal Fee Audit</h3>
           <p className="text-sm text-zinc-500">Estimated monthly reward leakage</p>
         </div>
         <div className="flex items-center gap-2">

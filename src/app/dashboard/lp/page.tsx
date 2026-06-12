@@ -7,10 +7,11 @@ import { useLpPositions } from '@/lib/hooks/use-lp-positions';
 import { LpSummaryCard } from '@/components/dashboard/lp-summary-card';
 import IlCalculator from '@/components/dashboard/il-calculator';
 import TaxExport from '@/components/dashboard/tax-export';
+import { MetricStrip } from '@/components/dashboard/metric-strip';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Coins, Calculator, FileSpreadsheet, ArrowLeft, AlertTriangle, Loader2 } from 'lucide-react';
+import { Coins, Calculator, FileSpreadsheet, ArrowLeft } from 'lucide-react';
 import { formatUsd } from '@/lib/utils/formatters';
 
 export default function LpPage() {
@@ -46,9 +47,36 @@ export default function LpPage() {
   const showHistoricalEnrichmentNotice = isHistoricalEnrichmentLoading && positionsWithoutHistory.length > 0;
   const showPricingWarning = !showHistoricalEnrichmentNotice && positionsWithoutHistory.length > 0;
   const showEstimatedWarning = estimatedPositions.length > 0;
-  const staleRunePriceLabel = runePriceFreshness?.isStale
-    ? `RUNE price feed is stale${runePriceFreshness.updatedAt ? ` (updated ${runePriceFreshness.updatedAt.toLocaleString()})` : ''}. LP current values use the last Midgard price.`
-    : null;
+  const confidenceMetrics = [
+    {
+      id: 'trusted-lp-values',
+      label: 'Trusted values',
+      value: String(trustedHistoricalPositions.length),
+      detail: 'Historical entry pricing',
+      severity: trustedHistoricalPositions.length > 0 ? 'healthy' as const : 'info' as const,
+    },
+    {
+      id: 'estimated-lp-values',
+      label: 'Estimated values',
+      value: String(estimatedPositions.length),
+      detail: showEstimatedWarning ? 'Excluded from aggregate P/L' : 'None',
+      severity: showEstimatedWarning ? 'info' as const : 'healthy' as const,
+    },
+    {
+      id: 'current-only-lp-values',
+      label: 'Current-only',
+      value: String(positionsWithoutHistory.length),
+      detail: showHistoricalEnrichmentNotice ? 'Enriching now' : showPricingWarning ? 'History unavailable' : 'None',
+      severity: showPricingWarning || showHistoricalEnrichmentNotice ? 'warning' as const : 'healthy' as const,
+    },
+    {
+      id: 'lp-price-feed',
+      label: 'RUNE price',
+      value: runePriceFreshness?.isStale ? 'Stale' : 'Fresh',
+      detail: runePriceFreshness?.updatedAt ? `Updated ${runePriceFreshness.updatedAt.toLocaleString()}` : 'Midgard quote',
+      severity: runePriceFreshness?.isStale ? 'warning' as const : 'healthy' as const,
+    },
+  ];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -71,56 +99,9 @@ export default function LpPage() {
         </div>
       </div>
 
-      {/* Historical Enrichment Banner */}
-      {showHistoricalEnrichmentNotice && (
-        <div className="mb-6 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-blue-800 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300">
-          <Loader2 className="mt-0.5 h-5 w-5 flex-shrink-0 animate-spin" />
-          <div>
-            <p className="font-medium">
-              Historical entry pricing is still enriching for {positionsWithoutHistory.length} position{positionsWithoutHistory.length !== 1 ? 's' : ''}.
-            </p>
-            <p className="mt-1 text-sm opacity-90">
-              Current LP value is live; Net P/L and impermanent loss totals will appear once enrichment completes.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Pricing Warning Banner */}
-      {showPricingWarning && (
-        <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
-          <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" />
-          <div>
-            <p className="font-medium">
-              Historical entry pricing is unavailable for {positionsWithoutHistory.length} position{positionsWithoutHistory.length !== 1 ? 's' : ''}.
-            </p>
-            <p className="mt-1 text-sm opacity-90">
-              Current value is still shown, but Net P/L and impermanent loss are hidden until historical entry pricing is available.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {showEstimatedWarning && (
-        <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
-          <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" />
-          <div>
-            <p className="font-medium">
-              Estimated entry pricing is used for {estimatedPositions.length} position{estimatedPositions.length !== 1 ? 's' : ''}.
-            </p>
-            <p className="mt-1 text-sm opacity-90">
-              Estimated position P/L is labeled per pool and excluded from aggregate Net P/L totals.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {staleRunePriceLabel && (
-        <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
-          <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" />
-          <p className="text-sm font-medium">{staleRunePriceLabel}</p>
-        </div>
-      )}
+      <div className="mb-6">
+        <MetricStrip metrics={confidenceMetrics} title="LP data confidence" />
+      </div>
 
       {/* Error State */}
       {error ? (

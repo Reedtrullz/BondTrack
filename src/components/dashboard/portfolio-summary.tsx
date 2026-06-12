@@ -88,7 +88,7 @@ function HealthScoreDisplay({ health }: { health: { grade: HealthGrade; score: n
   
   return (
     <div className="flex items-baseline gap-2">
-      <span className={cn("text-2xl font-bold tracking-tight", getGradeColor(health.grade))}>{health.grade}</span>
+      <span className={cn("text-2xl font-bold", getGradeColor(health.grade))}>{health.grade}</span>
       <div className="relative group">
         <Info className="w-3.5 h-3.5 text-zinc-400 cursor-help" />
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-zinc-900 text-white text-xs rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 border border-zinc-800">
@@ -144,7 +144,7 @@ function SummaryCard({ icon, label, value, subValue, highlight }: {
         {icon}
         <span>{label}</span>
       </div>
-      <div className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight font-mono">{value}</div>
+      <div className="text-xl font-bold text-zinc-900 dark:text-zinc-100 font-mono">{value}</div>
       {subValue && <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5 truncate">{subValue}</div>}
     </div>
   );

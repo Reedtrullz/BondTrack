@@ -7,11 +7,17 @@ import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { NodeExplorer } from '@/components/dashboard/node-explorer';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Filter, ArrowUpDown } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, Filter, ArrowUpDown } from 'lucide-react';
+import { scoreNodeCandidate } from '@/lib/dashboard/node-candidate-score';
+import {
+  getCandidateSortLabel,
+  getDefaultCandidateSortOrder,
+  sortNodeCandidates,
+  type NodeCandidateSortField,
+  type NodeCandidateSortOrder,
+} from '@/lib/dashboard/node-candidate-sort';
 import { runeToNumber } from '@/lib/utils/formatters';
 
-type SortField = 'apy' | 'bond' | 'slash' | 'version';
-type SortOrder = 'asc' | 'desc';
 type FeeFilter = 'all' | 'low' | 'medium' | 'high';
 
 export default function ExplorerPage() {
@@ -21,8 +27,8 @@ export default function ExplorerPage() {
   const { positions } = useBondPositions(address);
 
   const [feeFilter, setFeeFilter] = useState<FeeFilter>('all');
-  const [sortField, setSortField] = useState<SortField>('apy');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [sortField, setSortField] = useState<NodeCandidateSortField>('quality');
+  const [sortOrder, setSortOrder] = useState<NodeCandidateSortOrder>(getDefaultCandidateSortOrder('quality'));
   // Calculate APY for each node (per-node calculation)
   const nodesWithAPY = useMemo(() => {
     if (!allNodes) return [];
@@ -41,6 +47,15 @@ export default function ExplorerPage() {
         // Adjusted APY after fee
         const adjustedAPY = apy * (1 - operatorFeePercent);
 
+        const candidateScore = scoreNodeCandidate({
+          adjustedAPY,
+          totalBond,
+          operatorFeePercent,
+          slashPoints: node.slash_points,
+          status: node.status,
+          capacityTrust: 'unknown',
+        });
+
         return {
           ...node,
           calculatedAPY: apy,
@@ -48,7 +63,8 @@ export default function ExplorerPage() {
           operatorFee,
           operatorFeePercent,
           totalBond,
-          isFullCapacity: false, // TODO: determine from provider count vs limit
+          isFullCapacity: undefined,
+          candidateScore,
         };
       });
   }, [allNodes]);
@@ -68,34 +84,18 @@ export default function ExplorerPage() {
 
   // Apply sorting
   const sortedNodes = useMemo(() => {
-    const sorted = [...feeFiltered].sort((a, b) => {
-      let aVal, bVal;
-
-      switch (sortField) {
-        case 'apy':
-          aVal = a.adjustedAPY;
-          bVal = b.adjustedAPY;
-          break;
-        case 'bond':
-          aVal = a.totalBond;
-          bVal = b.totalBond;
-          break;
-        case 'slash':
-          aVal = a.slash_points;
-          bVal = b.slash_points;
-          break;
-        case 'version':
-          aVal = a.version;
-          bVal = b.version;
-          break;
-      }
-
-      if (sortOrder === 'asc') return aVal > bVal ? 1 : -1;
-      return aVal < bVal ? 1 : -1;
-    });
-
-    return sorted;
+    return sortNodeCandidates(feeFiltered, sortField, sortOrder);
   }, [feeFiltered, sortField, sortOrder]);
+  const qualityCounts = useMemo(() => {
+    return sortedNodes.reduce(
+      (counts, node) => {
+        counts[node.candidateScore.quality] += 1;
+        return counts;
+      },
+      { Strong: 0, Watch: 0, Avoid: 0 } as Record<'Strong' | 'Watch' | 'Avoid', number>
+    );
+  }, [sortedNodes]);
+  const bondReadyCount = qualityCounts.Strong + qualityCounts.Watch;
 
   if (isLoading) {
     return (
@@ -146,11 +146,11 @@ export default function ExplorerPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
               Node Discovery
             </h1>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-              Browse top-performing nodes and find your next bonding opportunity
+              Rank bond candidates by quality, slash history, operator fee, and capacity trust
             </p>
           </div>
         </div>
@@ -158,6 +158,51 @@ export default function ExplorerPage() {
           <span className="text-sm text-zinc-500">Showing {sortedNodes.length} nodes</span>
         </div>
       </div>
+
+      <section
+        aria-label="Candidate quality summary"
+        className={`mb-6 rounded-xl border p-4 ${
+          bondReadyCount > 0
+            ? 'border-emerald-200 bg-emerald-50/70 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-100'
+            : 'border-amber-200 bg-amber-50/80 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100'
+        }`}
+      >
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-3">
+            {bondReadyCount > 0 ? (
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+            ) : (
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+            )}
+            <div>
+              <h2 className="text-sm font-bold">
+                {bondReadyCount > 0
+                  ? `${bondReadyCount} candidate${bondReadyCount === 1 ? '' : 's'} are bond-ready enough to inspect`
+                  : 'No bond-ready candidates in the current filter'}
+              </h2>
+              <p className="mt-1 text-sm opacity-85">
+                {bondReadyCount > 0
+                  ? 'Strong candidates can be prepared directly; Watch candidates still need fee, slash, and capacity review.'
+                  : 'Every visible node is avoid-rated by the quality model. Inspect slash history and capacity before preparing any bond.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center text-xs font-semibold md:min-w-72">
+            <div className="rounded-lg bg-white/60 px-3 py-2 dark:bg-black/20">
+              <div className="text-lg font-bold">{qualityCounts.Strong}</div>
+              <div>Strong</div>
+            </div>
+            <div className="rounded-lg bg-white/60 px-3 py-2 dark:bg-black/20">
+              <div className="text-lg font-bold">{qualityCounts.Watch}</div>
+              <div>Watch</div>
+            </div>
+            <div className="rounded-lg bg-white/60 px-3 py-2 dark:bg-black/20">
+              <div className="text-lg font-bold">{qualityCounts.Avoid}</div>
+              <div>Avoid</div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Filters and Sorting */}
       <div className="flex flex-wrap gap-3 mb-6 p-4 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
@@ -186,7 +231,7 @@ export default function ExplorerPage() {
 
         <div className="flex items-center gap-2 ml-auto">
           <span className="text-xs text-zinc-500">Sort by:</span>
-          {(['apy', 'bond', 'slash', 'version'] as SortField[]).map((field) => (
+          {(['quality', 'apy', 'bond', 'slash', 'version'] as NodeCandidateSortField[]).map((field) => (
             <button
               key={field}
               onClick={() => {
@@ -194,7 +239,7 @@ export default function ExplorerPage() {
                   setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                 } else {
                   setSortField(field);
-                  setSortOrder('desc');
+                  setSortOrder(getDefaultCandidateSortOrder(field));
                 }
               }}
               className={`px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 ${
@@ -203,7 +248,7 @@ export default function ExplorerPage() {
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
               }`}
             >
-              {field === 'apy' ? 'APY' : field === 'bond' ? 'Bond' : field === 'slash' ? 'Slash' : 'Version'}
+              {getCandidateSortLabel(field)}
               {sortField === field && (
                 <ArrowUpDown className={`w-3 h-3 ${sortOrder === 'desc' ? 'rotate-180' : ''}`} />
               )}

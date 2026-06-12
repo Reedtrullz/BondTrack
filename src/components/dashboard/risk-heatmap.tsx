@@ -63,7 +63,7 @@ export function RiskHeatmap({ positions, onNodeSelect }: RiskHeatmapProps) {
     <div className="p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">Capital Exposure Map</h3>
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase">Capital Exposure Map</h3>
           <p className="text-xs text-zinc-500">Bond Amount by Slash vs. Churn Risk</p>
         </div>
         <div className="flex gap-3 text-[10px] font-medium uppercase">

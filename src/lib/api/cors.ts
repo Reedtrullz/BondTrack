@@ -8,7 +8,7 @@ const SECURITY_HEADERS = {
 };
 
 const BASE_ALLOWED_ORIGINS = [
-  'https://thorchain.no',
+  'https://bond.thorchain.no',
   'https://dev.thorchain.no',
   'http://localhost:3000',
   'http://localhost:3001',

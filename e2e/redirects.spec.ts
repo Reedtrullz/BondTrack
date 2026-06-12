@@ -1,15 +1,18 @@
 import { test, expect } from './fixtures';
+import { mockDashboardApis } from './helpers/dashboard-api-mocks';
 
 const MOCK_ADDRESS = 'thor12mpnw4stg9fw8yngs3rpzzc6zdprepev3e0346';
 
 test.describe('Dashboard redirects', () => {
-  test('redirects overview to portfolio and preserves query params', async ({ page }) => {
+  test('redirects overview to command center and preserves query params', async ({ page }) => {
+    await mockDashboardApis(page, MOCK_ADDRESS);
+
     await Promise.all([
-      page.waitForURL(`/dashboard/portfolio?address=${MOCK_ADDRESS}`),
+      page.waitForURL(`/dashboard?address=${MOCK_ADDRESS}`),
       page.goto(`/dashboard/overview?address=${MOCK_ADDRESS}`),
     ]);
 
-    await expect(page).toHaveURL(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
+    await expect(page).toHaveURL(`/dashboard?address=${MOCK_ADDRESS}`);
   });
 
   test('shows the address-required state for overview without an address', async ({ page }) => {
@@ -19,25 +22,39 @@ test.describe('Dashboard redirects', () => {
     await expect(page.getByText('Enter an address to get started')).toBeVisible();
   });
 
-  test('redirects dashboard root to portfolio', async ({ page }) => {
+  test('dashboard root restores saved address on the command center', async ({ page }) => {
+    await mockDashboardApis(page, MOCK_ADDRESS);
+
     await page.addInitScript(() => {
-      sessionStorage.setItem('dashboard-address', 'thor12mpnw4stg9fw8yngs3rpzzc6zdprepev3e0346');
+      localStorage.setItem('BONDTRACK_ADDRESS', 'thor12mpnw4stg9fw8yngs3rpzzc6zdprepev3e0346');
     });
 
     await Promise.all([
-      page.waitForURL('/dashboard/portfolio?address=thor12mpnw4stg9fw8yngs3rpzzc6zdprepev3e0346'),
+      page.waitForURL('/dashboard?address=thor12mpnw4stg9fw8yngs3rpzzc6zdprepev3e0346'),
       page.goto('/dashboard'),
     ]);
 
-    await expect(page).toHaveURL('/dashboard/portfolio?address=thor12mpnw4stg9fw8yngs3rpzzc6zdprepev3e0346');
+    await expect(page).toHaveURL('/dashboard?address=thor12mpnw4stg9fw8yngs3rpzzc6zdprepev3e0346');
   });
 
   test('restores saved address without dropping deep-link query params', async ({ page }) => {
+    await mockDashboardApis(page, MOCK_ADDRESS);
+
     await page.addInitScript((address) => {
       localStorage.setItem('BONDTRACK_ADDRESS', address);
     }, MOCK_ADDRESS);
 
     await page.goto('/dashboard/transactions?action=unbond');
     await expect(page).toHaveURL(`/dashboard/transactions?action=unbond&address=${MOCK_ADDRESS}`);
+  });
+
+  test('adds direct dashboard address URLs to recent addresses', async ({ page }) => {
+    await mockDashboardApis(page, MOCK_ADDRESS);
+
+    await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
+
+    await expect.poll(async () => (
+      page.evaluate(() => JSON.parse(localStorage.getItem('heimdall-watchlist') ?? '[]') as string[])
+    )).toContain(MOCK_ADDRESS);
   });
 });

@@ -7,9 +7,11 @@ import { RecentAddresses } from '@/components/shared/recent-addresses';
 import { Eye, Activity, TrendingUp, Zap, Globe, Lock, Wallet } from 'lucide-react';
 import { readDashboardAddress, writeDashboardAddress } from '@/lib/storage/keys';
 import { isValidTHORChainAddress } from '@/lib/utils/address-validation';
+import { useWatchlist } from '@/lib/hooks/use-watchlist';
 
 export default function Home() {
   const router = useRouter();
+  const { addAddress } = useWatchlist();
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -22,6 +24,7 @@ export default function Home() {
 
   const handleAddressSubmit = (address: string) => {
     writeDashboardAddress(address);
+    addAddress(address);
     router.push(`/dashboard?address=${encodeURIComponent(address)}`);
   };
 
@@ -35,11 +38,11 @@ export default function Home() {
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500/80 to-amber-600/80 mb-6 shadow-xl shadow-amber-500/20 border border-amber-500/20">
             <Eye className="w-10 h-10 text-amber-500" />
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 tracking-tight font-serif italic uppercase">
+          <h1 className="text-4xl sm:text-5xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 font-serif italic uppercase">
             Heimdall
           </h1>
-          <div className="text-sm font-bold uppercase tracking-[0.24em] text-amber-600 dark:text-amber-400 mb-3">
-            THORNode Watcher
+          <div className="text-sm font-bold uppercase text-amber-600 dark:text-amber-400 mb-3">
+            THORChain Dashboard
           </div>
           <p className="text-lg text-zinc-600 dark:text-zinc-400 max-w-lg mx-auto">
             Monitor your bond provider positions with real-time health monitoring, rewards tracking, and risk analysis for the decentralized web.

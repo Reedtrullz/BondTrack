@@ -40,7 +40,7 @@ export function APYChart({ count = 365 }: APYChartProps) {
   return (
     <div className="p-6 rounded-2xl bg-transparent border border-transparent shadow-none">
       <div className="mb-6">
-        <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Estimated APY Trend</h3>
+        <h3 className="text-xs font-bold text-zinc-400 uppercase">Estimated APY Trend</h3>
         <p className="mt-1 text-[10px] text-zinc-500">
           Current-baseline estimate from Midgard earnings, not true historical APY.
         </p>
@@ -60,7 +60,7 @@ export function APYChart({ count = 365 }: APYChartProps) {
           </div>
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={160} minWidth={0} minHeight={0}>
+        <ResponsiveContainer width="100%" height={160} minWidth={1} minHeight={1}>
           <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
             <defs>
               <linearGradient id="apyGradient" x1="0" y1="0" x2="0" y2="1">

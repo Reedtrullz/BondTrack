@@ -66,7 +66,7 @@ export function MarketOverview({ pools, network, runePrice, isLoading, runePrice
         <div>
           <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
             <BarChart3 className="h-4 w-4 text-emerald-500" />
-            <h2 className="text-sm font-semibold uppercase tracking-[0.24em] text-zinc-500 dark:text-zinc-400">Market Overview</h2>
+            <h2 className="text-sm font-semibold uppercase text-zinc-500 dark:text-zinc-400">Market Overview</h2>
           </div>
           <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Network liquidity, volume, and pool performance at a glance.</p>
         </div>
@@ -91,7 +91,7 @@ export function MarketOverview({ pools, network, runePrice, isLoading, runePrice
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-800">
               <thead className="bg-white/70 dark:bg-zinc-900/70">
-                <tr className="text-left text-xs uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+                <tr className="text-left text-xs uppercase text-zinc-500 dark:text-zinc-400">
                   <th className="px-4 py-3 font-semibold">Pool</th>
                   <th className="px-4 py-3 font-semibold">Volume 24h</th>
                   <th className="px-4 py-3 font-semibold">Depth</th>
@@ -152,7 +152,7 @@ export function MarketOverview({ pools, network, runePrice, isLoading, runePrice
 function KpiCard({ icon, label, value, subValue }: { icon: React.ReactNode; label: string; value: string; subValue: string }) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/40">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
         {icon}
         <span>{label}</span>
       </div>

@@ -99,6 +99,11 @@ async function setupMocks(page: Page) {
       return;
     }
 
+    if (url.pathname.startsWith('/api/midgard/v2/thorname/rlookup/')) {
+      await route.fulfill({ json: { entry: null } });
+      return;
+    }
+
     if (url.pathname === '/api/midgard/v2/network') {
       await route.fulfill({ json: mockNetwork });
       return;
@@ -115,12 +120,13 @@ test.describe('Risk dashboard', () => {
   });
 
   test('renders the network security card and ratio badge', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Risk Monitor' })).toBeVisible();
+    await expect(page.getByLabel('Risk diagnosis')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Riskiest actions' })).toBeVisible();
     await expect(page.getByText('Bond-to-Pool Ratio')).toBeVisible();
     // The status badge shows "Healthy" (capitalized) - use first to avoid multiple matches
     await expect(page.getByText('Healthy').first()).toBeVisible();
-    // The ratio value displayed as "2.00x"
-    await expect(page.getByText('2.00x', { exact: true }).first()).toBeVisible();
+    // The ratio value displayed as "2.50x"
+    await expect(page.getByText('2.50x', { exact: true }).first()).toBeVisible();
     // Remove Economically Secure check as it's not present in current UI
   });
 });

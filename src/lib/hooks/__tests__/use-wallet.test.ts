@@ -54,7 +54,7 @@ delete (window as unknown as Record<string, unknown>).xfi;
     const mockAddress = 'thor1test123456789abcdef';
     (window as unknown as Record<string, unknown>).keplr = {
       enable: vi.fn().mockResolvedValue(undefined),
-      getChainId: vi.fn().mockResolvedValue('thorchain-mainnet-v1'),
+      getChainId: vi.fn().mockResolvedValue('thorchain-1'),
       getKey: vi.fn().mockResolvedValue({ bech32Address: mockAddress }),
     };
 
@@ -92,7 +92,7 @@ delete (window as unknown as Record<string, unknown>).xfi;
     const mockAddress = 'thor1test123456789abcdef';
     (window as unknown as Record<string, unknown>).keplr = {
       enable: vi.fn().mockResolvedValue(undefined),
-      getChainId: vi.fn().mockResolvedValue('thorchain-mainnet-v1'),
+      getChainId: vi.fn().mockResolvedValue('thorchain-1'),
       getKey: vi.fn().mockResolvedValue({ bech32Address: mockAddress }),
     };
 

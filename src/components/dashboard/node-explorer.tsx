@@ -2,10 +2,18 @@ import Link from 'next/link';
 import { AlertTriangle, Check, ArrowRight, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NodeRaw } from '@/lib/api/thornode';
-import { formatRuneAmount } from '@/lib/utils/formatters';
+import { formatRuneFromNumber } from '@/lib/utils/formatters';
+import type { NodeCandidateScore } from '@/lib/dashboard/node-candidate-score';
 
 interface NodeExplorerProps {
-  nodes: (NodeRaw & { calculatedAPY: number; adjustedAPY: number; operatorFee: number; operatorFeePercent: number; totalBond: number })[];
+  nodes: (NodeRaw & {
+    calculatedAPY: number;
+    adjustedAPY: number;
+    operatorFee: number;
+    operatorFeePercent: number;
+    totalBond: number;
+    candidateScore: NodeCandidateScore;
+  })[];
   userAddress: string | null;
   positions: { nodeAddress: string }[];
 }
@@ -36,6 +44,16 @@ export function NodeExplorer({ nodes, userAddress, positions }: NodeExplorerProp
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {nodes.map((node) => {
           const bonded = isNodeBonded(node.node_address);
+          const canPrepareBond = node.candidateScore.quality !== 'Avoid';
+          const nodeDetailsHref = `/dashboard/nodes?address=${userAddress || ''}&node=${node.node_address}`;
+          const qualityTone = node.candidateScore.quality === 'Strong'
+            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
+            : node.candidateScore.quality === 'Watch'
+              ? 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200'
+              : 'bg-red-100 text-red-900 dark:bg-red-900/40 dark:text-red-200';
+          const bondActionClass = node.candidateScore.quality === 'Strong'
+            ? 'bg-blue-600 text-white hover:bg-blue-700'
+            : 'bg-amber-600 text-white hover:bg-amber-700';
 
           return (
             <div
@@ -54,6 +72,9 @@ export function NodeExplorer({ nodes, userAddress, positions }: NodeExplorerProp
                         Bonded
                       </span>
                     )}
+                    <span className={cn('px-2 py-0.5 text-xs font-bold rounded-full', qualityTone)}>
+                      {node.candidateScore.quality} · {node.candidateScore.score}/100
+                    </span>
                   </div>
                   <p className="text-xs text-zinc-500 mt-1">Version: {node.version}</p>
                 </div>
@@ -76,7 +97,7 @@ export function NodeExplorer({ nodes, userAddress, positions }: NodeExplorerProp
                 <div>
                   <p className="text-xs text-zinc-500">Total Bond</p>
                   <p className="font-mono text-zinc-900 dark:text-zinc-100">
-                    {formatRuneAmount(node.totalBond)}
+                    {formatRuneFromNumber(node.totalBond)}
                   </p>
                 </div>
                 <div>
@@ -109,19 +130,41 @@ export function NodeExplorer({ nodes, userAddress, positions }: NodeExplorerProp
                     <span className="text-zinc-900 dark:text-zinc-100">{node.status}</span>
                   </div>
                 </div>
+                <div>
+                  <p className="text-xs text-zinc-500">Capacity Trust</p>
+                  <p className="text-zinc-900 dark:text-zinc-100">
+                    {node.candidateScore.trustLabel}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-zinc-500">Quality Reason</p>
+                  <p className="line-clamp-1 text-zinc-900 dark:text-zinc-100" title={node.candidateScore.reasons.join(', ')}>
+                    {node.candidateScore.reasons[0]}
+                  </p>
+                </div>
               </div>
 
               {/* Actions */}
               <div className="flex items-center gap-2 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+                {canPrepareBond ? (
+                  <Link
+                    href={buildQuickBondHref(node.node_address)}
+                    className={cn('flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition', bondActionClass)}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {node.candidateScore.quality === 'Strong' ? 'Quick Bond' : 'Review & Bond'}
+                  </Link>
+                ) : (
+                  <Link
+                    href={nodeDetailsHref}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-800 transition hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-950/50"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Review risk first
+                  </Link>
+                )}
                 <Link
-                  href={buildQuickBondHref(node.node_address)}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Quick Bond
-                </Link>
-                <Link
-                  href={`/dashboard/nodes?address=${userAddress || ''}&node=${node.node_address}`}
+                  href={nodeDetailsHref}
                   className="inline-flex items-center gap-1 px-3 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg text-sm transition"
                 >
                   Details

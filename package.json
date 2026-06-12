@@ -11,7 +11,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "prepare:standalone": "rm -rf .next/standalone/public .next/standalone/.next/static && mkdir -p .next/standalone/.next && cp -R public .next/standalone/public && cp -R .next/static .next/standalone/.next/static",
+    "start": "npm run start:standalone",
+    "start:standalone": "npm run prepare:standalone && node .next/standalone/server.js",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -25,6 +27,7 @@
     "e2e:debug": "playwright test --debug"
   },
   "dependencies": {
+    "@cosmjs/encoding": "0.39.0",
     "@cosmjs/proto-signing": "^0.39.0",
     "@cosmjs/stargate": "^0.39.0",
     "@radix-ui/react-label": "^2.1.8",
@@ -33,6 +36,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cosmjs-types": "0.11.0",
     "lucide-react": "^1.7.0",
     "next": "16.2.7",
     "next-themes": "^0.4.6",

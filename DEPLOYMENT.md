@@ -9,7 +9,7 @@ Local push → GitHub → CI workflow (test, build, e2e, publish)
                               ↓
                    ansible-playbook from local machine
                               ↓
-                   VPS pulls image → swaps container → /api/health probe
+                   VPS pulls image → swaps container → /api/ready gate
                               ↓
                    Caddy proxy (https://bond.thorchain.no)
 ```
@@ -43,8 +43,9 @@ The playbook:
 2. Pulls `ghcr.io/reedtrullz/heimdall:sha-<local short sha>` by default, or `ghcr.io/reedtrullz/heimdall:$IMAGE_TAG` when `IMAGE_TAG` is set and matches `sha-[0-9a-f]{7,40}`
 3. Stops + removes old container
 4. Starts new container with env vars from playbook + vault (`vault_coinapi_key` is exposed to the container only as server-side `COINAPI_KEY`)
-5. Polls `/api/health` until healthy (or rolls back)
-6. Sets runtime `VERSION` to the immutable image tag deployed
+5. Polls `/api/ready` until THORNode and Midgard are reachable through runtime config
+6. If promotion fails, rolls back to the previous image and waits on `/api/ready` again
+7. Sets runtime `VERSION` to the immutable image tag deployed
 
 ### Override variables
 ```bash
@@ -87,12 +88,16 @@ IMAGE_SHA=490cac0 scripts/compose-production.sh up -d
 # Container status
 ssh deploy@198.23.137.16 "docker ps --filter name=heimdall --format '{{.Status}} {{.Image}}'"
 
-# Health endpoint
+# Liveness endpoint
 curl -s https://bond.thorchain.no/api/health | jq
 
-# Exact deployed image/version check; image tag and health version should match.
+# Readiness endpoint used by promotion/rollback gates
+curl -s https://bond.thorchain.no/api/ready | jq
+
+# Exact deployed image/version check; image tag and health/ready versions should match.
 ssh deploy@198.23.137.16 "docker ps --filter name=heimdall --format '{{.Image}}'"
 curl -s https://bond.thorchain.no/api/health | jq -r .version
+curl -s https://bond.thorchain.no/api/ready | jq -r .version
 
 # Homepage
 curl -s -o /dev/null -w "%{http_code}\n" https://bond.thorchain.no
@@ -101,7 +106,7 @@ curl -s -o /dev/null -w "%{http_code}\n" https://bond.thorchain.no
 ## Rollback
 
 Automatic: the playbook captures the previous image ID/digest/reference before
-swapping and restores it if the health check fails.
+swapping and restores it if the readiness check fails.
 
 Manual:
 ```bash

@@ -54,7 +54,7 @@ src/app/
 
 **API routes**: All proxies use `export const dynamic = 'force-dynamic'`. Rate-limited via `src/lib/api/rate-limit.ts`. Custom endpoints (address, pools, tax-report) aggregate Midgard data server-side. `/api/address/[address]` action amounts expose `amountBaseUnits` (string, 1e8 base units) and `amountRune` (number); do not return raw base units as an unlabeled `amount`.
 
-**Health endpoint**: `/api/health` returns `{ status, timestamp, version }`. Version: `process.env.VERSION` -> `"unknown"`.
+**Health endpoints**: `/api/health` is local process liveness and returns `{ status, timestamp, version }`. `/api/ready` is deployment readiness and returns `200 { status: "ready", version, checks }` only when THORNode `nodes` and Midgard `v2/health` succeed through runtime server config with `cache: 'no-store'`; otherwise it returns `503 { status: "degraded", version, checks }`. Version: `process.env.VERSION` -> `"unknown"`.
 
 **Address persistence**: Unified `BONDTRACK_ADDRESS` localStorage key (legacy name; do not rename). Dashboard layout restores on load.
 

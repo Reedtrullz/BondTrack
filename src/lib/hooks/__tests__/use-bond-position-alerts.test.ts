@@ -1,0 +1,145 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderHook, waitFor } from '@testing-library/react';
+import type { BondPosition, YieldGuardFlag } from '@/lib/types/node';
+import { useBondPositionAlerts } from '../use-bond-position-alerts';
+import { useBondPositions } from '../use-bond-positions';
+
+vi.mock('../use-bond-positions', () => ({
+  useBondPositions: vi.fn(),
+}));
+
+const ADDRESS = 'thor1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const NODE_ADDRESS = 'thor1nodealertsaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+
+type AlertPosition = BondPosition & { yieldGuardFlags: YieldGuardFlag[] };
+
+function makePosition(overrides: Partial<AlertPosition> = {}): AlertPosition {
+  return {
+    nodeAddress: NODE_ADDRESS,
+    nodeOperatorAddress: 'thor1operatoralertsaaaaaaaaaaaaaaaaaaaaaa',
+    bondAmount: 10000,
+    bondSharePercent: 50,
+    status: 'Active',
+    operatorFee: 2000,
+    operatorFeeFormatted: '20%',
+    netAPY: 5,
+    totalBond: 20000,
+    slashPoints: 4,
+    isJailed: false,
+    jailReleaseHeight: 0,
+    version: '2.3.0',
+    requestedToLeave: false,
+    yieldGuardFlags: [],
+    ...overrides,
+  };
+}
+
+function makeChecks() {
+  return {
+    checkSlash: vi.fn(),
+    checkJail: vi.fn(),
+    checkStatusChange: vi.fn(),
+    triggerAlert: vi.fn(),
+  };
+}
+
+describe('useBondPositionAlerts', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('snapshots the initial load without triggering alerts', async () => {
+    const checks = makeChecks();
+    vi.mocked(useBondPositions).mockReturnValue({
+      positions: [makePosition()],
+      isLoading: false,
+      error: undefined,
+      mutate: vi.fn(),
+    });
+
+    renderHook(() => useBondPositionAlerts(ADDRESS, checks));
+
+    await waitFor(() => expect(useBondPositions).toHaveBeenCalledWith(ADDRESS));
+    expect(checks.checkSlash).not.toHaveBeenCalled();
+    expect(checks.checkJail).not.toHaveBeenCalled();
+    expect(checks.checkStatusChange).not.toHaveBeenCalled();
+    expect(checks.triggerAlert).not.toHaveBeenCalled();
+  });
+
+  it('checks slash, jail, status, and newly entered churn risk after the first snapshot', async () => {
+    const checks = makeChecks();
+    let positions = [makePosition()];
+    vi.mocked(useBondPositions).mockImplementation(() => ({
+      positions,
+      isLoading: false,
+      error: undefined,
+      mutate: vi.fn(),
+    }));
+
+    const { rerender } = renderHook(() => useBondPositionAlerts(ADDRESS, checks));
+    await waitFor(() => expect(useBondPositions).toHaveBeenCalledWith(ADDRESS));
+
+    positions = [
+      makePosition({
+        slashPoints: 12,
+        isJailed: true,
+        jailReleaseHeight: 123456,
+        jailReason: 'missed observation',
+        status: 'Standby',
+        yieldGuardFlags: ['lowest_bond'],
+      }),
+    ];
+    rerender();
+
+    await waitFor(() => {
+      expect(checks.checkSlash).toHaveBeenCalledWith(12, 4, NODE_ADDRESS);
+    });
+    expect(checks.checkJail).toHaveBeenCalledWith(positions[0], expect.objectContaining({ isJailed: false }), NODE_ADDRESS);
+    expect(checks.checkStatusChange).toHaveBeenCalledWith('Standby', 'Active', NODE_ADDRESS);
+    expect(checks.triggerAlert).toHaveBeenCalledWith(
+      'CHURN_RISK',
+      NODE_ADDRESS,
+      expect.stringContaining('entered the low-bond churn risk set')
+    );
+  });
+
+  it('does not alert while data is still loading', () => {
+    const checks = makeChecks();
+    vi.mocked(useBondPositions).mockReturnValue({
+      positions: [makePosition({ slashPoints: 99, yieldGuardFlags: ['lowest_bond'] })],
+      isLoading: true,
+      error: undefined,
+      mutate: vi.fn(),
+    });
+
+    renderHook(() => useBondPositionAlerts(ADDRESS, checks));
+
+    expect(checks.checkSlash).not.toHaveBeenCalled();
+    expect(checks.triggerAlert).not.toHaveBeenCalled();
+  });
+
+  it('starts a fresh silent snapshot when the watched address changes', async () => {
+    const checks = makeChecks();
+    let address = ADDRESS;
+    let positions = [makePosition({ slashPoints: 4 })];
+    vi.mocked(useBondPositions).mockImplementation(() => ({
+      positions,
+      isLoading: false,
+      error: undefined,
+      mutate: vi.fn(),
+    }));
+
+    const { rerender } = renderHook(() => useBondPositionAlerts(address, checks));
+    await waitFor(() => expect(useBondPositions).toHaveBeenCalledWith(ADDRESS));
+
+    address = 'thor1bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+    positions = [makePosition({ slashPoints: 100, yieldGuardFlags: ['lowest_bond'] })];
+    rerender();
+
+    await waitFor(() => expect(useBondPositions).toHaveBeenCalledWith(address));
+    expect(checks.checkSlash).not.toHaveBeenCalled();
+    expect(checks.checkJail).not.toHaveBeenCalled();
+    expect(checks.checkStatusChange).not.toHaveBeenCalled();
+    expect(checks.triggerAlert).not.toHaveBeenCalled();
+  });
+});

@@ -29,9 +29,9 @@ UNBOND uses amount `0` in the actual deposit and encodes the real amount in the 
 
 ## CONVENTIONS
 - Amounts in RUNE (human-readable), converted to 1e8 internally
-- Gas fee: 2 RUNE (2000000 in 1e8)
-- Chain ID: `thorchain-mainnet-v1`
-- RPC: `https://rpc.thorchain.info` (from `ENDPOINTS.rpc` in config)
+- THORChain deposit fee: empty fee amount with gas limit `600000000`; wallet surfaces final fee
+- Chain ID: shared `THORCHAIN_MAINNET_CHAIN_ID` from `src/lib/thorchain.ts`
+- RPC: `https://gateway.liquify.com/chain/thorchain_rpc` (from `ENDPOINTS.rpc` in config)
 
 ## ANTI-PATTERNS
 - Never call executeBondTransaction without user confirmation

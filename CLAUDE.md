@@ -98,13 +98,14 @@ IMAGE_TAG=sha-<exact-short-sha> ansible-playbook \
   --vault-password-file ~/.vault_pass.txt
 ```
 Flow: local push → CI builds & publishes to GHCR → run Ansible from local →
-VPS pulls image → swaps container → health-checks `/api/health` → rolls back
-on failure. **Never `git pull` on the VPS.**
+VPS pulls image → swaps container → gates promotion on `/api/ready` → rolls back
+on failure. Docker healthchecks still use `/api/health` for process liveness.
+**Never `git pull` on the VPS.**
 
 Ansible defaults to `ghcr.io/reedtrullz/heimdall:sha-<local short sha>` or an
 explicit `IMAGE_TAG`. Runtime `VERSION` must equal that immutable deployed tag;
-verify by comparing the exact SHA tag with `/api/health` after a deploy. Do not
-use mutable `:latest` as the deploy identity.
+verify by comparing the exact SHA tag with `/api/health` and `/api/ready` after
+a deploy. Do not use mutable `:latest` as the deploy identity.
 
 ## Environment Variables
 `NEXT_PUBLIC_*` vars are baked into the browser bundle at Docker build time and
@@ -134,8 +135,9 @@ non-secret documentation of public and server-side variables.
 | `COINAPI_KEY` | Server-side CoinAPI key from vault |
 | `VERSION` | Runtime image tag, set to the immutable deployed `sha-<short>` tag |
 
-## Health Endpoint
+## Health Endpoints
 `GET /api/health` → `{ "status": "healthy", "timestamp": "...", "version": "..." }`
+`GET /api/ready` → `{ "status": "ready" | "degraded", "version": "...", "checks": { ... } }`
 
 Version priority: `process.env.VERSION` → `"unknown"`.
 

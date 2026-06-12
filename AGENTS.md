@@ -74,7 +74,8 @@ ansible-playbook -i inventory/hosts.yml ansible-playbook.yml \
 ```
 The CI publishes the image; Ansible just pulls and swaps containers.
 Verify deploy identity by comparing the exact `sha-<short>` tag selected by
-Ansible with `docker ps --format '{{.Image}}'` and `/api/health`'s `version`.
+Ansible with `docker ps --format '{{.Image}}'` and the `version` returned by
+both `/api/health` and `/api/ready`.
 Do not claim a production deployment unless that exact-SHA verification was
 performed against the intended target.
 

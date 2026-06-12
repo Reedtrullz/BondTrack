@@ -3,6 +3,7 @@
 import type { OfflineSigner } from '@cosmjs/proto-signing';
 import '@/lib/types/wallet';
 import { ENDPOINTS } from '../config';
+import { THORCHAIN_MAINNET_CHAIN_ID } from '@/lib/thorchain';
 import {
   parseRuneAmountToBaseUnits,
   validateThorAddress,
@@ -10,6 +11,12 @@ import {
   validateUnbondAmount,
   type ValidationResult,
 } from './bond-memo';
+import {
+  createRuneDepositMessage,
+  createThorchainSigningRegistry,
+  THORCHAIN_DEPOSIT_GAS_LIMIT,
+  THORCHAIN_MSG_DEPOSIT_TYPE_URL,
+} from './thorchain-msg-deposit';
 
 export { validateThorAddress, validateBondAmount, validateUnbondAmount, validateBondMemoOptions, canUnbondNode, generateBondMemo, generateUnbondMemo, parseRuneAmountToBaseUnits, type ValidationResult } from './bond-memo';
 
@@ -29,7 +36,7 @@ export interface TransactionParams {
 }
 
 const THORCHAIN_RPC = ENDPOINTS.rpc;
-const THORCHAIN_CHAIN_ID = 'thorchain-mainnet-v1';
+const THORCHAIN_CHAIN_ID = THORCHAIN_MAINNET_CHAIN_ID;
 
 export async function executeBondTransaction(
   params: TransactionParams,
@@ -99,33 +106,29 @@ async function executeWithKeplr(
 
     const client = await SigningStargateClient.connectWithSigner(
       THORCHAIN_RPC,
-      offlineSigner as unknown as OfflineSigner
+      offlineSigner as unknown as OfflineSigner,
+      { registry: createThorchainSigningRegistry() }
     );
 
-    const amount = {
-      denom: 'rune',
-      amount: getWalletDepositAmountBaseUnits(params),
-    };
-
     const fee = {
-      amount: [{ denom: 'rune', amount: '2000000' }],
-      gas: '50000000',
+      amount: [],
+      gas: THORCHAIN_DEPOSIT_GAS_LIMIT,
     };
 
     const messages = [{
-      typeUrl: '/types.MsgDeposit',
-      value: {
-        depositor: signerAddress,
-        memo: params.memo,
-        amount: [amount],
-      },
+      typeUrl: THORCHAIN_MSG_DEPOSIT_TYPE_URL,
+      value: createRuneDepositMessage(
+        signerAddress,
+        params.memo,
+        getWalletDepositAmountBaseUnits(params)
+      ),
     }];
 
     const result = await client.signAndBroadcast(
       signerAddress,
       messages,
       fee,
-      ''
+      params.memo
     );
 
     if (typeof result.code === 'number' && result.code !== 0) {

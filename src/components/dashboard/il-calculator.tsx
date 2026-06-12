@@ -80,7 +80,7 @@ export default function IlCalculator() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Entry Prices */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            <h3 className="text-sm font-medium uppercase text-zinc-500 dark:text-zinc-400">
               Entry Prices (USD)
             </h3>
             <div className="space-y-2">
@@ -115,7 +115,7 @@ export default function IlCalculator() {
 
           {/* Current Prices */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            <h3 className="text-sm font-medium uppercase text-zinc-500 dark:text-zinc-400">
               Current Prices (USD)
             </h3>
             <div className="space-y-2">
@@ -150,7 +150,7 @@ export default function IlCalculator() {
 
           {/* Deposit Amounts */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            <h3 className="text-sm font-medium uppercase text-zinc-500 dark:text-zinc-400">
               Deposit Amounts
             </h3>
             <div className="space-y-2">
@@ -177,7 +177,7 @@ export default function IlCalculator() {
 
           {/* Results */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            <h3 className="text-sm font-medium uppercase text-zinc-500 dark:text-zinc-400">
               Results
             </h3>
             {ilResult ? (

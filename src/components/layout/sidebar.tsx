@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Eye, Shield, BarChart3, AlertTriangle, ArrowRightLeft, Menu, X, ScrollText, Coins, PieChart, Wallet } from 'lucide-react';
+import { Eye, Shield, BarChart3, AlertTriangle, ArrowRightLeft, Menu, X, ScrollText, Coins, PieChart, Wallet, LayoutDashboard } from 'lucide-react';
 import { ThemeToggle } from './theme-toggle';
 import { BifrostStatus } from './bifrost-status';
 import { FocusDialog } from '@/components/ui/focus-dialog';
@@ -14,6 +14,7 @@ const mobileNavTitleId = 'mobile-dashboard-navigation-title';
 const navItems = (addr: string | null) => {
   const addrParam = addr ? `?address=${addr}` : '';
   return [
+    { path: basePath, href: `${basePath}${addrParam}`, label: 'Command Center', icon: <LayoutDashboard className="w-4 h-4" />, desc: 'Triage overview' },
     { path: `${basePath}/portfolio`, href: `${basePath}/portfolio${addrParam}`, label: 'Portfolio', icon: <Wallet className="w-4 h-4" />, desc: 'Unified portfolio view' },
     { path: `${basePath}/nodes`, href: `${basePath}/nodes${addrParam}`, label: 'Nodes', icon: <Shield className="w-4 h-4" />, desc: 'Validator status' },
     { path: `${basePath}/rewards`, href: `${basePath}/rewards${addrParam}`, label: 'Rewards', icon: <BarChart3 className="w-4 h-4" />, desc: 'Earnings & APY' },
@@ -52,8 +53,8 @@ function SidebarContent({ onCloseAction, mobile = false }: SidebarProps & { mobi
             <Eye className="w-5 h-5 text-amber-500" />
           </div>
           <span className="flex flex-col leading-tight">
-            <span id={mobile ? mobileNavTitleId : undefined} className="text-lg tracking-tight font-serif italic uppercase">Heimdall</span>
-            <span className="text-[10px] font-sans font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Navigation</span>
+            <span id={mobile ? mobileNavTitleId : undefined} className="text-lg font-serif italic uppercase">Heimdall</span>
+            <span className="text-[10px] font-sans font-semibold uppercase text-zinc-500 dark:text-zinc-400">Navigation</span>
           </span>
         </Link>
 
@@ -62,7 +63,7 @@ function SidebarContent({ onCloseAction, mobile = false }: SidebarProps & { mobi
         </div>
 
         <div className="pt-2 pb-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
-          <p className="px-3 text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Navigation</p>
+          <p className="px-3 text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase mb-2">Navigation</p>
         </div>
 
         {navItems(address).map((item) => {

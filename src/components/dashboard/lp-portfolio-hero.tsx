@@ -60,7 +60,7 @@ interface HeroCardProps {
 function HeroCard({ label, value, detail }: HeroCardProps) {
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white/80 p-6 shadow-md backdrop-blur-md transition-all duration-300 hover:shadow-glow dark:border-zinc-800 dark:bg-zinc-900/80">
-      <p className="text-xs font-medium uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400">{label}</p>
+      <p className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{label}</p>
       <p className="mt-2 text-3xl font-bold font-display text-gradient">{value}</p>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{detail}</p>
     </div>

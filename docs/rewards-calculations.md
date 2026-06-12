@@ -207,16 +207,16 @@ NETWORK = {
 4. **No withdrawals**: Does not account for UNBOND events (future enhancement)
 5. **Price stability**: Assumes RUNE price at time of earning equals current price for USD conversion
 
-## Current Rewards UI QA Notes
+## Rewards UI QA Notes
 
-The formulas in this document remain the reference math. Separately, the deployed dev UI still has control-level issues under remediation:
+The formulas in this document remain the reference math. Separately, deployed rewards UI changes should be verified on `https://bond.thorchain.no` after deployment:
 
-- `Edit initial bond` did not show a clear visible edit state during the latest deployed QA pass
-- `Optimize Now` did not produce an obvious visible response during deployed QA
-- chart range buttons need clearer selected-state/data-window feedback on the deployed page
-- the `30D` control currently renders with a trailing comma (`30D,`) on the deployed dev site
+- `Edit initial bond` exposes a clear visible edit state.
+- The strategic review action navigates to the intended risk workflow.
+- Chart range buttons show clear selected-state and data-window feedback.
+- The `30D` range label renders without punctuation artifacts.
 
-These are UI/interaction issues, not formula changes. Fixes must be verified on `https://dev.thorchain.no` after deployment.
+These are UI/interaction checks, not formula changes.
 
 ---
 

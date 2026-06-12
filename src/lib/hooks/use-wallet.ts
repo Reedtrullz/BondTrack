@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { createContext, createElement, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import type { ReactNode } from 'react';
 import '@/lib/types/wallet';
 import { STORAGE_KEYS } from '@/lib/storage/keys';
+import { THORCHAIN_MAINNET_CHAIN_ID } from '@/lib/thorchain';
 
 export type WalletType = 'keplr' | 'xdefi' | 'vultisig' | null;
 
@@ -21,9 +23,7 @@ export interface NetworkMismatch {
   actual: string | null;
 }
 
-const THORCHAIN_CHAIN_ID = 'thorchain';
-
-const THORCHAIN_CHAIN_ID_MAINNET = 'thorchain-mainnet-v1';
+const THORCHAIN_CHAIN_ID = THORCHAIN_MAINNET_CHAIN_ID;
 
 interface VultisigWindow {
   thorchain?: {
@@ -49,14 +49,14 @@ export function useWallet() {
 
   const [networkMismatch, setNetworkMismatch] = useState<NetworkMismatch>({
     hasMismatch: false,
-    expected: THORCHAIN_CHAIN_ID_MAINNET,
+    expected: THORCHAIN_CHAIN_ID,
     actual: null,
   });
 
   const mountedRef = useRef(false);
 
   const getExpectedChainId = useCallback(() => {
-    return THORCHAIN_CHAIN_ID_MAINNET;
+    return THORCHAIN_CHAIN_ID;
   }, []);
 
   const checkNetworkMismatch = useCallback((actualChainId: string | null) => {
@@ -83,7 +83,7 @@ export function useWallet() {
     await window.keplr.enable(THORCHAIN_CHAIN_ID);
     const chainId = window.keplr.getChainId
       ? await window.keplr.getChainId(THORCHAIN_CHAIN_ID)
-      : THORCHAIN_CHAIN_ID_MAINNET;
+      : THORCHAIN_CHAIN_ID;
     
     const key = await window.keplr.getKey(THORCHAIN_CHAIN_ID);
     const address = key.bech32Address;
@@ -101,7 +101,7 @@ export function useWallet() {
     });
 
     const address = result as string;
-    const chainId = THORCHAIN_CHAIN_ID_MAINNET;
+    const chainId = THORCHAIN_CHAIN_ID;
 
     return { address, chainId };
   }, []);
@@ -117,7 +117,7 @@ export function useWallet() {
     });
 
     const address = result as string;
-    const chainId = THORCHAIN_CHAIN_ID_MAINNET;
+    const chainId = THORCHAIN_CHAIN_ID;
 
     return { address, chainId };
   }, []);
@@ -226,4 +226,21 @@ export function useWallet() {
     disconnect,
     isNetworkMismatch: networkMismatch.hasMismatch,
   };
+}
+
+type WalletContextValue = ReturnType<typeof useWallet>;
+
+const WalletContext = createContext<WalletContextValue | null>(null);
+
+export function WalletProvider({ children }: { children: ReactNode }) {
+  const wallet = useWallet();
+  return createElement(WalletContext.Provider, { value: wallet }, children);
+}
+
+export function useWalletContext(): WalletContextValue {
+  const context = useContext(WalletContext);
+  if (!context) {
+    throw new Error('useWalletContext must be used within WalletProvider');
+  }
+  return context;
 }

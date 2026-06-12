@@ -110,11 +110,11 @@ secrets in `NEXT_PUBLIC_*` variables; they are bundled into client-side code.
 | `NEXT_PUBLIC_THORNODE_API` | THORNode API endpoint | `https://gateway.liquify.com/chain/thorchain_api` |
 | `NEXT_PUBLIC_MIDGARD_API` | Midgard API endpoint | `https://gateway.liquify.com/chain/thorchain_midgard` |
 | `NEXT_PUBLIC_MIDGARD_FALLBACK` | Secondary Midgard fallback | `https://midgard.thorchain.network` |
-| `NEXT_PUBLIC_THORCHAIN_RPC` | THORChain RPC | `https://rpc.thorchain.info` |
+| `NEXT_PUBLIC_THORCHAIN_RPC` | THORChain RPC | `https://gateway.liquify.com/chain/thorchain_rpc` |
 | `NEXT_PUBLIC_TRACK_API` | THORChain tracker URL | `https://track.thorchain.org/` |
 | `NEXT_PUBLIC_COINGECKO_API` | CoinGecko API base URL | `https://api.coingecko.com/api/v3` |
 | `NEXT_PUBLIC_THORCHAIN_NETWORK` | THORChain network label baked into the client bundle | `mainnet` |
-| `NEXT_PUBLIC_APP_URL` | Canonical app URL used by CORS/server diagnostics | `https://thorchain.no` |
+| `NEXT_PUBLIC_APP_URL` | Canonical app URL used by CORS/server diagnostics | `https://bond.thorchain.no` |
 | `NEXT_PUBLIC_USE_MOCK_DATA` | Local/test-only mock data toggle | `false` |
 | `COINAPI_KEY` | Optional server-side CoinAPI key; never expose as `NEXT_PUBLIC_*` | unset |
 | `VERSION` | Runtime app version; Ansible sets this to the immutable deployed image tag | `sha-<short>` |
@@ -176,8 +176,9 @@ IMAGE_SHA=<exact-short-sha> scripts/compose-production.sh up -d
 ```
 
 ### Features
-- **Health Check**: Waits for `/api/health` to return `{"status":"healthy"}`
-- **Rollback**: Automatically reverts to the previous image ID/digest/reference on health check failure
+- **Liveness Check**: Docker/Compose healthchecks use `/api/health` for local process liveness
+- **Readiness Gate**: Promotion and rollback wait on `/api/ready` so THORNode and Midgard are reachable through runtime config
+- **Rollback**: Automatically reverts to the previous image ID/digest/reference on readiness check failure
 - **Vault**: Sensitive vars (e.g. CoinAPI key) stored in `group_vars/vps/vault.yml` (encrypted)
 See [DEPLOYMENT.md](DEPLOYMENT.md) for full details. The Inebotten
 Discord bot is a separate project — see
@@ -273,26 +274,24 @@ majors (`actions/checkout@v6`, `actions/setup-node@v6`,
 warnings.
 
 Deploy verification should compare the exact immutable SHA tag in GHCR,
-Ansible's selected `IMAGE_TAG`, `docker ps --format '{{.Image}}'`, and
-`/api/health`'s `version`. Do not treat this documentation as a production
-deployment claim.
+Ansible's selected `IMAGE_TAG`, `docker ps --format '{{.Image}}'`, and the
+`version` returned by both `/api/health` and `/api/ready`. Do not treat this
+documentation as a production deployment claim.
 
 There is no separate publish workflow and no cross-workflow `workflow_run`
 trigger. See `CLAUDE.md` and `AGENTS.md` for the rationale.
 
-## Known Issues (Live QA)
+## Live Verification Checklist
 
-The deployed site at `https://bond.thorchain.no` is the source of truth for user-facing QA. As of the latest live audit, these non-wallet issues are confirmed and under remediation:
+The deployed site at `https://bond.thorchain.no` is the source of truth for user-facing QA. Production fixes are considered deployed only after the exact image SHA is re-tested there, including matching `version` values from `/api/health` and `/api/ready`.
 
-- THORName reverse lookup can return repeated 502s on dashboard routes
-- The LP Status route now degrades honestly when member or pricing history data is unavailable; remaining live caveat is upstream Midgard pool-history `502` responses that force `current-only` valuation
-- The notification prompt can block header controls and its `Enable` CTA does not visibly resolve the prompt
-- Changelog year navigation works, but changelog search, filters, and entry buttons do not behave correctly on the deployed dev site
-- Overview quick-action buttons do not preserve the intended transaction mode
-- The Transactions page still needs clearer UNBOND-mode behavior and visible copy-action feedback
-- Some Rewards page controls have dead or unclear deployed behavior, including the `30D` label oddity
-
-Fixes are considered complete only after they are re-tested on `https://dev.thorchain.no`, not just locally.
+After deployment, verify:
+- Dashboard routes keep rendering when optional THORName or upstream pool-history calls degrade.
+- LP valuation clearly labels `current-only` or degraded pricing when historical data is unavailable.
+- Notification prompts stay non-blocking, and notification settings immediately affect live in-app alerts.
+- Portfolio/node quick actions preserve the intended BOND or UNBOND transaction mode.
+- Transaction preview shows wallet-estimated fee copy, memo copy feedback, and clear UNBOND memo semantics.
+- Rewards controls, tax export, changelog search, filters, and entry buttons all produce visible results.
 
 ## Contributing
 

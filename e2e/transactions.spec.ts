@@ -23,6 +23,11 @@ async function setupTransactionApiMocks(page: Page) {
       return;
     }
 
+    if (url.pathname.startsWith('/api/thorchain/cosmos/bank/v1beta1/balances/')) {
+      await route.fulfill({ json: { balances: [{ denom: 'rune', amount: '125000000000' }] } });
+      return;
+    }
+
     await route.fulfill({ status: 404, json: { error: `Unhandled THORChain mock: ${url.pathname}` } });
   });
 
@@ -31,6 +36,11 @@ async function setupTransactionApiMocks(page: Page) {
 
     if (url.pathname === '/api/midgard/v2/health') {
       await route.fulfill({ json: { lastThorNode: { height: 12345678 } } });
+      return;
+    }
+
+    if (url.pathname.startsWith('/api/midgard/v2/thorname/rlookup/')) {
+      await route.fulfill({ json: { entry: null } });
       return;
     }
 
@@ -46,6 +56,14 @@ async function setupTransactionApiMocks(page: Page) {
 
     await route.fulfill({ status: 404, json: { error: `Unhandled Midgard mock: ${url.pathname}` } });
   });
+}
+
+async function connectMockKeplr(page: Page) {
+  await page.getByTestId('wallet-connect-button').click();
+  await page.getByTestId('wallet-option-keplr').evaluate((element) => {
+    (element as HTMLElement).click();
+  });
+  await expect(page.getByTestId('wallet-account-menu-button')).toBeVisible();
 }
 
 test.describe('Transaction Composer', () => {
@@ -76,6 +94,11 @@ test.describe('Transaction Composer', () => {
   test('defaults to BOND mode', async ({ page }) => {
     const bondButton = page.getByRole('button', { name: 'BOND', exact: true });
     await expect(bondButton).toHaveClass(/bg-emerald-600/);
+  });
+
+  test('does not show validation errors before composer interaction', async ({ page }) => {
+    await expect(page.getByText('Node address must be a valid THORChain address')).toBeHidden();
+    await expect(page.getByText('Amount must be a positive RUNE value with up to 8 decimals')).toBeHidden();
   });
 
   test('switches to UNBOND mode', async ({ page }) => {
@@ -128,5 +151,26 @@ test.describe('Transaction Composer', () => {
 
   test('shows minimum bond info', async ({ page }) => {
     await expect(page.getByText('1.02 RUNE')).toBeVisible();
+  });
+
+  test('shows wallet-estimated network fee copy in transaction preview', async ({ page, context }) => {
+    await context.addInitScript((address) => {
+      (window as unknown as Record<string, unknown>).keplr = {
+        enable: async () => {},
+        getChainId: async () => 'thorchain-1',
+        getKey: async () => ({ bech32Address: address }),
+      };
+    }, MOCK_ADDRESS);
+
+    await page.reload();
+    await connectMockKeplr(page);
+    await page.getByLabel('Node Address').fill(MOCK_NODE);
+    await page.getByLabel('Bond Amount').fill('10');
+    await page.getByRole('button', { name: 'Sign & Broadcast' }).click();
+
+    await expect(page.getByText('Network Fee')).toBeVisible();
+    await expect(page.getByText('Estimated by wallet before broadcast')).toBeVisible();
+    await expect(page.getByText('THORChain deposit transaction')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Confirm & Broadcast' })).toBeVisible();
   });
 });

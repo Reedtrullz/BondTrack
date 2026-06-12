@@ -19,7 +19,7 @@ export function RewardVelocity({ totalPerChurnReward, totalOperatorFee, price }:
     <div className="p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">Reward Velocity</h3>
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase">Reward Velocity</h3>
           <p className="text-xs text-zinc-500">Estimated earnings per churn cycle</p>
         </div>
         <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400">
@@ -78,7 +78,7 @@ export function RewardVelocity({ totalPerChurnReward, totalOperatorFee, price }:
           style={{ width: `${feePercentage}%` }} 
         />
       </div>
-      <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter text-zinc-400">
+      <div className="flex justify-between text-[10px] font-bold uppercase text-zinc-400">
         <span>Your Share</span>
         <span>Operator Fee</span>
       </div>

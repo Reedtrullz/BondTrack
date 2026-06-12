@@ -90,8 +90,8 @@ export function FeeRevenueChart({ daily, isLoading, error }: FeeRevenueChartProp
     );
   } else {
     content = (
-      <div className="w-full h-[300px]">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+      <div className="h-[300px] min-w-0 w-full">
+        <ResponsiveContainer width="100%" height={300} minWidth={1} minHeight={1}>
           <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
             <defs>
               <linearGradient id="feeRevenueGradient" x1="0" y1="0" x2="0" y2="1">
@@ -137,7 +137,7 @@ export function FeeRevenueChart({ daily, isLoading, error }: FeeRevenueChartProp
     <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 min-h-[300px]">
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Protocol Fee Revenue</h3>
+          <h3 className="text-xs font-bold uppercase text-zinc-400">Protocol Fee Revenue</h3>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">30-day fee trend from Midgard earnings history</p>
         </div>
       </div>

@@ -31,7 +31,7 @@ export function NodeStatusCard({ position, address }: NodeStatusCardProps) {
             </span>
             {isHovered && (
               <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-zinc-900 text-white text-[10px] rounded shadow-xl z-50 border border-zinc-800">
-                <div className="flex items-center gap-1 mb-1 text-zinc-400 font-bold uppercase tracking-tighter">
+                <div className="flex items-center gap-1 mb-1 text-zinc-400 font-bold uppercase">
                   <Info className="w-3 h-3" />
                   Node Health
                 </div>

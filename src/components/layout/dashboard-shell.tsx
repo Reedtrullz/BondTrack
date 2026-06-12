@@ -9,8 +9,10 @@ import { WalletConnect } from '@/components/wallet/wallet-connect';
 import { Button } from '@/components/ui/button';
 import { Breadcrumbs } from '@/components/shared/breadcrumbs';
 import { ApiHealthBanner } from '@/components/shared/api-health-banner';
-import { useApiHealth } from '@/lib/hooks/use-api-health';
+import { useApiHealthContext } from '@/lib/hooks/use-api-health';
+import type { ApiHealthState } from '@/lib/hooks/use-api-health';
 import { useWalletBalance } from '@/lib/hooks/use-wallet-balance';
+import { useWalletContext } from '@/lib/hooks/use-wallet';
 import { ChurnCountdown } from '@/components/dashboard/churn-countdown';
 import { formatRuneFromNumber } from '@/lib/utils/formatters';
 import { getTHORNameReverseLookupNoRetry as getTHORNameReverseLookup } from '@/lib/api/midgard';
@@ -28,12 +30,45 @@ const SWR_KEYS = [
 ];
 
 function formatElapsed(ms: number): string {
-  const seconds = Math.floor(ms / 1000);
+  const seconds = Math.max(0, Math.floor(ms / 1000));
   if (seconds < 60) return `${seconds}s ago`;
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   return `${hours}h ago`;
+}
+
+function formatSourceAge(source: 'Midgard' | 'THORNode', checkedAt: Date | null, now: number): string {
+  return checkedAt ? `${source} ${formatElapsed(now - checkedAt.getTime())}` : `${source} pending`;
+}
+
+function getCompactFreshnessLabel(freshnessLabel: string): string {
+  if (freshnessLabel.includes('degraded') || freshnessLabel.includes('unknown')) {
+    return 'Sources degraded';
+  }
+  if (freshnessLabel.includes('pending')) {
+    return 'Checking sources';
+  }
+  return 'Sources synced';
+}
+
+export function getSourceFreshnessLabel(
+  lastSuccessful: ApiHealthState['lastSuccessful'],
+  lastChecked: Date | null,
+  now: number | null
+): string {
+  if (now === null) {
+    return lastChecked ? 'Source health degraded or unknown' : 'Checking source health';
+  }
+
+  if (lastSuccessful.midgard || lastSuccessful.thornode) {
+    return [
+      formatSourceAge('Midgard', lastSuccessful.midgard, now),
+      formatSourceAge('THORNode', lastSuccessful.thornode, now),
+    ].join(' · ');
+  }
+
+  return lastChecked ? 'Source health degraded or unknown' : 'Checking source health';
 }
 
 function truncateAddress(addr: string): string {
@@ -53,19 +88,13 @@ export function DashboardShell({
   const address = searchParams.get('address');
   const [thorName, setThorName] = useState<string | null>(null);
   const [now, setNow] = useState<number | null>(null);
-  const { midgard, thornode, lastChecked, lastSuccessful } = useApiHealth();
-  const { balance } = useWalletBalance(address);
+  const { midgard, thornode, lastChecked, lastSuccessful } = useApiHealthContext();
+  const { address: walletAddress } = useWalletContext();
+  const { balance } = useWalletBalance(walletAddress);
 
   const hasAddress = requireAddress ? !!address : true;
 
-  const latestSuccessful = [lastSuccessful.midgard, lastSuccessful.thornode]
-    .filter((date): date is Date => date instanceof Date)
-    .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
-  const freshnessLabel = latestSuccessful && now !== null
-    ? `Confirmed ${formatElapsed(now - latestSuccessful.getTime())}`
-    : lastChecked
-      ? 'Source health degraded or unknown'
-      : 'Checking source health';
+  const freshnessLabel = getSourceFreshnessLabel(lastSuccessful, lastChecked, now);
 
   useEffect(() => {
     setNow(Date.now());
@@ -114,8 +143,7 @@ export function DashboardShell({
           );
         }
       })
-      .catch((err) => {
-        console.error('THORName reverse lookup failed:', err);
+      .catch(() => {
         if (!cancelled) {
           setThorName(null);
           // Cache the absence to avoid repeated retries on failure
@@ -157,13 +185,13 @@ export function DashboardShell({
                   </p>
                   {balance !== null && balance > 0 && (
                     <span className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 block">
-                      <span className="font-mono">{formatRuneFromNumber(balance)}</span> available
+                      Wallet: <span className="font-mono">{formatRuneFromNumber(balance)}</span>
                     </span>
                   )}
                   <span className="mt-0.5 flex items-center gap-1 text-[10px] text-zinc-500 dark:text-zinc-400 sm:hidden">
                     <Wifi className="h-3 w-3 text-emerald-500" aria-hidden="true" />
                     <Clock className="h-3 w-3" aria-hidden="true" />
-                    {freshnessLabel}
+                    {getCompactFreshnessLabel(freshnessLabel)}
                   </span>
                 </>
               )}
@@ -175,7 +203,9 @@ export function DashboardShell({
               <Clock className="h-3 w-3" aria-hidden="true" />
               <span className="font-medium">{freshnessLabel}</span>
             </span>
-            <ChurnCountdown />
+            <span className="hidden sm:inline-flex">
+              <ChurnCountdown />
+            </span>
             <WalletConnect />
             <Button
               variant="glass"

@@ -1,6 +1,9 @@
 import { expect, test as base } from '@playwright/test';
 import type { ConsoleMessage, Page, Request, TestInfo } from '@playwright/test';
 
+type ApiErrorPattern = RegExp | string;
+type AllowApiErrors = (patterns: ApiErrorPattern[]) => void;
+
 const CONSOLE_ERROR_ALLOWLIST: RegExp[] = [
   /Failed to load resource: the server responded with a status of 404.*favicon/i,
   /ResizeObserver loop completed with undelivered notifications/i,
@@ -34,9 +37,23 @@ function isPage404Navigation(requestOrUrl: Request | string): boolean {
   }
 }
 
-function isAllowedConsoleError(message: ConsoleMessage): boolean {
+function matchesApiErrorAllowlist(rawUrl: Request | string, allowlist: ApiErrorPattern[]): boolean {
+  const url = typeof rawUrl === 'string' ? rawUrl : rawUrl.url();
+  return allowlist.some((pattern) => {
+    if (typeof pattern === 'string') {
+      return url.includes(pattern);
+    }
+    return pattern.test(url);
+  });
+}
+
+function isAllowedConsoleError(message: ConsoleMessage, apiErrorAllowlist: ApiErrorPattern[]): boolean {
   const text = message.text();
-  if (API_HTTP_STATUS_CONSOLE_ERROR.test(text) && isSameOriginApiRequest(message.location().url)) {
+  if (
+    API_HTTP_STATUS_CONSOLE_ERROR.test(text) &&
+    isSameOriginApiRequest(message.location().url) &&
+    matchesApiErrorAllowlist(message.location().url, apiErrorAllowlist)
+  ) {
     return true;
   }
 
@@ -54,8 +71,20 @@ async function recordFailure(testInfo: TestInfo, label: string, details: string)
   });
 }
 
-export const test = base.extend<{ page: Page }>({
-  page: async ({ page }, run, testInfo) => {
+export const test = base.extend<{
+  page: Page;
+  apiErrorAllowlist: ApiErrorPattern[];
+  allowApiErrors: AllowApiErrors;
+}>({
+  apiErrorAllowlist: async ({}, run) => {
+    await run([]);
+  },
+  allowApiErrors: async ({ apiErrorAllowlist }, run) => {
+    await run((patterns) => {
+      apiErrorAllowlist.push(...patterns);
+    });
+  },
+  page: async ({ page, apiErrorAllowlist }, run, testInfo) => {
     const failures: string[] = [];
 
     page.on('pageerror', (error) => {
@@ -63,8 +92,20 @@ export const test = base.extend<{ page: Page }>({
     });
 
     page.on('console', (message) => {
-      if (message.type() === 'error' && !isAllowedConsoleError(message)) {
+      if (message.type() === 'error' && !isAllowedConsoleError(message, apiErrorAllowlist)) {
         failures.push(`console.error: ${message.text()}`);
+      }
+    });
+
+    page.on('response', (response) => {
+      const request = response.request();
+      const status = response.status();
+      if (
+        status >= 400 &&
+        isSameOriginApiRequest(request) &&
+        !matchesApiErrorAllowlist(request, apiErrorAllowlist)
+      ) {
+        failures.push(`same-origin API ${status}: ${request.method()} ${request.url()}`);
       }
     });
 
@@ -73,7 +114,7 @@ export const test = base.extend<{ page: Page }>({
         return;
       }
 
-      if (isSameOriginApiRequest(request)) {
+      if (isSameOriginApiRequest(request) && !matchesApiErrorAllowlist(request, apiErrorAllowlist)) {
         failures.push(
           `failed same-origin API request: ${request.method()} ${request.url()} (${request.failure()?.errorText ?? 'unknown error'})`
         );

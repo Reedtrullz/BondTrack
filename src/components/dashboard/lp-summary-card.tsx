@@ -68,7 +68,7 @@ export const LpSummaryCard: React.FC<{
     <div className="rounded-xl border border-zinc-200 bg-white/80 p-6 shadow-md backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-glow dark:border-zinc-800 dark:bg-zinc-900/80 dark:shadow-none">
       <div className="mb-5 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Pool</p>
+          <p className="text-sm font-medium uppercase text-zinc-500 dark:text-zinc-400">Pool</p>
           <a
             href={`https://thorchain.net/pool/${position.pool}`}
             target="_blank"

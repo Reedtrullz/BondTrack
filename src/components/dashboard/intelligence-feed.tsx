@@ -17,6 +17,15 @@ interface IntelligenceFeedProps {
   isLoading?: boolean;
 }
 
+function buildActionHref(path: string, providerAddress: string | null): string {
+  if (!providerAddress) {
+    return path;
+  }
+
+  const params = new URLSearchParams({ address: providerAddress });
+  return `${path}?${params.toString()}`;
+}
+
 export function IntelligenceFeed({ positions, benchmarks, allNodes, providerAddress, isLoading }: IntelligenceFeedProps) {
   const insights = useMemo(() => {
     if (!benchmarks || !allNodes) return [];
@@ -60,7 +69,7 @@ export function IntelligenceFeed({ positions, benchmarks, allNodes, providerAddr
               <ShieldCheck className="w-6 h-6" />
             </div>
           </div>
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1 uppercase tracking-widest font-serif italic">
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1 uppercase font-serif italic">
             All-Seeing Guard
           </h3>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-[200px] mx-auto">
@@ -100,7 +109,7 @@ export function IntelligenceFeed({ positions, benchmarks, allNodes, providerAddr
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2 mb-1">
                 <span className={cn(
-                  "text-[10px] font-bold uppercase tracking-widest",
+                  "text-[10px] font-bold uppercase",
                   insight.severity === 'critical' ? "text-red-600" : "text-zinc-400"
                 )}>
                   {insight.category === 'security' ? 'Heimdall Alert' : 'Yield Insight'}
@@ -120,8 +129,8 @@ export function IntelligenceFeed({ positions, benchmarks, allNodes, providerAddr
 
               {insight.actionLink && (
                 <Link 
-                  href={`${insight.actionLink}?address=${providerAddress}`}
-                  className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-tighter text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
+                  href={buildActionHref(insight.actionLink, providerAddress)}
+                  className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
                 >
                   {insight.actionLabel} <ArrowRight className="w-3 h-3" />
                 </Link>

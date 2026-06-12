@@ -82,7 +82,7 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
     <div className="p-8 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
         <div>
-          <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">Compound Growth Forecast</h3>
+          <h3 className="text-xs font-bold text-zinc-400 uppercase mb-1">Compound Growth Forecast</h3>
           <p className="text-sm text-zinc-500">Projected 1Y trajectory ({useHistoricalBaseline ? 'Historical Blended' : 'Current APY'})</p>
         </div>
         
@@ -156,8 +156,8 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
         </div>
       )}
       
-      <div className="h-72 rounded-xl bg-zinc-50 dark:bg-zinc-900/30 p-4 mb-8 border border-zinc-100 dark:border-zinc-800/50">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+      <div className="h-72 min-w-0 rounded-xl bg-zinc-50 dark:bg-zinc-900/30 p-4 mb-8 border border-zinc-100 dark:border-zinc-800/50">
+        <ResponsiveContainer width="100%" height={256} minWidth={1} minHeight={1}>
           <AreaChart data={projectionData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
             <defs>
               <linearGradient id="activeGradient" x1="0" y1="0" x2="0" y2="1">
@@ -250,7 +250,7 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
         <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800/50">
           <div className="flex items-center gap-2 text-zinc-400 mb-2">
             <Coins className="w-3.5 h-3.5" />
-            <span className="text-[10px] font-bold uppercase tracking-tight">Compound Gains (1Y)</span>
+            <span className="text-[10px] font-bold uppercase">Compound Gains (1Y)</span>
           </div>
           <div className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
             +{viewMode === 'usd' ? formatUsd(compoundGainsValue) : formatRuneFromNumber(compoundGainsValue)}
@@ -263,7 +263,7 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
         <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800/50">
           <div className="flex items-center gap-2 text-zinc-400 mb-2">
             <TrendingUp className="w-3.5 h-3.5" />
-            <span className="text-[10px] font-bold uppercase tracking-tight">Forecasted Balance</span>
+            <span className="text-[10px] font-bold uppercase">Forecasted Balance</span>
           </div>
           <div className="text-xl font-bold font-mono text-zinc-900 dark:text-zinc-100">
             {finalEntry ? (viewMode === 'usd' ? formatUsd(finalEntry.active) : formatRuneFromNumber(finalEntry.active)) : '0.00'}
@@ -276,7 +276,7 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
         <div className="p-4 rounded-xl bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100/50 dark:border-emerald-800/30 flex flex-col justify-center">
           <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-1">
             <Zap className="w-3.5 h-3.5" />
-            <span className="text-[10px] font-bold uppercase tracking-tight">Yield Efficiency</span>
+            <span className="text-[10px] font-bold uppercase">Yield Efficiency</span>
           </div>
           <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
             {forecastApy.toFixed(2)}%

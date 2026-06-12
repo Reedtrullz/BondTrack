@@ -15,7 +15,7 @@ interface FeeRevenueSummaryProps {
 function SummaryCard({ label, runeValue, usdValue }: { label: string; runeValue: string; usdValue: number }) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">{label}</p>
+      <p className="text-xs font-semibold uppercase text-zinc-400">{label}</p>
       <p className="mt-3 text-2xl font-bold text-zinc-900 dark:text-zinc-100">{runeValue}</p>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{formatUsd(usdValue, 0)}</p>
     </div>

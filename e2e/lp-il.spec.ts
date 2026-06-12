@@ -90,6 +90,22 @@ async function setupMocks(page: Page) {
   await page.route('**/api/thorchain/**', async (route) => {
     const url = new URL(route.request().url());
 
+    if (url.pathname === '/api/thorchain/thorchain/nodes') {
+      await route.fulfill({ json: [] });
+      return;
+    }
+
+    if (url.pathname === '/api/thorchain/thorchain/constants') {
+      await route.fulfill({
+        json: {
+          int_64_values: { OptimalBondD: 2500000000000 },
+          bool_values: {},
+          string_values: {},
+        },
+      });
+      return;
+    }
+
     if (url.pathname === '/api/thorchain/thorchain/pool/BTC.BTC/liquidity_provider/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq') {
       await route.fulfill({
         json: {
@@ -114,6 +130,16 @@ async function setupMocks(page: Page) {
 
   await page.route('**/api/midgard/**', async (route) => {
     const url = new URL(route.request().url());
+
+    if (url.pathname === '/api/midgard/v2/health') {
+      await route.fulfill({ json: { lastThorNode: { height: 12345678 } } });
+      return;
+    }
+
+    if (url.pathname.startsWith('/api/midgard/v2/thorname/rlookup/')) {
+      await route.fulfill({ json: { entry: null } });
+      return;
+    }
 
     if (url.pathname === '/api/midgard/v2/member/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq') {
       await route.fulfill({ json: mockMemberDetails });

@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { mockDashboardApis } from './helpers/dashboard-api-mocks';
 
 const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
 
@@ -10,11 +11,13 @@ test.describe('Visual Regression - Layout', () => {
   });
 
   test('dashboard portfolio page renders correctly', async ({ page }) => {
+    await mockDashboardApis(page, MOCK_ADDRESS);
     await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
     await expect(page.getByText('Total Bonded').first()).toBeVisible();
   });
 
   test('sidebar is visible on all dashboard pages', async ({ page }) => {
+    await mockDashboardApis(page, MOCK_ADDRESS);
     const pages = ['portfolio', 'nodes', 'rewards', 'risk', 'transactions', 'lp'];
     for (const pg of pages) {
       await page.goto(`/dashboard/${pg}?address=${MOCK_ADDRESS}`);
@@ -52,39 +55,21 @@ test.describe('Responsive Behavior', () => {
 });
 
 test.describe('API Integration', () => {
-  test('handles API errors gracefully', async ({ page }) => {
-    await page.route('**/thorchain/nodes**', async (route) => {
-      await route.fulfill({
-        status: 500,
-        body: JSON.stringify({ error: 'Internal server error' }),
-      });
-    });
-
+  test('handles empty node responses gracefully', async ({ page }) => {
+    await mockDashboardApis(page, MOCK_ADDRESS);
     await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
 
-    // Wait for page to settle (either error state or partial content)
     await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-
-    // The page should handle the error gracefully - check that the heading is visible (page didn't crash)
     await expect(page.getByRole('heading', { name: /Portfolio/ })).toBeVisible({ timeout: 15000 });
   });
 
-  test('retries failed requests', async ({ page }) => {
+  test('uses the mocked THORNode health request for dashboard data', async ({ page }) => {
     let requestCount = 0;
 
-    await page.route('**/thorchain/nodes**', async (route) => {
+    await mockDashboardApis(page, MOCK_ADDRESS);
+    await page.route('**/api/thorchain/thorchain/nodes', async (route) => {
       requestCount++;
-      if (requestCount < 3) {
-        await route.fulfill({
-          status: 503,
-          body: JSON.stringify({ error: 'Service unavailable' }),
-        });
-      } else {
-        await route.fulfill({
-          status: 200,
-          body: JSON.stringify([]),
-        });
-      }
+      await route.fallback();
     });
 
     await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
@@ -118,6 +103,7 @@ test.describe('Edge Cases', () => {
   });
 
   test('handles direct navigation to deep links', async ({ page }) => {
+    await mockDashboardApis(page, MOCK_ADDRESS);
     await page.goto(`/dashboard/rewards?address=${MOCK_ADDRESS}`);
     await expect(page).toHaveURL(/\/dashboard\/rewards/);
   });

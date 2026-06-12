@@ -14,6 +14,8 @@ import { NetworkSecurityCard } from '@/components/dashboard/network-security-car
 import { UnbondWindowTracker } from '@/components/dashboard/unbond-window-tracker';
 import { RiskRadar } from '@/components/dashboard/risk-radar';
 import { DashboardCard } from '@/components/shared/dashboard-card';
+import { ActionQueue } from '@/components/dashboard/action-queue';
+import { InsightHeader } from '@/components/dashboard/insight-header';
 import type { YieldGuardFlag, BondPosition } from '@/lib/types/node';
 import { useState } from 'react';
 import { generatePortfolioAlerts } from '@/lib/utils/portfolio-alerts';
@@ -21,6 +23,8 @@ import { cn } from '@/lib/utils';
 import { calculateNetworkSecurityState, estimateNextChurn } from '@/lib/utils/calculations';
 import { runeToNumber, formatCompactNumber, formatRuneFromNumber } from '@/lib/utils/formatters';
 import { NETWORK } from '@/lib/config';
+import { buildDashboardInsightState } from '@/lib/dashboard/insights';
+import { useApiHealthContext } from '@/lib/hooks/use-api-health';
 
 function formatRuneValue(value: number): string {
   if (!value || value <= 0) return '--';
@@ -457,6 +461,7 @@ export default function RiskPage() {
   const address = searchParams.get('address');
   const { positions } = useBondPositions(address);
   const { data: network, isLoading: networkLoading } = useNetworkMetrics();
+  const apiHealth = useApiHealthContext();
   const [showDetails, setShowDetails] = useState(false);
 
   const totalActiveBond = runeToNumber(network?.bondMetrics?.totalActiveBond || '0');
@@ -466,12 +471,33 @@ export default function RiskPage() {
   const bondToPoolRatio = totalPooledRune > 0 ? totalBonds / totalPooledRune : 0;
   const activeBondToPoolRatio = totalPooledRune > 0 ? totalActiveBond / totalPooledRune : 0;
   const securityState = calculateNetworkSecurityState(bondToPoolRatio);
+  const riskInsight = buildDashboardInsightState({
+    address,
+    positions,
+    network,
+    apiHealth,
+  });
 
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Risk</h1>
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Risk Monitor</h2>
+      <InsightHeader
+        severity={riskInsight.severity}
+        statusLabel={riskInsight.statusLabel}
+        diagnosis={riskInsight.diagnosis}
+        topRisk={riskInsight.topRisk}
+        metrics={riskInsight.headerMetrics}
+        primaryAction={{ label: showDetails ? 'Hide Details' : 'Show Details', href: '#risk-details' }}
+        eyebrow="Risk"
+      />
+      <ActionQueue
+        items={riskInsight.actions.slice(0, 4)}
+        title="Riskiest actions"
+        emptyTitle="Risk queue is clear"
+        emptyDetail="No jail, critical slash, churn-risk, or source-confidence issue is visible now."
+        compact
+      />
+      <div className="flex items-center justify-end">
         <button
           onClick={() => setShowDetails(!showDetails)}
           className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
@@ -504,7 +530,7 @@ export default function RiskPage() {
           </div>
         </div>
         <DashboardCard className="lg:col-span-1 p-4 rounded-lg bg-white dark:bg-zinc-900">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2 font-serif italic">Shield Analysis</h3>
+          <h3 className="text-xs font-bold uppercase text-zinc-500 mb-2 font-serif italic">Shield Analysis</h3>
           {positions.length > 0 ? (
             <RiskRadar positions={positions} />
           ) : (
@@ -518,11 +544,13 @@ export default function RiskPage() {
       <NodesList positions={positions} />
 
       {showDetails && (
+        <div id="risk-details">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <SlashMonitor positions={positions} />
           <ChurnOutRisk positions={positions} />
           <UnbondWindowTracker positions={positions} />
           <NetworkSecurityMetrics positions={positions} />
+        </div>
         </div>
       )}
     </div>

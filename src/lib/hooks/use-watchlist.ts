@@ -1,19 +1,10 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { STORAGE_KEYS } from '@/lib/storage/keys';
+import { isValidTHORChainAddress } from '@/lib/utils/address-validation';
 
 const STORAGE_KEY = STORAGE_KEYS.watchlist;
-
-// THORChain address validation regex
-// Mainnet addresses start with 'thor' and are Base58 encoded (42-62 chars)
-function isValidTHORChainAddress(address: string): boolean {
-  if (typeof address !== 'string' || address.length < 42 || address.length > 62) {
-    return false;
-  }
-  // Basic THORChain address format: starts with 'thor' followed by Base58 characters
-  return /^thor[1-9A-HJ-NP-Za-km-z]+$/.test(address);
-}
 
 // Sanitize and validate stored data
 function sanitizeAddresses(data: unknown): string[] {
@@ -39,8 +30,13 @@ function getInitialAddresses(): string[] {
 }
 
 export function useWatchlist() {
-  const [addresses, setAddresses] = useState<string[]>(getInitialAddresses);
-  const [isLoaded] = useState(true);
+  const [addresses, setAddresses] = useState<string[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    setAddresses(getInitialAddresses());
+    setIsLoaded(true);
+  }, []);
 
   const saveToStorage = useCallback((newAddresses: string[]) => {
     try {
@@ -53,8 +49,7 @@ export function useWatchlist() {
   const addAddress = useCallback((address: string) => {
     if (!isValidTHORChainAddress(address)) return;
     setAddresses((prev) => {
-      if (prev.includes(address)) return prev;
-      const newAddresses = [...prev, address];
+      const newAddresses = [...prev.filter((savedAddress) => savedAddress !== address), address];
       saveToStorage(newAddresses);
       return newAddresses;
     });

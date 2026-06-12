@@ -47,7 +47,7 @@ export function RiskExposureSummary({ positions }: RiskExposureSummaryProps) {
     <div className="p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">Risk Exposure</h3>
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase">Risk Exposure</h3>
           <p className="text-xs text-zinc-500">Capital allocation by risk level</p>
         </div>
         <div className="text-right">

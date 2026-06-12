@@ -2,7 +2,7 @@
 
 import { Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useApiHealth, type ApiHealthStatus } from '@/lib/hooks/use-api-health';
+import { useApiHealthContext, type ApiHealthStatus } from '@/lib/hooks/use-api-health';
 
 function getBridgeStatus(midgard: ApiHealthStatus, thornode: ApiHealthStatus): ApiHealthStatus {
   if (midgard === 'down' || thornode === 'down') return 'down';
@@ -26,7 +26,7 @@ function getStatusCopy(status: ApiHealthStatus): { label: string; detail: string
 }
 
 export function BifrostStatus() {
-  const { midgard, thornode } = useApiHealth();
+  const { midgard, thornode } = useApiHealthContext();
   const status = getBridgeStatus(midgard, thornode);
   const copy = getStatusCopy(status);
 
@@ -42,7 +42,7 @@ export function BifrostStatus() {
       </div>
       
       <div className="flex flex-col">
-        <span className="text-[10px] font-bold uppercase tracking-tighter text-zinc-500 dark:text-zinc-400">{copy.label}</span>
+        <span className="text-[10px] font-bold uppercase text-zinc-500 dark:text-zinc-400">{copy.label}</span>
         <span className="text-[9px] font-medium text-zinc-400 dark:text-zinc-500 italic">{copy.detail}</span>
       </div>
 

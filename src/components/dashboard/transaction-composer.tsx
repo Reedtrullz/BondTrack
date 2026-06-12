@@ -3,7 +3,7 @@
 import { Check, Copy, ExternalLink, X } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { BondPosition } from '@/lib/types/node';
-import { useWallet } from '@/lib/hooks/use-wallet';
+import { useWalletContext } from '@/lib/hooks/use-wallet';
 import { Button } from '@/components/ui/button';
 import { TransactionPreview, type TransactionPreviewData } from '@/components/wallet/transaction-preview';
 import {
@@ -70,9 +70,17 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
   const [showPreview, setShowPreview] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [txResult, setTxResult] = useState<{ success: boolean; txHash?: string; error?: string } | null>(null);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [touchedFields, setTouchedFields] = useState({
+    nodeAddress: false,
+    bondAmount: false,
+    unbondAmount: false,
+    bondProviderAddress: false,
+    nodeOperatorFee: false,
+  });
   const copyFeedbackTimeoutRef = useRef<number | null>(null);
 
-  const { address: walletAddress, walletType, isConnected, isNetworkMismatch } = useWallet();
+  const { address: walletAddress, walletType, isConnected, isNetworkMismatch } = useWalletContext();
 
   const selectedPosition = useMemo(() => {
     return positions.find((p) => p.nodeAddress === nodeAddress);
@@ -140,7 +148,7 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
     nodeAddress,
     amount: mode === 'BOND' ? bondAmount || '0' : amountToUnbond,
     memo,
-    estimatedFee: '0.02',
+    feeNote: 'Estimated by wallet before broadcast',
     walletType: walletType || 'keplr',
   }), [mode, nodeAddress, bondAmount, amountToUnbond, memo, walletType]);
 
@@ -226,10 +234,16 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
     return undefined;
   }, [nodeValidation, mode, bondAmountValidation, providerValidation, selectedPosition, unbondValidation, unbondAmountValidation]);
 
-  const nodeError = nodeValidation.valid ? undefined : nodeValidation.error;
-  const bondAmountError = mode === 'BOND' && !bondAmountValidation.valid ? bondAmountValidation.error : undefined;
-  const unbondAmountError = mode === 'UNBOND' && !unbondAmountValidation.valid ? unbondAmountValidation.error : undefined;
-  const providerError = mode === 'BOND' && showAdvancedBondFields && !providerValidation.valid ? providerValidation.error : undefined;
+  const shouldShowNodeError = submitAttempted || touchedFields.nodeAddress;
+  const shouldShowBondAmountError = submitAttempted || touchedFields.bondAmount;
+  const shouldShowUnbondAmountError = submitAttempted || touchedFields.unbondAmount;
+  const shouldShowProviderError = submitAttempted || touchedFields.bondProviderAddress || touchedFields.nodeOperatorFee;
+  const shouldShowValidationMessage = submitAttempted || Object.values(touchedFields).some(Boolean);
+
+  const nodeError = shouldShowNodeError && !nodeValidation.valid ? nodeValidation.error : undefined;
+  const bondAmountError = mode === 'BOND' && shouldShowBondAmountError && !bondAmountValidation.valid ? bondAmountValidation.error : undefined;
+  const unbondAmountError = mode === 'UNBOND' && shouldShowUnbondAmountError && !unbondAmountValidation.valid ? unbondAmountValidation.error : undefined;
+  const providerError = mode === 'BOND' && showAdvancedBondFields && shouldShowProviderError && !providerValidation.valid ? providerValidation.error : undefined;
   const advancedPanelId = 'transaction-advanced-bond-fields';
 
   const inlineCopyState = copyFeedback.action === 'inline' ? copyFeedback.status : 'idle';
@@ -244,7 +258,19 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
 
     setMode(nextMode);
     setTxResult(null);
+    setSubmitAttempted(false);
     onModeChange?.(normalizedMode);
+  };
+
+  const markTouched = (field: keyof typeof touchedFields) => {
+    setTouchedFields((current) => ({ ...current, [field]: true }));
+  };
+
+  const handleOpenPreview = () => {
+    setSubmitAttempted(true);
+    if (canSubmit) {
+      setShowPreview(true);
+    }
   };
 
   return (
@@ -302,20 +328,20 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="space-y-1">
-            <label htmlFor="transaction-node-address" className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Node Address</label>
-            <input id="transaction-node-address" type="text" placeholder="thor1..." value={nodeAddress} onChange={(e) => setNodeAddress(e.target.value)} aria-invalid={Boolean(nodeError)} aria-describedby={nodeError ? 'transaction-node-address-error' : undefined} className={cn('w-full px-3 py-2 rounded-lg border bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100', nodeError ? 'border-red-500' : 'border-zinc-300 dark:border-zinc-700')} />
+            <label htmlFor="transaction-node-address" className="block text-xs font-bold text-zinc-500 uppercase">Node Address</label>
+            <input id="transaction-node-address" type="text" placeholder="thor1..." value={nodeAddress} onChange={(e) => { markTouched('nodeAddress'); setNodeAddress(e.target.value); }} onBlur={() => markTouched('nodeAddress')} aria-invalid={Boolean(nodeError)} aria-describedby={nodeError ? 'transaction-node-address-error' : undefined} className={cn('w-full px-3 py-2 rounded-lg border bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100', nodeError ? 'border-red-500' : 'border-zinc-300 dark:border-zinc-700')} />
             {nodeError && <p id="transaction-node-address-error" role="alert" className="text-xs text-red-600 dark:text-red-400">{nodeError}</p>}
           </div>
           {mode === 'BOND' ? (
             <div className="space-y-1">
-              <label htmlFor="transaction-bond-amount" className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Bond Amount</label>
-              <input id="transaction-bond-amount" type="text" inputMode="decimal" placeholder="0" value={bondAmount} onChange={(e) => setBondAmount(e.target.value)} aria-invalid={Boolean(bondAmountError)} aria-describedby={bondAmountError ? 'transaction-bond-amount-error' : undefined} className={cn('w-full px-3 py-2 rounded-lg border bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100', bondAmountError ? 'border-red-500' : 'border-zinc-300 dark:border-zinc-700')} />
+              <label htmlFor="transaction-bond-amount" className="block text-xs font-bold text-zinc-500 uppercase">Bond Amount</label>
+              <input id="transaction-bond-amount" type="text" inputMode="decimal" placeholder="0" value={bondAmount} onChange={(e) => { markTouched('bondAmount'); setBondAmount(e.target.value); }} onBlur={() => markTouched('bondAmount')} aria-invalid={Boolean(bondAmountError)} aria-describedby={bondAmountError ? 'transaction-bond-amount-error' : undefined} className={cn('w-full px-3 py-2 rounded-lg border bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100', bondAmountError ? 'border-red-500' : 'border-zinc-300 dark:border-zinc-700')} />
               {bondAmountError && <p id="transaction-bond-amount-error" role="alert" className="text-xs text-red-600 dark:text-red-400">{bondAmountError}</p>}
             </div>
           ) : (
             <div className="space-y-1">
-              <label htmlFor="transaction-unbond-amount" className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Amount to Unbond</label>
-              <input id="transaction-unbond-amount" type="text" inputMode="decimal" placeholder="0" value={amountToUnbond} onChange={(e) => setAmountToUnbond(e.target.value)} aria-invalid={Boolean(unbondAmountError)} aria-describedby={unbondAmountError ? 'transaction-unbond-amount-error' : undefined} className={cn('w-full px-3 py-2 rounded-lg border bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100', unbondAmountError ? 'border-red-500' : 'border-zinc-300 dark:border-zinc-700')} />
+              <label htmlFor="transaction-unbond-amount" className="block text-xs font-bold text-zinc-500 uppercase">Amount to Unbond</label>
+              <input id="transaction-unbond-amount" type="text" inputMode="decimal" placeholder="0" value={amountToUnbond} onChange={(e) => { markTouched('unbondAmount'); setAmountToUnbond(e.target.value); }} onBlur={() => markTouched('unbondAmount')} aria-invalid={Boolean(unbondAmountError)} aria-describedby={unbondAmountError ? 'transaction-unbond-amount-error' : undefined} className={cn('w-full px-3 py-2 rounded-lg border bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100', unbondAmountError ? 'border-red-500' : 'border-zinc-300 dark:border-zinc-700')} />
               {unbondAmountError && <p id="transaction-unbond-amount-error" role="alert" className="text-xs text-red-600 dark:text-red-400">{unbondAmountError}</p>}
             </div>
           )}
@@ -335,13 +361,14 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
             {showAdvancedBondFields && (
               <div id={advancedPanelId} className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div className="space-y-1">
-                  <label htmlFor="transaction-provider-address" className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Provider Address (optional)</label>
+                  <label htmlFor="transaction-provider-address" className="block text-xs font-bold text-zinc-500 uppercase">Provider Address (optional)</label>
                   <input
                     id="transaction-provider-address"
                     type="text"
                     placeholder="thor1..."
                     value={bondProviderAddress}
-                    onChange={(e) => setBondProviderAddress(e.target.value)}
+                    onChange={(e) => { markTouched('bondProviderAddress'); setBondProviderAddress(e.target.value); }}
+                    onBlur={() => markTouched('bondProviderAddress')}
                     aria-invalid={Boolean(providerError)}
                     aria-describedby={providerError ? 'transaction-provider-error' : undefined}
                     className={cn(
@@ -351,14 +378,15 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
                   />
                 </div>
                 <div className="space-y-1">
-                  <label htmlFor="transaction-operator-fee" className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Operator Fee BPS (optional)</label>
+                  <label htmlFor="transaction-operator-fee" className="block text-xs font-bold text-zinc-500 uppercase">Operator Fee BPS (optional)</label>
                   <input
                     id="transaction-operator-fee"
                     type="text"
                     inputMode="numeric"
                     placeholder="0"
                     value={nodeOperatorFee}
-                    onChange={(e) => setNodeOperatorFee(e.target.value)}
+                    onChange={(e) => { markTouched('nodeOperatorFee'); setNodeOperatorFee(e.target.value); }}
+                    onBlur={() => markTouched('nodeOperatorFee')}
                     aria-invalid={Boolean(providerError)}
                     aria-describedby={providerError ? 'transaction-provider-error' : undefined}
                     className={cn(
@@ -375,7 +403,7 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
 
         <div className="bg-zinc-900 dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
           <div className="flex items-center justify-between mb-2">
-            <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">Generated Memo</label>
+            <label className="block text-xs font-bold text-zinc-400 uppercase">Generated Memo</label>
           </div>
           <div className="flex items-center gap-2">
             <code className="flex-1 font-mono text-sm text-zinc-100 break-all">{memo}</code>
@@ -397,7 +425,7 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
           </div>
         </div>
 
-        {validationMessage && (
+        {validationMessage && shouldShowValidationMessage && (
           <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
             {validationMessage}
           </div>
@@ -415,7 +443,7 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
             {primaryCopyState === 'success' ? 'Memo copied' : primaryCopyState === 'error' ? 'Copy failed' : 'Copy Memo'}
           </Button>
           {isConnected ? (
-            <Button onClick={() => setShowPreview(true)} disabled={!canSubmit} className="flex-1">Sign & Broadcast</Button>
+            <Button onClick={handleOpenPreview} disabled={!canSubmit} className="flex-1">Sign & Broadcast</Button>
           ) : (
             <Button disabled className="flex-1">Connect Wallet</Button>
           )}

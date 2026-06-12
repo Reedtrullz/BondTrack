@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fromBech32 } from '@cosmjs/encoding';
+import { Registry } from '@cosmjs/proto-signing';
 import {
   executeBondTransaction,
   executeUnbondTransaction,
@@ -9,6 +11,11 @@ import {
   validateBondMemoOptions,
   validateThorAddress,
 } from './bond';
+import {
+  RUNE_THORCHAIN_ASSET,
+  THORCHAIN_DEPOSIT_GAS_LIMIT,
+  THORCHAIN_MSG_DEPOSIT_TYPE_URL,
+} from './thorchain-msg-deposit';
 
 const stargateMocks = vi.hoisted(() => ({
   connectWithSigner: vi.fn(),
@@ -23,7 +30,7 @@ vi.mock('@cosmjs/stargate', () => ({
 
 const NODE_ADDRESS = 'thor16xxh3km6dxka636qg6q7e3us5vlgvhrhjgw245';
 const PROVIDER_ADDRESS = 'thor158qequwhhnggm4ch4psv55yqpxsugf67n62dy2';
-const SIGNER_ADDRESS = 'thor1walletaddress000000000000000000000000000';
+const SIGNER_ADDRESS = PROVIDER_ADDRESS;
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -147,7 +154,7 @@ describe('wallet adapter transaction payloads', () => {
     const offlineSigner = { getAccounts: vi.fn() };
     window.keplr = {
       enable: vi.fn().mockResolvedValue(undefined),
-      getChainId: vi.fn().mockResolvedValue('thorchain-mainnet-v1'),
+      getChainId: vi.fn().mockResolvedValue('thorchain-1'),
       getKey: vi.fn().mockResolvedValue({ bech32Address: SIGNER_ADDRESS }),
       getOfflineSigner: vi.fn().mockReturnValue(offlineSigner),
     };
@@ -163,27 +170,31 @@ describe('wallet adapter transaction payloads', () => {
     }, SIGNER_ADDRESS);
 
     expect(result).toEqual({ success: true, txHash: 'keplr-bond-hash' });
-    expect(window.keplr.enable).toHaveBeenCalledWith('thorchain-mainnet-v1');
-    expect(stargateMocks.connectWithSigner).toHaveBeenCalledWith('https://rpc.thorchain.info', offlineSigner);
+    expect(window.keplr.enable).toHaveBeenCalledWith('thorchain-1');
+    expect(stargateMocks.connectWithSigner).toHaveBeenCalledWith(
+      'https://gateway.liquify.com/chain/thorchain_rpc',
+      offlineSigner,
+      { registry: expect.any(Registry) }
+    );
     expect(stargateMocks.signAndBroadcast).toHaveBeenCalledWith(
       SIGNER_ADDRESS,
       [{
-        typeUrl: '/types.MsgDeposit',
+        typeUrl: THORCHAIN_MSG_DEPOSIT_TYPE_URL,
         value: {
-          depositor: SIGNER_ADDRESS,
+          signer: fromBech32(SIGNER_ADDRESS).data,
           memo: `BOND:${NODE_ADDRESS}`,
-          amount: [{ denom: 'rune', amount: '250000000' }],
+          coins: [{ asset: RUNE_THORCHAIN_ASSET, amount: '250000000' }],
         },
       }],
-      { amount: [{ denom: 'rune', amount: '2000000' }], gas: '50000000' },
-      ''
+      { amount: [], gas: THORCHAIN_DEPOSIT_GAS_LIMIT },
+      `BOND:${NODE_ADDRESS}`
     );
   });
 
   it('sends Keplr UNBOND MsgDeposit payloads with zero transfer amount and memo amount semantics', async () => {
     window.keplr = {
       enable: vi.fn().mockResolvedValue(undefined),
-      getChainId: vi.fn().mockResolvedValue('thorchain-mainnet-v1'),
+      getChainId: vi.fn().mockResolvedValue('thorchain-1'),
       getKey: vi.fn().mockResolvedValue({ bech32Address: SIGNER_ADDRESS }),
       getOfflineSigner: vi.fn().mockReturnValue({ getAccounts: vi.fn() }),
     };
@@ -204,11 +215,12 @@ describe('wallet adapter transaction payloads', () => {
       [expect.objectContaining({
         value: expect.objectContaining({
           memo: `UNBOND:${NODE_ADDRESS}:1000000000`,
-          amount: [{ denom: 'rune', amount: '0' }],
+          signer: fromBech32(SIGNER_ADDRESS).data,
+          coins: [{ asset: RUNE_THORCHAIN_ASSET, amount: '0' }],
         }),
       })],
-      expect.any(Object),
-      ''
+      { amount: [], gas: THORCHAIN_DEPOSIT_GAS_LIMIT },
+      `UNBOND:${NODE_ADDRESS}:1000000000`
     );
   });
 

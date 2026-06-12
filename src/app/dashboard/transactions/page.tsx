@@ -7,6 +7,7 @@ import { TransactionHistory } from '@/components/dashboard/transaction-history';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { useWatchlist } from '@/lib/hooks/use-watchlist';
 import { useBondHistory } from '@/lib/hooks/use-bond-history';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type TransactionAction = 'bond' | 'unbond';
 
@@ -37,7 +38,7 @@ export default function TransactionsPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Transactions</h1>
       
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
         <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h3 className="text-md font-medium text-zinc-700 dark:text-zinc-300">
@@ -45,8 +46,8 @@ export default function TransactionsPage() {
             </h3>
             <span
               className={action === 'bond'
-                ? 'inline-flex items-center rounded-full border border-emerald-200/70 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-600 dark:border-emerald-800/60 dark:bg-emerald-900/20 dark:text-emerald-400'
-                : 'inline-flex items-center rounded-full border border-amber-200/70 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-400'}
+                ? 'inline-flex items-center rounded-full border border-emerald-200/70 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase text-emerald-600 dark:border-emerald-800/60 dark:bg-emerald-900/20 dark:text-emerald-400'
+                : 'inline-flex items-center rounded-full border border-amber-200/70 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold uppercase text-amber-700 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-400'}
             >
               {action === 'bond' ? 'Bond mode' : 'Unbond mode'}
             </span>
@@ -55,35 +56,44 @@ export default function TransactionsPage() {
         </div>
 
         <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
-          <h3 className="text-md font-medium text-zinc-700 dark:text-zinc-300 mb-4">
-            Watchlist
-          </h3>
-          {watchlist.length === 0 ? (
-            <p className="text-sm text-zinc-500">No saved addresses. Your recent lookups appear here.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {watchlist.map(addr => (
-                <button
-                  key={addr}
-                  onClick={() => router.push(`/dashboard?address=${encodeURIComponent(addr)}`)}
-                  className="px-3 py-1 text-xs font-mono bg-zinc-100 dark:bg-zinc-800 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                >
-                  {addr.slice(0, 10)}...
-                </button>
-              ))}
-            </div>
-          )}
+          <Tabs defaultValue="watchlist" className="space-y-4">
+            <TabsList className="grid h-auto w-full grid-cols-2 bg-zinc-100 dark:bg-zinc-800">
+              <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
+              <TabsTrigger value="history">History</TabsTrigger>
+            </TabsList>
+            <TabsContent value="watchlist" className="space-y-3">
+              <h3 className="text-md font-medium text-zinc-700 dark:text-zinc-300">
+                Recent addresses
+              </h3>
+              {watchlist.length === 0 ? (
+                <p className="text-sm text-zinc-500">No saved addresses. Your recent lookups appear here.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {watchlist.map(addr => (
+                    <button
+                      key={addr}
+                      onClick={() => router.push(`/dashboard?address=${encodeURIComponent(addr)}`)}
+                      className="px-3 py-1 text-xs font-mono bg-zinc-100 dark:bg-zinc-800 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                    >
+                      {addr.slice(0, 10)}...
+                    </button>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+            <TabsContent value="history" className="space-y-3">
+              <h3 className="text-md font-medium text-zinc-700 dark:text-zinc-300">
+                Bond History
+              </h3>
+              {address ? (
+                <TransactionHistory address={address} />
+              ) : (
+                <p className="text-sm text-zinc-500">Enter an address to load bond and unbond history.</p>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
-
-      {address && (
-        <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
-          <h3 className="text-md font-medium text-zinc-700 dark:text-zinc-300 mb-4">
-            Bond History
-          </h3>
-          <TransactionHistory address={address} />
-        </div>
-      )}
     </div>
   );
 }

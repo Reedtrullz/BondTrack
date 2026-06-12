@@ -3,7 +3,7 @@ import { ENDPOINTS } from '@/lib/config';
 const RETRY_DELAYS = [1000, 2000, 4000];
 const MAX_RETRIES = 3;
 
-type NextFetchInit = RequestInit & { next?: { revalidate?: number } };
+type NextFetchInit = RequestInit & { next?: RequestInit['next'] };
 
 class RetryableError extends Error {
   constructor(message: string, public readonly status?: number) {
@@ -38,7 +38,7 @@ function resolveMidgardBase(): string {
   return normalizeBaseUrl(process.env.MIDGARD_API_URL || ENDPOINTS.midgard);
 }
 
-async function fetchApi<T>(baseUrl: string, path: string, init?: RequestInit, retryCount = 0): Promise<T> {
+async function fetchApi<T>(baseUrl: string, path: string, init?: NextFetchInit, retryCount = 0): Promise<T> {
   const url = `${baseUrl}${path}`;
 
   let res: Response;
@@ -49,8 +49,11 @@ async function fetchApi<T>(baseUrl: string, path: string, init?: RequestInit, re
         Accept: 'application/json',
         ...init?.headers,
       },
-      next: { revalidate: 60 },
     };
+
+    if (fetchInit.cache !== 'no-store') {
+      fetchInit.next = init?.next ?? { revalidate: 60 };
+    }
 
     res = await fetch(url, fetchInit);
   } catch (networkError) {
@@ -72,7 +75,7 @@ async function fetchApi<T>(baseUrl: string, path: string, init?: RequestInit, re
   return res.json() as Promise<T>;
 }
 
-export async function fetchThornode<T>(path: string, init?: RequestInit): Promise<T> {
+export async function fetchThornode<T>(path: string, init?: NextFetchInit): Promise<T> {
   const baseUrl = isBrowserRuntime() ? '/api/thorchain' : resolveThornodeBase(path);
 
   try {
@@ -82,7 +85,7 @@ export async function fetchThornode<T>(path: string, init?: RequestInit): Promis
   }
 }
 
-export async function fetchMidgard<T>(path: string, init?: RequestInit): Promise<T> {
+export async function fetchMidgard<T>(path: string, init?: NextFetchInit): Promise<T> {
   const baseUrl = isBrowserRuntime() ? '/api/midgard' : resolveMidgardBase();
 
   try {

@@ -6,6 +6,7 @@ Browser-level end-to-end tests for critical user flows.
 ```
 e2e/
 ├── homepage.spec.ts              # Landing page smoke tests
+├── command-center.spec.ts        # Default /dashboard triage experience
 ├── dashboard-navigation.spec.ts  # Sidebar nav + routing
 ├── dashboard-pages.spec.ts       # Page render smoke checks
 ├── portfolio.spec.ts             # Portfolio page + bond display
@@ -16,6 +17,7 @@ e2e/
 ├── tax-export.spec.ts            # Tax CSV export flow
 ├── api-health.spec.ts            # API health/edge-case coverage
 ├── redirects.spec.ts             # Redirect/routing coverage
+├── seo.spec.ts                   # Sitemap/robots/manifest identity checks
 └── comprehensive.spec.ts         # Visual/a11y/API edge coverage
 ```
 
@@ -27,9 +29,11 @@ e2e/
 
 **Base URL**: `http://localhost:3000` (production build launched via the standalone artifact: `node .next/standalone/server.js` after copying `public/` and `.next/static/` into `.next/standalone/`).
 
-**Production E2E**: Playwright boots a production build before running tests. `webServer.command` runs `npm run build`, prepares the standalone artifact's `public/` and `.next/static/` directories, then starts `node .next/standalone/server.js` with a 180s timeout to accommodate the build. `reuseExistingServer: !process.env.CI` allows local re-runs to skip the build when a server is already running. In CI the build always runs fresh.
+**Production E2E**: Playwright boots a production build before running tests. `webServer.command` runs `npm run build` and then `npm start`; `npm start` prepares the standalone artifact's `public/` and `.next/static/` directories, then starts `node .next/standalone/server.js`. The 180s timeout accommodates the build. `PLAYWRIGHT_REUSE_SERVER=true` allows local re-runs to skip the build when a server is already running. CI leaves that unset so the build always runs fresh.
 
-**Mocking**: Most specs mock API routes inline with `page.route()` and fixture objects. Wallet tests use `context.addInitScript()` to inject `window.keplr`/`window.xfi` shims.
+**Mocking**: Most specs mock API routes inline with `page.route()` and fixture objects. Broad dashboard smoke specs can use `helpers/dashboard-api-mocks.ts`. Wallet tests use `context.addInitScript()` to inject `window.keplr`/`window.xfi` shims.
+
+**API failures**: Same-origin `/api/*` 4xx/5xx responses fail tests by default. Use the `allowApiErrors([...])` fixture only in tests that intentionally assert error UI, and keep the allowlist path-specific.
 
 ## COMMANDS
 ```bash

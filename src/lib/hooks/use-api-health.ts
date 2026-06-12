@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { createContext, createElement, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import type { MutableRefObject, ReactNode } from 'react';
 import { getHealth } from '@/lib/api/midgard';
 import { getAllNodes } from '@/lib/api/thornode';
 
@@ -30,7 +31,7 @@ function isHttpOrNetworkError(error: unknown): boolean {
 }
 
 function updateStatusFromFailure(
-  failuresRef: React.MutableRefObject<number>,
+  failuresRef: MutableRefObject<number>,
   setStatus: (status: ApiHealthStatus) => void
 ) {
   failuresRef.current += 1;
@@ -102,4 +103,19 @@ export function useApiHealth(): ApiHealthState {
     lastChecked,
     lastSuccessful,
   };
+}
+
+const ApiHealthContext = createContext<ApiHealthState | null>(null);
+
+export function ApiHealthProvider({ children }: { children: ReactNode }) {
+  const health = useApiHealth();
+  return createElement(ApiHealthContext.Provider, { value: health }, children);
+}
+
+export function useApiHealthContext(): ApiHealthState {
+  const context = useContext(ApiHealthContext);
+  if (!context) {
+    throw new Error('useApiHealthContext must be used within ApiHealthProvider');
+  }
+  return context;
 }

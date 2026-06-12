@@ -26,7 +26,7 @@ export function RecentAddresses() {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+      <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase">
         Recent Addresses
       </span>
       <p className="text-xs text-zinc-500 dark:text-zinc-400">

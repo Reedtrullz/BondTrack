@@ -1,8 +1,10 @@
 import type React from 'react';
 import type { ChangelogEntry, ChangelogItem } from '@/lib/hooks/use-changelogs';
-import { FileText, Link as LinkIcon, Rocket, Wrench, Zap } from 'lucide-react';
+import { AlertTriangle, Coins, FileText, Link as LinkIcon, PauseCircle, Rocket, ShieldAlert, Wrench, Zap } from 'lucide-react';
 
-export type FilterType = 'all' | ChangelogEntry['type'];
+type ImpactFilter = 'operator-impact' | 'lp-impact' | 'chain-halt' | 'upgrade-required';
+
+export type FilterType = 'all' | ChangelogEntry['type'] | ImpactFilter;
 
 export const FILTER_OPTIONS: { value: FilterType; label: string; icon: React.ReactNode }[] = [
   { value: 'all', label: 'All', icon: <Zap className="w-3 h-3" /> },
@@ -11,6 +13,10 @@ export const FILTER_OPTIONS: { value: FilterType; label: string; icon: React.Rea
   { value: 'chain', label: 'Chain', icon: <LinkIcon className="w-3 h-3" /> },
   { value: 'feature', label: 'Feature', icon: <Rocket className="w-3 h-3" /> },
   { value: 'bug', label: 'Bug', icon: <Wrench className="w-3 h-3" /> },
+  { value: 'operator-impact', label: 'Operator Impact', icon: <ShieldAlert className="w-3 h-3" /> },
+  { value: 'lp-impact', label: 'LP Impact', icon: <Coins className="w-3 h-3" /> },
+  { value: 'chain-halt', label: 'Chain Halt', icon: <PauseCircle className="w-3 h-3" /> },
+  { value: 'upgrade-required', label: 'Upgrade Required', icon: <AlertTriangle className="w-3 h-3" /> },
 ];
 
 export function buildChangelogQuery(currentParams: URLSearchParams, searchQuery: string, typeFilter: FilterType): string {
@@ -48,8 +54,29 @@ export function extractYears(changelogs: ChangelogItem[]): number[] {
   return Array.from(years).sort();
 }
 
+function matchesImpactFilter(entry: ChangelogEntry, filter: FilterType): boolean {
+  if (filter === 'all') return true;
+  if (['update', 'adr', 'chain', 'feature', 'bug'].includes(filter)) {
+    return entry.type === filter;
+  }
+
+  const text = `${entry.title} ${entry.description}`.toLowerCase();
+  switch (filter) {
+    case 'operator-impact':
+      return /\b(node|operator|validator|bond|churn|slash|jail|yggdrasil|bifrost)\b/.test(text);
+    case 'lp-impact':
+      return /\b(lp|liquidity|pool|saver|synth|impermanent|luvi|withdraw|deposit)\b/.test(text);
+    case 'chain-halt':
+      return /\b(halt|halted|paused|solvency|insolvency|chain\s+halt|trading\s+halt)\b/.test(text);
+    case 'upgrade-required':
+      return /\b(upgrade|required|version|hard\s*fork|thornode|release|migration)\b/.test(text);
+    default:
+      return false;
+  }
+}
+
 export function matchesFilter(entry: ChangelogEntry, searchQuery: string, typeFilter: FilterType): boolean {
-  const matchesType = typeFilter === 'all' || entry.type === typeFilter;
+  const matchesType = matchesImpactFilter(entry, typeFilter);
 
   if (!searchQuery.trim()) {
     return matchesType;

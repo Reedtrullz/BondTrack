@@ -110,6 +110,35 @@ const mockRuneHistory = {
   ],
 };
 
+const mockEarningsHistory = {
+  meta: {
+    startTime: '1699990000000000000',
+    endTime: '1700010000000000000',
+    liquidityFees: '100000000',
+    blockRewards: '50000000',
+    earnings: '150000000',
+    bondingEarnings: '50000000',
+    liquidityEarnings: '100000000',
+    avgNodeCount: '2',
+    runePriceUSD: '1.50',
+    pools: [],
+  },
+  intervals: [
+    {
+      startTime: '1699990000000000000',
+      endTime: '1700010000000000000',
+      liquidityFees: '100000000',
+      blockRewards: '50000000',
+      earnings: '150000000',
+      bondingEarnings: '50000000',
+      liquidityEarnings: '100000000',
+      avgNodeCount: '2',
+      runePriceUSD: '1.50',
+      pools: [],
+    },
+  ],
+};
+
 async function setupMocks(page: Page) {
   await page.route('**/api/thorchain/**', async (route) => {
     const url = new URL(route.request().url());
@@ -141,6 +170,11 @@ async function setupMocks(page: Page) {
       return;
     }
 
+    if (url.pathname.startsWith('/api/midgard/v2/thorname/rlookup/')) {
+      await route.fulfill({ json: { entry: null } });
+      return;
+    }
+
     if (url.pathname === '/api/midgard/v2/network') {
       await route.fulfill({ json: mockNetwork });
       return;
@@ -166,6 +200,11 @@ async function setupMocks(page: Page) {
       return;
     }
 
+    if (url.pathname === '/api/midgard/v2/history/earnings') {
+      await route.fulfill({ json: mockEarningsHistory });
+      return;
+    }
+
     await route.fulfill({ status: 404, json: { error: `Unhandled Midgard mock: ${url.pathname}` } });
   });
 }
@@ -177,7 +216,9 @@ test.describe('Tax export flow', () => {
   });
 
   test('opens the tax report modal from the export button', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'PnL Performance' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Rewards' })).toBeVisible();
+    await page.getByRole('tab', { name: 'Tax' }).click();
+    await expect(page.getByRole('heading', { name: 'Tax-ready reward export' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Export Tax Report' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Export Tax Report' }).click();

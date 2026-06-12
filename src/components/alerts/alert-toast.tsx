@@ -102,9 +102,13 @@ export function AlertToast({ alerts, onDismiss, permission, onRequestPermission 
   return (
     <>
        {permission !== 'granted' && !isPromptDismissed && (
-        <div className="pointer-events-none fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex justify-center px-4 w-full max-w-md">
+        <div
+          className="pointer-events-none fixed bottom-4 left-4 z-40 hidden w-56 sm:block"
+          data-testid="notification-permission-nudge"
+          data-placement="peripheral"
+        >
           <div
-            className="pointer-events-auto w-full rounded-xl border border-zinc-200/80 bg-white/95 p-4 shadow-xl backdrop-blur-xl dark:border-zinc-700 dark:bg-zinc-900/95"
+            className="pointer-events-auto w-full rounded-xl border border-zinc-200/80 bg-white/95 p-3 shadow-lg backdrop-blur-xl dark:border-zinc-700 dark:bg-zinc-900/95"
             role="status"
             aria-live="polite"
           >
@@ -123,7 +127,7 @@ export function AlertToast({ alerts, onDismiss, permission, onRequestPermission 
                     <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                       {showPermissionGuidance ? 'Notifications are still off' : 'Enable notifications'}
                     </p>
-                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
                       {showPermissionGuidance
                         ? 'Allow notifications in your browser site settings, or dismiss this reminder and keep working in the dashboard.'
                         : 'Get alerts when your nodes are slashed, jailed, or churn risk changes.'}

@@ -93,7 +93,7 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
     <div className="p-6 rounded-2xl bg-transparent border border-transparent shadow-none">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">RUNE Price</h3>
+          <h3 className="text-xs font-bold text-zinc-400 uppercase mb-1">RUNE Price</h3>
           <p className="text-sm text-zinc-500">{isLoading ? `Loading ${activeInterval.label} range...` : activeInterval.description}</p>
         </div>
         <div className="flex gap-1 rounded-full border border-zinc-200/80 bg-zinc-100/70 p-1 dark:border-zinc-800 dark:bg-zinc-900/80">
@@ -128,7 +128,7 @@ export function PriceChart({ initialInterval = 'week' }: PriceChartProps) {
         </div>
       ) : (
         <>
-          <ResponsiveContainer width="100%" height={160} minWidth={0} minHeight={0}>
+          <ResponsiveContainer width="100%" height={160} minWidth={1} minHeight={1}>
             <AreaChart key={interval} data={data} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
             <defs>
               <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">

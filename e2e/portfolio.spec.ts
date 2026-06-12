@@ -135,6 +135,35 @@ const mockRuneHistory = {
   ],
 };
 
+const mockEarningsHistory = {
+  meta: {
+    startTime: '1699990000000000000',
+    endTime: '1700010000000000000',
+    liquidityFees: '100000000',
+    blockRewards: '50000000',
+    earnings: '150000000',
+    bondingEarnings: '50000000',
+    liquidityEarnings: '100000000',
+    avgNodeCount: '2',
+    runePriceUSD: '1.50',
+    pools: [],
+  },
+  intervals: [
+    {
+      startTime: '1699990000000000000',
+      endTime: '1700010000000000000',
+      liquidityFees: '100000000',
+      blockRewards: '50000000',
+      earnings: '150000000',
+      bondingEarnings: '50000000',
+      liquidityEarnings: '100000000',
+      avgNodeCount: '2',
+      runePriceUSD: '1.50',
+      pools: [],
+    },
+  ],
+};
+
 const mockPoolHistory = {
   intervals: [
     {
@@ -202,6 +231,11 @@ async function setupMocks(page: Page) {
       return;
     }
 
+    if (url.pathname.startsWith('/api/midgard/v2/thorname/rlookup/')) {
+      await route.fulfill({ json: { entry: null } });
+      return;
+    }
+
     if (url.pathname === '/api/midgard/v2/network') {
       await route.fulfill({ json: mockNetwork });
       return;
@@ -235,6 +269,11 @@ async function setupMocks(page: Page) {
 
     if (url.pathname === '/api/midgard/v2/history/rune') {
       await route.fulfill({ json: mockRuneHistory });
+      return;
+    }
+
+    if (url.pathname === '/api/midgard/v2/history/earnings') {
+      await route.fulfill({ json: mockEarningsHistory });
       return;
     }
 

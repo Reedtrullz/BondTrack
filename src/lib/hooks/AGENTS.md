@@ -26,7 +26,7 @@
 | THORName | `use-thorname.ts` — reverse lookup (non-blocking, degraded-safe) |
 | Wallet balance | `use-wallet-balance.ts` — connected wallet RUNE balance |
 | Yield benchmarks | `use-yield-benchmarks.ts` — network APY percentiles |
-| Alerts | `use-alerts.ts` — generated actionable alerts |
+| Alerts | `use-alerts.ts` — provider-backed dashboard alert state and generated actionable alerts |
 | Pending transactions | `use-pending-transactions.ts` — in-flight tx tracking |
 
 ## REFRESH INTERVALS
@@ -51,6 +51,8 @@
 **useChangelogs**: Embedded changelog dataset. Returns `ChangelogItem[]` sorted newest-first by `sortDate`. URL sync: `?q=` search, `?type=` filter.
 
 **useWallet**: Returns `{ address, walletType, chainId, isConnected, isConnecting, error, networkMismatch, connect, disconnect }`. Persists to `localStorage`. Detection order: Keplr -> XDEFI -> Vultisig.
+
+**useAlerts**: Dashboard routes share alert preferences and generated alerts through `AlertProvider` / `useAlertsContext()`. Settings pages must consume the provider state so preference changes immediately affect live alert checks.
 
 ## ANTI-PATTERNS
 - Never call API functions directly in components — always use hooks

@@ -52,6 +52,29 @@ test.describe("Portfolio Page", () => {
         });
         return;
       }
+
+      if (url.includes("/history/rune")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            meta: {
+              startTime: "1699990000000000000",
+              endTime: "1700010000000000000",
+              startRunePriceUSD: "1.50",
+              endRunePriceUSD: "1.50"
+            },
+            intervals: [
+              {
+                startTime: "1699990000000000000",
+                endTime: "1700010000000000000",
+                runePriceUSD: "1.50"
+              }
+            ]
+          })
+        });
+        return;
+      }
       
       // Mock network endpoint
       if (url.includes("/network")) {
@@ -81,6 +104,15 @@ test.describe("Portfolio Page", () => {
           body: JSON.stringify({
             lastThorNode: { height: 1000 }
           })
+        });
+        return;
+      }
+
+      if (url.includes("/thorname/rlookup/")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ entry: null })
         });
         return;
       }
@@ -130,6 +162,19 @@ test.describe("Portfolio Page", () => {
           status: 200,
           contentType: "application/json",
           body: JSON.stringify([])
+        });
+        return;
+      }
+
+      if (url.includes("/constants")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            int_64_values: { OptimalBondD: 2500000000000 },
+            bool_values: {},
+            string_values: {}
+          })
         });
         return;
       }

@@ -303,12 +303,10 @@ export default function ChangelogsPage() {
           <ScrollText className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 
-            className="text-2xl font-bold text-zinc-900 dark:text-white font-serif italic uppercase"
-          >
-            Odin&apos;s Journal
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+            Protocol Changelog
           </h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">Historical timeline of THORChain protocol evolution</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">THORChain updates filtered by operator and liquidity impact</p>
         </div>
       </div>
 
@@ -323,7 +321,7 @@ export default function ChangelogsPage() {
               <Eye className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Protocol Statistics</p>
+              <p className="text-[10px] font-bold uppercase text-zinc-500 dark:text-zinc-400">Update Statistics</p>
               <p className="text-lg font-bold text-zinc-900 dark:text-white">
                 {changelogs.reduce((a, c) => a + c.content.length, 0)} protocol updates across {totalMonths} months
               </p>
@@ -331,11 +329,11 @@ export default function ChangelogsPage() {
           </div>
           <div className="hidden sm:flex items-center gap-6 text-right">
             <div>
-              <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase tracking-widest">Latest Release</p>
+              <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase">Latest Release</p>
               <p className="text-sm font-bold text-amber-600 dark:text-amber-500">v3.16</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase tracking-widest">Established</p>
+              <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase">Established</p>
               <p className="text-sm font-bold text-zinc-900 dark:text-white">Aug 2022</p>
             </div>
           </div>
@@ -382,7 +380,8 @@ export default function ChangelogsPage() {
         <div className="flex flex-wrap gap-2">
           {FILTER_OPTIONS.map((option) => {
             const isActive = typeFilter === option.value;
-            const hasCount = option.value !== 'all' && typeBreakdown[option.value] > 0;
+            const typeCount = typeBreakdown[option.value as keyof typeof typeBreakdown] ?? 0;
+            const hasCount = option.value !== 'all' && typeCount > 0;
             
             return (
               <button
@@ -408,7 +407,7 @@ export default function ChangelogsPage() {
                       backgroundColor: isActive ? 'rgba(0,0,0,0.2)' : 'rgba(113,113,122,0.12)',
                     }}
                   >
-                    {typeBreakdown[option.value]}
+                    {typeCount}
                   </span>
                 )}
               </button>

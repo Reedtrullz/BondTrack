@@ -113,7 +113,7 @@ export function RewardProjections({
                 >
                   <div className="flex items-center gap-2 text-zinc-500 mb-3">
                     {tf.icon}
-                    <span className="text-xs font-semibold uppercase tracking-wider">{proj.timeframe}</span>
+                    <span className="text-xs font-semibold uppercase">{proj.timeframe}</span>
                   </div>
 
                   <div className="space-y-3">

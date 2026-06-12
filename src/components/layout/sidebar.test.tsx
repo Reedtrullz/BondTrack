@@ -46,6 +46,15 @@ describe('Sidebar', () => {
   it('preserves the address query when rendering navigation links', () => {
     render(<Sidebar />);
 
+    expect(screen.getByLabelText('Navigate to Command Center page')).toHaveAttribute('href', '/dashboard?address=thor1abc');
     expect(screen.getByLabelText('Navigate to Changelogs page')).toHaveAttribute('href', '/dashboard/changelogs?address=thor1abc');
+  });
+
+  it('marks the command center active at the dashboard root', () => {
+    mocks.pathname = '/dashboard';
+
+    render(<Sidebar />);
+
+    expect(screen.getByLabelText('Navigate to Command Center page')).toHaveAttribute('aria-current', 'page');
   });
 });

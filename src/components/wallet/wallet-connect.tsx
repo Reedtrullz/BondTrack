@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useWallet } from '@/lib/hooks/use-wallet';
+import { useWalletContext } from '@/lib/hooks/use-wallet';
 import { Button } from '@/components/ui/button';
 import { Wallet, ChevronDown, LogOut, AlertTriangle } from 'lucide-react';
 
@@ -98,7 +98,7 @@ export function WalletConnect() {
     connect,
     disconnect,
     isNetworkMismatch,
-  } = useWallet();
+  } = useWalletContext();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

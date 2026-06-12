@@ -44,7 +44,7 @@ export function BondOptimizer({ positions, benchmarks, allNodes, providerAddress
             <AlertCircle className="w-6 h-6" />
           </div>
         </div>
-        <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1 uppercase tracking-wider">
+        <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1 uppercase">
           No Data Available
         </h3>
         <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
@@ -67,7 +67,7 @@ export function BondOptimizer({ positions, benchmarks, allNodes, providerAddress
               <CheckCircle2 className="w-6 h-6" />
             </div>
           </div>
-          <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-400 mb-1 uppercase tracking-wider">
+          <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-400 mb-1 uppercase">
             Portfolio Optimized
           </h3>
           <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">

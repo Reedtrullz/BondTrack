@@ -11,6 +11,11 @@ async function setupWalletPageApiMocks(page: Page) {
       return;
     }
 
+    if (url.pathname.startsWith('/api/midgard/v2/thorname/rlookup/')) {
+      await route.fulfill({ json: { entry: null } });
+      return;
+    }
+
     if (url.pathname === `/api/midgard/v2/bonds/${MOCK_ADDRESS}`) {
       await route.fulfill({ json: { address: MOCK_ADDRESS, totalBonded: '0', nodes: [] } });
       return;
@@ -145,7 +150,7 @@ test.describe('Wallet Connection', () => {
     await context.addInitScript((address) => {
       (window as unknown as Record<string, unknown>).keplr = {
         enable: async () => {},
-        getChainId: async () => 'thorchain-mainnet-v1',
+        getChainId: async () => 'thorchain-1',
         getKey: async () => ({ bech32Address: address }),
       };
     }, mockAddress);
@@ -162,7 +167,7 @@ test.describe('Wallet Connection', () => {
     await context.addInitScript((address) => {
       (window as unknown as Record<string, unknown>).keplr = {
         enable: async () => {},
-        getChainId: async () => 'thorchain-mainnet-v1',
+        getChainId: async () => 'thorchain-1',
         getKey: async () => ({ bech32Address: address }),
         disable: async () => {},
       };
@@ -223,7 +228,7 @@ test.describe('Wallet Connection', () => {
     await context.addInitScript((address) => {
       (window as unknown as Record<string, unknown>).keplr = {
         enable: async () => {},
-        getChainId: async () => 'thorchain-mainnet-v1',
+        getChainId: async () => 'thorchain-1',
         getKey: async () => ({ bech32Address: address }),
       };
     }, mockAddress);

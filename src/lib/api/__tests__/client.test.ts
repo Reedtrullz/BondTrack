@@ -43,6 +43,27 @@ describe('API client proxy fetchers', () => {
     );
   });
 
+  it('does not attach Next revalidation when no-store freshness is requested', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(jsonResponse({ health: 'ok' }));
+
+    await expect(fetchMidgard('/v2/health', { cache: 'no-store' })).resolves.toEqual({ health: 'ok' });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/midgard/v2/health',
+      expect.objectContaining({
+        cache: 'no-store',
+        headers: { Accept: 'application/json' },
+      })
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.not.objectContaining({
+        next: expect.anything(),
+      })
+    );
+  });
+
   it('wraps non-retryable Midgard HTTP errors with proxy context', async () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValue(jsonResponse({ error: 'not found' }, { status: 404, statusText: 'Not Found' }));

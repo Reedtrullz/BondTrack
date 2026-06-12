@@ -17,6 +17,12 @@ import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
 import { Button } from '@/components/ui/button';
 import { DashboardCard } from '@/components/shared/dashboard-card';
 import { FocusDialog } from '@/components/ui/focus-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DisclosureSection } from '@/components/dashboard/disclosure-section';
+import { InsightHeader } from '@/components/dashboard/insight-header';
+import { buildDashboardInsightState } from '@/lib/dashboard/insights';
+import { useApiHealthContext } from '@/lib/hooks/use-api-health';
+import { formatPercent, formatRuneFromNumber, formatUsd } from '@/lib/utils/formatters';
 
 function normalizeApyPercent(raw: string | number | undefined): number | undefined {
   if (raw === undefined || raw === null) return undefined;
@@ -84,6 +90,7 @@ export default function RewardsPage() {
   const { data: networkData } = useNetworkMetrics();
   const { history: bondHistory, isLoading: isLoadingActions, error: actionsError } = useBondHistory(address);
   const { price: entryRunePrice } = useHistoricalRunePrice(bondHistory?.firstBondDate || null);
+  const apiHealth = useApiHealthContext();
 
   const [mounted, setMounted] = useState(false);
   const [showTaxModal, setShowTaxModal] = useState(false);
@@ -98,6 +105,23 @@ export default function RewardsPage() {
     if (!networkApy) return 0;
     return calculateWeightedApy(safePositions, networkApy);
   }, [safePositions, networkApy]);
+  const rewardsInsight = useMemo(() => buildDashboardInsightState({
+    address,
+    positions: safePositions,
+    network: networkData,
+    apiHealth,
+    runePrice,
+    runePriceIsStale,
+    runePriceUpdatedAt,
+  }), [
+    address,
+    safePositions,
+    networkData,
+    apiHealth,
+    runePrice,
+    runePriceIsStale,
+    runePriceUpdatedAt,
+  ]);
 
   useEffect(() => {
     setMounted(true);
@@ -205,73 +229,61 @@ export default function RewardsPage() {
   return (
     <div className="space-y-12 pb-20">
       <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Rewards</h1>
-      <DashboardCard className="relative">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-emerald-500" aria-hidden="true" />
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">PnL Performance</h2>
-          </div>
-          <div className="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold">
-            Live Metrics
-          </div>
-        </div>
-        {hasPositions ? (
-          <>
-            <PnLDashboard
-              positions={safePositions}
-              currentRunePrice={runePrice || 0}
-              currentRunePriceIsStale={runePriceIsStale}
-              currentRunePriceUpdatedAt={runePriceUpdatedAt}
-              address={address}
-              entryRunePrice={entryRunePrice || undefined}
-              bondHistory={bondHistory ?? undefined}
-              actionsError={actionsError}
-              isLoadingActions={isLoadingActions}
-            />
-            <div className="mt-4 flex justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setTaxError(null);
-                  setTaxWarning(null);
-                  setShowTaxModal(true);
-                }}
-              >
-                <Download className="mr-2 h-4 w-4" aria-hidden="true" />
-                Export Tax Report
-              </Button>
-            </div>
-          </>
-        ) : (
-          <RewardsStateCard
-            tone="empty"
-            title="No bonded positions found"
-            description="The address was queried successfully, but it is not currently listed as a bond provider on an active node."
-            detail="Bond RUNE to a node operator first; then this page will show net APY, operator fee impact, reward velocity, and tax export options."
-            action={
-              <Button type="button" size="sm" onClick={() => router.push(`/dashboard/transactions?address=${encodeURIComponent(address)}`)}>
-                Open Bond Composer
-              </Button>
-            }
-          />
-        )}
-      </DashboardCard>
-
       {hasPositions ? (
-        <DashboardCard>
-          <div className="flex items-center gap-2 mb-4">
-            <Zap className="w-5 h-5 text-emerald-500" aria-hidden="true" />
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Yield Optimization</h2>
-          </div>
+        <>
+          <InsightHeader
+            severity={rewardsInsight.severity}
+            statusLabel={rewardsInsight.statusLabel}
+            diagnosis={`Weighted net APY is ${weightedApy > 0 ? formatPercent(weightedApy) : 'not available yet'}. Returns, fee leakage, forecast assumptions, and tax export are separated below so each decision has its own context.`}
+            topRisk={weightedApy > 0 ? `Net reward stance: ${formatPercent(weightedApy)} weighted APY` : rewardsInsight.topRisk}
+            metrics={[
+              { label: 'Weighted APY', value: weightedApy > 0 ? formatPercent(weightedApy) : '--', detail: 'After operator fees' },
+              { label: 'Bonded', value: formatRuneFromNumber(safePositions.reduce((sum, position) => sum + position.bondAmount, 0)), detail: `${safePositions.length} node${safePositions.length === 1 ? '' : 's'}` },
+              { label: 'RUNE price', value: runePrice ? formatUsd(runePrice, 4, 2) : '--', detail: runePriceIsStale ? 'Stale quote' : 'Live quote' },
+            ]}
+            primaryAction={{ label: 'Review Fees', href: '#fees' }}
+            eyebrow="Rewards"
+          />
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-4">
-              <PersonalFeeAudit positions={safePositions} networkApy={weightedApy} />
-            </div>
+          <Tabs defaultValue="return" className="space-y-4">
+            <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800 md:grid-cols-4">
+              <TabsTrigger value="return">Return</TabsTrigger>
+              <TabsTrigger value="fees">Fees</TabsTrigger>
+              <TabsTrigger value="forecast">Forecast</TabsTrigger>
+              <TabsTrigger value="tax">Tax</TabsTrigger>
+            </TabsList>
 
-            <div className="lg:col-span-8">
+            <TabsContent value="return" className="space-y-4">
+              <DashboardCard className="relative">
+                <div className="mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-emerald-500" aria-hidden="true" />
+                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Net return</h2>
+                </div>
+                <PnLDashboard
+                  positions={safePositions}
+                  currentRunePrice={runePrice || 0}
+                  currentRunePriceIsStale={runePriceIsStale}
+                  currentRunePriceUpdatedAt={runePriceUpdatedAt}
+                  address={address}
+                  entryRunePrice={entryRunePrice || undefined}
+                  bondHistory={bondHistory ?? undefined}
+                  actionsError={actionsError}
+                  isLoadingActions={isLoadingActions}
+                />
+              </DashboardCard>
+            </TabsContent>
+
+            <TabsContent id="fees" value="fees">
+              <DashboardCard>
+                <div className="mb-4 flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-amber-500" aria-hidden="true" />
+                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Fee leakage</h2>
+                </div>
+                <PersonalFeeAudit positions={safePositions} networkApy={weightedApy} />
+              </DashboardCard>
+            </TabsContent>
+
+            <TabsContent value="forecast">
               {weightedApy > 0 ? (
                 <AutoCompoundChart
                   positions={safePositions}
@@ -286,40 +298,80 @@ export default function RewardsPage() {
                   </p>
                 </DashboardCard>
               )}
-            </div>
-          </div>
+            </TabsContent>
 
-          <div className="mt-6 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-1 h-8 bg-emerald-500 rounded-full" />
-              <div>
-                <div className="text-xs font-bold text-zinc-400 uppercase tracking-tight">Strategic Insight</div>
-                <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                  {safePositions.length === 1
-                    ? 'Your portfolio is concentrated in a single node. Review churn rank and operator fee exposure before adding more bond.'
-                    : 'Your portfolio spans multiple nodes. Review risk concentration before compounding additional rewards.'}
-                </p>
+            <TabsContent value="tax">
+              <DashboardCard>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Tax-ready reward export</h2>
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                      CSV includes date-inclusive FIFO bond rows and estimated LP confidence metadata.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setTaxError(null);
+                      setTaxWarning(null);
+                      setShowTaxModal(true);
+                    }}
+                  >
+                    <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+                    Export Tax Report
+                  </Button>
+                </div>
+              </DashboardCard>
+            </TabsContent>
+          </Tabs>
+
+          <DashboardCard>
+            <div className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/80 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-1 h-8 bg-emerald-500 rounded-full" />
+                <div>
+                  <div className="text-xs font-bold text-zinc-400 uppercase">Next reward decision</div>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                    {safePositions.length === 1
+                      ? 'Your portfolio is concentrated in a single node. Review churn rank and operator fee exposure before adding more bond.'
+                      : 'Your portfolio spans multiple nodes. Review risk concentration before compounding additional rewards.'}
+                  </p>
+                </div>
               </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleOptimizeNow}
+                className="min-w-[8.5rem]"
+              >
+                Review Risk
+              </Button>
             </div>
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleOptimizeNow}
-              className="min-w-[8.5rem]"
-            >
-              Review Risk
+          </DashboardCard>
+        </>
+      ) : (
+        <RewardsStateCard
+          tone="empty"
+          title="No bonded positions found"
+          description="The address was queried successfully, but it is not currently listed as a bond provider on an active node."
+          detail="Bond RUNE to a node operator first; then this page will show net APY, operator fee impact, reward velocity, and tax export options."
+          action={
+            <Button type="button" size="sm" onClick={() => router.push(`/dashboard/transactions?address=${encodeURIComponent(address)}`)}>
+              Open Bond Composer
             </Button>
-          </div>
-        </DashboardCard>
-      ) : null}
+          }
+        />
+      )}
 
-      <DashboardCard>
+      <DisclosureSection title="Market context" summary="RUNE price context is secondary to net reward and fee decisions.">
         <div className="flex items-center gap-2 mb-4">
           <BarChart3 className="w-5 h-5 text-emerald-500" aria-hidden="true" />
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Market Context</h2>
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">RUNE Price</h2>
         </div>
         <PriceChart />
-      </DashboardCard>
+      </DisclosureSection>
 
       {showTaxModal && (
         <FocusDialog

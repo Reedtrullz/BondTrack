@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { createContext, createElement, useState, useEffect, useCallback, useRef, useContext } from 'react';
+import type { ReactNode } from 'react';
 import type { BondPosition } from '@/lib/types/node';
 import { STORAGE_KEYS } from '@/lib/storage/keys';
 
@@ -81,7 +82,7 @@ export function useAlerts() {
   const [alerts, setAlerts] = useState<Alert[]>(getInitialAlerts);
   const [preferences, setPreferences] = useState<AlertPreferences>(getInitialPreferences);
   const [permission, setPermission] = useState<NotificationPermission>(getInitialPermission);
-  const lastAlertTime = useRef<Record<AlertType, number>>({} as Record<AlertType, number>);
+  const lastAlertTime = useRef<Record<string, number>>({});
 
   useEffect(() => {
     if (alerts.length > 0 || preferences) {
@@ -107,8 +108,8 @@ export function useAlerts() {
     }
   }, []);
 
-  const isRateLimited = useCallback((type: AlertType): boolean => {
-    const lastTime = lastAlertTime.current[type] || 0;
+  const isRateLimited = useCallback((key: string): boolean => {
+    const lastTime = lastAlertTime.current[key] || 0;
     return Date.now() - lastTime < RATE_LIMIT_MS;
   }, []);
 
@@ -117,7 +118,8 @@ export function useAlerts() {
     nodeAddress: string,
     message: string
   ) => {
-    if (isRateLimited(type)) return;
+    const rateLimitKey = `${type}:${nodeAddress}`;
+    if (isRateLimited(rateLimitKey)) return;
 
     const preferenceKey = type === 'SLASH_INCREASE' ? 'slashAlerts'
       : type === 'JAIL' ? 'jailAlerts'
@@ -126,7 +128,7 @@ export function useAlerts() {
 
     if (!preferences[preferenceKey as keyof AlertPreferences]) return;
 
-    lastAlertTime.current[type] = Date.now();
+    lastAlertTime.current[rateLimitKey] = Date.now();
 
     const alert: Alert = {
       id: `${type}-${nodeAddress}-${Date.now()}`,
@@ -178,7 +180,7 @@ export function useAlerts() {
     previousPosition: BondPosition | null,
     nodeAddress: string
   ) => {
-    if (!previousPosition && currentPosition.isJailed) {
+    if (currentPosition.isJailed && previousPosition && !previousPosition.isJailed) {
       triggerAlert('JAIL', nodeAddress,
         `Node ${nodeAddress.slice(0, 12)}... has been jailed: ${currentPosition.jailReason || 'Unknown reason'}`);
     }
@@ -210,4 +212,21 @@ export function useAlerts() {
     checkJail,
     checkStatusChange,
   };
+}
+
+export type AlertsContextValue = ReturnType<typeof useAlerts>;
+
+const AlertsContext = createContext<AlertsContextValue | null>(null);
+
+export function AlertProvider({ children }: { children: ReactNode }) {
+  const alerts = useAlerts();
+  return createElement(AlertsContext.Provider, { value: alerts }, children);
+}
+
+export function useAlertsContext(): AlertsContextValue {
+  const context = useContext(AlertsContext);
+  if (!context) {
+    throw new Error('useAlertsContext must be used within AlertProvider');
+  }
+  return context;
 }

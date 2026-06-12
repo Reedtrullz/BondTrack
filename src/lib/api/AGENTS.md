@@ -1,7 +1,7 @@
 # API Layer — THORNode + Midgard
 
 **7 files**: `client.ts` (base fetch + retry), `thornode.ts` (THORNode API), `midgard.ts` (Midgard API), `coinapi.ts` (RUNE price), `coingecko.ts` (RUNE price fallback), `rate-limit.ts` (per-route rate limiting)
-**8 API proxy routes**: `/api/midgard/[...path]`, `/api/thorchain/[...path]`, `/api/coingecko/[...path]`, `/api/coinapi/rune-price`, `/api/health`, `/api/address/[address]`, `/api/pools/[pool]`, `/api/tax-report`
+**9 API routes**: `/api/midgard/[...path]`, `/api/thorchain/[...path]`, `/api/coingecko/[...path]`, `/api/coinapi/rune-price`, `/api/health`, `/api/ready`, `/api/address/[address]`, `/api/pools/[pool]`, `/api/tax-report`
 
 ## WHERE TO LOOK
 | Need | File |
@@ -58,7 +58,7 @@ If you remove the leading-segment strip, every request 403s, `useApiHealth` flip
 | Route | Limit |
 |-------|-------|
 | `/api/thorchain`, `/api/midgard` | 300/min |
-| `/api/health`, `/api/coingecko` | 60/min |
+| `/api/health`, `/api/ready`, `/api/coingecko` | 60/min |
 | `/api/pools`, `/api/address` | 30/min |
 | `/api/tax-report` | 10/min |
 | `/api/coinapi` | 80/day |

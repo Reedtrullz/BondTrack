@@ -3,7 +3,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ============================================
-   BONDTRACK DESIGN SYSTEM
+   HEIMDALL DESIGN SYSTEM
    Viking Terminal meets Bloomberg Terminal
    ============================================ */
 
@@ -221,7 +221,7 @@ h1, h2, h3, h4, h5, h6 {
 .font-display {
   font-family: var(--font-exo-2);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 /* Gradient text */
