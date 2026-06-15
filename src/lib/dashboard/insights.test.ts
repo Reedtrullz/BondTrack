@@ -302,9 +302,9 @@ describe('dashboard insights', () => {
       href: '/dashboard/transactions?address=thor1provider',
     });
     expect(state.headerMetrics[0]).toEqual({
-      label: 'Health score',
+      label: 'Provider exposure',
       value: '--',
-      detail: 'No bonded positions to score',
+      detail: 'No bonded positions tracked',
     });
   });
 
@@ -445,7 +445,7 @@ describe('dashboard insights', () => {
     });
 
     expect(state.statusLabel).toBe('Healthy');
-    expect(state.diagnosis).toBe('Current source responses show no urgent node, source, or LP confidence issues.');
+    expect(state.diagnosis).toBe('Current source responses show no provider action needed.');
     expect(state.diagnosis).not.toContain('current live data');
   });
 
@@ -464,10 +464,11 @@ describe('dashboard insights', () => {
       ],
     });
 
-    expect(state.statusLabel).toBe('At Risk');
+    expect(state.statusLabel).toBe('Action Needed');
     expect(state.headerMetrics[0]).toEqual(expect.objectContaining({
-      label: 'Health score',
-      detail: 'thor1cri...0000 is jailed',
+      label: 'Provider exposure',
+      value: 'Action',
+      detail: 'Score 35/100 · The node is currently in jail and may not be earning.',
     }));
     expect(state.actions.map((item) => item.id)).toEqual(expect.arrayContaining([
       'jail:thor1criticalnode000000000000000000000000000',
@@ -507,10 +508,11 @@ describe('dashboard insights', () => {
     });
 
     expect(state.severity).toBe('warning');
-    expect(state.statusLabel).toBe('Needs Attention');
+    expect(state.statusLabel).toBe('Review Needed');
     expect(state.headerMetrics[0]).toEqual(expect.objectContaining({
-      value: '75/100',
-      detail: 'thor1sta...0000 is Standby',
+      label: 'Provider exposure',
+      value: 'Review',
+      detail: 'Score 75/100 · This position is not in active validator status.',
     }));
     expect(state.actions).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -537,7 +539,7 @@ describe('dashboard insights', () => {
     });
 
     expect(state.severity).toBe('warning');
-    expect(state.statusLabel).toBe('Needs Attention');
+    expect(state.statusLabel).toBe('Review Needed');
     expect(state.topRisk).toBe('Midgard is unknown');
     expect(state.actions).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -588,7 +590,7 @@ describe('dashboard insights', () => {
     });
 
     expect(state.severity).toBe('warning');
-    expect(state.statusLabel).toBe('Needs Attention');
+    expect(state.statusLabel).toBe('Review Needed');
     expect(state.actions).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'lp:current-only-pricing',
@@ -601,7 +603,7 @@ describe('dashboard insights', () => {
     ]));
   });
 
-  it('uses the active warning as health-score context instead of saying all positions are healthy', () => {
+  it('uses the active warning as provider-exposure context instead of saying all positions are healthy', () => {
     const state = buildDashboardInsightState({
       address: 'thor1provider',
       now: NOW,
@@ -614,14 +616,14 @@ describe('dashboard insights', () => {
       ],
     });
 
-    expect(state.statusLabel).toBe('Needs Attention');
+    expect(state.statusLabel).toBe('Review Needed');
     expect(state.headerMetrics[0]).toEqual(expect.objectContaining({
-      value: '95/100',
-      detail: 'thor1war...0000 is near churn risk',
+      value: 'Review',
+      detail: 'Score 95/100 · This node is flagged as one of the lowest-bonded positions in your set.',
     }));
   });
 
-  it('uses slash-monitor copy for warning-level slash actions', () => {
+  it('uses provider-exposure copy for warning-level slash actions', () => {
     const state = buildDashboardInsightState({
       address: 'thor1provider',
       now: NOW,
@@ -635,13 +637,53 @@ describe('dashboard insights', () => {
     });
 
     expect(state.primaryAction).toEqual({
-      label: 'Review slash monitor',
+      label: 'Review slash exposure',
       href: '/dashboard/risk?address=thor1provider&node=thor1slashwarning0000000000000000000000000000',
     });
     expect(state.actions).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'slash-warning:thor1slashwarning0000000000000000000000000000',
-        primaryAction: 'Review slash monitor',
+        primaryAction: 'Review slash exposure',
+      }),
+    ]));
+  });
+
+  it('keeps active high-slash nodes in review instead of turning the whole portfolio critical', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth(),
+      positions: [
+        bondPosition({
+          nodeAddress: 'thor1highslashone00000000000000000000000000',
+          slashPoints: 284_890,
+        }),
+        bondPosition({
+          nodeAddress: 'thor1highslashtwo00000000000000000000000000',
+          slashPoints: 291_434,
+        }),
+        bondPosition({
+          nodeAddress: 'thor1highslashthree000000000000000000000000',
+          slashPoints: 284_788,
+        }),
+      ],
+    });
+
+    expect(state.severity).toBe('warning');
+    expect(state.statusLabel).toBe('Review Needed');
+    expect(state.topRisk).toBe('thor1hig...0000 has high slash exposure');
+    expect(state.primaryAction.label).toBe('Review slash exposure');
+    expect(state.headerMetrics[0]).toEqual(expect.objectContaining({
+      label: 'Provider exposure',
+      value: 'Review',
+      detail: 'Score 65/100 · 284,890 slash points are above the provider-review threshold.',
+    }));
+    expect(state.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'slash-critical:thor1highslashone00000000000000000000000000',
+        severity: 'warning',
+        title: 'thor1hig...0000 has high slash exposure',
+        primaryAction: 'Review slash exposure',
       }),
     ]));
   });

@@ -158,18 +158,18 @@ test.describe('Risk dashboard', () => {
   });
 
   test('renders the network security card and ratio badge', async ({ page }) => {
-    const diagnosis = page.getByLabel('Node security diagnosis');
+    const diagnosis = page.getByLabel('Provider risk diagnosis');
     await expect(diagnosis).toBeVisible();
-    await expect(diagnosis.getByRole('link', { name: 'Review slash monitor' })).toHaveAttribute(
+    await expect(diagnosis.getByRole('link', { name: 'Review slash exposure' })).toHaveAttribute(
       'href',
       `/dashboard/risk?address=${MOCK_ADDRESS}&node=thor1noderisk123456789abcdef`
     );
     await expect(page.getByRole('button', { name: 'Show Details' })).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: 'Riskiest actions' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Provider exposure review' })).toBeVisible();
     const riskSummary = page.getByLabel('Risk summary');
     const securityGauge = page.getByRole('region', { name: 'Network security bond-to-pool gauge' });
 
-    await expect(riskSummary.getByLabel('Risk health status')).toHaveText('Healthy');
+    await expect(riskSummary.getByLabel('Provider exposure status')).toHaveText('Review Needed');
     await expect(securityGauge).toBeVisible();
     await expect(securityGauge.getByRole('heading', { name: 'Bond-to-Pool Gauge' })).toBeVisible();
     await expect(securityGauge).toContainText('Midgard reading');
@@ -180,7 +180,7 @@ test.describe('Risk dashboard', () => {
   });
 
   test('labels churn non-risk nodes as outside the churn-risk band', async ({ page }) => {
-    await page.getByLabel('Node security diagnosis').getByRole('link', { name: 'Review slash monitor' }).click();
+    await page.getByLabel('Provider risk diagnosis').getByRole('link', { name: 'Review slash exposure' }).click();
 
     const focusedContext = page.getByLabel('Focused node risk context');
     await expect(focusedContext).toBeVisible();
@@ -194,8 +194,8 @@ test.describe('Risk dashboard', () => {
 
   test('keeps the mobile risk diagnosis and summary from duplicating labels or overflowing', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await expect(page.getByLabel('Node security diagnosis')).toBeVisible();
-    await expect(page.getByLabel('Node security diagnosis')).toContainText('Node security');
+    await expect(page.getByLabel('Provider risk diagnosis')).toBeVisible();
+    await expect(page.getByLabel('Provider risk diagnosis')).toContainText('Provider risk');
 
     const duplicatedLabelChunks = await page.evaluate(() => {
       const bodyText = document.body.textContent?.replace(/\s+/g, '') ?? '';
@@ -221,7 +221,7 @@ test.describe('Risk dashboard', () => {
 
   test('keeps risk radar accessibility data from creating hidden horizontal overflow', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await expect(page.getByLabel('Node security diagnosis')).toBeVisible();
+    await expect(page.getByLabel('Provider risk diagnosis')).toBeVisible();
 
     const radarAccessibilityLayout = await page.evaluate(() => {
       const viewportWidth = window.innerWidth;
@@ -265,12 +265,12 @@ test.describe('Risk dashboard', () => {
 
     const loadingState = page.getByRole('status', { name: 'Loading risk analysis' });
     await expect(loadingState).toContainText('Waiting for THORNode bond positions');
-    await expect(page.getByLabel('Node security diagnosis')).toHaveCount(0);
+    await expect(page.getByLabel('Provider risk diagnosis')).toHaveCount(0);
     await expect(page.getByText('No bonded positions detected')).toHaveCount(0);
 
     releaseNodes();
     const focusedContext = page.getByLabel('Focused node risk context');
-    await expect(page.getByLabel('Node security diagnosis')).toBeVisible();
+    await expect(page.getByLabel('Provider risk diagnosis')).toBeVisible();
     await expect(focusedContext).toContainText('Alert context');
   });
 
@@ -287,12 +287,12 @@ test.describe('Risk dashboard', () => {
     await expect(focusedContext).toBeVisible();
     await expect(focusedContext).toContainText('Alert context');
     await expect(focusedContext).toContainText('thor1noderisk123456789abcdef');
-    await expect(primaryAction).toContainText('Review slash monitor');
-    await expect(primaryAction).toContainText('Slash points are elevated.');
+    await expect(primaryAction).toContainText('Review slash exposure');
+    await expect(primaryAction).toContainText('Slash exposure is elevated.');
     await expect(inlineEvidence).toContainText('THORNode: status Active');
     await expect(inlineEvidence).toContainText('slash 75');
     await expect(inlineEvidence).toContainText('flags Oldest');
-    await expect(primaryButton).toContainText('Review slash monitor');
+    await expect(primaryButton).toContainText('Review slash exposure');
     await expect(metricDetails).toContainText('Operational details');
     await expect(metricDetails).toContainText('Active · Slash 75 · Flags Oldest');
     await expect(metrics).not.toBeVisible();
@@ -300,8 +300,8 @@ test.describe('Risk dashboard', () => {
     const focusedRow = page.locator('[data-focused-node="true"]');
     await expect(focusedRow).toBeVisible();
     await expect(focusedRow).toContainText('Focused');
-    await expect(page.getByLabel('Riskiest actions')).toHaveCount(0);
-    await expect(page.getByLabel('Other risks')).toHaveCount(0);
+    await expect(page.getByLabel('Provider exposure review')).toHaveCount(0);
+    await expect(page.getByLabel('Other provider reviews')).toHaveCount(0);
 
     await primaryButton.click();
 
@@ -338,10 +338,10 @@ test.describe('Risk dashboard', () => {
     await expect(metricDetails).toContainText('Operational details');
     await expect(metricDetails).toContainText('Whitelist needed · Slash 150 · Fee 25.0%');
     await expect(metrics).not.toBeVisible();
-    await expect(page.getByLabel('Riskiest actions')).toHaveCount(0);
-    const otherQueue = page.getByLabel('Other risks');
+    await expect(page.getByLabel('Provider exposure review')).toHaveCount(0);
+    const otherQueue = page.getByLabel('Other provider reviews');
     await expect(otherQueue).toBeVisible();
-    await expect(otherQueue).toContainText('thor1nod...cdef has elevated slash points');
+    await expect(otherQueue).toContainText('thor1nod...cdef has elevated slash exposure');
 
     const closedLayout = await page.evaluate(() => {
       const rectFor = (selector: string) => {
@@ -407,7 +407,7 @@ test.describe('Risk dashboard', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/dashboard/risk?address=${MOCK_ADDRESS}&node=thor1noderisk123456789abcdef`);
 
-    const diagnosis = page.getByLabel('Node security diagnosis');
+    const diagnosis = page.getByLabel('Provider risk diagnosis');
     const sourceConfidence = page.getByRole('region', { name: 'Source confidence' });
     const focusedContext = page.getByLabel('Focused node risk context');
     const primaryAction = focusedContext.getByTestId('focused-bonded-primary-action');
@@ -420,7 +420,7 @@ test.describe('Risk dashboard', () => {
     await expect(sourceConfidence).toContainText('THORNode');
     await expect(sourceConfidence).toContainText('Midgard');
     await expect(focusedContext).toBeVisible();
-    await expect(primaryAction).toContainText('Review slash monitor');
+    await expect(primaryAction).toContainText('Review slash exposure');
     await expect(inlineEvidence).toContainText('THORNode: status Active');
     await expect(inlineEvidence).toContainText('Midgard: block height feeds jail and churn timing.');
     await expect(metricDetails).toContainText('Operational details');
@@ -437,7 +437,7 @@ test.describe('Risk dashboard', () => {
 
       return {
         viewportHeight: window.innerHeight,
-        diagnosis: box('section[aria-label="Node security diagnosis"]'),
+        diagnosis: box('section[aria-label="Provider risk diagnosis"]'),
         sourceConfidence: box('section[aria-label="Source confidence"]'),
         focusedContext: box('section[aria-label="Focused node risk context"]'),
         focusedAction: box('[data-testid="focused-bonded-primary-action"]'),

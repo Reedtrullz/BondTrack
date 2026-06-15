@@ -133,9 +133,9 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-4">
-        <div className="p-2 rounded bg-red-50 dark:bg-red-900/20 text-center">
-          <div className="text-lg font-bold text-red-600 dark:text-red-400">{atRiskNodes.length}</div>
-          <div className="text-xs text-red-600 dark:text-red-400">At Risk</div>
+        <div className="p-2 rounded bg-amber-50 dark:bg-amber-900/20 text-center">
+          <div className="text-lg font-bold text-amber-700 dark:text-amber-300">{atRiskNodes.length}</div>
+          <div className="text-xs text-amber-700 dark:text-amber-300">Review Band</div>
         </div>
         <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-900/20 text-center">
           <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{outsideBandNodes.length}</div>
@@ -159,12 +159,12 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
                 {node.nodeAddress.slice(0, 12)}...{node.nodeAddress.slice(-6)}
               </span>
               {node.isAtRisk && (
-                <AlertTriangle className="w-3 h-3 text-red-500" />
+                <AlertTriangle className="w-3 h-3 text-amber-500" />
               )}
             </div>
             <div className="flex items-center gap-3 text-xs">
               <span className="text-zinc-500">{formatRuneFromNumber(node.totalBond)} RUNE</span>
-              <span className={node.isAtRisk ? 'text-red-600 dark:text-red-400 font-medium' : 'text-emerald-600 dark:text-emerald-400'}>
+              <span className={node.isAtRisk ? 'text-amber-700 dark:text-amber-300 font-medium' : 'text-emerald-600 dark:text-emerald-400'}>
                 #{node.rank}/{node.totalNodes}
               </span>
               <span className="text-zinc-400">{node.percentile}%</span>

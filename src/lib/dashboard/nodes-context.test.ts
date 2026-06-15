@@ -45,16 +45,16 @@ describe('calculateNodeRiskScore', () => {
 });
 
 describe('getNodeRowRiskClass', () => {
-  it('uses red for jailed or critical slash rows, amber for warning slash rows, and no tint for clean rows', () => {
+  it('uses red for jailed rows, amber for slash review rows, and no tint for clean rows', () => {
     expect(getNodeRowRiskClass(position({ isJailed: true }))).toContain('bg-red-50');
-    expect(getNodeRowRiskClass(position({ slashPoints: NETWORK.SLASH_POINT_THRESHOLDS.critical }))).toContain('bg-red-50');
+    expect(getNodeRowRiskClass(position({ slashPoints: NETWORK.SLASH_POINT_THRESHOLDS.critical }))).toContain('bg-amber-50');
     expect(getNodeRowRiskClass(position({ slashPoints: NETWORK.SLASH_POINT_THRESHOLDS.warning }))).toContain('bg-amber-50');
     expect(getNodeRowRiskClass(position({ slashPoints: 0 }))).toBe('');
   });
 });
 
 describe('buildNodesPageModel', () => {
-  it('keeps minor slash history out of urgent exception cards', () => {
+  it('keeps minor slash history out of provider review cards', () => {
     const minorSlash = position({
       nodeAddress: 'thor1minor',
       slashPoints: NETWORK.SLASH_POINT_THRESHOLDS.warning - 1,
@@ -107,7 +107,7 @@ describe('buildNodesPageModel', () => {
     expect(model.exceptionPositions.map((node) => node.nodeAddress)).toEqual(['thor1leaving', 'thor1lowestbond']);
   });
 
-  it('puts urgent exception cards before lower-severity node context', () => {
+  it('puts provider review cards before lower-severity node context', () => {
     const jailed = position({
       isJailed: true,
       nodeAddress: 'thor1jailed',

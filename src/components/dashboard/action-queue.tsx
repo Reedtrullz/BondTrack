@@ -23,13 +23,13 @@ const severityConfig: Record<InsightSeverity, {
   badge: string;
 }> = {
   critical: {
-    label: 'Critical',
+    label: 'Action needed',
     icon: <AlertTriangle className="h-4 w-4" aria-hidden="true" />,
-    row: 'border-red-200 bg-red-50/70 dark:border-red-900/60 dark:bg-red-950/20',
-    badge: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200',
+    row: 'border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10',
+    badge: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
   },
   warning: {
-    label: 'Warning',
+    label: 'Review',
     icon: <ShieldAlert className="h-4 w-4" aria-hidden="true" />,
     row: 'border-amber-200 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/20',
     badge: 'bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-200',
@@ -61,7 +61,7 @@ function getMobileActionLabel(actionLabel: string, item: ActionItem): string {
   }
 
   if (/risk|slash|churn|jail/i.test(actionLabel)) {
-    return 'Review risk';
+    return /slash/i.test(actionLabel) ? 'Review exposure' : 'Review risk';
   }
 
   if (/node/i.test(actionLabel)) {
@@ -74,9 +74,9 @@ function getMobileActionLabel(actionLabel: string, item: ActionItem): string {
 export function ActionQueue({
   items,
   now = new Date(),
-  title = 'Critical actions',
-  emptyTitle = 'No urgent action',
-  emptyDetail = 'Current sources do not show a critical node, source, or LP confidence issue.',
+  title = 'Provider review queue',
+  emptyTitle = 'No provider review needed',
+  emptyDetail = 'Current sources do not show a node, source, or LP confidence issue that needs provider review.',
   compact = false,
   mobileCompact = false,
 }: ActionQueueProps) {
@@ -94,11 +94,11 @@ export function ActionQueue({
           <p className={cn('text-sm text-zinc-500 dark:text-zinc-400', mobileCompact ? 'sr-only sm:not-sr-only' : '')}>
             {mobileCompact ? (
               <>
-                <span className="sm:hidden">Ranked by operator impact.</span>
-                <span className="hidden sm:inline">Ranked by operator impact, not by visual noise.</span>
+                <span className="sm:hidden">Ranked by provider exposure.</span>
+                <span className="hidden sm:inline">Ranked by provider exposure, not by visual noise.</span>
               </>
             ) : (
-              'Ranked by operator impact, not by visual noise.'
+              'Ranked by provider exposure, not by visual noise.'
             )}
           </p>
         </div>
@@ -183,7 +183,7 @@ export function ActionQueue({
                                 mobileCompact && !keepImpactVisible ? 'hidden sm:block' : ''
                               )}
                             >
-                              Impact: {item.impact}
+                              Provider impact: {item.impact}
                             </p>
                           ) : null}
                         </div>

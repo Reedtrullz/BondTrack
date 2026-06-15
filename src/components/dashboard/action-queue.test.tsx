@@ -34,18 +34,18 @@ describe('ActionQueue', () => {
   it('uses source-scoped language when no urgent action is visible', () => {
     render(<ActionQueue items={[]} now={now} />);
 
-    expect(screen.getByText('No urgent action')).toBeInTheDocument();
-    expect(screen.getByText('Current sources do not show a critical node, source, or LP confidence issue.')).toBeInTheDocument();
+    expect(screen.getByText('No provider review needed')).toBeInTheDocument();
+    expect(screen.getByText('Current sources do not show a node, source, or LP confidence issue that needs provider review.')).toBeInTheDocument();
     expect(screen.queryByText('Live data does not show a critical node, source, or LP confidence issue.')).not.toBeInTheDocument();
   });
 
   it('keeps command-center actions scannable at the mobile compact breakpoint', () => {
     render(<ActionQueue items={actions} now={now} mobileCompact />);
 
-    expect(screen.getByText('Ranked by operator impact.')).toHaveClass('sm:hidden');
-    expect(screen.getByText('Ranked by operator impact, not by visual noise.')).toHaveClass('hidden', 'sm:inline');
+    expect(screen.getByText('Ranked by provider exposure.')).toHaveClass('sm:hidden');
+    expect(screen.getByText('Ranked by provider exposure, not by visual noise.')).toHaveClass('hidden', 'sm:inline');
     expect(screen.getByText(actions[0].detail)).toHaveClass('hidden', 'sm:block');
-    expect(screen.getByText(`Impact: ${actions[0].impact}`)).toHaveClass('hidden', 'sm:block');
+    expect(screen.getByText(`Provider impact: ${actions[0].impact}`)).toHaveClass('hidden', 'sm:block');
 
     const action = screen.getByRole('link', { name: 'Review churn risk' });
     expect(action).toHaveAttribute('href', '/dashboard/risk?address=thor1bond&node=thor1node');
@@ -58,7 +58,7 @@ describe('ActionQueue', () => {
     render(<ActionQueue items={actions} now={now} />);
 
     expect(screen.getByText(actions[0].detail)).not.toHaveClass('hidden');
-    expect(screen.getByText(`Impact: ${actions[0].impact}`)).not.toHaveClass('hidden');
+    expect(screen.getByText(`Provider impact: ${actions[0].impact}`)).not.toHaveClass('hidden');
     expect(screen.getByRole('link', { name: 'Review churn risk' })).toHaveClass('h-9');
   });
 
@@ -77,7 +77,7 @@ describe('ActionQueue', () => {
 
     render(<ActionQueue items={[sourceAction]} now={now} mobileCompact />);
 
-    const impact = screen.getByText(`Impact: ${sourceAction.impact}`);
+    const impact = screen.getByText(`Provider impact: ${sourceAction.impact}`);
     expect(impact).not.toHaveClass('hidden');
     expect(impact).toHaveClass('text-xs');
     expect(screen.getByRole('link', { name: 'Review source confidence' })).toHaveAttribute(

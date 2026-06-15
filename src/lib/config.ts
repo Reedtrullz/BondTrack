@@ -39,6 +39,7 @@ export const NETWORK = {
     jailedPenalty: 40,
     criticalSlashPenalty: 20,
     criticalSlashMagnitudeDivisor: 1000,
+    maxSlashPenalty: 35,
     warningSlashPenalty: 8,
     atRiskPenalty: 5,
     nonActivePenalty: 25,

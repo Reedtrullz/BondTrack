@@ -43,6 +43,20 @@ function updateStatusFromFailure(
   }
 }
 
+function hasUsableThornodeNode(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+
+  const node = value as Record<string, unknown>;
+  return typeof node.node_address === 'string' && node.node_address.length > 0
+    && typeof node.status === 'string' && node.status.length > 0;
+}
+
+function assertUsableThornodeNodes(nodes: unknown): asserts nodes is unknown[] {
+  if (!Array.isArray(nodes) || !nodes.some(hasUsableThornodeNode)) {
+    throw new Error('THORNode health probe returned no usable node records');
+  }
+}
+
 export function useApiHealth(): ApiHealthState {
   const [midgardStatus, setMidgardStatus] = useState<ApiHealthStatus>('unknown');
   const [thornodeStatus, setThornodeStatus] = useState<ApiHealthStatus>('unknown');
@@ -76,11 +90,12 @@ export function useApiHealth(): ApiHealthState {
 
   const checkThornode = useCallback(async () => {
     try {
-      await getAllNodes({
+      const nodes = await getAllNodes({
         cache: 'no-store',
         headers: { [HEALTH_PROBE_HEADER]: 'thornode' },
         retry: false,
       });
+      assertUsableThornodeNodes(nodes);
       thornodeFailures.current = 0;
       setThornodeStatus('healthy');
       setLastSuccessful((previous) => ({ ...previous, thornode: new Date() }));

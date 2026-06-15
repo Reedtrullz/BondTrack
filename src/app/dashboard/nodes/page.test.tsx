@@ -113,7 +113,7 @@ describe('NodesPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Node Comparison' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Prepare BOND Memo/i })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: /Review risk first/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole('link', { name: /Review exposure first/i }).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('--').length).toBeGreaterThanOrEqual(7);
     expect(container).not.toHaveTextContent(/NaN|Infinity/);
   });
@@ -147,7 +147,7 @@ describe('NodesPage', () => {
     expect(screen.queryByRole('link', { name: /Prepare UNBOND Memo/i })).not.toBeInTheDocument();
   });
 
-  it('keeps minor slash history in the comparison table instead of urgent exception cards', () => {
+  it('keeps minor slash history in the comparison table instead of provider review cards', () => {
     mockUseBondPositions.mockReturnValue({
       positions: [minorSlashPosition],
       isLoading: false,
@@ -155,8 +155,8 @@ describe('NodesPage', () => {
 
     const { container } = render(<NodesPage />);
 
-    expect(screen.getByRole('heading', { name: 'Urgent exception cards' })).toBeInTheDocument();
-    expect(screen.getByText('No urgent exception cards to show. Minor slash history and routine node metrics remain visible in the comparison table below.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Provider review cards' })).toBeInTheDocument();
+    expect(screen.getByText('No provider review cards to show. Minor slash history and routine node metrics remain visible in the comparison table below.')).toBeInTheDocument();
     expect(container.querySelector('[data-urgent-exception="true"]')).not.toBeInTheDocument();
     expect(container.querySelector('[data-urgent-exception="false"]')).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: '49' })).toBeInTheDocument();

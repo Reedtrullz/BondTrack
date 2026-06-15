@@ -190,7 +190,7 @@ describe('PortfolioPage', () => {
     expect(screen.queryByRole('link', { name: 'Unbond' })).not.toBeInTheDocument();
   });
 
-  it('offers UNBOND prep only when fresh source confidence has a bonded position', () => {
+  it('offers UNBOND prep only when fresh source confidence has a standby bonded position', () => {
     mockUseBondPositions.mockReturnValue({
       positions: [mockBondPosition],
       isLoading: false,
@@ -205,6 +205,18 @@ describe('PortfolioPage', () => {
     );
     expect(unbondLink.querySelector('button')).toBeNull();
     expect(screen.queryByRole('link', { name: 'Unbond' })).not.toBeInTheDocument();
+  });
+
+  it('withholds UNBOND prep when bonded positions are active', () => {
+    mockUseBondPositions.mockReturnValue({
+      positions: [{ ...mockBondPosition, status: 'Active' }],
+      isLoading: false,
+    });
+
+    render(<PortfolioPage />);
+
+    expect(screen.getByRole('link', { name: 'Prepare BOND Memo' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Prepare UNBOND Memo' })).not.toBeInTheDocument();
   });
 
   it('routes header BOND prep to source confidence when THORNode provenance is degraded', () => {

@@ -20,6 +20,7 @@ import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
 import { useRunePriceHistory } from '@/lib/hooks/use-rune-price';
 import { buildDashboardInsightState, resolveThornodeGatedBondAction } from '@/lib/dashboard/insights';
 import { calculateNodeRiskScore, isUrgentNodeException } from '@/lib/dashboard/nodes-context';
+import { canUnbondNode } from '@/lib/transactions/bond';
 import { formatBasisPoints, formatRuneFromNumber } from '@/lib/utils/formatters';
 import { cn } from '@/lib/utils';
 
@@ -92,7 +93,8 @@ export default function DashboardPage() {
       : '/dashboard/transactions?action=bond',
   });
   const bondEntryVariant = bondEntryAction.kind === 'source-confidence' ? 'outline' : 'success';
-  const canOfferUnbondEntry = bondEntryAction.kind === 'bond-ready' && positions.length > 0;
+  const hasUnbondEligiblePosition = positions.some((position) => canUnbondNode(position).canUnbond);
+  const canOfferUnbondEntry = bondEntryAction.kind === 'bond-ready' && hasUnbondEligiblePosition;
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6">
@@ -125,9 +127,9 @@ export default function DashboardPage() {
         <DashboardCard className="p-5">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-zinc-950 dark:text-zinc-50">Riskiest nodes first</h2>
+              <h2 className="text-lg font-bold text-zinc-950 dark:text-zinc-50">Provider exposure first</h2>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Urgent exceptions are highlighted before the full Nodes table.
+                Nodes needing provider review appear before the full Nodes table.
               </p>
             </div>
             <Link

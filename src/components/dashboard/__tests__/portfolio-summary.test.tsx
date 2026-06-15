@@ -20,7 +20,7 @@ describe('PortfolioSummary', () => {
     expect(screen.getByText(/Stale price/)).toBeInTheDocument();
   });
 
-  it('opens portfolio health breakdown through an accessible control', async () => {
+  it('opens provider exposure breakdown through an accessible control', async () => {
     const user = userEvent.setup();
 
     render(
@@ -33,15 +33,15 @@ describe('PortfolioSummary', () => {
     );
 
     const breakdownButton = screen.getByRole('button', {
-      name: /portfolio health score breakdown/i,
+      name: /provider exposure score breakdown/i,
     });
 
     expect(breakdownButton).toHaveAttribute('aria-expanded', 'false');
     await user.click(breakdownButton);
 
     expect(breakdownButton).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByText('Health Score Breakdown')).toBeInTheDocument();
-    expect(screen.getByText('Final score: 100/100')).toBeInTheDocument();
+    expect(screen.getByText('Provider Exposure Breakdown')).toBeInTheDocument();
+    expect(screen.getByText('Exposure score: 100/100')).toBeInTheDocument();
   });
 
   it('shows unavailable headline metrics instead of NaN or Infinity', () => {

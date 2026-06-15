@@ -14,15 +14,16 @@ export interface CandidateRiskContext {
 
 export interface RiskPositionSummary {
   activeCount: number;
-  atRiskCount: number;
-  criticalSlashCount: number;
+  disabledCount: number;
+  elevatedSlashReviewCount: number;
+  highSlashReviewCount: number;
   healthScore: number;
   jailedCount: number;
+  providerReviewCount: number;
   slashNodeCount: number;
   standbyCount: number;
-  statusLabel: 'Healthy' | 'Needs Attention' | 'At Risk';
+  statusLabel: 'Healthy' | 'Review Needed' | 'Action Needed';
   totalBonded: number;
-  warningSlashCount: number;
 }
 
 export type IncentivePendulumLevel = 'well-secured' | 'healthy' | 'building' | 'under-secured';
@@ -89,41 +90,49 @@ export function sortRiskPositions(positions: BondPosition[]): BondPosition[] {
 export function summarizeRiskPositions(positions: BondPosition[]): RiskPositionSummary {
   const activeCount = positions.filter((position) => position.status === 'Active').length;
   const standbyCount = positions.filter((position) => position.status === 'Standby').length;
+  const disabledCount = positions.filter((position) => position.status === 'Disabled').length;
   const jailedCount = positions.filter((position) => position.isJailed).length;
-  const atRiskCount = positions.filter((position) => (position.yieldGuardFlags?.length ?? 0) > 0).length;
+  const providerReviewCount = positions.filter((position) => (position.yieldGuardFlags?.length ?? 0) > 0).length;
   const slashNodeCount = positions.filter((position) => position.slashPoints > 0).length;
-  const criticalSlashCount = positions.filter(
+  const highSlashReviewCount = positions.filter(
     (position) => position.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical
   ).length;
-  const warningSlashCount = positions.filter(
+  const elevatedSlashReviewCount = positions.filter(
     (position) =>
       position.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning &&
       position.slashPoints < NETWORK.SLASH_POINT_THRESHOLDS.critical
   ).length;
   const healthScore = calculatePortfolioHealth(positions).score;
-  const hasCriticalSlash = criticalSlashCount > 0;
-  const hasJailed = jailedCount > 0;
+  const hasActionNeeded = jailedCount > 0 || disabledCount > 0;
+  const hasProviderReview =
+    providerReviewCount > 0 ||
+    highSlashReviewCount > 0 ||
+    elevatedSlashReviewCount > 0 ||
+    slashNodeCount > 0 ||
+    standbyCount > 0 ||
+    healthScore < NETWORK.HEALTH_SCORE_THRESHOLDS.healthy;
   const isHealthy =
     healthScore >= NETWORK.HEALTH_SCORE_THRESHOLDS.healthy &&
-    !hasCriticalSlash &&
-    !hasJailed;
-  const statusLabel = isHealthy
+    !hasActionNeeded &&
+    !hasProviderReview;
+  const statusLabel = hasActionNeeded
+    ? 'Action Needed'
+    : isHealthy
     ? 'Healthy'
-    : healthScore >= NETWORK.HEALTH_SCORE_THRESHOLDS.warning
-      ? 'Needs Attention'
-      : 'At Risk';
+      : 'Review Needed';
 
   return {
     activeCount,
-    atRiskCount,
-    criticalSlashCount,
+    disabledCount,
+    elevatedSlashReviewCount,
+    highSlashReviewCount,
     healthScore,
     jailedCount,
+    providerReviewCount,
     slashNodeCount,
     standbyCount,
     statusLabel,
     totalBonded: positions.reduce((sum, position) => sum + position.bondAmount, 0),
-    warningSlashCount,
   };
 }
 

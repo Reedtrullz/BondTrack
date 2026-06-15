@@ -5,7 +5,7 @@ import { InsightHeader } from './insight-header';
 
 const defaultProps = {
   severity: 'warning' as const,
-  statusLabel: 'Needs Attention',
+  statusLabel: 'Review Needed',
   diagnosis: 'Review the highest-confidence action before adding more capital.',
   topRisk: 'Operator fee leakage needs review',
   metrics: [
@@ -84,5 +84,22 @@ describe('InsightHeader', () => {
 
     expect(screen.getByText('After operator fees')).toHaveClass('hidden');
     expect(screen.getByText('After operator fees')).toHaveClass('sm:block');
+  });
+
+  it('uses compact metric values on mobile without dropping precise desktop values', () => {
+    render(
+      <InsightHeader
+        {...defaultProps}
+        compactMobileMetrics
+        metrics={[
+          { label: 'Bonded', value: 'ᚱ152,412.77', compactValue: 'ᚱ152.4K', detail: '3 nodes' },
+          ...defaultProps.metrics.slice(1),
+        ]}
+        primaryAction={{ label: 'Inspect Risk', href: '/dashboard/risk?address=thor1abc' }}
+      />
+    );
+
+    expect(screen.getByText('ᚱ152.4K')).toHaveClass('sm:hidden');
+    expect(screen.getByText('ᚱ152,412.77')).toHaveClass('hidden', 'sm:inline');
   });
 });

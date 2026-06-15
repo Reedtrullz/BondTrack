@@ -12,9 +12,9 @@ const dashboardActions = [
     icon: <Gauge className="h-4 w-4" aria-hidden="true" />,
   },
   {
-    label: 'Review node risk',
+    label: 'Review provider risk',
     href: '/dashboard/risk',
-    detail: 'Inspect slash, jail, churn, and unbond context.',
+    detail: 'Inspect slash exposure, jail, churn, and unbond context.',
     icon: <ShieldAlert className="h-4 w-4" aria-hidden="true" />,
   },
   {
@@ -36,7 +36,7 @@ export default function LearnPage() {
           Learn
         </div>
         <h1 className="text-3xl font-bold leading-tight text-zinc-950 dark:text-zinc-50 sm:text-4xl">
-          Operator playbook
+          Provider playbook
         </h1>
         <p className="max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400 sm:text-base">
           Read only what helps you interpret the dashboard, explain a status, or choose the next safe inspection path.
@@ -51,7 +51,7 @@ export default function LearnPage() {
           <div>
             <p className="text-xs font-bold uppercase text-amber-700 dark:text-amber-300">Start here</p>
             <h2 className="mt-1 text-xl font-bold text-zinc-950 dark:text-zinc-50">
-              Start with health scoring
+              Start with provider exposure scoring
             </h2>
             <p className="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
               Use this when {firstRead.useCase}
@@ -61,7 +61,7 @@ export default function LearnPage() {
             href={`/learn/${firstRead.slug}`}
             className={cn(buttonVariants({ variant: 'primary' }), 'w-full gap-2 sm:w-auto')}
           >
-            Open Health Score Guide
+            Open Provider Exposure Guide
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </div>

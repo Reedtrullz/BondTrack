@@ -24,7 +24,7 @@ import { MetricStrip } from '@/components/dashboard/metric-strip';
 import { buildDashboardInsightState, resolveThornodeGatedBondAction } from '@/lib/dashboard/insights';
 import { buildRewardsPageModel } from '@/lib/dashboard/rewards-context';
 import { useApiHealthContext } from '@/lib/hooks/use-api-health';
-import { formatPercent, formatRuneFromNumber } from '@/lib/utils/formatters';
+import { formatCompactNumber, formatPercent, formatRuneFromNumber } from '@/lib/utils/formatters';
 
 function RewardsStateCard({
   tone,
@@ -275,8 +275,9 @@ export default function RewardsPage() {
       };
   const rewardsSeverity = primaryConfidenceIssue?.severity ?? rewardsInsight.severity;
   const rewardsStatusLabel = primaryConfidenceIssue
-    ? primaryConfidenceIssue.severity === 'critical' ? 'At Risk' : 'Needs Attention'
+    ? primaryConfidenceIssue.severity === 'critical' ? 'Action Needed' : 'Review Needed'
     : rewardsInsight.statusLabel;
+  const bondedRune = safePositions.reduce((sum, position) => sum + position.bondAmount, 0);
 
   return (
     <div className="space-y-12 pb-20">
@@ -291,7 +292,12 @@ export default function RewardsPage() {
             headingLevel={2}
             metrics={[
               { label: 'Weighted APY', value: weightedApy > 0 ? formatPercent(weightedApy) : '--', detail: 'After operator fees' },
-              { label: 'Bonded', value: formatRuneFromNumber(safePositions.reduce((sum, position) => sum + position.bondAmount, 0)), detail: `${safePositions.length} node${safePositions.length === 1 ? '' : 's'}` },
+              {
+                label: 'Bonded',
+                value: formatRuneFromNumber(bondedRune),
+                compactValue: `ᚱ${formatCompactNumber(bondedRune)}`,
+                detail: `${safePositions.length} node${safePositions.length === 1 ? '' : 's'}`,
+              },
               { label: 'RUNE price', ...runePriceMetric },
             ]}
             primaryAction={rewardsPrimaryAction}

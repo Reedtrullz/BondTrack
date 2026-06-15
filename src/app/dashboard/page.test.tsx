@@ -102,7 +102,7 @@ describe('DashboardPage', () => {
     });
   });
 
-  it('keeps operator triage visible while secondary support feeds are loading', () => {
+  it('keeps provider triage visible while secondary support feeds are loading', () => {
     mockUseLpPositions.mockReturnValue({
       positions: [],
       isLoading: true,
@@ -132,9 +132,25 @@ describe('DashboardPage', () => {
     expect(within(nextTransaction).queryByRole('link', { name: 'Open UNBOND' })).not.toBeInTheDocument();
   });
 
-  it('offers UNBOND from the command center only with a bonded position and fresh THORNode confidence', () => {
+  it('withholds command-center UNBOND when bonded positions are active', () => {
     mockUseBondPositions.mockReturnValue({
       positions: [mockBondPosition],
+      isLoading: false,
+    });
+
+    render(<DashboardPage />);
+
+    const nextTransaction = screen.getByRole('region', { name: 'Next transaction' });
+    expect(within(nextTransaction).getByRole('link', { name: 'Open BOND' })).toHaveAttribute(
+      'href',
+      '/dashboard/transactions?address=thor1commandaddress&action=bond'
+    );
+    expect(within(nextTransaction).queryByRole('link', { name: 'Open UNBOND' })).not.toBeInTheDocument();
+  });
+
+  it('offers UNBOND from the command center only with a standby bonded position and fresh THORNode confidence', () => {
+    mockUseBondPositions.mockReturnValue({
+      positions: [{ ...mockBondPosition, status: 'Standby' }],
       isLoading: false,
     });
 

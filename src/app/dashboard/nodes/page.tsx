@@ -183,11 +183,11 @@ export default function NodesPage() {
           compact
         />
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Urgent exception cards</h2>
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Provider review cards</h2>
           {positions.length > 0 && <ExportButton bondPositions={positions} />}
         </div>
         {exceptionPositions.length > 0 ? (
-          <section aria-label="Urgent node exception cards" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <section aria-label="Provider node review cards" className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {exceptionPositions.map((pos) => (
               <NodeStatusCard key={pos.nodeAddress} position={pos} address={address} sourceSafety={bondSourceSafety} />
             ))}
@@ -195,7 +195,7 @@ export default function NodesPage() {
         ) : (
           <DashboardCard className="p-5">
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              No urgent exception cards to show. Minor slash history and routine node metrics remain visible in the comparison table below.
+              No provider review cards to show. Minor slash history and routine node metrics remain visible in the comparison table below.
             </p>
           </DashboardCard>
         )}
@@ -206,7 +206,7 @@ export default function NodesPage() {
           <div>
             <h2 className="text-2xl font-bold text-zinc-950 dark:text-zinc-50">Node Comparison</h2>
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-              Sortable overview of all bonded nodes. Rows are color-coded by risk: red for jailed or critical slash, amber for warning-level slash points.
+              Sortable overview of all bonded nodes. Rows are color-coded by review state: red for jailed nodes, amber for elevated slash or provider-review flags.
             </p>
           </div>
         </div>
@@ -223,7 +223,7 @@ export default function NodesPage() {
                 <SortHeader label="APY" field="netAPY" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
                 <SortHeader label="Slash Points" field="slashPoints" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
                 <SortHeader label="Operator Fee" field="operatorFee" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
-                <SortHeader label="Risk Score" field="riskScore" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
+                <SortHeader label="Review Score" field="riskScore" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-900/50">

@@ -27,7 +27,7 @@ export function calculateNodeRiskScore(position: BondPosition): number {
 export function getNodeRowRiskClass(position: BondPosition): string {
   const slashPoints = finiteNonNegative(position.slashPoints);
 
-  if (position.isJailed || slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical) {
+  if (position.isJailed) {
     return 'bg-red-50 dark:bg-red-950/30';
   }
   if (slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning) {

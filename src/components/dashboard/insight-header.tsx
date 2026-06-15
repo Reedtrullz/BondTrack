@@ -46,16 +46,16 @@ const severityConfig: Record<InsightSeverity, {
   },
   warning: {
     icon: <AlertCircle className="h-5 w-5" aria-hidden="true" />,
-    label: 'Needs Attention',
+    label: 'Review Needed',
     container: 'border-amber-200/80 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/20',
     badge: 'bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-200',
     accent: 'text-amber-600 dark:text-amber-300',
   },
   critical: {
     icon: <AlertTriangle className="h-5 w-5" aria-hidden="true" />,
-    label: 'At Risk',
-    container: 'border-red-200/80 bg-red-50/70 dark:border-red-900/60 dark:bg-red-950/20',
-    badge: 'bg-red-100 text-red-900 dark:bg-red-900/50 dark:text-red-200',
+    label: 'Action Needed',
+    container: 'border-red-200/70 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10',
+    badge: 'bg-red-100 text-red-900 dark:bg-red-900/40 dark:text-red-200',
     accent: 'text-red-600 dark:text-red-300',
   },
 };
@@ -137,8 +137,15 @@ export function InsightHeader({
             )}
           >
             <div className={cn('font-semibold uppercase text-zinc-500 dark:text-zinc-400', compactMobileMetrics ? 'text-[10px] leading-3 sm:text-xs sm:leading-4' : 'text-xs')}>{metric.label}</div>
-            <div className={cn('mt-1 break-words font-mono font-bold leading-tight text-zinc-950 dark:text-zinc-50 sm:text-lg', compactMobileMetrics ? 'text-sm' : 'text-lg', metric.label === 'Health score' ? config.accent : null)}>
-              {metric.value}
+            <div className={cn('mt-1 break-words font-mono font-bold leading-tight text-zinc-950 dark:text-zinc-50 sm:text-lg', compactMobileMetrics ? 'text-sm' : 'text-lg', metric.label === 'Provider exposure' ? config.accent : null)}>
+              {compactMobileMetrics && metric.compactValue ? (
+                <>
+                  <span className="sm:hidden">{metric.compactValue}</span>
+                  <span className="hidden sm:inline">{metric.value}</span>
+                </>
+              ) : (
+                metric.value
+              )}
             </div>
             {metric.detail ? (
               <div className={cn('mt-1 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400', compactMobileMetrics ? 'hidden sm:block' : null)}>{metric.detail}</div>

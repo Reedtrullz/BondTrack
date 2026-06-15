@@ -100,7 +100,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
           <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-bold uppercase text-zinc-600 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
             <BookOpen className="h-4 w-4 text-amber-500" aria-hidden="true" />
-            Operator guide
+            Provider guide
           </span>
           <span>{article.date}</span>
           <span aria-hidden="true">/</span>

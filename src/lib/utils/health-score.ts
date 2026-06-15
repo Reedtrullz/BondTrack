@@ -21,11 +21,11 @@ export interface HealthScoreResult {
 }
 
 /**
- * Calculates a portfolio-wide health grade based on risk vectors.
+ * Calculates a portfolio-wide provider exposure grade based on risk vectors.
  * Weighting:
- * - Slash Points: Heavy (most immediate risk of jail)
+ * - Slash Points: Bounded review signal for active nodes
  * - Churn Percentile: Medium (risk of losing earnings)
- * - Status: Critical (Jailed nodes are automatic grade drops)
+ * - Status: Critical (jailed nodes are automatic grade drops)
  */
 export function calculatePortfolioHealth(positions: BondPosition[]): HealthScoreResult {
   if (positions.length === 0) {
@@ -57,17 +57,18 @@ export function calculatePortfolioHealth(positions: BondPosition[]): HealthScore
 
   const highSlashNodes = positions.filter(p => p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical);
   const warningSlashNodes = positions.filter(p => p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning && p.slashPoints < NETWORK.SLASH_POINT_THRESHOLDS.critical);
-  
+
+  let rawSlashPenalty = 0;
   highSlashNodes.forEach(p => {
     const magnitudePenalty = Math.floor(p.slashPoints / NETWORK.HEALTH_SCORE_RULES.criticalSlashMagnitudeDivisor);
     const penalty = NETWORK.HEALTH_SCORE_RULES.criticalSlashPenalty + magnitudePenalty;
-    slashPenalty += penalty;
-    totalPoints -= penalty;
+    rawSlashPenalty += penalty;
   });
-  slashPenalty += warningSlashNodes.length * NETWORK.HEALTH_SCORE_RULES.warningSlashPenalty;
-  totalPoints -= warningSlashNodes.length * NETWORK.HEALTH_SCORE_RULES.warningSlashPenalty;
-  
-  if (highSlashNodes.length > 0) criticalIssues.push('Critical slash points detected');
+  rawSlashPenalty += warningSlashNodes.length * NETWORK.HEALTH_SCORE_RULES.warningSlashPenalty;
+  slashPenalty = Math.min(rawSlashPenalty, NETWORK.HEALTH_SCORE_RULES.maxSlashPenalty);
+  totalPoints -= slashPenalty;
+
+  if (highSlashNodes.length > 0) criticalIssues.push('High slash exposure detected');
 
   // 3. Churn Risk (Based on yieldGuard flags)
   const atRiskNodes = positions.filter(p => p.yieldGuardFlags?.includes('lowest_bond'));
@@ -105,7 +106,7 @@ export function calculatePortfolioHealth(positions: BondPosition[]): HealthScore
     grade,
     score: finalScore,
     reason: criticalIssues.length > 0 ? criticalIssues.join(', ') : 'All positions healthy',
-    isCritical: finalScore < NETWORK.HEALTH_SCORE_RULES.gradeThresholds.d || jailedNodes.length > 0 || highSlashNodes.length > 0,
+    isCritical: finalScore < NETWORK.HEALTH_SCORE_RULES.gradeThresholds.d || jailedNodes.length > 0,
     breakdown,
   };
 }

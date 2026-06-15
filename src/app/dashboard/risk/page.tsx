@@ -216,16 +216,16 @@ function getFocusedBondedRiskDecision(position: BondPosition, severity: number) 
 
   if (position.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical) {
     return {
-      detail: 'Critical slash points exceed the network threshold. Review trend, jail risk, and operator status before acting.',
-      label: 'Review slash monitor',
-      tone: 'critical' as const,
+      detail: 'Slash exposure is above the provider-review threshold. Review trend, jail context, and recent node status before changing bond.',
+      label: 'Review slash exposure',
+      tone: 'warning' as const,
     };
   }
 
   if (position.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning || position.slashPoints > 0) {
     return {
-      detail: 'Slash points are elevated. Watch this node before the next churn and before adding more bond.',
-      label: 'Review slash monitor',
+      detail: 'Slash exposure is elevated. Review this node before the next churn or before adding more bond.',
+      label: 'Review slash exposure',
       tone: 'warning' as const,
     };
   }
@@ -273,8 +273,8 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
   const { currentBlockHeight } = useCurrentBlockHeight();
   const summary = summarizeRiskPositions(positions);
 
-  const statusIcon = summary.statusLabel === 'Healthy' ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : summary.statusLabel === 'Needs Attention' ? <AlertIcon className="w-5 h-5 text-amber-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />;
-  const statusColor = summary.statusLabel === 'Healthy' ? 'text-emerald-600 dark:text-emerald-400' : summary.statusLabel === 'Needs Attention' ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
+  const statusIcon = summary.statusLabel === 'Healthy' ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : summary.statusLabel === 'Review Needed' ? <AlertIcon className="w-5 h-5 text-amber-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />;
+  const statusColor = summary.statusLabel === 'Healthy' ? 'text-emerald-600 dark:text-emerald-400' : summary.statusLabel === 'Review Needed' ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
 
   // Use NETWORK bonds for pendulum (active + standby)
   const networkBondRaw = network?.bondMetrics?.totalActiveBond || '0';
@@ -333,7 +333,7 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
           {statusIcon}
           <div>
             <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{summary.healthScore}</div>
-            <div aria-label="Risk health status" className={cn("text-sm font-medium", statusColor)}>
+            <div aria-label="Provider exposure status" className={cn("text-sm font-medium", statusColor)}>
               {summary.statusLabel}
             </div>
           </div>
@@ -357,19 +357,19 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
             <Lock className="w-3 h-3" />{summary.jailedCount} jailed
           </span>
         )}
-        {summary.atRiskCount > 0 && (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
-            <AlertTriangle className="w-3 h-3" />{summary.atRiskCount} at risk
+        {summary.providerReviewCount > 0 && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+            <AlertTriangle className="w-3 h-3" />{summary.providerReviewCount} review
           </span>
         )}
-        {summary.criticalSlashCount > 0 && (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-300">
-            {summary.criticalSlashCount} critical
+        {summary.highSlashReviewCount > 0 && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+            {summary.highSlashReviewCount} high slash review
           </span>
         )}
-        {summary.warningSlashCount > 0 && (
+        {summary.elevatedSlashReviewCount > 0 && (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
-            {summary.warningSlashCount} warning
+            {summary.elevatedSlashReviewCount} slash watch
           </span>
         )}
       </div>
@@ -907,7 +907,7 @@ function RiskKPIs({ positions }: { positions: BondPosition[] }) {
 
   const pills = [
     { icon: <Zap className="w-4 h-4" />, value: summary.activeCount, label: 'Earning', color: 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400', sub: summary.standbyCount > 0 ? `${summary.standbyCount} standby` : null },
-    { icon: <AlertTriangle className="w-4 h-4" />, value: summary.slashNodeCount, label: 'Slash', color: summary.criticalSlashCount > 0 ? 'bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400' : summary.warningSlashCount > 0 ? 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400', sub: summary.criticalSlashCount > 0 ? `${summary.criticalSlashCount} crit` : summary.warningSlashCount > 0 ? `${summary.warningSlashCount} warn` : null },
+    { icon: <AlertTriangle className="w-4 h-4" />, value: summary.slashNodeCount, label: 'Slash review', color: summary.highSlashReviewCount > 0 ? 'bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400' : summary.elevatedSlashReviewCount > 0 ? 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400', sub: summary.highSlashReviewCount > 0 ? `${summary.highSlashReviewCount} high` : summary.elevatedSlashReviewCount > 0 ? `${summary.elevatedSlashReviewCount} watch` : null },
     { icon: <Lock className="w-4 h-4" />, value: summary.jailedCount, label: 'Jailed', color: summary.jailedCount > 0 ? 'bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400', sub: null },
     { icon: <Hourglass className="w-4 h-4" />, value: churnDays !== null ? churnDays + 'd' : '--', label: 'Churn', color: 'bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400', sub: null },
   ];
@@ -1109,7 +1109,7 @@ export default function RiskPage() {
       };
   const visibleRiskActions = getNonFocusedRiskActions(riskInsight.actions, focusedNodeAddress).slice(0, 4);
   const showActionQueue = !focusedNodeAddress || visibleRiskActions.length > 0;
-  const actionQueueTitle = focusedNodeAddress ? 'Other risks' : 'Riskiest actions';
+  const actionQueueTitle = focusedNodeAddress ? 'Other provider reviews' : 'Provider exposure review';
 
   return (
     <div className="space-y-4">
@@ -1122,7 +1122,7 @@ export default function RiskPage() {
         headingLevel={2}
         metrics={riskInsight.headerMetrics}
         primaryAction={riskPrimaryAction}
-        eyebrow="Node security"
+        eyebrow="Provider risk"
         compactMobileMetrics
       />
       <div id="risk-source-confidence" className="scroll-mt-24">
@@ -1147,7 +1147,7 @@ export default function RiskPage() {
           items={visibleRiskActions}
           title={actionQueueTitle}
           emptyTitle="Risk queue is clear"
-          emptyDetail="No jail, critical slash, churn-risk, or source-confidence issue is visible now."
+          emptyDetail="No jail, slash exposure, churn-risk, or source-confidence issue is visible now."
           compact
         />
       ) : null}

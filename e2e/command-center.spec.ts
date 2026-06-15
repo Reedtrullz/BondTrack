@@ -17,7 +17,7 @@ test.describe('Dashboard command center', () => {
 
     await expect(page.getByLabel('Command center diagnosis')).toBeVisible();
     await expect(page.getByLabel('Command center diagnosis').getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Critical actions' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Provider review queue' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Source freshness' })).toBeVisible();
     await expect(page.getByLabel('Supporting metrics')).toBeVisible();
   });
@@ -38,7 +38,7 @@ test.describe('Dashboard command center', () => {
       'href',
       `/dashboard/transactions?address=${DEFAULT_DASHBOARD_ADDRESS}&action=bond`
     );
-    await expect(nextTransaction.getByRole('link', { name: 'Open UNBOND' })).toBeVisible();
+    await expect(nextTransaction.getByRole('link', { name: 'Open UNBOND' })).toHaveCount(0);
   });
 
   test('does not nest buttons inside command-center links', async ({ page }) => {
@@ -79,7 +79,7 @@ test.describe('Dashboard command center', () => {
     await page.goto(`/dashboard?address=${DEFAULT_DASHBOARD_ADDRESS}`);
 
     const sourceConfidence = page.getByRole('region', { name: 'Source confidence' });
-    const actionQueue = page.getByLabel('Critical actions');
+    const actionQueue = page.getByLabel('Provider review queue');
     const sourceImpact = page.getByText(
       'Impact: Do not use reward history, LP performance, or transaction history for final decisions until Midgard recovers.'
     );
@@ -114,7 +114,7 @@ test.describe('Dashboard command center', () => {
     );
     await expect(nextTransaction.getByRole('link', { name: 'Open BOND' })).toHaveCount(0);
     await expect(nextTransaction.getByRole('link', { name: 'Open UNBOND' })).toHaveCount(0);
-    await expect(page.getByLabel('Critical actions')).toContainText('THORNode is degraded');
+    await expect(page.getByLabel('Provider review queue')).toContainText('THORNode is degraded');
   });
 
   test('keeps subpage diagnosis headings subordinate to the page title', async ({ page }) => {
@@ -127,7 +127,7 @@ test.describe('Dashboard command center', () => {
       { route: '/dashboard/portfolio', title: 'Portfolio', diagnosis: 'Portfolio diagnosis' },
       { route: '/dashboard/nodes', title: 'Nodes', diagnosis: 'Node diagnosis' },
       { route: '/dashboard/rewards', title: 'Rewards', diagnosis: 'Rewards diagnosis' },
-      { route: '/dashboard/risk', title: 'Risk', diagnosis: 'Node security diagnosis' },
+      { route: '/dashboard/risk', title: 'Risk', diagnosis: 'Provider risk diagnosis' },
     ];
 
     for (const pageSpec of pages) {
@@ -274,12 +274,12 @@ test.describe('Dashboard command center', () => {
 
     const expectedHref = `/dashboard/risk?address=${DEFAULT_DASHBOARD_ADDRESS}&node=thor1nodemocked123456789abcdef`;
     const diagnosis = page.getByLabel('Command center diagnosis');
-    const actionQueue = page.getByLabel('Critical actions');
+    const actionQueue = page.getByLabel('Provider review queue');
 
-    await expect(diagnosis.getByRole('link', { name: 'Review slash monitor' })).toHaveAttribute('href', expectedHref);
-    await expect(actionQueue.getByRole('link', { name: 'Review slash monitor' })).toHaveAttribute('href', expectedHref);
+    await expect(diagnosis.getByRole('link', { name: 'Review slash exposure' })).toHaveAttribute('href', expectedHref);
+    await expect(actionQueue.getByRole('link', { name: 'Review slash exposure' })).toHaveAttribute('href', expectedHref);
 
-    await diagnosis.getByRole('link', { name: 'Review slash monitor' }).click();
+    await diagnosis.getByRole('link', { name: 'Review slash exposure' }).click();
 
     await expect(page).toHaveURL(expectedHref);
     await expect(page.getByLabel('Focused node risk context')).toBeVisible();
@@ -296,7 +296,7 @@ test.describe('Dashboard command center', () => {
     await expect(diagnosis.getByText('No Bond', { exact: true })).toBeVisible();
     await expect(diagnosis.getByText('Healthy')).toHaveCount(0);
     await expect(diagnosis.getByText('100/100')).toHaveCount(0);
-    await expect(diagnosis.getByText('No bonded positions to score')).toBeVisible();
+    await expect(diagnosis.getByText('No bonded positions tracked')).toBeVisible();
   });
 
   test('labels standby bonded nodes as needing attention rather than healthy', async ({ page }) => {
@@ -309,14 +309,20 @@ test.describe('Dashboard command center', () => {
 
     const diagnosis = page.getByLabel('Command center diagnosis');
     await expect(diagnosis).toBeVisible();
-    await expect(diagnosis.getByText('Needs Attention', { exact: true })).toBeVisible();
+    await expect(diagnosis.getByText('Review Needed', { exact: true })).toBeVisible();
     await expect(diagnosis.getByText('Healthy')).toHaveCount(0);
     await expect(diagnosis.getByRole('heading', {
       level: 1,
       name: 'thor1nod...cdef is Standby',
       exact: true,
     })).toBeVisible();
-    await expect(diagnosis.getByText('75/100')).toBeVisible();
+    await expect(diagnosis.getByText(/Score 75\/100/)).toBeVisible();
+
+    const nextTransaction = page.getByRole('region', { name: 'Next transaction' });
+    await expect(nextTransaction.getByRole('link', { name: 'Open UNBOND' })).toHaveAttribute(
+      'href',
+      `/dashboard/transactions?address=${DEFAULT_DASHBOARD_ADDRESS}&action=unbond`
+    );
   });
 
   test('shows a useful no-bond diagnosis on the Nodes page', async ({ page }) => {
@@ -341,7 +347,7 @@ test.describe('Dashboard command center', () => {
     const layout = await page.evaluate(() => {
       const table = Array.from(document.querySelectorAll('table')).find((candidate) => {
         const text = candidate.textContent ?? '';
-        return text.includes('Node Address') && text.includes('Risk Score');
+        return text.includes('Node Address') && text.includes('Review Score');
       });
       const scrollRegion = table?.parentElement ?? null;
       const style = scrollRegion ? getComputedStyle(scrollRegion) : null;
@@ -364,11 +370,11 @@ test.describe('Dashboard command center', () => {
     expect(layout.scrollRegion!.scrollWidth).toBeGreaterThan(layout.scrollRegion!.clientWidth);
     expect(['auto', 'scroll']).toContain(layout.scrollRegion!.overflowX);
 
-    const riskSortButton = page.getByRole('button', { name: 'Sort by Risk Score ascending' });
+    const riskSortButton = page.getByRole('button', { name: 'Sort by Review Score ascending' });
     await expect(riskSortButton).toBeVisible();
     await riskSortButton.click();
     const activeSort = await page
-      .getByRole('button', { name: 'Sort by Risk Score descending' })
+      .getByRole('button', { name: 'Sort by Review Score descending' })
       .evaluate((button) => button.closest('th')?.getAttribute('aria-sort'));
     expect(activeSort).toBe('ascending');
   });
@@ -382,14 +388,14 @@ test.describe('Dashboard command center', () => {
     });
     await page.goto(`/dashboard/nodes?address=${DEFAULT_DASHBOARD_ADDRESS}`);
 
-    await expect(page.getByRole('heading', { name: 'Urgent exception cards' })).toBeVisible();
-    await expect(page.getByText('No urgent exception cards to show. Minor slash history and routine node metrics remain visible in the comparison table below.')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Provider review cards' })).toBeVisible();
+    await expect(page.getByText('No provider review cards to show. Minor slash history and routine node metrics remain visible in the comparison table below.')).toBeVisible();
     await expect(page.locator('[data-urgent-exception="true"]')).toHaveCount(0);
     await expect(page.locator('[data-urgent-exception="false"]')).toContainText('1');
-    await expect(page.getByText(/High slash points/i)).toHaveCount(0);
+    await expect(page.getByText(/High slash exposure/i)).toHaveCount(0);
   });
 
-  test('routes urgent Nodes card BOND prep through focused risk review', async ({ page }) => {
+  test('routes provider-review Nodes card BOND prep through focused risk review', async ({ page }) => {
     await mockDashboardApis(page, DEFAULT_DASHBOARD_ADDRESS, {
       primaryNodeOverrides: {
         slash_points: 275,
@@ -398,14 +404,14 @@ test.describe('Dashboard command center', () => {
     await page.goto(`/dashboard/nodes?address=${DEFAULT_DASHBOARD_ADDRESS}`);
 
     const expectedHref = `/dashboard/risk?address=${DEFAULT_DASHBOARD_ADDRESS}&node=thor1nodemocked123456789abcdef`;
-    const urgentCards = page.getByRole('region', { name: 'Urgent node exception cards' });
+    const urgentCards = page.getByRole('region', { name: 'Provider node review cards' });
 
     await expect(urgentCards).toBeVisible();
-    await expect(urgentCards.getByRole('link', { name: 'Review risk first' })).toHaveAttribute('href', expectedHref);
-    await expect(urgentCards).toContainText('Risk review required');
+    await expect(urgentCards.getByRole('link', { name: 'Review exposure first' })).toHaveAttribute('href', expectedHref);
+    await expect(urgentCards).toContainText('Provider review required');
     await expect(page.getByRole('link', { name: 'Prepare BOND Memo' })).toHaveCount(0);
 
-    await urgentCards.getByRole('link', { name: 'Review risk first' }).click();
+    await urgentCards.getByRole('link', { name: 'Review exposure first' }).click();
 
     await expect(page).toHaveURL(expectedHref);
     await expect(page.getByLabel('Focused node risk context')).toContainText('Slash context');
@@ -425,7 +431,7 @@ test.describe('Dashboard command center', () => {
     await page.goto(`/dashboard/nodes?address=${DEFAULT_DASHBOARD_ADDRESS}`);
 
     const expectedRiskHref = `/dashboard/risk?address=${DEFAULT_DASHBOARD_ADDRESS}&node=thor1nodemocked123456789abcdef#risk-source-confidence`;
-    const urgentCards = page.getByRole('region', { name: 'Urgent node exception cards' });
+    const urgentCards = page.getByRole('region', { name: 'Provider node review cards' });
     const sourceDegradedCard = urgentCards.locator(':scope > div').filter({ hasText: 'thor1nodemocked1...abcdef' });
 
     await expect(urgentCards).toBeVisible();
@@ -433,7 +439,7 @@ test.describe('Dashboard command center', () => {
     await expect(sourceDegradedCard).toContainText('Slash Points');
     await expect(sourceDegradedCard).toContainText('150');
     await expect(sourceDegradedCard.getByRole('link', { name: 'Review source confidence', exact: true })).toHaveAttribute('href', expectedRiskHref);
-    await expect(sourceDegradedCard.getByRole('link', { name: 'Review risk first', exact: true })).toHaveCount(0);
+    await expect(sourceDegradedCard.getByRole('link', { name: 'Review exposure first', exact: true })).toHaveCount(0);
     await expect(sourceDegradedCard.getByRole('link', { name: 'Prepare UNBOND Memo', exact: true })).toHaveCount(0);
     await expect(sourceDegradedCard).toContainText('Source degraded');
     await expect(sourceDegradedCard).toContainText('THORNode source confidence is degraded');
@@ -707,7 +713,7 @@ test.describe('Dashboard command center', () => {
 
     const sourceConfidence = page.getByRole('region', { name: 'Source confidence' });
     await expect(page.getByLabel('Command center diagnosis')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Critical actions' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Provider review queue' })).toBeVisible();
     await expect(sourceConfidence).toBeVisible();
     await expect(sourceConfidence).toContainText('Data source confidence');
     await expect(sourceConfidence).toContainText(/Fresh|Unknown|Degraded|Stale/);
@@ -727,12 +733,12 @@ test.describe('Dashboard command center', () => {
         viewportWidth: window.innerWidth,
         diagnosis: box(document.querySelector('section[aria-label="Command center diagnosis"]')),
         sourceSummary: box(document.querySelector('section[aria-label="Source confidence"]')),
-        actions: box(document.querySelector('section[aria-label="Critical actions"]')),
-        firstAction: box(document.querySelector('section[aria-label="Critical actions"] article')),
-        secondAction: box(document.querySelectorAll('section[aria-label="Critical actions"] article')[1] ?? null),
+        actions: box(document.querySelector('section[aria-label="Provider review queue"]')),
+        firstAction: box(document.querySelector('section[aria-label="Provider review queue"] article')),
+        secondAction: box(document.querySelectorAll('section[aria-label="Provider review queue"] article')[1] ?? null),
         metrics: box(document.querySelector('section[aria-label="Supporting metrics"]')),
         details: box(Array.from(document.querySelectorAll('h2')).find((heading) => (
-          heading.textContent?.replace(/\s+/g, ' ').trim() === 'Riskiest nodes first'
+          heading.textContent?.replace(/\s+/g, ' ').trim() === 'Provider exposure first'
         )) ?? null),
       };
     });
@@ -761,7 +767,7 @@ test.describe('Dashboard command center', () => {
 
     for (const pageSpec of [
       { route: '/dashboard/nodes', label: 'Node exceptions' },
-      { route: '/dashboard/risk', label: 'Riskiest actions' },
+      { route: '/dashboard/risk', label: 'Provider exposure review' },
     ]) {
       await page.goto(`${pageSpec.route}?address=${DEFAULT_DASHBOARD_ADDRESS}`);
       await expect(page.getByRole('heading', { name: pageSpec.label })).toBeVisible();

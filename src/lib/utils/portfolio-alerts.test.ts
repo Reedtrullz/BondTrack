@@ -24,7 +24,7 @@ function position(overrides: Partial<BondPosition> = {}): BondPosition {
 }
 
 describe('generatePortfolioAlerts', () => {
-  it('keeps high-slash alerts in risk-review language', () => {
+  it('keeps high-slash alerts in provider-exposure review language', () => {
     const alerts = generatePortfolioAlerts([
       position({ slashPoints: 250 }),
     ]);
@@ -33,11 +33,11 @@ describe('generatePortfolioAlerts', () => {
     expect(alerts[0]).toMatchObject({
       type: 'SLASH',
       severity: 'warning',
-      actionLabel: 'Review slash risk',
+      actionLabel: 'Review slash exposure',
       actionLink: '/dashboard/risk',
     });
     expect(alerts[0].suggestion).toMatch(/review/i);
-    expect(alerts[0].suggestion).toMatch(/before deciding/i);
+    expect(alerts[0].suggestion).toMatch(/before changing provider exposure/i);
     expect(alerts[0].suggestion).not.toMatch(/^Consider reducing bond/i);
   });
 

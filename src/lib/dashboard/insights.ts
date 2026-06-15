@@ -41,12 +41,13 @@ export interface MetricStripItem {
 export interface InsightHeaderMetric {
   label: string;
   value: string;
+  compactValue?: string;
   detail?: string;
 }
 
 export interface DashboardInsightState {
   severity: InsightSeverity;
-  statusLabel: 'Healthy' | 'No Bond' | 'Needs Attention' | 'At Risk';
+  statusLabel: 'Healthy' | 'No Bond' | 'Review Needed' | 'Action Needed';
   diagnosis: string;
   topRisk: string;
   primaryAction: {
@@ -111,6 +112,10 @@ function buildHrefWithHash(
 
 function formatCompactRuneFromNumber(value: number): string {
   return `ᚱ${formatCompactNumber(value)}`;
+}
+
+function isUsableAmount(value: number): boolean {
+  return Number.isFinite(value) && value >= 0;
 }
 
 function actionDedupeKey(action: ActionItem): string {
@@ -265,7 +270,7 @@ function buildNodeActions(address: string | null, positions: BondPosition[], now
         source: 'Node',
         title: `${nodeLabel} is jailed`,
         detail: position.jailReason ?? 'The node is currently in jail and may not be earning.',
-        impact: 'Rewards can stop and the node may require operator action before it recovers.',
+        impact: 'Rewards can stop; confirm recovery status before adding or removing bond.',
         href,
         lastSeen: now,
         primaryAction: 'Inspect jail status',
@@ -275,26 +280,26 @@ function buildNodeActions(address: string | null, positions: BondPosition[], now
     if (position.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical) {
       actions.push({
         id: `slash-critical:${position.nodeAddress}`,
-        severity: 'critical',
+        severity: 'warning',
         source: 'Slash',
-        title: `${nodeLabel} has critical slash points`,
-        detail: `${position.slashPoints.toLocaleString()} slash points exceed the critical threshold.`,
-        impact: 'Bond provider returns and node eligibility are at immediate risk.',
+        title: `${nodeLabel} has high slash exposure`,
+        detail: `${position.slashPoints.toLocaleString()} slash points are above the provider-review threshold.`,
+        impact: 'Review provider exposure before adding bond; ask for recent slash context if needed.',
         href,
         lastSeen: now,
-        primaryAction: 'Review slash monitor',
+        primaryAction: 'Review slash exposure',
       });
     } else if (position.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning) {
       actions.push({
         id: `slash-warning:${position.nodeAddress}`,
         severity: 'warning',
         source: 'Slash',
-        title: `${nodeLabel} has elevated slash points`,
-        detail: `${position.slashPoints.toLocaleString()} slash points are above the warning threshold.`,
-        impact: 'The node should be watched before the next churn and before adding more bond.',
+        title: `${nodeLabel} has elevated slash exposure`,
+        detail: `${position.slashPoints.toLocaleString()} slash points are above the watch threshold.`,
+        impact: 'Review the node before topping up bond or relying on projected returns.',
         href,
         lastSeen: now,
-        primaryAction: 'Review slash monitor',
+        primaryAction: 'Review slash exposure',
       });
     }
 
@@ -305,7 +310,7 @@ function buildNodeActions(address: string | null, positions: BondPosition[], now
         source: 'Churn',
         title: `${nodeLabel} is near churn risk`,
         detail: 'This node is flagged as one of the lowest-bonded positions in your set.',
-        impact: 'A low bond rank can reduce earning continuity during churn events.',
+        impact: 'A low bond rank can interrupt earning continuity during churn events.',
         href,
         lastSeen: now,
         primaryAction: 'Review churn risk',
@@ -412,13 +417,20 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
     includeRunePriceSource: input.includeRunePriceSource,
     now,
   });
-  const totalBonded = positions.reduce((sum, position) => sum + position.bondAmount, 0);
+  const allBondAmountsUsable = positions.every((position) => isUsableAmount(position.bondAmount));
+  const totalBonded = positions.reduce((sum, position) => (
+    isUsableAmount(position.bondAmount) ? sum + position.bondAmount : sum
+  ), 0);
   const hasBondPositions = positions.length > 0;
   const totalLpValueUsd = lpPositions.reduce((sum, position) => sum + position.currentTotalValueUsd, 0);
   const activeNodes = positions.filter((position) => position.status === 'Active').length;
   const jailedNodes = positions.filter((position) => position.isJailed).length;
   const weightedApy = positions.length > 0 && totalBonded > 0
-    ? positions.reduce((sum, position) => sum + position.netAPY * position.bondAmount, 0) / totalBonded
+    ? positions.reduce((sum, position) => (
+      isUsableAmount(position.bondAmount) && Number.isFinite(position.netAPY)
+        ? sum + position.netAPY * position.bondAmount
+        : sum
+    ), 0) / totalBonded
     : 0;
   const health = calculatePortfolioHealth(positions);
   const actions = rankActionItems(dedupeActionItems([
@@ -445,9 +457,9 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
   const statusLabel = !hasBondPositions
     ? 'No Bond'
     : severity === 'critical'
-      ? 'At Risk'
+      ? 'Action Needed'
       : severity === 'warning'
-        ? 'Needs Attention'
+        ? 'Review Needed'
         : 'Healthy';
   const noBondDiagnosis = noBondAction.kind === 'source-confidence'
     ? 'No active bond-provider position was found for this address. Confirm the address, then wait for fresh THORNode source confidence before preparing a BOND transaction.'
@@ -455,7 +467,7 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
   const diagnosis = positions.length === 0
     ? noBondDiagnosis
     : statusLabel === 'Healthy'
-      ? 'Current source responses show no urgent node, source, or LP confidence issues.'
+      ? 'Current source responses show no provider action needed.'
       : mostSevereAction?.detail ?? health.reason;
   const topRisk = mostSevereAction
     ? positions.length === 0
@@ -463,20 +475,34 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
       : mostSevereAction.title
     : positions.length === 0
       ? 'No bonded positions detected'
-      : 'No urgent risk detected';
+      : 'No provider review needed';
   const primaryAction = mostSevereAction
     ? positions.length === 0
       ? noBondPrimaryAction
       : { label: mostSevereAction.primaryAction ?? 'Inspect issue', href: mostSevereAction.href }
     : positions.length === 0
       ? noBondPrimaryAction
-      : { label: 'Review Risk', href: buildHref('/dashboard/risk', input.address) };
+      : { label: 'Review exposure', href: buildHref('/dashboard/risk', input.address) };
   const healthMetricDetail = severity === 'healthy'
-    ? health.reason
+    ? `Score ${health.score}/100 · ${health.reason}`
     : !hasBondPositions
-      ? 'No bonded positions to score'
-      : mostSevereAction?.title ?? health.reason;
-  const healthMetricValue = hasBondPositions ? `${health.score}/100` : '--';
+      ? 'No bonded positions tracked'
+      : `Score ${health.score}/100 · ${mostSevereAction?.detail ?? health.reason}`;
+  const exposureMetricValue = !hasBondPositions
+    ? '--'
+    : severity === 'critical'
+      ? 'Action'
+      : severity === 'warning'
+        ? 'Review'
+        : severity === 'info'
+          ? 'Pending'
+          : 'Clear';
+  const bondedMetricValue = hasBondPositions && !allBondAmountsUsable
+    ? '--'
+    : formatRuneFromNumber(totalBonded);
+  const bondedMetricCompactValue = hasBondPositions && !allBondAmountsUsable
+    ? '--'
+    : formatCompactRuneFromNumber(totalBonded);
 
   return {
     severity,
@@ -485,14 +511,24 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
     topRisk,
     primaryAction,
     headerMetrics: [
-      { label: 'Health score', value: healthMetricValue, detail: healthMetricDetail },
-      { label: 'Bonded', value: formatRuneFromNumber(totalBonded), detail: `${positions.length} node${positions.length === 1 ? '' : 's'}` },
+      { label: 'Provider exposure', value: exposureMetricValue, detail: healthMetricDetail },
+      {
+        label: 'Bonded',
+        value: bondedMetricValue,
+        compactValue: bondedMetricCompactValue,
+        detail: `${positions.length} node${positions.length === 1 ? '' : 's'}`,
+      },
       { label: 'Net APY', value: weightedApy > 0 ? formatPercent(weightedApy, 2) : '--', detail: 'Weighted by bond' },
     ],
     actions,
     sources,
     metrics: [
-      { id: 'total-bond', label: 'Total bond', value: formatCompactRuneFromNumber(totalBonded), detail: input.runePrice ? formatUsd(totalBonded * input.runePrice) : undefined },
+      {
+        id: 'total-bond',
+        label: 'Total bond',
+        value: hasBondPositions && !allBondAmountsUsable ? '--' : formatCompactRuneFromNumber(totalBonded),
+        detail: input.runePrice && allBondAmountsUsable ? formatUsd(totalBonded * input.runePrice) : undefined,
+      },
       { id: 'active-nodes', label: 'Active nodes', value: String(activeNodes), detail: `${positions.length} tracked` },
       { id: 'jailed-nodes', label: 'Jailed nodes', value: String(jailedNodes), severity: jailedNodes > 0 ? 'critical' : 'healthy', detail: jailedNodes > 0 ? 'Action needed' : 'None' },
       { id: 'rewards', label: 'Reward rate', value: weightedApy > 0 ? `${weightedApy.toFixed(2)}%` : '--', detail: 'Net weighted APY' },

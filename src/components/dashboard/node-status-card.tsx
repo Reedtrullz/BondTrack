@@ -2,11 +2,12 @@ import type { BondPosition } from '@/lib/types/node';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { AlertTriangle, Shield, Server, Info, PlusCircle, MinusCircle } from 'lucide-react';
 import { calculatePortfolioHealth, getGradeColor } from '@/lib/utils/health-score';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import Link from 'next/link';
 import { formatBasisPoints, formatRuneDisplayNumber } from '@/lib/utils/formatters';
 import { getCandidateBondSourceSafety, type CandidateBondSourceSafety } from '@/lib/dashboard/candidate-bond-source-safety';
 import { isUrgentNodeException } from '@/lib/dashboard/nodes-context';
+import { canUnbondNode } from '@/lib/transactions/bond';
 
 interface NodeStatusCardProps {
   position: BondPosition;
@@ -26,9 +27,15 @@ function formatNodeNumber(value: number): string {
 
 export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURCE_SAFETY }: NodeStatusCardProps) {
   const health = calculatePortfolioHealth([position]);
-  const [isHovered, setIsHovered] = useState(false);
+  const scoreTooltipId = useId();
+  const [isScoreTooltipOpen, setIsScoreTooltipOpen] = useState(false);
   const hasHighSlash = isUsableNodeMetric(position.slashPoints) && position.slashPoints > 100;
   const requiresBondReview = isUrgentNodeException(position);
+  const unbondEligibility = canUnbondNode(position);
+  const canPrepareUnbond = sourceSafety.canPrepareBond && unbondEligibility.canUnbond;
+  const unbondUnavailableReason = sourceSafety.canPrepareBond && !unbondEligibility.canUnbond
+    ? unbondEligibility.reason ?? 'UNBOND is only available when THORChain reports this node as Standby.'
+    : null;
   const buildTransactionHref = (action: 'bond' | 'unbond') => {
     const params = new URLSearchParams();
 
@@ -61,10 +68,10 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
       }
     : requiresBondReview
       ? {
-          detail: 'This node is flagged in the urgent exception set. Review jail, slash, churn, and yield-guard context before preparing a BOND memo.',
+          detail: 'This node is flagged for provider review. Check jail, slash, churn, and yield-guard context before preparing a BOND memo.',
           href: buildRiskHref(),
-          label: 'Review risk first',
-          statusLabel: 'Risk review required',
+          label: 'Review exposure first',
+          statusLabel: 'Provider review required',
         }
       : null;
 
@@ -75,19 +82,26 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
           {position.nodeAddress.slice(0, 16)}...{position.nodeAddress.slice(-6)}
         </div>
         <div className="flex items-center gap-2">
-          <div 
-            className="relative cursor-help"
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
+          <div
+            className="relative"
+            onMouseEnter={() => setIsScoreTooltipOpen(true)}
+            onMouseLeave={() => setIsScoreTooltipOpen(false)}
           >
-            <span className={`text-xs font-bold px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 ${getGradeColor(health.grade)}`}>
+            <button
+              type="button"
+              className={`rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:bg-zinc-800 dark:focus-visible:ring-offset-zinc-950 ${getGradeColor(health.grade)}`}
+              aria-label={`Provider exposure grade ${health.grade}: ${health.reason}`}
+              aria-describedby={isScoreTooltipOpen ? scoreTooltipId : undefined}
+              onFocus={() => setIsScoreTooltipOpen(true)}
+              onBlur={() => setIsScoreTooltipOpen(false)}
+            >
               {health.grade}
-            </span>
-            {isHovered && (
-              <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-zinc-900 text-white text-[10px] rounded shadow-xl z-50 border border-zinc-800">
+            </button>
+            {isScoreTooltipOpen && (
+              <div id={scoreTooltipId} role="tooltip" className="absolute bottom-full right-0 z-50 mb-2 w-52 rounded border border-zinc-800 bg-zinc-900 p-2 text-[10px] text-white shadow-xl">
                 <div className="flex items-center gap-1 mb-1 text-zinc-400 font-bold uppercase">
                   <Info className="w-3 h-3" />
-                  Node Health
+                  Provider Exposure
                 </div>
                 <p className="leading-relaxed text-zinc-300">{health.reason}</p>
                 <div className="absolute -bottom-1 right-1/2 translate-x-1/2 w-2 h-2 bg-zinc-900 rotate-45" />
@@ -113,7 +127,7 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
         </div>
         <div>
           <div className="text-xs text-zinc-500">Slash Points</div>
-          <div className={cn('font-medium', hasHighSlash ? 'text-red-500' : 'text-zinc-900 dark:text-zinc-100')}>
+          <div className={cn('font-medium', hasHighSlash ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-100')}>
             {formatNodeNumber(position.slashPoints)}
           </div>
         </div>
@@ -142,7 +156,7 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
             Prepare BOND Memo
           </Link>
         )}
-        {sourceSafety.canPrepareBond && (
+        {canPrepareUnbond && (
           <Link
             href={buildTransactionHref('unbond')}
             className="inline-flex min-h-10 min-w-0 items-center justify-center gap-1 rounded bg-amber-50 px-2 py-2 text-center text-[11px] font-bold uppercase leading-tight text-amber-700 transition-colors hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40"
@@ -150,6 +164,12 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
             <MinusCircle className="h-3 w-3 shrink-0" />
             Prepare UNBOND Memo
           </Link>
+        )}
+        {unbondUnavailableReason && (
+          <p className="text-xs leading-5 text-zinc-600 dark:text-zinc-400 sm:col-span-2">
+            <span className="font-semibold text-zinc-800 dark:text-zinc-200">UNBOND unavailable: </span>
+            {unbondUnavailableReason}
+          </p>
         )}
         {bondReviewAction && (
           <p className="text-xs leading-5 text-zinc-600 dark:text-zinc-400 sm:col-span-2">
@@ -176,7 +196,7 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
       {hasHighSlash && (
         <div className="flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded text-xs text-orange-600 dark:text-orange-400">
           <Server className="w-3.5 h-3.5 shrink-0" />
-          <span>High slash points ({position.slashPoints.toLocaleString()})</span>
+          <span>High slash exposure ({position.slashPoints.toLocaleString()} points)</span>
         </div>
       )}
     </div>

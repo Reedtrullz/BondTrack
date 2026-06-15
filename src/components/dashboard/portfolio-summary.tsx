@@ -87,7 +87,7 @@ export function PortfolioSummary({ totalBonded, runePrice, runePriceIsStale = fa
       />
       <SummaryCard 
         icon={<ShieldCheck className="w-4 h-4" />}
-        label="Portfolio Health"
+        label="Provider Exposure"
         value={<HealthScoreDisplay health={health} />}
       />
     </div>
@@ -106,7 +106,7 @@ function HealthScoreDisplay({ health }: { health: { grade: HealthGrade; score: n
         <button
           type="button"
           className="inline-flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:focus-visible:ring-offset-zinc-950"
-          aria-label={`Portfolio health score breakdown: ${health.reason}`}
+          aria-label={`Provider exposure score breakdown: ${health.reason}`}
           aria-expanded={isOpen}
           aria-controls={breakdownId}
           onClick={() => setIsOpen((open) => !open)}
@@ -122,12 +122,12 @@ function HealthScoreDisplay({ health }: { health: { grade: HealthGrade; score: n
         >
           <div className="flex items-center gap-1.5 mb-1.5 font-semibold text-zinc-900 dark:text-zinc-100">
             <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
-            Health Score Breakdown
+            Provider Exposure Breakdown
           </div>
           <div className="space-y-1">
             <p>Starting points: {breakdown.startingPoints}</p>
             {breakdown.slashPenalty > 0 && (
-              <p className="text-red-600 dark:text-red-300">- Slash penalty: {breakdown.slashPenalty} points</p>
+              <p className="text-amber-700 dark:text-amber-300">- Slash exposure penalty: {breakdown.slashPenalty} points</p>
             )}
             {breakdown.atRiskPenalty > 0 && (
               <p className="text-yellow-700 dark:text-yellow-300">- At-risk penalty: {breakdown.atRiskPenalty} points</p>
@@ -139,7 +139,7 @@ function HealthScoreDisplay({ health }: { health: { grade: HealthGrade; score: n
               <p className="text-amber-700 dark:text-amber-300">- Non-active status penalty: {breakdown.statusPenalty} points</p>
             )}
             <div className="pt-1 border-t border-zinc-200 dark:border-zinc-800">
-              <span className="text-zinc-900 dark:text-zinc-100">Final score: {breakdown.finalScore}/100</span>
+              <span className="text-zinc-900 dark:text-zinc-100">Exposure score: {breakdown.finalScore}/100</span>
             </div>
             {health.reason && (
               <p className="text-zinc-500 dark:text-zinc-400 mt-1">{health.reason}</p>

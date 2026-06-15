@@ -138,7 +138,7 @@ export const articles: LearnArticle[] = [
     ],
     nextSteps: [
       { label: 'Bond Simulator', href: '/dashboard/simulator' },
-      { label: 'Health Scores', href: '/learn/health-score-guide' },
+      { label: 'Provider Exposure', href: '/learn/health-score-guide' },
       { label: 'Portfolio', href: '/dashboard/portfolio' },
     ],
   },
@@ -251,13 +251,13 @@ export const articles: LearnArticle[] = [
     nextSteps: [
       { label: 'Rewards', href: '/dashboard/rewards' },
       { label: 'Node Explorer', href: '/dashboard/explorer' },
-      { label: 'Health Scores', href: '/learn/health-score-guide' },
+      { label: 'Provider Exposure', href: '/learn/health-score-guide' },
     ],
   },
   {
     slug: 'health-score-guide',
-    title: 'Health Score Guide',
-    description: 'How Heimdall calculates your portfolio health score',
+    title: 'Provider Exposure Guide',
+    description: 'How Heimdall scores bonded-provider exposure',
     date: '2026-05-03',
     readTime: '4 min read',
     priority: 'Start here',
@@ -270,7 +270,7 @@ export const articles: LearnArticle[] = [
       {
         heading: 'What the score is for',
         body: [
-          'Heimdall\'s Health Score helps you quickly assess the health of your bonded portfolio. It is a triage signal, not a replacement for inspecting the node, source freshness, and transaction context.',
+          'Heimdall\'s Provider Exposure score helps you quickly assess whether a bonded-provider position needs review. It is a triage signal, not a replacement for inspecting slash context, source freshness, and transaction safety.',
         ],
       },
       {
@@ -279,11 +279,11 @@ export const articles: LearnArticle[] = [
           kind: 'unordered',
           label: 'Score Scale points',
           items: [
-            '**A (90-100)**: Strong bonds and low visible risk.',
-            '**B (80-89)**: Good, with minor items to review.',
-            '**C (70-79)**: Fair, with risks that need attention.',
-            '**D (60-69)**: Weak, with elevated risk.',
-            '**F (0-59)**: Critical, with immediate review required.',
+            '**A (90-100)**: Clear provider exposure with low visible risk.',
+            '**B (80-89)**: Good, with minor context to review.',
+            '**C (70-79)**: Watchlist-level exposure that deserves attention.',
+            '**D (60-69)**: Elevated exposure; review before changing bond.',
+            '**F (0-59)**: Action-needed exposure, usually from jail, source, or severe status issues.',
           ],
         },
       },
@@ -294,7 +294,7 @@ export const articles: LearnArticle[] = [
           label: 'Calculation Factors steps',
           items: [
             '**Bond Diversification**: Spread exposure across multiple nodes.',
-            '**Node Health**: Inspect the status of nodes you are bonded to.',
+            '**Node and source context**: Inspect status, jail, source freshness, and transaction safety before acting.',
             '**Churn Risk**: Penalize nodes likely to leave the active set.',
             '**Operator Fees**: Penalize high-fee nodes when provider return is at risk.',
           ],
@@ -307,7 +307,7 @@ export const articles: LearnArticle[] = [
           label: 'Improving Your Score points',
           items: [
             '**Diversify**: Avoid concentrating all bond in one fragile node.',
-            '**Choose Healthy Nodes**: Use the [Node Explorer](/dashboard/explorer) to compare node quality.',
+            '**Choose low-exposure nodes**: Use the [Node Explorer](/dashboard/explorer) to compare provider risk, fees, and source context.',
             '**Avoid High Fees**: Review whether operator fees are eroding provider return.',
             '**Monitor Churn Risk**: Inspect high-risk nodes before adding or removing bond.',
           ],

@@ -34,16 +34,16 @@ export function generatePortfolioAlerts(positions: BondPosition[]): PortfolioAle
     });
   }
 
-  // 2. Warning: High Slash Points
+  // 2. Warning: High Slash Exposure
   const highSlashNodes = positions.filter(p => p.slashPoints >= 200);
   if (highSlashNodes.length > 0) {
     alerts.push({
       id: 'warning-slash',
       type: 'SLASH',
       severity: 'warning',
-      message: `High slash points detected on ${highSlashNodes.length} node(s). Risk of jail is elevated.`,
-      suggestion: 'Review slash trend, jail proximity, and operator status before deciding whether to reduce exposure.',
-      actionLabel: 'Review slash risk',
+      message: `${highSlashNodes.length} node(s) have high slash exposure.`,
+      suggestion: 'Review slash trend, jail context, and recent node status before changing provider exposure.',
+      actionLabel: 'Review slash exposure',
       actionLink: '/dashboard/risk'
     });
   }

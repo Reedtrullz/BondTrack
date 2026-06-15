@@ -194,9 +194,9 @@ describe('RiskPage', () => {
 
     render(<RiskPage />);
 
-    expect(screen.getByLabelText('Node security diagnosis')).toHaveTextContent('No Bond');
-    expect(screen.getByLabelText('Node security diagnosis')).toHaveTextContent('No bonded positions detected');
-    expect(within(screen.getByLabelText('Node security diagnosis')).getByRole('link', { name: 'Open Bond Composer' })).toHaveAttribute(
+    expect(screen.getByLabelText('Provider risk diagnosis')).toHaveTextContent('No Bond');
+    expect(screen.getByLabelText('Provider risk diagnosis')).toHaveTextContent('No bonded positions detected');
+    expect(within(screen.getByLabelText('Provider risk diagnosis')).getByRole('link', { name: 'Open Bond Composer' })).toHaveAttribute(
       'href',
       '/dashboard/transactions?address=thor1mocknode000000000000000000000000000000'
     );
@@ -215,7 +215,7 @@ describe('RiskPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Risk' })).toBeInTheDocument();
     expect(screen.getByRole('status', { name: 'Loading risk analysis' })).toHaveTextContent('Waiting for THORNode bond positions');
-    expect(screen.queryByLabelText('Node security diagnosis')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Provider risk diagnosis')).not.toBeInTheDocument();
     expect(screen.queryByText('No bonded positions detected')).not.toBeInTheDocument();
   });
 
@@ -226,7 +226,7 @@ describe('RiskPage', () => {
 
     expect(screen.queryByRole('heading', { name: 'Slash Point Monitor' })).not.toBeInTheDocument();
 
-    const diagnosis = screen.getByLabelText('Node security diagnosis');
+    const diagnosis = screen.getByLabelText('Provider risk diagnosis');
     expect(screen.queryByRole('button', { name: 'Show Details' })).not.toBeInTheDocument();
     await user.click(within(diagnosis).getByRole('button', { name: 'Review risk details' }));
 
@@ -248,7 +248,7 @@ describe('RiskPage', () => {
 
     render(<RiskPage />);
 
-    const diagnosis = screen.getByLabelText('Node security diagnosis');
+    const diagnosis = screen.getByLabelText('Provider risk diagnosis');
     expect(within(diagnosis).getByRole('link', { name: 'Review churn risk' })).toHaveAttribute(
       'href',
       `/dashboard/risk?address=thor1mocknode000000000000000000000000000000&node=${mockPosition.nodeAddress}`
@@ -277,14 +277,14 @@ describe('RiskPage', () => {
     const focusedContext = screen.getByLabelText('Focused node risk context');
     expect(focusedContext).toHaveTextContent('Alert context');
     expect(focusedContext).toHaveTextContent(mockPosition.nodeAddress);
-    expect(within(focusedContext).getByTestId('focused-bonded-primary-action')).toHaveTextContent('Review slash monitor');
+    expect(within(focusedContext).getByTestId('focused-bonded-primary-action')).toHaveTextContent('Review slash exposure');
     expect(within(focusedContext).getByTestId('focused-bonded-primary-action')).toHaveTextContent(
-      'Slash points are elevated. Watch this node before the next churn and before adding more bond.'
+      'Slash exposure is elevated. Review this node before the next churn or before adding more bond.'
     );
     expect(within(focusedContext).getByTestId('focused-bonded-inline-evidence')).toHaveTextContent(
       'THORNode: status Active · slash 75 · flags High Slash. Midgard: block height feeds jail and churn timing.'
     );
-    expect(within(focusedContext).getByTestId('focused-bonded-primary-button')).toHaveTextContent('Review slash monitor');
+    expect(within(focusedContext).getByTestId('focused-bonded-primary-button')).toHaveTextContent('Review slash exposure');
     const metricDetails = within(focusedContext).getByTestId('focused-bonded-metric-details');
     expect(metricDetails).toHaveTextContent('Operational details');
     expect(metricDetails).toHaveTextContent('Active · Slash 75 · Flags High Slash');
@@ -317,7 +317,7 @@ describe('RiskPage', () => {
     const focusedContext = screen.getByLabelText('Focused node risk context');
     expect(screen.queryByRole('heading', { name: 'Slash Point Monitor' })).not.toBeInTheDocument();
 
-    await user.click(within(focusedContext).getByRole('button', { name: 'Review slash monitor' }));
+    await user.click(within(focusedContext).getByRole('button', { name: 'Review slash exposure' }));
 
     expect(within(focusedContext).getByRole('button', { name: 'Hide risk details' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Slash Point Monitor' })).toBeInTheDocument();
@@ -341,11 +341,11 @@ describe('RiskPage', () => {
     render(<RiskPage />);
 
     expect(screen.getByLabelText('Focused node risk context')).toHaveTextContent('Alert context');
-    expect(screen.queryByLabelText('Riskiest actions')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Other risks')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Provider exposure review')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Other provider reviews')).not.toBeInTheDocument();
   });
 
-  it('keeps unrelated risk actions under an Other risks queue while a node is focused', () => {
+  it('keeps unrelated risk actions under an Other provider reviews queue while a node is focused', () => {
     const otherPosition = {
       ...mockPosition,
       nodeAddress: 'thor1othernode0000000000000000000000000000',
@@ -369,7 +369,7 @@ describe('RiskPage', () => {
 
     render(<RiskPage />);
 
-    const otherQueue = screen.getByLabelText('Other risks');
+    const otherQueue = screen.getByLabelText('Other provider reviews');
     expect(otherQueue).toHaveTextContent('1 open');
     expect(otherQueue).toHaveTextContent('is Standby');
     expect(otherQueue).not.toHaveTextContent('has elevated slash points');
@@ -392,17 +392,17 @@ describe('RiskPage', () => {
 
     const { container } = render(<RiskPage />);
 
-    expect(screen.getByLabelText('Node security diagnosis')).toBeInTheDocument();
+    expect(screen.getByLabelText('Provider risk diagnosis')).toBeInTheDocument();
     expect(screen.getByLabelText('Source confidence')).toHaveTextContent('THORNode');
     expect(screen.getByLabelText('Source confidence')).toHaveTextContent('Midgard');
     expect(screen.getByLabelText('Focused node risk context')).toBeInTheDocument();
 
     const orderedSections = Array.from(container.querySelectorAll('section[aria-label]'))
       .map((section) => section.getAttribute('aria-label'))
-      .filter((label) => label === 'Node security diagnosis' || label === 'Source confidence' || label === 'Focused node risk context');
+      .filter((label) => label === 'Provider risk diagnosis' || label === 'Source confidence' || label === 'Focused node risk context');
 
     expect(orderedSections).toEqual([
-      'Node security diagnosis',
+      'Provider risk diagnosis',
       'Source confidence',
       'Focused node risk context',
     ]);

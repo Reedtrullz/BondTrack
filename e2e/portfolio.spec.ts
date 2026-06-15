@@ -181,7 +181,10 @@ const mockPoolHistory = {
   ],
 };
 
-async function setupMocks(page: Page, options: { thornodeNodesStatus?: number } = {}) {
+async function setupMocks(page: Page, options: { nodeStatus?: string; thornodeNodesStatus?: number } = {}) {
+  const nodeStatus = options.nodeStatus ?? 'Active';
+  const routedNodes = mockNodes.map((node) => ({ ...node, status: nodeStatus }));
+
   await page.route('**/api/thorchain/**', async (route) => {
     const url = new URL(route.request().url());
 
@@ -191,7 +194,7 @@ async function setupMocks(page: Page, options: { thornodeNodesStatus?: number } 
         return;
       }
 
-      await route.fulfill({ json: mockNodes });
+      await route.fulfill({ json: routedNodes });
       return;
     }
 
@@ -256,7 +259,7 @@ async function setupMocks(page: Page, options: { thornodeNodesStatus?: number } 
         json: {
           address: MOCK_ADDRESS,
           totalBonded: '1250000000000',
-          nodes: [{ address: mockNodes[0].node_address, bond: '1250000000000', status: 'Active' }],
+          nodes: [{ address: mockNodes[0].node_address, bond: '1250000000000', status: nodeStatus }],
         },
       });
       return;
@@ -320,7 +323,7 @@ test.describe('Portfolio dashboard', () => {
     await expect(sourceHealth).not.toContainText('Midgard + THORNode confirmed');
     await expect(page.getByText('Live', { exact: true })).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Prepare BOND Memo' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Prepare UNBOND Memo' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Prepare UNBOND Memo' })).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'View Risk' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'View Rewards' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'View LP' })).toBeVisible();
@@ -396,6 +399,12 @@ test.describe('Portfolio dashboard', () => {
   });
 
   test('opens the transaction composer in UNBOND memo-prep mode', async ({ page }) => {
+    await page.unroute('**/api/thorchain/**');
+    await page.unroute('**/api/midgard/**');
+    await setupMocks(page, { nodeStatus: 'Standby' });
+    await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
+
+    await expect(page.getByRole('link', { name: 'Prepare UNBOND Memo' })).toBeVisible();
     await page.getByRole('link', { name: 'Prepare UNBOND Memo' }).click();
 
     await expect(page).toHaveURL(/\/dashboard\/transactions\?.*action=unbond/);

@@ -66,7 +66,7 @@ function node(overrides: Partial<NodeRaw>): NodeRaw {
 }
 
 describe('risk context helpers', () => {
-  it('scores and sorts nodes so urgent operator risk appears first', () => {
+  it('scores and sorts nodes so urgent provider review appears first', () => {
     const healthy = position({ nodeAddress: 'thor1healthy' });
     const churnRisk = position({
       nodeAddress: 'thor1churn',
@@ -217,16 +217,32 @@ describe('risk context helpers', () => {
 
     expect(summary).toMatchObject({
       activeCount: 4,
-      atRiskCount: 2,
-      criticalSlashCount: 1,
+      elevatedSlashReviewCount: 1,
+      highSlashReviewCount: 1,
       jailedCount: 1,
+      providerReviewCount: 2,
       slashNodeCount: 2,
       standbyCount: 1,
-      statusLabel: 'At Risk',
+      statusLabel: 'Action Needed',
       totalBonded: 15_000,
-      warningSlashCount: 1,
     });
     expect(summary.healthScore).toBeLessThan(50);
+  });
+
+  it('keeps high slash exposure at provider-review severity when nodes are otherwise active', () => {
+    const summary = summarizeRiskPositions([
+      position({
+        nodeAddress: 'thor1slashreview',
+        slashPoints: 240,
+        yieldGuardFlags: ['highest_slash'],
+      }),
+    ]);
+
+    expect(summary).toMatchObject({
+      highSlashReviewCount: 1,
+      providerReviewCount: 1,
+      statusLabel: 'Review Needed',
+    });
   });
 
   it('models incentive pendulum status and reward split from bond and liquidity totals', () => {

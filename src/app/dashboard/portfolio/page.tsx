@@ -21,6 +21,7 @@ import { useFeeRevenue } from '@/lib/hooks/use-fee-revenue';
 import { useApiHealthContext, type ApiHealthStatus } from '@/lib/hooks/use-api-health';
 import { buildDashboardInsightState, resolveThornodeGatedBondAction } from '@/lib/dashboard/insights';
 import { buildPortfolioPageModel } from '@/lib/dashboard/portfolio-context';
+import { canUnbondNode } from '@/lib/transactions/bond';
 import { formatUsd, runeToNumber } from '@/lib/utils/formatters';
 import { ActionQueue } from '@/components/dashboard/action-queue';
 import { InsightHeader } from '@/components/dashboard/insight-header';
@@ -188,7 +189,8 @@ export default function PortfolioPage() {
     href: buildTransactionHref(address, 'bond'),
   });
   const BondActionIcon = bondAction.kind === 'source-confidence' ? AlertTriangle : Plus;
-  const canOfferUnbondPrep = bondAction.kind === 'bond-ready' && bondPositions.length > 0;
+  const hasUnbondEligiblePosition = bondPositions.some((position) => canUnbondNode(position).canUnbond);
+  const canOfferUnbondPrep = bondAction.kind === 'bond-ready' && hasUnbondEligiblePosition;
 
   if (isLoading) {
     return (

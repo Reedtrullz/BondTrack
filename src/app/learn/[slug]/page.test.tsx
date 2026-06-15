@@ -22,7 +22,7 @@ describe('learn article renderer', () => {
     const params = Promise.resolve({ slug: 'health-score-guide' });
     render(await ArticlePage({ params }));
 
-    expect(screen.getByText(/Heimdall's Health Score/)).toBeInTheDocument();
+    expect(screen.getByText(/Heimdall's Provider Exposure score/)).toBeInTheDocument();
     expect(screen.queryByText(/BondTrack/)).not.toBeInTheDocument();
   });
 
@@ -39,7 +39,7 @@ describe('learn article renderer', () => {
     expect(relatedLink?.querySelector('button')).toBeNull();
   });
 
-  it('uses one article h1 and puts the operator decision before long-form sections', async () => {
+  it('uses one article h1 and puts the provider decision before long-form sections', async () => {
     const params = Promise.resolve({ slug: 'health-score-guide' });
     render(await ArticlePage({ params }));
 
