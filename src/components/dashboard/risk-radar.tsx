@@ -11,35 +11,63 @@ interface RiskRadarProps {
   positions: BondPosition[];
 }
 
+function isUsableRadarNumber(value: number): boolean {
+  return Number.isFinite(value) && value >= 0;
+}
+
+function normalizeRadarScore(value: number): { value: number; displayValue: string } {
+  if (!Number.isFinite(value)) {
+    return { value: 0, displayValue: '-- / 100' };
+  }
+
+  const normalized = Math.min(Math.max(value, 0), 100);
+  return { value: normalized, displayValue: `${normalized.toFixed(0)} / 100` };
+}
+
+function formatRadarRune(value: number): string {
+  return isUsableRadarNumber(value) ? formatRuneFromNumber(value) : '--';
+}
+
 export function RiskRadar({ positions }: RiskRadarProps) {
   const [selectedPositionIndex, setSelectedPositionIndex] = useState(0);
   const position = positions[selectedPositionIndex];
+  const uptimeScore = normalizeRadarScore(
+    isUsableRadarNumber(position.slashPoints) ? 100 - (position.slashPoints / 10) : Number.NaN
+  );
+  const bondShareScore = normalizeRadarScore(
+    isUsableRadarNumber(position.bondSharePercent) ? position.bondSharePercent * 10 : Number.NaN
+  );
+  const yieldScore = normalizeRadarScore(
+    isUsableRadarNumber(position.netAPY) ? position.netAPY * 5 : Number.NaN
+  );
 
   // Normalize metrics for radar chart (0-100)
   const data = [
     {
       subject: 'Uptime',
-      value: Math.max(0, 100 - (position.slashPoints / 10)), // Heuristic: 1000 pts = 0% uptime, clamped at 0
+      ...uptimeScore,
       fullMark: 100,
     },
     {
       subject: 'Security',
       value: position.isJailed ? 0 : 100,
+      displayValue: `${position.isJailed ? 0 : 100} / 100`,
       fullMark: 100,
     },
     {
       subject: 'Bond Share',
-      value: Math.min(position.bondSharePercent * 10, 100), // Scale share to 0-100
+      ...bondShareScore,
       fullMark: 100,
     },
     {
       subject: 'Yield',
-      value: Math.min(position.netAPY * 5, 100), // Scale APY to 0-100
+      ...yieldScore,
       fullMark: 100,
     },
     {
       subject: 'Version',
       value: position.version ? 100 : 50,
+      displayValue: `${position.version ? 100 : 50} / 100`,
       fullMark: 100,
     },
   ];
@@ -60,7 +88,7 @@ export function RiskRadar({ positions }: RiskRadarProps) {
           >
             {positions.map((pos, idx) => (
               <option key={pos.nodeAddress} value={idx}>
-                {pos.nodeAddress.slice(0, 8)}...{pos.nodeAddress.slice(-4)} — {formatRuneFromNumber(pos.bondAmount)} ({pos.status})
+                {pos.nodeAddress.slice(0, 8)}...{pos.nodeAddress.slice(-4)} — {formatRadarRune(pos.bondAmount)} ({pos.status})
               </option>
             ))}
           </select>
@@ -90,7 +118,7 @@ export function RiskRadar({ positions }: RiskRadarProps) {
       <ChartDataTable
         caption={`Risk radar metrics for ${position.nodeAddress}`}
         columns={['Metric', 'Score']}
-        rows={data.map((point) => [point.subject, `${point.value.toFixed(0)} / ${point.fullMark}`])}
+        rows={data.map((point) => [point.subject, point.displayValue])}
       />
       
       <div className="absolute bottom-2 left-0 right-0 text-center">

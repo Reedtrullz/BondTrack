@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { NetworkComparisonTable } from './network-comparison-table';
 import type { NodeRaw } from '@/lib/api/thornode';
@@ -92,13 +92,47 @@ vi.mock('@/lib/hooks/use-bond-positions', () => ({
 }));
 
 describe('NetworkComparisonTable', () => {
+  beforeEach(() => {
+    allNodesMock[0].total_bond = '100000000000';
+    allNodesMock[1].total_bond = '80000000000';
+    positionsMock[0].totalBond = 1000;
+    positionsMock[0].bondAmount = 100;
+  });
+
   it('compares node total bond against network average and keeps user bond as context', () => {
     render(<NetworkComparisonTable address="thor1bondprovider" />);
 
-    expect(screen.getByText('Node Total Bond')).toBeInTheDocument();
-    expect(screen.getByText('1,000.00 RUNE')).toBeInTheDocument();
-    expect(screen.getByText('Your bond: 100.00 RUNE')).toBeInTheDocument();
-    expect(screen.getByText('900.00 RUNE')).toBeInTheDocument();
-    expect(screen.getByText('100.00 RUNE (+11.1%)')).toBeInTheDocument();
+    const desktopTable = screen.getByRole('table');
+    expect(within(desktopTable).getByText('Node Total Bond')).toBeInTheDocument();
+    expect(within(desktopTable).getByText('1,000.00 RUNE')).toBeInTheDocument();
+    expect(within(desktopTable).getByText('Your bond: 100.00 RUNE')).toBeInTheDocument();
+    expect(within(desktopTable).getByText('900.00 RUNE')).toBeInTheDocument();
+    expect(within(desktopTable).getByText('100.00 RUNE (+11.1%)')).toBeInTheDocument();
+  });
+
+  it('renders a compact mobile summary with the same comparison facts', () => {
+    render(<NetworkComparisonTable address="thor1bondprovider" />);
+
+    const mobileSummary = screen.getByLabelText('Mobile network comparison summary');
+    expect(within(mobileSummary).getByText('Node total bond')).toBeInTheDocument();
+    expect(within(mobileSummary).getByText('Network average')).toBeInTheDocument();
+    expect(within(mobileSummary).getByText('Difference')).toBeInTheDocument();
+    expect(within(mobileSummary).getByText('1,000.00 RUNE')).toBeInTheDocument();
+    expect(within(mobileSummary).getByText('Your bond: 100.00 RUNE')).toBeInTheDocument();
+    expect(within(mobileSummary).getByText('900.00 RUNE')).toBeInTheDocument();
+    expect(within(mobileSummary).getByText('100.00 RUNE (+11.1%)')).toBeInTheDocument();
+  });
+
+  it('withholds percentage comparison when active network bond averages are unavailable', () => {
+    allNodesMock[0].total_bond = '0';
+    allNodesMock[1].total_bond = '0';
+
+    render(<NetworkComparisonTable address="thor1bondprovider" />);
+
+    const desktopTable = screen.getByRole('table');
+    expect(within(desktopTable).getByText('Network Avg')).toBeInTheDocument();
+    expect(within(desktopTable).getByText('--')).toBeInTheDocument();
+    expect(within(desktopTable).getByText('Comparison unavailable')).toBeInTheDocument();
+    expect(screen.queryByText(/Infinity|NaN|\+0\.0%/)).not.toBeInTheDocument();
   });
 });

@@ -181,11 +181,16 @@ const mockPoolHistory = {
   ],
 };
 
-async function setupMocks(page: Page) {
+async function setupMocks(page: Page, options: { thornodeNodesStatus?: number } = {}) {
   await page.route('**/api/thorchain/**', async (route) => {
     const url = new URL(route.request().url());
 
     if (url.pathname === '/api/thorchain/thorchain/nodes') {
+      if (options.thornodeNodesStatus && options.thornodeNodesStatus >= 400) {
+        await route.fulfill({ status: options.thornodeNodesStatus, json: { error: 'THORNode nodes unavailable' } });
+        return;
+      }
+
       await route.fulfill({ json: mockNodes });
       return;
     }
@@ -193,7 +198,7 @@ async function setupMocks(page: Page) {
     if (url.pathname === '/api/thorchain/thorchain/constants') {
       await route.fulfill({
         json: {
-          int_64_values: { OptimalBondD: 2500000000000 },
+          int_64_values: { MaxBondProviders: 100 },
           bool_values: {},
           string_values: {},
         },
@@ -201,7 +206,7 @@ async function setupMocks(page: Page) {
       return;
     }
 
-    if (url.pathname.includes('/api/thorchain/thorchain/pool/') && url.pathname.includes('/liquidity_provider/')) {
+    if (/^\/api\/thorchain\/thorchain\/pool\/[^/]+\/liquidity_provider\/[^/]+$/.test(url.pathname)) {
       await route.fulfill({
         json: {
           rune_address: MOCK_ADDRESS,
@@ -293,23 +298,100 @@ test.describe('Portfolio dashboard', () => {
   });
 
   test('renders portfolio summary, allocation chart, and quick actions', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /Portfolio/ })).toBeVisible();
-    // The portfolio summary card uses "Total Bonded"
-    await expect(page.getByText('Total Bonded').first()).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Portfolio', exact: true })).toBeVisible();
+    const totalBondedSummary = page.getByRole('group', { name: 'Total Bonded summary' });
 
-    // Check that a USD value is displayed (should contain '$')
-    // Look for any element containing '$' near the Total Bonded card
-    await expect(page.getByText(/\$[0-9,]+/).first()).toBeVisible({ timeout: 10000 });
+    await expect(totalBondedSummary).toBeVisible();
+    await expect(totalBondedSummary).toContainText('Total Bonded');
+    await expect(totalBondedSummary).toContainText(/\u16B1[0-9,.]+/);
+    await expect(totalBondedSummary).toContainText(/\$[0-9,.]+ USD/);
 
     await expect(page.getByText('Asset Allocation', { exact: true })).toBeVisible();
     await expect(page.getByText('Quick Actions')).toBeVisible();
+    const sourceHealth = page.getByRole('group', { name: 'Portfolio source health' });
+    await expect(sourceHealth).toContainText('Sources responding');
+    await expect(sourceHealth).toContainText('Recent Midgard + THORNode checks succeeded');
+    await expect(sourceHealth).not.toContainText('Sources healthy');
+    await expect(sourceHealth).not.toContainText('Midgard + THORNode confirmed');
+    await expect(page.getByText('Live', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Prepare BOND Memo' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Prepare UNBOND Memo' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'View Risk' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'View Rewards' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'View LP' })).toBeVisible();
   });
 
-  test('opens the transaction composer in unbond quick-action mode', async ({ page }) => {
-    await page.getByRole('link', { name: 'Unbond' }).click();
+  test('routes header BOND prep to source confidence when THORNode /nodes is unavailable', async ({ page, allowApiErrors }) => {
+    allowApiErrors(['/api/thorchain/thorchain/nodes']);
+    await page.unroute('**/api/thorchain/**');
+    await page.unroute('**/api/midgard/**');
+    await setupMocks(page, { thornodeNodesStatus: 502 });
+    await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
+
+    const transactionActions = page.getByRole('group', { name: 'Portfolio transaction actions' });
+    const sourceHealth = page.getByRole('group', { name: 'Portfolio source health' });
+
+    await expect(sourceHealth).toContainText('Sources degraded');
+    await expect(transactionActions.getByRole('link', { name: 'Review source confidence' })).toHaveAttribute(
+      'href',
+      `/dashboard?address=${MOCK_ADDRESS}#source-confidence`
+    );
+    await expect(transactionActions.getByRole('link', { name: 'Prepare BOND Memo' })).toHaveCount(0);
+    await expect(transactionActions.getByRole('link', { name: 'Prepare UNBOND Memo' })).toHaveCount(0);
+  });
+
+  test('shows an inline bond CSV export failure without opening a browser dialog', async ({ page }) => {
+    const dialogs: string[] = [];
+    page.on('dialog', async (dialog) => {
+      dialogs.push(dialog.message());
+      await dialog.dismiss();
+    });
+    await page.evaluate(() => {
+      URL.createObjectURL = () => {
+        throw new Error('blob unavailable');
+      };
+    });
+
+    await page.getByRole('button', { name: 'Export CSV' }).click();
+
+    const exportAlert = page.locator('[role="alert"]').filter({ hasText: 'Bond CSV export failed' });
+    await expect(exportAlert).toContainText('No file was downloaded');
+    await expect(page.getByRole('button', { name: 'Export CSV' })).toBeEnabled();
+    expect(dialogs).toEqual([]);
+  });
+
+  test('keeps bond position labels clear on desktop and mobile', async ({ page }) => {
+    const heading = page.getByRole('heading', { name: 'Bonded Positions', exact: true });
+    await expect(heading).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Bonded PositionsBonded Positions', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Explain Bonded Positions', exact: true })).toHaveCount(1);
+
+    const duplicatedLabels = await page.evaluate(() => {
+      const bodyText = document.body.textContent?.replace(/\s+/g, '') ?? '';
+      return ['BondedPositionsBondedPositions', 'ShareBondShare', 'Est.APYEstimatedAPY'].filter((text) =>
+        bodyText.includes(text)
+      );
+    });
+    expect(duplicatedLabels).toEqual([]);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await heading.scrollIntoViewIfNeeded();
+
+    const overflowingMobileMetrics = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.md\\:hidden *'))
+        .filter((element): element is HTMLElement => element instanceof HTMLElement)
+        .filter(
+          (element) =>
+            element.scrollWidth > element.clientWidth + 2 &&
+            getComputedStyle(element).overflowX === 'visible'
+        )
+        .map((element) => element.textContent?.replace(/\s+/g, ' ').trim() ?? '')
+    );
+    expect(overflowingMobileMetrics).toEqual([]);
+  });
+
+  test('opens the transaction composer in UNBOND memo-prep mode', async ({ page }) => {
+    await page.getByRole('link', { name: 'Prepare UNBOND Memo' }).click();
 
     await expect(page).toHaveURL(/\/dashboard\/transactions\?.*action=unbond/);
     await expect(page.getByText('Unbond mode')).toBeVisible();

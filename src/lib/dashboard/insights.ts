@@ -4,7 +4,7 @@ import type { BondPosition } from '@/lib/types/node';
 import type { LpPosition } from '@/lib/types/lp';
 import { NETWORK } from '@/lib/config';
 import { calculatePortfolioHealth } from '@/lib/utils/health-score';
-import { formatPercent, formatRuneFromNumber, formatUsd, runeToNumber } from '@/lib/utils/formatters';
+import { formatCompactNumber, formatPercent, formatRuneFromNumber, formatUsd, runeToNumber } from '@/lib/utils/formatters';
 
 export type InsightSeverity = 'healthy' | 'info' | 'warning' | 'critical';
 
@@ -46,7 +46,7 @@ export interface InsightHeaderMetric {
 
 export interface DashboardInsightState {
   severity: InsightSeverity;
-  statusLabel: 'Healthy' | 'Needs Attention' | 'At Risk';
+  statusLabel: 'Healthy' | 'No Bond' | 'Needs Attention' | 'At Risk';
   diagnosis: string;
   topRisk: string;
   primaryAction: {
@@ -68,6 +68,7 @@ interface BuildDashboardInsightStateInput {
   runePrice?: number | null;
   runePriceUpdatedAt?: Date | null;
   runePriceIsStale?: boolean;
+  includeRunePriceSource?: boolean;
   recentTransactionCount?: number;
   now?: Date;
 }
@@ -82,13 +83,34 @@ const SEVERITY_ORDER: Record<InsightSeverity, number> = {
 const SOURCE_STATUS_DETAIL: Record<ApiHealthStatus, { status: SourceStatus; detail: string }> = {
   healthy: { status: 'fresh', detail: 'Latest probe succeeded.' },
   degraded: { status: 'degraded', detail: 'Recent probe failed; using last successful data where available.' },
-  down: { status: 'degraded', detail: 'Multiple probes failed. Treat live readings as unreliable.' },
+  down: { status: 'degraded', detail: 'Multiple probes failed. Treat current readings as unreliable.' },
   unknown: { status: 'unknown', detail: 'Health probe has not completed yet.' },
 };
+const DEFAULT_RUNE_PRICE_STALE_AFTER_MS = 36 * 60 * 60 * 1000;
 
-function buildHref(path: string, address: string | null): string {
-  if (!address) return path;
-  return `${path}?address=${encodeURIComponent(address)}`;
+function buildHref(path: string, address: string | null, params: Record<string, string | null | undefined> = {}): string {
+  const searchParams = new URLSearchParams();
+  if (address) searchParams.set('address', address);
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) searchParams.set(key, value);
+  });
+
+  const query = searchParams.toString();
+  return query ? `${path}?${query}` : path;
+}
+
+function buildHrefWithHash(
+  path: string,
+  address: string | null,
+  params: Record<string, string | null | undefined>,
+  hash: string
+): string {
+  return `${buildHref(path, address, params)}#${hash}`;
+}
+
+function formatCompactRuneFromNumber(value: number): string {
+  return `ᚱ${formatCompactNumber(value)}`;
 }
 
 function actionDedupeKey(action: ActionItem): string {
@@ -118,6 +140,38 @@ export function dedupeActionItems(items: ActionItem[]): ActionItem[] {
   });
 }
 
+export function getThornodeSourceAction(items: ActionItem[]): ActionItem | undefined {
+  return items.find((item) => item.id.startsWith('source:thornode:'));
+}
+
+export interface ThornodeGatedBondAction {
+  kind: 'bond-ready' | 'source-confidence';
+  label: string;
+  href: string;
+  sourceAction?: ActionItem;
+}
+
+export function resolveThornodeGatedBondAction(
+  items: ActionItem[],
+  fallback: { label: string; href: string }
+): ThornodeGatedBondAction {
+  const sourceAction = getThornodeSourceAction(items);
+
+  if (sourceAction) {
+    return {
+      kind: 'source-confidence',
+      label: sourceAction.primaryAction ?? 'Review source confidence',
+      href: sourceAction.href,
+      sourceAction,
+    };
+  }
+
+  return {
+    kind: 'bond-ready',
+    ...fallback,
+  };
+}
+
 export function formatFreshnessAge(lastSuccess: Date | null, now: Date = new Date()): string {
   if (!lastSuccess) return 'No successful check yet';
 
@@ -142,17 +196,32 @@ export function getMostSevere(items: Array<{ severity: InsightSeverity }>): Insi
 
 export function buildSourceFreshness(
   apiHealth: ApiHealthState,
-  options: { runePriceUpdatedAt?: Date | null; runePriceIsStale?: boolean } = {}
+  options: {
+    runePriceUpdatedAt?: Date | null;
+    runePriceIsStale?: boolean;
+    includeRunePriceSource?: boolean;
+    runePriceStaleAfterMs?: number;
+    now?: Date;
+  } = {}
 ): SourceFreshness[] {
   const thornode = SOURCE_STATUS_DETAIL[apiHealth.thornode];
   const midgard = SOURCE_STATUS_DETAIL[apiHealth.midgard];
-  const runePriceStatus: SourceStatus = options.runePriceIsStale
+  const includeRunePriceSource = options.includeRunePriceSource ?? true;
+  const runePriceUpdatedAt = options.runePriceUpdatedAt ?? null;
+  const runePriceAgeMs = runePriceUpdatedAt
+    ? Math.max(0, (options.now ?? new Date()).getTime() - runePriceUpdatedAt.getTime())
+    : null;
+  const runePriceIsAgeStale = runePriceAgeMs !== null && runePriceAgeMs > (
+    options.runePriceStaleAfterMs ?? DEFAULT_RUNE_PRICE_STALE_AFTER_MS
+  );
+  const runePriceIsStale = Boolean(options.runePriceIsStale || runePriceIsAgeStale);
+  const runePriceStatus: SourceStatus = runePriceIsStale
     ? 'stale'
-    : options.runePriceUpdatedAt
+    : runePriceUpdatedAt
       ? 'fresh'
       : 'unknown';
 
-  return [
+  const sources: SourceFreshness[] = [
     {
       source: 'THORNode',
       status: thornode.status,
@@ -165,20 +234,27 @@ export function buildSourceFreshness(
       lastSuccess: apiHealth.lastSuccessful.midgard,
       detail: midgard.detail,
     },
-    {
+  ];
+
+  if (includeRunePriceSource) {
+    sources.push({
       source: 'RUNE price',
       status: runePriceStatus,
-      lastSuccess: options.runePriceUpdatedAt ?? null,
-      detail: options.runePriceIsStale
+      lastSuccess: runePriceUpdatedAt,
+      detail: runePriceIsStale
         ? 'Price feed is stale; USD values use the last successful quote.'
-        : 'Price quote available for USD conversions.',
-    },
-  ];
+        : runePriceUpdatedAt
+          ? 'Price quote available for USD conversions.'
+          : 'No RUNE price quote has loaded yet; USD values are unavailable.',
+    });
+  }
+
+  return sources;
 }
 
 function buildNodeActions(address: string | null, positions: BondPosition[], now: Date): ActionItem[] {
   return positions.flatMap((position) => {
-    const href = buildHref('/dashboard/risk', address);
+    const href = buildHref('/dashboard/risk', address, { node: position.nodeAddress });
     const nodeLabel = `${position.nodeAddress.slice(0, 8)}...${position.nodeAddress.slice(-4)}`;
     const actions: ActionItem[] = [];
 
@@ -218,7 +294,7 @@ function buildNodeActions(address: string | null, positions: BondPosition[], now
         impact: 'The node should be watched before the next churn and before adding more bond.',
         href,
         lastSeen: now,
-        primaryAction: 'Check node trend',
+        primaryAction: 'Review slash monitor',
       });
     }
 
@@ -239,12 +315,12 @@ function buildNodeActions(address: string | null, positions: BondPosition[], now
     if (position.status !== 'Active') {
       actions.push({
         id: `status:${position.nodeAddress}:${position.status}`,
-        severity: position.status === 'Disabled' ? 'critical' : 'info',
+        severity: position.status === 'Disabled' ? 'critical' : 'warning',
         source: 'Status',
         title: `${nodeLabel} is ${position.status}`,
         detail: 'This position is not in active validator status.',
         impact: 'Non-active nodes may not earn active-set rewards.',
-        href: buildHref('/dashboard/nodes', address),
+        href,
         lastSeen: now,
         primaryAction: 'Inspect node',
       });
@@ -255,22 +331,39 @@ function buildNodeActions(address: string | null, positions: BondPosition[], now
 }
 
 function buildSourceActions(address: string | null, sources: SourceFreshness[], now: Date): ActionItem[] {
+  const sourceConfidenceHref = buildHrefWithHash('/dashboard', address, {}, 'source-confidence');
+
   return sources.flatMap((source) => {
     if (source.status === 'fresh') return [];
 
-    const severity: InsightSeverity = source.status === 'degraded' ? 'warning' : source.status === 'stale' ? 'warning' : 'info';
     return [{
       id: `source:${source.source.toLowerCase().replace(/\s+/g, '-')}:${source.status}`,
-      severity,
-      source: 'Data source',
+      severity: 'warning',
+      source: source.source,
       title: `${source.source} is ${source.status}`,
       detail: source.detail ?? 'Source confidence is not fully fresh.',
-      impact: 'Treat derived metrics as advisory until the source recovers.',
-      href: buildHref('/dashboard/settings/notifications', address),
+      impact: getSourceActionImpact(source),
+      href: sourceConfidenceHref,
       lastSeen: now,
-      primaryAction: 'View source health',
+      primaryAction: 'Review source confidence',
     }];
   });
+}
+
+function getSourceActionImpact(source: SourceFreshness): string {
+  if (source.source === 'THORNode') {
+    return 'Do not treat node status, slash points, or churn rank as final until THORNode recovers.';
+  }
+
+  if (source.source === 'Midgard') {
+    return 'Do not use reward history, LP performance, or transaction history for final decisions until Midgard recovers.';
+  }
+
+  if (source.source === 'RUNE price') {
+    return 'RUNE amounts remain usable; do not use USD totals or P/L until the quote refreshes.';
+  }
+
+  return 'Treat derived metrics as advisory until this source recovers.';
 }
 
 function buildLpActions(address: string | null, positions: LpPosition[], now: Date): ActionItem[] {
@@ -281,7 +374,7 @@ function buildLpActions(address: string | null, positions: LpPosition[], now: Da
   if (currentOnlyCount > 0) {
     actions.push({
       id: 'lp:current-only-pricing',
-      severity: 'info',
+      severity: 'warning',
       source: 'LP',
       title: `${currentOnlyCount} LP position${currentOnlyCount === 1 ? '' : 's'} missing entry pricing`,
       detail: 'Current value is available, but P/L and impermanent-loss totals are hidden.',
@@ -295,7 +388,7 @@ function buildLpActions(address: string | null, positions: LpPosition[], now: Da
   if (estimatedCount > 0) {
     actions.push({
       id: 'lp:estimated-pricing',
-      severity: 'info',
+      severity: 'warning',
       source: 'LP',
       title: `${estimatedCount} LP position${estimatedCount === 1 ? '' : 's'} use estimated entry pricing`,
       detail: 'Estimated LP P/L is shown per pool and excluded from trusted aggregate totals.',
@@ -316,8 +409,11 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
   const sources = buildSourceFreshness(input.apiHealth, {
     runePriceUpdatedAt: input.runePriceUpdatedAt,
     runePriceIsStale: input.runePriceIsStale,
+    includeRunePriceSource: input.includeRunePriceSource,
+    now,
   });
   const totalBonded = positions.reduce((sum, position) => sum + position.bondAmount, 0);
+  const hasBondPositions = positions.length > 0;
   const totalLpValueUsd = lpPositions.reduce((sum, position) => sum + position.currentTotalValueUsd, 0);
   const activeNodes = positions.filter((position) => position.status === 'Active').length;
   const jailedNodes = positions.filter((position) => position.isJailed).length;
@@ -331,39 +427,56 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
     ...buildLpActions(input.address, lpPositions, now),
   ]));
   const mostSevereAction = actions[0];
+  const noBondAction = resolveThornodeGatedBondAction(actions, {
+    label: 'Open Bond Composer',
+    href: buildHref('/dashboard/transactions', input.address),
+  });
+  const noBondPrimaryAction = { label: noBondAction.label, href: noBondAction.href };
   const sourceSeverity = sources.some((source) => source.status === 'degraded' || source.status === 'stale')
     ? 'warning'
     : sources.some((source) => source.status === 'unknown')
       ? 'info'
       : 'healthy';
   const severity = getMostSevere([
-    { severity: health.isCritical ? 'critical' : health.score < NETWORK.HEALTH_SCORE_THRESHOLDS.healthy ? 'warning' : 'healthy' },
+    { severity: !hasBondPositions ? 'info' : health.isCritical ? 'critical' : health.score < NETWORK.HEALTH_SCORE_THRESHOLDS.healthy ? 'warning' : 'healthy' },
     { severity: mostSevereAction?.severity ?? 'healthy' },
     { severity: sourceSeverity },
   ]);
-  const statusLabel = severity === 'critical'
-    ? 'At Risk'
-    : severity === 'warning'
-      ? 'Needs Attention'
-      : 'Healthy';
+  const statusLabel = !hasBondPositions
+    ? 'No Bond'
+    : severity === 'critical'
+      ? 'At Risk'
+      : severity === 'warning'
+        ? 'Needs Attention'
+        : 'Healthy';
+  const noBondDiagnosis = noBondAction.kind === 'source-confidence'
+    ? 'No active bond-provider position was found for this address. Confirm the address, then wait for fresh THORNode source confidence before preparing a BOND transaction.'
+    : 'No active bond-provider position was found for this address. Start by confirming the address or preparing a BOND transaction.';
   const diagnosis = positions.length === 0
-    ? 'No active bond-provider position was found for this address. Start by confirming the address or preparing a BOND transaction.'
+    ? noBondDiagnosis
     : statusLabel === 'Healthy'
-      ? 'No urgent node, source, or LP confidence issues are visible in the current live data.'
+      ? 'Current source responses show no urgent node, source, or LP confidence issues.'
       : mostSevereAction?.detail ?? health.reason;
   const topRisk = mostSevereAction
-    ? mostSevereAction.title
+    ? positions.length === 0
+      ? 'No bonded positions detected'
+      : mostSevereAction.title
     : positions.length === 0
       ? 'No bonded positions detected'
       : 'No urgent risk detected';
   const primaryAction = mostSevereAction
-    ? { label: mostSevereAction.primaryAction ?? 'Inspect issue', href: mostSevereAction.href }
+    ? positions.length === 0
+      ? noBondPrimaryAction
+      : { label: mostSevereAction.primaryAction ?? 'Inspect issue', href: mostSevereAction.href }
     : positions.length === 0
-      ? { label: 'Open Bond Composer', href: buildHref('/dashboard/transactions', input.address) }
+      ? noBondPrimaryAction
       : { label: 'Review Risk', href: buildHref('/dashboard/risk', input.address) };
   const healthMetricDetail = severity === 'healthy'
     ? health.reason
-    : mostSevereAction?.title ?? health.reason;
+    : !hasBondPositions
+      ? 'No bonded positions to score'
+      : mostSevereAction?.title ?? health.reason;
+  const healthMetricValue = hasBondPositions ? `${health.score}/100` : '--';
 
   return {
     severity,
@@ -372,14 +485,14 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
     topRisk,
     primaryAction,
     headerMetrics: [
-      { label: 'Health score', value: `${health.score}/100`, detail: healthMetricDetail },
+      { label: 'Health score', value: healthMetricValue, detail: healthMetricDetail },
       { label: 'Bonded', value: formatRuneFromNumber(totalBonded), detail: `${positions.length} node${positions.length === 1 ? '' : 's'}` },
       { label: 'Net APY', value: weightedApy > 0 ? formatPercent(weightedApy, 2) : '--', detail: 'Weighted by bond' },
     ],
     actions,
     sources,
     metrics: [
-      { id: 'total-bond', label: 'Total bond', value: formatRuneFromNumber(totalBonded), detail: input.runePrice ? formatUsd(totalBonded * input.runePrice) : undefined },
+      { id: 'total-bond', label: 'Total bond', value: formatCompactRuneFromNumber(totalBonded), detail: input.runePrice ? formatUsd(totalBonded * input.runePrice) : undefined },
       { id: 'active-nodes', label: 'Active nodes', value: String(activeNodes), detail: `${positions.length} tracked` },
       { id: 'jailed-nodes', label: 'Jailed nodes', value: String(jailedNodes), severity: jailedNodes > 0 ? 'critical' : 'healthy', detail: jailedNodes > 0 ? 'Action needed' : 'None' },
       { id: 'rewards', label: 'Reward rate', value: weightedApy > 0 ? `${weightedApy.toFixed(2)}%` : '--', detail: 'Net weighted APY' },
@@ -394,7 +507,7 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
         id: 'network-bond',
         label: 'Network bond',
         value: input.network?.bondMetrics
-          ? formatRuneFromNumber(runeToNumber(input.network.bondMetrics.totalActiveBond) + runeToNumber(input.network.bondMetrics.totalStandbyBond))
+          ? formatCompactRuneFromNumber(runeToNumber(input.network.bondMetrics.totalActiveBond) + runeToNumber(input.network.bondMetrics.totalStandbyBond))
           : '--',
         detail: 'Active + standby',
       },

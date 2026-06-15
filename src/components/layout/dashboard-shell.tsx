@@ -16,18 +16,38 @@ import { useWalletContext } from '@/lib/hooks/use-wallet';
 import { ChurnCountdown } from '@/components/dashboard/churn-countdown';
 import { formatRuneFromNumber } from '@/lib/utils/formatters';
 import { getTHORNameReverseLookupNoRetry as getTHORNameReverseLookup } from '@/lib/api/midgard';
-import { getThorNameReverseLookupStorageKey } from '@/lib/storage/keys';
+import { readThorNameReverseLookupCache, writeThorNameReverseLookupCache } from '@/lib/storage/keys';
 
-const SWR_KEYS = [
+const DASHBOARD_SWR_KEY_PREFIXES = new Set([
   'nodes',
   'earnings-history',
+  'historical-earnings',
   'rune-price',
+  'rune-price-history',
+  'historical-rune-price',
   'network-constants',
   'network-metrics',
   'health',
   'current-block-height',
   'churn-countdown',
-];
+  'bond-details',
+  'actions-bond-v2',
+  'lp-current',
+  'lp-historical',
+  'transaction-history',
+  'pools',
+  'fee-revenue',
+  'changelogs',
+  'protocol-version',
+  'wallet-balance',
+  'yield-benchmarks',
+  'thorname',
+]);
+
+export function shouldRefreshDashboardSWRKey(key: unknown): boolean {
+  const keyPrefix = Array.isArray(key) ? key[0] : key;
+  return typeof keyPrefix === 'string' && DASHBOARD_SWR_KEY_PREFIXES.has(keyPrefix);
+}
 
 function formatElapsed(ms: number): string {
   const seconds = Math.max(0, Math.floor(ms / 1000));
@@ -42,33 +62,85 @@ function formatSourceAge(source: 'Midgard' | 'THORNode', checkedAt: Date | null,
   return checkedAt ? `${source} ${formatElapsed(now - checkedAt.getTime())}` : `${source} pending`;
 }
 
-function getCompactFreshnessLabel(freshnessLabel: string): string {
-  if (freshnessLabel.includes('degraded') || freshnessLabel.includes('unknown')) {
+function getSourceStatusLabel(
+  source: 'Midgard' | 'THORNode',
+  status: ApiHealthState['midgard'],
+  checkedAt: Date | null,
+  now: number
+): string {
+  if (status === 'healthy') {
+    return formatSourceAge(source, checkedAt, now);
+  }
+
+  if (status === 'unknown') {
+    return checkedAt ? `${source} unknown · last good ${formatElapsed(now - checkedAt.getTime())}` : `${source} pending`;
+  }
+
+  return checkedAt
+    ? `${source} ${status} · last good ${formatElapsed(now - checkedAt.getTime())}`
+    : `${source} ${status}`;
+}
+
+function getSourceFreshnessTone(
+  midgard: ApiHealthState['midgard'],
+  thornode: ApiHealthState['thornode'],
+  lastChecked: Date | null
+): 'healthy' | 'checking' | 'degraded' | 'down' {
+  if (midgard === 'down' || thornode === 'down') {
+    return 'down';
+  }
+
+  if (midgard === 'degraded' || thornode === 'degraded') {
+    return 'degraded';
+  }
+
+  if (midgard === 'unknown' || thornode === 'unknown') {
+    return lastChecked ? 'degraded' : 'checking';
+  }
+
+  return 'healthy';
+}
+
+function getCompactFreshnessLabel(tone: ReturnType<typeof getSourceFreshnessTone>): string {
+  if (tone === 'down') {
+    return 'Sources down';
+  }
+
+  if (tone === 'degraded') {
     return 'Sources degraded';
   }
-  if (freshnessLabel.includes('pending')) {
+
+  if (tone === 'checking') {
     return 'Checking sources';
   }
+
   return 'Sources synced';
+}
+
+function getSourceIconClass(tone: ReturnType<typeof getSourceFreshnessTone>): string {
+  if (tone === 'healthy') return 'text-emerald-500';
+  if (tone === 'down') return 'text-red-500';
+  if (tone === 'checking') return 'text-blue-500';
+  return 'text-yellow-500';
 }
 
 export function getSourceFreshnessLabel(
   lastSuccessful: ApiHealthState['lastSuccessful'],
   lastChecked: Date | null,
-  now: number | null
+  now: number | null,
+  status: Pick<ApiHealthState, 'midgard' | 'thornode'> = {
+    midgard: lastSuccessful.midgard ? 'healthy' : 'unknown',
+    thornode: lastSuccessful.thornode ? 'healthy' : 'unknown',
+  }
 ): string {
   if (now === null) {
     return lastChecked ? 'Source health degraded or unknown' : 'Checking source health';
   }
 
-  if (lastSuccessful.midgard || lastSuccessful.thornode) {
-    return [
-      formatSourceAge('Midgard', lastSuccessful.midgard, now),
-      formatSourceAge('THORNode', lastSuccessful.thornode, now),
-    ].join(' · ');
-  }
-
-  return lastChecked ? 'Source health degraded or unknown' : 'Checking source health';
+  return [
+    getSourceStatusLabel('Midgard', status.midgard, lastSuccessful.midgard, now),
+    getSourceStatusLabel('THORNode', status.thornode, lastSuccessful.thornode, now),
+  ].join(' · ');
 }
 
 function truncateAddress(addr: string): string {
@@ -79,9 +151,15 @@ function truncateAddress(addr: string): string {
 export function DashboardShell({
   children,
   requireAddress = true,
+  alertReviewPanel,
+  alertReviewTrigger,
+  notificationNudge,
 }: {
   children: React.ReactNode;
   requireAddress?: boolean;
+  alertReviewPanel?: React.ReactNode;
+  alertReviewTrigger?: React.ReactNode;
+  notificationNudge?: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const searchParams = useSearchParams();
@@ -94,7 +172,9 @@ export function DashboardShell({
 
   const hasAddress = requireAddress ? !!address : true;
 
-  const freshnessLabel = getSourceFreshnessLabel(lastSuccessful, lastChecked, now);
+  const freshnessLabel = getSourceFreshnessLabel(lastSuccessful, lastChecked, now, { midgard, thornode });
+  const sourceFreshnessTone = getSourceFreshnessTone(midgard, thornode, lastChecked);
+  const sourceIconClass = getSourceIconClass(sourceFreshnessTone);
 
   useEffect(() => {
     setNow(Date.now());
@@ -103,7 +183,7 @@ export function DashboardShell({
   }, []);
 
   const handleRefresh = useCallback(() => {
-    SWR_KEYS.forEach((key) => mutate(key));
+    void mutate(shouldRefreshDashboardSWRKey, undefined, { revalidate: true });
     setNow(Date.now());
   }, []);
 
@@ -115,15 +195,13 @@ export function DashboardShell({
 
     let cancelled = false;
 
-    if (typeof window !== 'undefined') {
-      const cachedThorName = sessionStorage.getItem(getThorNameReverseLookupStorageKey(address));
+    const cachedThorName = readThorNameReverseLookupCache(address);
 
-      if (cachedThorName) {
-        setThorName(cachedThorName === '__none__' ? null : cachedThorName);
-        return () => {
-          cancelled = true;
-        };
-      }
+    if (cachedThorName) {
+      setThorName(cachedThorName === '__none__' ? null : cachedThorName);
+      return () => {
+        cancelled = true;
+      };
     }
 
     getTHORNameReverseLookup(address)
@@ -136,23 +214,12 @@ export function DashboardShell({
 
         setThorName(resolvedThorName);
 
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem(
-            getThorNameReverseLookupStorageKey(address),
-            resolvedThorName ?? '__none__'
-          );
-        }
+        writeThorNameReverseLookupCache(address, resolvedThorName ?? '__none__');
       })
       .catch(() => {
         if (!cancelled) {
           setThorName(null);
-          // Cache the absence to avoid repeated retries on failure
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem(
-              getThorNameReverseLookupStorageKey(address),
-              '__none__'
-            );
-          }
+          writeThorNameReverseLookupCache(address, '__none__');
         }
       });
     return () => { cancelled = true; };
@@ -173,7 +240,7 @@ export function DashboardShell({
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-zinc-900">
       <Sidebar isOpen={sidebarOpen} onCloseAction={() => setSidebarOpen(false)} />
       <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto">
-        <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-3 mb-4 pb-3 border-b border-zinc-200/60 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl rounded-lg px-3 sm:px-4 -mx-3 sm:-mx-4 -mt-3 sm:-mt-4 md:-mt-6 pt-3 sm:pt-4 md:pt-6 shadow-sm">
+        <div className="flex flex-wrap items-start sm:items-center justify-between gap-2 sm:gap-3 mb-4 pb-3 border-b border-zinc-200/60 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl rounded-lg px-3 sm:px-4 -mx-3 sm:-mx-4 -mt-3 sm:-mt-4 md:-mt-6 pt-3 sm:pt-4 md:pt-6 shadow-sm">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
         <MobileMenuButton onClickAction={() => setSidebarOpen(true)} isOpen={sidebarOpen} />
             <div className="min-w-0">
@@ -188,24 +255,32 @@ export function DashboardShell({
                       Wallet: <span className="font-mono">{formatRuneFromNumber(balance)}</span>
                     </span>
                   )}
-                  <span className="mt-0.5 flex items-center gap-1 text-[10px] text-zinc-500 dark:text-zinc-400 sm:hidden">
-                    <Wifi className="h-3 w-3 text-emerald-500" aria-hidden="true" />
+                  <span
+                    data-testid="source-freshness-compact"
+                    className="mt-0.5 flex items-center gap-1 text-[10px] text-zinc-500 dark:text-zinc-400 xl:hidden"
+                  >
+                    <Wifi className={`h-3 w-3 ${sourceIconClass}`} aria-hidden="true" />
                     <Clock className="h-3 w-3" aria-hidden="true" />
-                    {getCompactFreshnessLabel(freshnessLabel)}
+                    {getCompactFreshnessLabel(sourceFreshnessTone)}
                   </span>
                 </>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <span className="hidden sm:flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/60 px-2.5 py-1.5 rounded-full">
-              <Wifi className="h-3 w-3 text-emerald-500" aria-hidden="true" />
+          <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
+            <span
+              data-testid="source-freshness-full"
+              className="hidden xl:flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/60 px-2.5 py-1.5 rounded-full"
+            >
+              <Wifi className={`h-3 w-3 ${sourceIconClass}`} aria-hidden="true" />
               <Clock className="h-3 w-3" aria-hidden="true" />
               <span className="font-medium">{freshnessLabel}</span>
             </span>
-            <span className="hidden sm:inline-flex">
+            <span data-testid="churn-header-action" className="hidden xl:inline-flex">
               <ChurnCountdown />
             </span>
+            {alertReviewTrigger}
+            {notificationNudge}
             <WalletConnect />
             <Button
               variant="glass"
@@ -220,7 +295,18 @@ export function DashboardShell({
           </div>
         </div>
         <ApiHealthBanner midgard={midgard} thornode={thornode} />
-        {children}
+        {alertReviewPanel ? (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
+            <div className="min-w-0 lg:order-2">
+              {alertReviewPanel}
+            </div>
+            <div className="min-w-0 lg:order-1">
+              {children}
+            </div>
+          </div>
+        ) : (
+          children
+        )}
       </main>
     </div>
   );

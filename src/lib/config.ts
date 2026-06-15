@@ -32,7 +32,6 @@ export const NETWORK = {
     warningSlash: 25,
     minorSlash: 10,
     jailed: 100,
-    overbonded: 15,
     highRisk: 25,
   },
   HEALTH_SCORE_RULES: {
@@ -42,6 +41,7 @@ export const NETWORK = {
     criticalSlashMagnitudeDivisor: 1000,
     warningSlashPenalty: 8,
     atRiskPenalty: 5,
+    nonActivePenalty: 25,
     gradeThresholds: {
       f: 40,
       d: 60,

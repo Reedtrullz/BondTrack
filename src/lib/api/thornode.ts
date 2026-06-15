@@ -1,4 +1,4 @@
-import { fetchThornode } from './client';
+import { fetchThornode, type ApiRequestInit } from './client';
 
 export interface BondProviderRaw {
   bond_address: string;
@@ -53,7 +53,7 @@ export interface SupplyRaw {
   total: number;
 }
 
-export async function getAllNodes(init?: RequestInit): Promise<NodeRaw[]> {
+export async function getAllNodes(init?: ApiRequestInit): Promise<NodeRaw[]> {
   return fetchThornode<NodeRaw[]>('/thorchain/nodes', init);
 }
 

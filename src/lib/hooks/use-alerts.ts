@@ -3,7 +3,7 @@
 import { createContext, createElement, useState, useEffect, useCallback, useRef, useContext } from 'react';
 import type { ReactNode } from 'react';
 import type { BondPosition } from '@/lib/types/node';
-import { STORAGE_KEYS } from '@/lib/storage/keys';
+import { readLocalStorageValue, STORAGE_KEYS, writeLocalStorageValue } from '@/lib/storage/keys';
 
 export type AlertType = 'SLASH_INCREASE' | 'JAIL' | 'CHURN_RISK' | 'NODE_STATUS_CHANGE';
 
@@ -26,52 +26,37 @@ export interface AlertPreferences {
 const STORAGE_KEY = STORAGE_KEYS.alerts;
 const RATE_LIMIT_MS = 5 * 60 * 1000;
 
-// Lazy initializer for alerts from localStorage
-function getInitialAlerts(): Alert[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return parsed.alerts || [];
-    }
-  } catch (error) {
-    console.error('Storage error while loading alerts:', error);
-  }
-  return [];
-}
+const DEFAULT_ALERT_PREFERENCES: AlertPreferences = {
+  slashAlerts: true,
+  jailAlerts: true,
+  churnAlerts: true,
+  statusAlerts: true,
+};
 
-// Lazy initializer for preferences from localStorage
-function getInitialPreferences(): AlertPreferences {
+function getStoredAlertState(): { alerts: Alert[]; preferences: AlertPreferences } {
   if (typeof window === 'undefined') {
-    return {
-      slashAlerts: true,
-      jailAlerts: true,
-      churnAlerts: true,
-      statusAlerts: true,
-    };
+    return { alerts: [], preferences: DEFAULT_ALERT_PREFERENCES };
   }
+
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = readLocalStorageValue(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      if (parsed.preferences) {
-        return parsed.preferences;
-      }
+      return {
+        alerts: Array.isArray(parsed.alerts) ? parsed.alerts : [],
+        preferences: parsed.preferences
+          ? { ...DEFAULT_ALERT_PREFERENCES, ...parsed.preferences }
+          : DEFAULT_ALERT_PREFERENCES,
+      };
     }
-  } catch (error) {
-    console.error('Storage error while loading alert preferences:', error);
+  } catch {
+    // Corrupt or unavailable storage should not block in-memory alerts.
   }
-  return {
-    slashAlerts: true,
-    jailAlerts: true,
-    churnAlerts: true,
-    statusAlerts: true,
-  };
+
+  return { alerts: [], preferences: DEFAULT_ALERT_PREFERENCES };
 }
 
-// Lazy initializer for notification permission
-function getInitialPermission(): NotificationPermission {
+function getCurrentPermission(): NotificationPermission {
   if (typeof window === 'undefined' || !('Notification' in window)) {
     return 'default';
   }
@@ -79,20 +64,31 @@ function getInitialPermission(): NotificationPermission {
 }
 
 export function useAlerts() {
-  const [alerts, setAlerts] = useState<Alert[]>(getInitialAlerts);
-  const [preferences, setPreferences] = useState<AlertPreferences>(getInitialPreferences);
-  const [permission, setPermission] = useState<NotificationPermission>(getInitialPermission);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [preferences, setPreferences] = useState<AlertPreferences>(DEFAULT_ALERT_PREFERENCES);
+  const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [hasLoadedStorage, setHasLoadedStorage] = useState(false);
   const lastAlertTime = useRef<Record<string, number>>({});
 
   useEffect(() => {
-    if (alerts.length > 0 || preferences) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ alerts, preferences }));
-      } catch (error) {
-        console.error('Storage error while saving alerts:', error);
-      }
+    const stored = getStoredAlertState();
+    setAlerts(stored.alerts);
+    setPreferences(stored.preferences);
+    setPermission(getCurrentPermission());
+    setHasLoadedStorage(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedStorage || typeof window === 'undefined') {
+      return;
     }
-  }, [alerts, preferences]);
+
+    try {
+      writeLocalStorageValue(STORAGE_KEY, JSON.stringify({ alerts, preferences }));
+    } catch {
+      // Corrupt or unavailable storage should not block in-memory alerts.
+    }
+  }, [alerts, preferences, hasLoadedStorage]);
 
   const requestPermission = useCallback(async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
@@ -155,6 +151,12 @@ export function useAlerts() {
     );
   }, []);
 
+  const restoreAlert = useCallback((id: string) => {
+    setAlerts(current =>
+      current.map(a => a.id === id ? { ...a, dismissed: false } : a)
+    );
+  }, []);
+
   const clearAllAlerts = useCallback(() => {
     setAlerts([]);
   }, []);
@@ -201,11 +203,13 @@ export function useAlerts() {
 
   return {
     alerts: visibleAlerts,
+    alertHistory: alerts,
     permission,
     preferences,
     requestPermission,
     triggerAlert,
     dismissAlert,
+    restoreAlert,
     clearAllAlerts,
     updatePreferences,
     checkSlash,

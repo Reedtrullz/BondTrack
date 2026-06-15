@@ -75,6 +75,17 @@ describe('historical lookup helpers', () => {
     expect(result).toBeNull();
   });
 
+  it('returns null without console noise when historical RUNE lookup has a network-style failure', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(fetchMidgard).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    const result = await getHistoricalRunePrice(1700000000);
+
+    expect(result).toBeNull();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
+
   it('normalizes pool history interval timestamps and returns the containing interval entry', async () => {
     vi.mocked(fetchMidgard).mockResolvedValueOnce({
       intervals: [
@@ -113,6 +124,17 @@ describe('historical lookup helpers', () => {
       assetDepth: '500000000000',
       liquidityUnits: '1000',
     });
+  });
+
+  it('returns null without console noise when pool history lookup has a network-style failure', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(fetchMidgard).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    const result = await getPoolHistoryAtTimestamp('BTC.BTC', 1700000000);
+
+    expect(result).toBeNull();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 
   it('treats shared interval boundaries as belonging to the next bucket', async () => {

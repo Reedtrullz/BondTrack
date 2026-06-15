@@ -3,7 +3,7 @@ export type { NodeRaw } from '@/lib/api/thornode';
 import { runeToNumber, formatBasisPoints } from '@/lib/utils/formatters';
 import { calculateAPY, calculateBondShare } from '@/lib/utils/calculations';
 
-export type YieldGuardFlag = 'overbonded' | 'highest_slash' | 'lowest_bond' | 'oldest' | 'leaving';
+export type YieldGuardFlag = 'highest_slash' | 'lowest_bond' | 'oldest' | 'leaving';
 
 export interface PooledNodeData {
   isPooled: boolean;

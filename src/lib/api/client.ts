@@ -3,7 +3,10 @@ import { ENDPOINTS } from '@/lib/config';
 const RETRY_DELAYS = [1000, 2000, 4000];
 const MAX_RETRIES = 3;
 
-type NextFetchInit = RequestInit & { next?: RequestInit['next'] };
+export type ApiRequestInit = RequestInit & {
+  next?: RequestInit['next'];
+  retry?: boolean;
+};
 
 class RetryableError extends Error {
   constructor(message: string, public readonly status?: number) {
@@ -38,26 +41,27 @@ function resolveMidgardBase(): string {
   return normalizeBaseUrl(process.env.MIDGARD_API_URL || ENDPOINTS.midgard);
 }
 
-async function fetchApi<T>(baseUrl: string, path: string, init?: NextFetchInit, retryCount = 0): Promise<T> {
+async function fetchApi<T>(baseUrl: string, path: string, init?: ApiRequestInit, retryCount = 0): Promise<T> {
   const url = `${baseUrl}${path}`;
+  const { retry = true, ...requestInit } = init ?? {};
 
   let res: Response;
   try {
-    const fetchInit: NextFetchInit = {
-      ...init,
+    const fetchInit: ApiRequestInit = {
+      ...requestInit,
       headers: {
         Accept: 'application/json',
-        ...init?.headers,
+        ...requestInit.headers,
       },
     };
 
     if (fetchInit.cache !== 'no-store') {
-      fetchInit.next = init?.next ?? { revalidate: 60 };
+      fetchInit.next = requestInit.next ?? { revalidate: 60 };
     }
 
     res = await fetch(url, fetchInit);
   } catch (networkError) {
-    if (retryCount < MAX_RETRIES) {
+    if (retry && retryCount < MAX_RETRIES) {
       await delay(RETRY_DELAYS[retryCount]);
       return fetchApi<T>(baseUrl, path, init, retryCount + 1);
     }
@@ -65,7 +69,7 @@ async function fetchApi<T>(baseUrl: string, path: string, init?: NextFetchInit, 
   }
 
   if (!res.ok) {
-    if (res.status >= 500 && retryCount < MAX_RETRIES) {
+    if (retry && res.status >= 500 && retryCount < MAX_RETRIES) {
       await delay(RETRY_DELAYS[retryCount]);
       return fetchApi<T>(baseUrl, path, init, retryCount + 1);
     }
@@ -75,7 +79,7 @@ async function fetchApi<T>(baseUrl: string, path: string, init?: NextFetchInit, 
   return res.json() as Promise<T>;
 }
 
-export async function fetchThornode<T>(path: string, init?: NextFetchInit): Promise<T> {
+export async function fetchThornode<T>(path: string, init?: ApiRequestInit): Promise<T> {
   const baseUrl = isBrowserRuntime() ? '/api/thorchain' : resolveThornodeBase(path);
 
   try {
@@ -85,7 +89,7 @@ export async function fetchThornode<T>(path: string, init?: NextFetchInit): Prom
   }
 }
 
-export async function fetchMidgard<T>(path: string, init?: NextFetchInit): Promise<T> {
+export async function fetchMidgard<T>(path: string, init?: ApiRequestInit): Promise<T> {
   const baseUrl = isBrowserRuntime() ? '/api/midgard' : resolveMidgardBase();
 
   try {

@@ -23,6 +23,48 @@ const mockMemberDetails = {
   ],
 };
 
+const mixedConfidenceMemberDetails = {
+  pools: [
+    mockMemberDetails.pools[0],
+    {
+      pool: 'ETH.ETH',
+      runeAddress: MOCK_ADDRESS,
+      assetAddress: '0xportfolioasset123456',
+      liquidityUnits: '900',
+      runeDeposit: '4000000000',
+      assetDeposit: '200000000',
+      runeAdded: '4000000000',
+      assetAdded: '200000000',
+      runePending: '0',
+      assetPending: '0',
+      runeWithdrawn: '0',
+      assetWithdrawn: '0',
+      dateFirstAdded: '1700000000000000000',
+      dateLastAdded: '1700500000000000000',
+    },
+    {
+      pool: 'GAIA.ATOM',
+      runeAddress: MOCK_ADDRESS,
+      assetAddress: 'cosmos1portfolioasset123456',
+      liquidityUnits: '700',
+      runeDeposit: '3000000000',
+      assetDeposit: '0',
+      runeAdded: '3000000000',
+      assetAdded: '0',
+      runePending: '0',
+      assetPending: '0',
+      runeWithdrawn: '0',
+      assetWithdrawn: '0',
+      dateFirstAdded: '1700000000000000000',
+      dateLastAdded: '1700500000000000000',
+    },
+  ],
+};
+
+const emptyMemberDetails = {
+  pools: [],
+};
+
 const mockPools = [
   {
     asset: 'BTC.BTC',
@@ -53,21 +95,111 @@ const mockPools = [
   },
 ];
 
-const mockRuneHistory = {
-  meta: {
-    startTime: '1699990000000000000',
-    endTime: '1700010000000000000',
-    startRunePriceUSD: '1.50',
-    endRunePriceUSD: '1.50',
+const mixedConfidencePools = [
+  ...mockPools,
+  {
+    asset: 'ETH.ETH',
+    volume24h: '700000000',
+    assetDepth: '400000000000',
+    runeDepth: '200000000000',
+    assetPrice: '0.75',
+    assetPriceUSD: '0.75',
+    annualPercentageRate: '0.095',
+    poolAPY: '9.5',
+    earnings: '0',
+    earningsAnnualAsPercentOfDepth: '0',
+    lpLuvi: '0',
+    saversAPR: '0',
+    status: 'available',
+    liquidityUnits: '900',
+    synthUnits: '0',
+    synthSupply: '0',
+    units: '0',
+    nativeDecimal: '8',
+    saversUnits: '0',
+    saversDepth: '0',
+    totalCollateral: '0',
+    totalDebtTor: '0',
+    saversYieldShare: '0',
+    depthPlus2Percent: '0',
+    depthMinus2Percent: '0',
   },
-  intervals: [
-    {
-      startTime: '1699990000000000000',
-      endTime: '1700010000000000000',
-      runePriceUSD: '1.50',
+  {
+    asset: 'GAIA.ATOM',
+    volume24h: '500000000',
+    assetDepth: '300000000000',
+    runeDepth: '150000000000',
+    assetPrice: '0.75',
+    assetPriceUSD: '0.75',
+    annualPercentageRate: '0.08',
+    poolAPY: '8',
+    earnings: '0',
+    earningsAnnualAsPercentOfDepth: '0',
+    lpLuvi: '0',
+    saversAPR: '0',
+    status: 'available',
+    liquidityUnits: '700',
+    synthUnits: '0',
+    synthSupply: '0',
+    units: '0',
+    nativeDecimal: '8',
+    saversUnits: '0',
+    saversDepth: '0',
+    totalCollateral: '0',
+    totalDebtTor: '0',
+    saversYieldShare: '0',
+    depthPlus2Percent: '0',
+    depthMinus2Percent: '0',
+  },
+];
+
+function toMidgardNanoseconds(ms: number): string {
+  return String(BigInt(ms) * 1_000_000n);
+}
+
+function buildMockRuneHistory(nowMs = Date.now()) {
+  const startTime = toMidgardNanoseconds(nowMs - 60 * 60 * 1000);
+  const endTime = toMidgardNanoseconds(nowMs);
+
+  return {
+    meta: {
+      startTime,
+      endTime,
+      startRunePriceUSD: '1.50',
+      endRunePriceUSD: '1.50',
     },
-  ],
-};
+    intervals: [
+      {
+        startTime,
+        endTime,
+        runePriceUSD: '1.50',
+      },
+    ],
+  };
+}
+
+function buildHistoricalRuneHistory(fromSeconds: number, toSeconds: number) {
+  const startMs = fromSeconds * 1000;
+  const endMs = toSeconds * 1000;
+  const startTime = toMidgardNanoseconds(startMs);
+  const endTime = toMidgardNanoseconds(endMs);
+
+  return {
+    meta: {
+      startTime,
+      endTime,
+      startRunePriceUSD: '1.50',
+      endRunePriceUSD: '1.50',
+    },
+    intervals: [
+      {
+        startTime,
+        endTime,
+        runePriceUSD: '1.50',
+      },
+    ],
+  };
+}
 
 const mockPoolHistory = {
   intervals: [
@@ -86,7 +218,9 @@ const mockPoolHistory = {
   ],
 };
 
-async function setupMocks(page: Page) {
+type LpMockScenario = 'historical' | 'mixed-confidence' | 'empty';
+
+async function setupMocks(page: Page, scenario: LpMockScenario = 'historical') {
   await page.route('**/api/thorchain/**', async (route) => {
     const url = new URL(route.request().url());
 
@@ -98,7 +232,7 @@ async function setupMocks(page: Page) {
     if (url.pathname === '/api/thorchain/thorchain/constants') {
       await route.fulfill({
         json: {
-          int_64_values: { OptimalBondD: 2500000000000 },
+          int_64_values: { MaxBondProviders: 100 },
           bool_values: {},
           string_values: {},
         },
@@ -106,15 +240,19 @@ async function setupMocks(page: Page) {
       return;
     }
 
-    if (url.pathname === '/api/thorchain/thorchain/pool/BTC.BTC/liquidity_provider/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq') {
+    const liquidityProviderPath = url.pathname.match(
+      /^\/api\/thorchain\/thorchain\/pool\/([^/]+)\/liquidity_provider\/[^/]+$/
+    );
+    if (liquidityProviderPath) {
+      const pool = liquidityProviderPath[1];
       await route.fulfill({
         json: {
           rune_address: MOCK_ADDRESS,
-          asset_address: 'bc1portfolioasset123456',
-          rune_deposit_value: '5000000000',
-          asset_deposit_value: '250000000',
-          rune_redeem_value: '5250000000',
-          asset_redeem_value: '260000000',
+          asset_address: pool === 'GAIA.ATOM' ? 'cosmos1portfolioasset123456' : pool === 'ETH.ETH' ? '0xportfolioasset123456' : 'bc1portfolioasset123456',
+          rune_deposit_value: pool === 'GAIA.ATOM' ? '3000000000' : pool === 'ETH.ETH' ? '4000000000' : '5000000000',
+          asset_deposit_value: pool === 'GAIA.ATOM' ? '0' : pool === 'ETH.ETH' ? '200000000' : '250000000',
+          rune_redeem_value: pool === 'GAIA.ATOM' ? '3150000000' : pool === 'ETH.ETH' ? '4200000000' : '5250000000',
+          asset_redeem_value: pool === 'GAIA.ATOM' ? '100000000' : pool === 'ETH.ETH' ? '210000000' : '260000000',
           units: '1000',
           pending_rune: '0',
           pending_asset: '0',
@@ -142,17 +280,31 @@ async function setupMocks(page: Page) {
     }
 
     if (url.pathname === '/api/midgard/v2/member/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq') {
-      await route.fulfill({ json: mockMemberDetails });
+      await route.fulfill({
+        json: scenario === 'empty'
+          ? emptyMemberDetails
+          : scenario === 'mixed-confidence'
+            ? mixedConfidenceMemberDetails
+            : mockMemberDetails,
+      });
       return;
     }
 
     if (url.pathname === '/api/midgard/v2/pools') {
-      await route.fulfill({ json: mockPools });
+      await route.fulfill({ json: scenario === 'mixed-confidence' ? mixedConfidencePools : mockPools });
       return;
     }
 
     if (url.pathname === '/api/midgard/v2/history/rune') {
-      await route.fulfill({ json: mockRuneHistory });
+      const fromParam = url.searchParams.get('from');
+      const toParam = url.searchParams.get('to');
+      const fromSeconds = fromParam === null ? Number.NaN : Number(fromParam);
+      const toSeconds = toParam === null ? Number.NaN : Number(toParam);
+      await route.fulfill({
+        json: Number.isFinite(fromSeconds) && Number.isFinite(toSeconds)
+          ? buildHistoricalRuneHistory(fromSeconds, toSeconds)
+          : buildMockRuneHistory(),
+      });
       return;
     }
 
@@ -161,23 +313,124 @@ async function setupMocks(page: Page) {
       return;
     }
 
+    if (scenario === 'mixed-confidence' && (
+      url.pathname === '/api/midgard/v2/pools/ETH.ETH/history' ||
+      url.pathname === '/api/midgard/v2/pools/GAIA.ATOM/history'
+    )) {
+      await route.fulfill({ json: { intervals: [] } });
+      return;
+    }
+
     await route.fulfill({ status: 404, json: { error: `Unhandled Midgard mock: ${url.pathname}` } });
   });
 }
 
 test.describe('LP IL dashboard', () => {
-  test.beforeEach(async ({ page }) => {
+  test('shows the IL column and at least one row', async ({ page }) => {
     await setupMocks(page);
     await page.goto(`/dashboard/lp?address=${MOCK_ADDRESS}`);
-  });
 
-  test('shows the IL column and at least one row', async ({ page }) => {
     // The LP page heading is "LP Positions" (h1). Use exact match to avoid matching other headings.
     await expect(page.getByRole('heading', { name: 'LP Positions', exact: true })).toBeVisible();
+    const diagnosis = page.getByLabel('LP performance diagnosis');
+    await expect(diagnosis).toContainText('LP performance is historically priced');
+    await expect(diagnosis.getByRole('button', { name: 'Review positions' })).toBeVisible();
+    await expect(diagnosis.getByText('LP vs HODL', { exact: true })).toBeVisible();
+    await expect(diagnosis).toContainText('LP value minus HODL value for historical positions');
+    await expect(page.getByText('Total Impermanent Loss')).toHaveCount(0);
     // Check for impermanent loss section - may not be visible if no IL data, so check for IL Calculator tab instead.
     // The IL Calculator tab should be present.
-    await expect(page.getByText('IL Calculator')).toBeVisible();
+    await page.getByRole('tab', { name: 'IL Calculator', exact: true }).click();
+    await expect(page.getByText('Impermanent Loss Calculator')).toBeVisible();
+    await expect(page.getByLabel('IL estimate assumptions')).toContainText('Manual estimate');
+    await expect(page.getByLabel('IL estimate assumptions')).toContainText('50/50 formula');
+    await expect(page.getByLabel('IL estimate result')).toContainText('Estimated, not source-confirmed');
+    await expect(page.getByLabel('IL estimate result')).toContainText('Review before withdrawing');
     // Check that at least one pool is displayed (BTC.BTC) - look for text in the page.
-    await expect(page.getByText('BTC.BTC')).toBeVisible();
+    await page.getByRole('tab', { name: 'My Positions (1)', exact: true }).click();
+    const positionsPanel = page.getByRole('tabpanel', { name: 'My Positions (1)' });
+    await expect(positionsPanel.getByRole('link', { name: 'BTC.BTC', exact: true })).toBeVisible();
+  });
+
+  test('shows an inline LP CSV export failure without opening a browser dialog', async ({ page }) => {
+    const dialogs: string[] = [];
+    page.on('dialog', async (dialog) => {
+      dialogs.push(dialog.message());
+      await dialog.dismiss();
+    });
+    await page.addInitScript(() => {
+      URL.createObjectURL = () => {
+        throw new Error('blob unavailable');
+      };
+    });
+    await setupMocks(page);
+    await page.goto(`/dashboard/lp?address=${MOCK_ADDRESS}`);
+
+    await page.getByRole('tab', { name: 'Position CSV', exact: true }).click();
+    const csvPanel = page.getByRole('tabpanel', { name: 'Position CSV' });
+    await csvPanel.getByRole('button', { name: 'Export CSV (1 positions)', exact: true }).click();
+
+    await expect(csvPanel.getByRole('alert')).toContainText('LP CSV export failed');
+    await expect(csvPanel.getByRole('alert')).toContainText('No file was downloaded');
+    await expect(csvPanel.getByRole('button', { name: 'Export CSV (1 positions)', exact: true })).toBeEnabled();
+    expect(dialogs).toEqual([]);
+  });
+
+  test('labels aggregate LP performance exclusions for mixed pricing confidence', async ({ page }) => {
+    await setupMocks(page, 'mixed-confidence');
+    await page.goto(`/dashboard/lp?address=${MOCK_ADDRESS}`);
+
+    await expect(page.getByRole('heading', { name: 'LP Positions', exact: true })).toBeVisible();
+    const diagnosis = page.getByLabel('LP performance diagnosis');
+    await expect(diagnosis).toContainText('Current-only: 1');
+    await expect(diagnosis).toContainText('1 current-only LP position history unavailable');
+    await expect(diagnosis.getByRole('button', { name: 'Review LP confidence' })).toBeVisible();
+    await expect(diagnosis.getByText('Current value includes all pools; 1 estimated position and 1 current-only position need confidence review')).toBeVisible();
+    await expect(diagnosis.getByText(/from historical positions; 1 estimated position and 1 current-only position excluded/)).toHaveCount(2);
+  });
+
+  test('shows no-position diagnosis before LP confidence details on mobile', async ({ page }) => {
+    await setupMocks(page, 'empty');
+    await page.setViewportSize({ width: 390, height: 740 });
+    await page.goto(`/dashboard/lp?address=${MOCK_ADDRESS}`);
+
+    const emptyHeading = page.getByRole('heading', { name: 'No LP positions found' });
+    const confidence = page.getByLabel('LP data confidence');
+    await expect(emptyHeading).toBeVisible();
+    await expect(confidence).toBeVisible();
+    await expect(confidence).toContainText('RUNE price');
+    await expect(confidence).toContainText('Not used');
+
+    const layout = await page.evaluate(() => {
+      const emptyHeading = Array.from(document.querySelectorAll('h3')).find((heading) =>
+        heading.textContent?.includes('No LP positions found')
+      );
+      const confidence = document.querySelector('section[aria-label="LP data confidence"]');
+      const viewportWidth = window.innerWidth;
+      const box = (element: Element | null) => {
+        const rect = element?.getBoundingClientRect();
+        return rect ? { top: rect.top, bottom: rect.bottom, width: rect.width } : null;
+      };
+
+      const overflowing = Array.from(document.querySelectorAll('main *'))
+        .filter((element) => {
+          const rect = element.getBoundingClientRect();
+          return rect.width > 0 && (rect.left < -1 || rect.right > viewportWidth + 1);
+        })
+        .map((element) => element.textContent?.replace(/\s+/g, ' ').trim().slice(0, 80));
+
+      return {
+        empty: box(emptyHeading ?? null),
+        confidence: box(confidence),
+        viewportHeight: window.innerHeight,
+        overflowing,
+      };
+    });
+
+    expect(layout.empty).not.toBeNull();
+    expect(layout.confidence).not.toBeNull();
+    expect(layout.empty!.top).toBeLessThan(layout.confidence!.top);
+    expect(layout.empty!.top).toBeLessThan(layout.viewportHeight);
+    expect(layout.overflowing).toEqual([]);
   });
 });

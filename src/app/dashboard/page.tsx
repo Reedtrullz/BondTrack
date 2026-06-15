@@ -10,25 +10,28 @@ import { InsightHeader } from '@/components/dashboard/insight-header';
 import { MetricStrip } from '@/components/dashboard/metric-strip';
 import { SourceFreshnessPanel } from '@/components/dashboard/source-freshness-panel';
 import { DashboardCard } from '@/components/shared/dashboard-card';
-import { Button } from '@/components/ui/button';
+import { DashboardLoadingSkeleton } from '@/components/shared/dashboard-loading-skeleton';
+import { buttonVariants } from '@/components/ui/button';
 import { useApiHealthContext } from '@/lib/hooks/use-api-health';
 import { useBondHistory } from '@/lib/hooks/use-bond-history';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { useLpPositions } from '@/lib/hooks/use-lp-positions';
 import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
 import { useRunePriceHistory } from '@/lib/hooks/use-rune-price';
-import { buildDashboardInsightState } from '@/lib/dashboard/insights';
+import { buildDashboardInsightState, resolveThornodeGatedBondAction } from '@/lib/dashboard/insights';
+import { calculateNodeRiskScore, isUrgentNodeException } from '@/lib/dashboard/nodes-context';
 import { formatBasisPoints, formatRuneFromNumber } from '@/lib/utils/formatters';
 import { cn } from '@/lib/utils';
 
 function LoadingCommandCenter() {
   return (
-    <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6">
-      <div className="h-56 animate-pulse rounded-2xl bg-zinc-200/70 dark:bg-zinc-800/70" />
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_0.9fr]">
-        <div className="h-72 animate-pulse rounded-2xl bg-zinc-200/70 dark:bg-zinc-800/70" />
-        <div className="h-72 animate-pulse rounded-2xl bg-zinc-200/70 dark:bg-zinc-800/70" />
-      </div>
+    <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
+      <DashboardLoadingSkeleton
+        title="Loading command center"
+        detail="Waiting for bond positions, LP exposure, network metrics, and RUNE price before ranking urgent actions."
+        cards={4}
+        className="p-0"
+      />
     </div>
   );
 }
@@ -37,18 +40,18 @@ export default function DashboardPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
   const { positions, isLoading: positionsLoading } = useBondPositions(address);
-  const { positions: lpPositions, isLoading: lpLoading } = useLpPositions(address);
-  const { data: network, isLoading: networkLoading } = useNetworkMetrics();
+  const { positions: lpPositions } = useLpPositions(address);
+  const { data: network } = useNetworkMetrics();
   const {
     price: runePrice,
     isStale: runePriceIsStale,
     updatedAt: runePriceUpdatedAt,
-    isLoading: priceLoading,
   } = useRunePriceHistory('hour', 24);
   const { bondActions } = useBondHistory(address);
   const apiHealth = useApiHealthContext();
 
-  const isInitialLoading = positionsLoading || networkLoading || priceLoading || lpLoading;
+  const thornodeSourceUnreliable = apiHealth.thornode === 'degraded' || apiHealth.thornode === 'down';
+  const isInitialLoading = positionsLoading && !thornodeSourceUnreliable;
   const insight = useMemo(() => buildDashboardInsightState({
     address,
     positions,
@@ -77,11 +80,18 @@ export default function DashboardPage() {
 
   const topNodes = [...positions]
     .sort((left, right) => {
-      const leftRisk = Number(left.isJailed) * 1000 + left.slashPoints + (left.yieldGuardFlags?.length ?? 0) * 50;
-      const rightRisk = Number(right.isJailed) * 1000 + right.slashPoints + (right.yieldGuardFlags?.length ?? 0) * 50;
+      const leftRisk = Number(isUrgentNodeException(left)) * 10_000 + Number(left.isJailed) * 1_000 + calculateNodeRiskScore(left) + (left.yieldGuardFlags?.length ?? 0) * 50;
+      const rightRisk = Number(isUrgentNodeException(right)) * 10_000 + Number(right.isJailed) * 1_000 + calculateNodeRiskScore(right) + (right.yieldGuardFlags?.length ?? 0) * 50;
       return rightRisk - leftRisk;
     })
     .slice(0, 4);
+  const bondEntryAction = resolveThornodeGatedBondAction(insight.actions, {
+    label: 'Open BOND',
+    href: address
+      ? `/dashboard/transactions?address=${encodeURIComponent(address)}&action=bond`
+      : '/dashboard/transactions?action=bond',
+  });
+  const bondEntryVariant = bondEntryAction.kind === 'source-confidence' ? 'outline' : 'success';
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6">
@@ -92,14 +102,23 @@ export default function DashboardPage() {
         topRisk={insight.topRisk}
         metrics={insight.headerMetrics}
         primaryAction={insight.primaryAction}
+        compactMobileMetrics
       />
 
-      <MetricStrip metrics={insight.metrics} />
+      <div id="source-confidence" className="space-y-4 scroll-mt-4">
+        <div className="lg:hidden">
+          <SourceFreshnessPanel sources={insight.sources} compact />
+        </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1.35fr_0.9fr]">
-        <ActionQueue items={insight.actions} />
-        <SourceFreshnessPanel sources={insight.sources} />
+        <div className="grid gap-4 lg:grid-cols-[1.35fr_0.9fr]">
+          <ActionQueue items={insight.actions} mobileCompact />
+          <div className="hidden lg:block">
+            <SourceFreshnessPanel sources={insight.sources} />
+          </div>
+        </div>
       </div>
+
+      <MetricStrip metrics={insight.metrics} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <DashboardCard className="p-5">
@@ -107,14 +126,15 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-lg font-bold text-zinc-950 dark:text-zinc-50">Riskiest nodes first</h2>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Exception view for fast inspection before the full Nodes table.
+                Urgent exceptions are highlighted before the full Nodes table.
               </p>
             </div>
-            <Link href={address ? `/dashboard/nodes?address=${encodeURIComponent(address)}` : '/dashboard/nodes'}>
-              <Button variant="outline" size="sm" className="gap-1">
-                Nodes
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-              </Button>
+            <Link
+              href={address ? `/dashboard/nodes?address=${encodeURIComponent(address)}` : '/dashboard/nodes'}
+              className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1')}
+            >
+              Nodes
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </Link>
           </div>
 
@@ -125,7 +145,7 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-2">
               {topNodes.map((node) => {
-                const isException = node.isJailed || node.slashPoints > 0 || (node.yieldGuardFlags?.length ?? 0) > 0 || node.status !== 'Active';
+                const isException = isUrgentNodeException(node);
                 return (
                   <div
                     key={node.nodeAddress}
@@ -158,7 +178,7 @@ export default function DashboardPage() {
           )}
         </DashboardCard>
 
-        <DashboardCard className="p-5">
+        <DashboardCard className="p-5" role="region" aria-label="Next transaction">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold text-zinc-950 dark:text-zinc-50">Next transaction</h2>
@@ -179,11 +199,17 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link href={address ? `/dashboard/transactions?address=${encodeURIComponent(address)}&action=bond` : '/dashboard/transactions?action=bond'}>
-                <Button variant="success" size="sm">Open BOND</Button>
+              <Link
+                href={bondEntryAction.href}
+                className={buttonVariants({ variant: bondEntryVariant, size: 'sm' })}
+              >
+                {bondEntryAction.label}
               </Link>
-              <Link href={address ? `/dashboard/transactions?address=${encodeURIComponent(address)}&action=unbond` : '/dashboard/transactions?action=unbond'}>
-                <Button variant="outline" size="sm">Open UNBOND</Button>
+              <Link
+                href={address ? `/dashboard/transactions?address=${encodeURIComponent(address)}&action=unbond` : '/dashboard/transactions?action=unbond'}
+                className={buttonVariants({ variant: 'outline', size: 'sm' })}
+              >
+                Open UNBOND
               </Link>
             </div>
           </div>

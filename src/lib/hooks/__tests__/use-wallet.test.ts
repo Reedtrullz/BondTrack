@@ -22,6 +22,30 @@ delete (window as unknown as Record<string, unknown>).xfi;
     expect(result.current.error).toBeNull();
   });
 
+  it('keeps the wallet shell usable when browser storage is unavailable', async () => {
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    (window as unknown as Record<string, unknown>).keplr = { enable: vi.fn() };
+
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new Error('localStorage denied');
+      },
+    });
+
+    try {
+      const { result } = renderHook(() => useWallet());
+
+      await waitFor(() => expect(result.current.availableWallets).toBe('keplr'));
+      expect(result.current.isConnected).toBe(false);
+      expect(result.current.error).toBeNull();
+    } finally {
+      if (originalLocalStorage) {
+        Object.defineProperty(window, 'localStorage', originalLocalStorage);
+      }
+    }
+  });
+
   it('detects no wallet when none installed', () => {
     const { result } = renderHook(() => useWallet());
 

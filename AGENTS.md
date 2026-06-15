@@ -92,6 +92,11 @@ Heimdall is a **public read-only** dashboard. There is no auth.
   (`COINAPI_KEY`). It is used only for historical RUNE price enrichment;
   absence of the key is a 503 from `/api/coinapi/rune-price`, not a
   user-facing failure.
+- Rate limiting is best-effort and process-local. Client IP extraction must not
+  trust spoofable forwarding headers by default. Production sets
+  `TRUST_PROXY_HEADERS=true` only because Caddy overwrites `X-Real-IP` with
+  `{remote_host}`; keep `TRUST_X_FORWARDED_FOR=false` unless every proxy in
+  front of the app sanitizes incoming `X-Forwarded-For`.
 - If a future feature requires per-user data (e.g. personalised watchlists
   across devices), add a separate auth layer (Auth.js or an external IdP)
   and document it here before shipping.

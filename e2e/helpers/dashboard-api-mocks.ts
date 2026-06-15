@@ -94,21 +94,30 @@ const mockPools = [
   },
 ];
 
-const mockRuneHistory = {
-  meta: {
-    startTime: '1699990000000000000',
-    endTime: '1700010000000000000',
-    startRunePriceUSD: '1.50',
-    endRunePriceUSD: '1.50',
-  },
-  intervals: [
-    {
-      startTime: '1699990000000000000',
-      endTime: '1700010000000000000',
-      runePriceUSD: '1.50',
+function toMidgardNanoseconds(ms: number): string {
+  return String(BigInt(ms) * 1_000_000n);
+}
+
+function buildMockRuneHistory(nowMs = Date.now()) {
+  const startTime = toMidgardNanoseconds(nowMs - 60 * 60 * 1000);
+  const endTime = toMidgardNanoseconds(nowMs);
+
+  return {
+    meta: {
+      startTime,
+      endTime,
+      startRunePriceUSD: '1.50',
+      endRunePriceUSD: '1.50',
     },
-  ],
-};
+    intervals: [
+      {
+        startTime,
+        endTime,
+        runePriceUSD: '1.50',
+      },
+    ],
+  };
+}
 
 const mockEarningsHistory = {
   meta: {
@@ -156,19 +165,103 @@ const mockPoolHistory = {
   ],
 };
 
-export async function mockDashboardApis(page: Page, address = DEFAULT_DASHBOARD_ADDRESS) {
+interface MockDashboardApisOptions {
+  extraNodes?: Partial<(typeof mockNodes)[number]>[];
+  withBondPosition?: boolean;
+  primaryNodeOverrides?: Partial<(typeof mockNodes)[number]>;
+  runeHistoryNowMs?: number;
+  midgardHealthStatus?: number;
+  thornodeHealthProbeStatus?: number;
+  thornodeNodesStatus?: number;
+  supportFeedDelayMs?: number;
+}
+
+function getHealthProbeTarget(pageRouteRequestHeaders: Record<string, string>): string | undefined {
+  // Health probes and node data share /nodes; this keeps source confidence degradable without hiding cards.
+  return pageRouteRequestHeaders['x-heimdall-health-probe'];
+}
+
+export async function mockDashboardApis(
+  page: Page,
+  address = DEFAULT_DASHBOARD_ADDRESS,
+  options: MockDashboardApisOptions = {}
+) {
+  const withBondPosition = options.withBondPosition ?? true;
+  const primaryNode = {
+    ...mockNodes[0],
+    ...options.primaryNodeOverrides,
+    bond_providers: {
+      ...mockNodes[0].bond_providers,
+      ...options.primaryNodeOverrides?.bond_providers,
+    },
+  };
+  const extraNodes = (options.extraNodes ?? []).map((nodeOverrides, index) => {
+    const { bond_providers: bondProviderOverrides, ...restOverrides } = nodeOverrides;
+
+    return {
+      ...mockNodes[0],
+      node_address: `thor1extramocknode${index}000000000000000000000`,
+      node_operator_address: `thor1extraoperatormock${index}000000000000000`,
+      slash_points: 0,
+      status_since: mockNodes[0].status_since + index + 1,
+      total_bond: '1500000000000',
+      ...restOverrides,
+      bond_providers: {
+        ...mockNodes[0].bond_providers,
+        providers: [],
+        ...bondProviderOverrides,
+      },
+    };
+  });
+  const routedNodes = withBondPosition
+    ? [primaryNode, ...extraNodes]
+    : [{
+        ...primaryNode,
+        bond_providers: {
+          ...primaryNode.bond_providers,
+          providers: [],
+        },
+      }, ...extraNodes];
+  const delaySupportFeed = () => (
+    options.supportFeedDelayMs
+      ? new Promise((resolve) => setTimeout(resolve, options.supportFeedDelayMs))
+      : Promise.resolve()
+  );
+
   await page.route('**/api/thorchain/**', async (route) => {
     const url = new URL(route.request().url());
 
     if (url.pathname === '/api/thorchain/thorchain/nodes') {
-      await route.fulfill({ json: mockNodes });
+      if (
+        getHealthProbeTarget(route.request().headers()) === 'thornode'
+        && options.thornodeHealthProbeStatus
+        && options.thornodeHealthProbeStatus >= 400
+      ) {
+        await route.fulfill({
+          status: options.thornodeHealthProbeStatus,
+          json: { error: 'Mock THORNode health-probe failure' },
+        });
+        return;
+      }
+
+      if (options.thornodeNodesStatus && options.thornodeNodesStatus >= 400) {
+        await route.fulfill({
+          status: options.thornodeNodesStatus,
+          json: { error: 'Mock THORNode /nodes failure' },
+        });
+        return;
+      }
+
+      await route.fulfill({
+        json: routedNodes,
+      });
       return;
     }
 
     if (url.pathname === '/api/thorchain/thorchain/constants') {
       await route.fulfill({
         json: {
-          int_64_values: { OptimalBondD: 2500000000000 },
+          int_64_values: { MaxBondProviders: 100, MinimumBondInRune: 30000000000000 },
           bool_values: {},
           string_values: {},
         },
@@ -181,7 +274,7 @@ export async function mockDashboardApis(page: Page, address = DEFAULT_DASHBOARD_
       return;
     }
 
-    if (url.pathname.includes('/api/thorchain/thorchain/pool/') && url.pathname.includes('/liquidity_provider/')) {
+    if (/^\/api\/thorchain\/thorchain\/pool\/[^/]+\/liquidity_provider\/[^/]+$/.test(url.pathname)) {
       await route.fulfill({
         json: {
           rune_address: address,
@@ -207,6 +300,14 @@ export async function mockDashboardApis(page: Page, address = DEFAULT_DASHBOARD_
     const url = new URL(route.request().url());
 
     if (url.pathname === '/api/midgard/v2/health') {
+      if (options.midgardHealthStatus && options.midgardHealthStatus >= 400) {
+        await route.fulfill({
+          status: options.midgardHealthStatus,
+          json: { error: 'Mock Midgard health failure' },
+        });
+        return;
+      }
+
       await route.fulfill({ json: { lastThorNode: { height: 12345678 } } });
       return;
     }
@@ -217,6 +318,7 @@ export async function mockDashboardApis(page: Page, address = DEFAULT_DASHBOARD_
     }
 
     if (url.pathname === '/api/midgard/v2/network') {
+      await delaySupportFeed();
       await route.fulfill({ json: mockNetwork });
       return;
     }
@@ -225,14 +327,17 @@ export async function mockDashboardApis(page: Page, address = DEFAULT_DASHBOARD_
       await route.fulfill({
         json: {
           address,
-          totalBonded: '1250000000000',
-          nodes: [{ address: mockNodes[0].node_address, bond: '1250000000000', status: 'Active' }],
+          totalBonded: withBondPosition ? '1250000000000' : '0',
+          nodes: withBondPosition
+            ? [{ address: routedNodes[0].node_address, bond: '1250000000000', status: routedNodes[0].status }]
+            : [],
         },
       });
       return;
     }
 
     if (url.pathname === `/api/midgard/v2/member/${address}`) {
+      await delaySupportFeed();
       await route.fulfill({
         json: {
           pools: [
@@ -264,12 +369,14 @@ export async function mockDashboardApis(page: Page, address = DEFAULT_DASHBOARD_
     }
 
     if (url.pathname === '/api/midgard/v2/pools') {
+      await delaySupportFeed();
       await route.fulfill({ json: mockPools });
       return;
     }
 
     if (url.pathname === '/api/midgard/v2/history/rune') {
-      await route.fulfill({ json: mockRuneHistory });
+      await delaySupportFeed();
+      await route.fulfill({ json: buildMockRuneHistory(options.runeHistoryNowMs) });
       return;
     }
 
@@ -287,10 +394,24 @@ export async function mockDashboardApis(page: Page, address = DEFAULT_DASHBOARD_
   });
 
   await page.route('**/api/coinapi/**', async (route) => {
-    await route.fulfill({ json: { price: 1.5 } });
+    const url = new URL(route.request().url());
+
+    if (url.pathname === '/api/coinapi/rune-price') {
+      await route.fulfill({ json: { price: 1.5 } });
+      return;
+    }
+
+    await route.fulfill({ status: 404, json: { error: `Unhandled CoinAPI mock: ${url.pathname}` } });
   });
 
   await page.route('**/api/coingecko/**', async (route) => {
-    await route.fulfill({ json: { thorchain: { usd: 1.5 } } });
+    const url = new URL(route.request().url());
+
+    if (url.pathname === '/api/coingecko/coins/thorchain/market_chart/range') {
+      await route.fulfill({ json: { prices: [[Date.now(), 1.5]] } });
+      return;
+    }
+
+    await route.fulfill({ status: 404, json: { error: `Unhandled CoinGecko mock: ${url.pathname}` } });
   });
 }

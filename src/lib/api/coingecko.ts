@@ -12,22 +12,25 @@ export async function getCoingeckoRunePrice(timestamp: number): Promise<number |
     });
 
     if (!response.ok) {
-      console.error(`CoinGecko API error: ${response.status}`);
       return null;
     }
 
     const data = await response.json();
     
-    if (!data.prices || data.prices.length === 0) {
+    if (!Array.isArray(data.prices) || data.prices.length === 0) {
       return null;
     }
 
     // data.prices is an array of [timestamp, price]
     // Find the one closest to our target timestamp
-    let closestPrice = data.prices[0][1];
-    let minDiff = Math.abs(data.prices[0][0] / 1000 - timestamp);
+    let closestPrice: number | null = null;
+    let minDiff = Number.POSITIVE_INFINITY;
 
     for (const [ts, price] of data.prices) {
+      if (!Number.isFinite(ts) || !Number.isFinite(price) || price <= 0) {
+        continue;
+      }
+
       const diff = Math.abs(ts / 1000 - timestamp);
       if (diff < minDiff) {
         minDiff = diff;
@@ -36,8 +39,7 @@ export async function getCoingeckoRunePrice(timestamp: number): Promise<number |
     }
 
     return closestPrice;
-  } catch (error) {
-    console.error('Error fetching RUNE price from CoinGecko:', error);
+  } catch {
     return null;
   }
 }

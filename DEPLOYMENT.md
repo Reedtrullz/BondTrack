@@ -58,8 +58,15 @@ Public `NEXT_PUBLIC_*` variables are baked into the Docker image at build time
 by CI build args. Ansible runtime values with those names are retained for
 server-side rendering/diagnostics and to document the contract, but they cannot
 rewrite browser JavaScript in an already-built image. Server-only values such as
-`THORNODE_API_URL`, `MIDGARD_API_URL`, `MIDGARD_FALLBACK_URL`, and `COINAPI_KEY`
-are runtime-only.
+`THORNODE_API_URL`, `MIDGARD_API_URL`, `MIDGARD_FALLBACK_URL`,
+`TRUST_PROXY_HEADERS`, `TRUST_X_FORWARDED_FOR`, and `COINAPI_KEY` are
+runtime-only.
+
+The production playbook sets `TRUST_PROXY_HEADERS=true` because the checked-in
+`Caddyfile` overwrites `X-Real-IP` with `{remote_host}` before forwarding to
+Next.js. Keep `TRUST_X_FORWARDED_FOR=false` unless every proxy in front of the
+app sanitizes incoming `X-Forwarded-For`; otherwise clients can spoof their
+rate-limit identity.
 
 ### Force a specific immutable tag
 The playbook does not default to `:latest`. To deploy an exact published SHA tag:

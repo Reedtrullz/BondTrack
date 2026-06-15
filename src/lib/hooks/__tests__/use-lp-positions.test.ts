@@ -414,6 +414,42 @@ describe('useLpPositions', () => {
     });
   });
 
+  it('quietly degrades to current-only pricing when historical enrichment has a status-less network failure', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const memberWithHistory = {
+      pools: [{
+        ...successfulMemberDetails.pools[0],
+        dateFirstAdded: '1700000000',
+      }],
+    };
+    vi.mocked(midgard.getMemberDetails).mockResolvedValue(memberWithHistory as never);
+    vi.mocked(midgard.getPools).mockResolvedValue([
+      { ...successfulPools[0], liquidityUnits: '1000', runeDepth: '250000000000', assetDepth: '500000000000' },
+    ] as never);
+    vi.mocked(midgard.getHistoricalRunePrice).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    vi.mocked(midgard.getPoolHistoryAtTimestamp).mockResolvedValue({
+      timestamp: 1700000000,
+      runeDepth: '250000000000',
+      assetDepth: '500000000000',
+      liquidityUnits: '1000',
+    });
+
+    const { result } = renderHook(() => useLpPositions('thor1historicalnetworkfail'), { wrapper });
+
+    await waitFor(() => expect(result.current.isHistoricalEnrichmentLoading).toBe(false));
+
+    expect(result.current.state).toBe('ready');
+    expect(result.current.positions[0]).toMatchObject({
+      pricingSource: 'current-only',
+      entryRunePriceUsd: null,
+      entryAssetPriceUsd: null,
+      netProfitLoss: 'Current value only',
+    });
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+
+    consoleErrorSpy.mockRestore();
+  });
+
   it('evicts rejected pool history lookups so a later enrichment can retry the same pool/day', async () => {
     const memberWithHistory = {
       pools: [{

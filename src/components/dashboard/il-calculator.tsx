@@ -8,6 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Info, Calculator } from 'lucide-react';
 import { formatUsd } from '@/lib/utils/formatters';
 
+const parsePositiveDecimal = (value: string) => {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
 /**
  * IL Calculator: Calculates impermanent loss for LP positions
  * Formula: IL = 1 - (2 * sqrt(priceRatio) / (1 + priceRatio))
@@ -24,14 +29,14 @@ export default function IlCalculator() {
 
   // Calculate IL
   const ilResult = useMemo(() => {
-    const runeEntry = parseFloat(runeEntryPrice);
-    const assetEntry = parseFloat(assetEntryPrice);
-    const runeCurrent = parseFloat(runeCurrentPrice);
-    const assetCurrent = parseFloat(assetCurrentPrice);
-    const runeDep = parseFloat(runeDeposit);
-    const assetDep = parseFloat(assetDeposit);
+    const runeEntry = parsePositiveDecimal(runeEntryPrice);
+    const assetEntry = parsePositiveDecimal(assetEntryPrice);
+    const runeCurrent = parsePositiveDecimal(runeCurrentPrice);
+    const assetCurrent = parsePositiveDecimal(assetCurrentPrice);
+    const runeDep = parsePositiveDecimal(runeDeposit);
+    const assetDep = parsePositiveDecimal(assetDeposit);
 
-    if (!runeEntry || !assetEntry || !runeCurrent || !assetCurrent || runeEntry <= 0 || assetEntry <= 0 || runeCurrent <= 0 || assetCurrent <= 0) {
+    if (!runeEntry || !assetEntry || !runeCurrent || !assetCurrent || !runeDep || !assetDep) {
       return null;
     }
 
@@ -41,12 +46,13 @@ export default function IlCalculator() {
     
     // Impermanent Loss formula
     const priceRatio = currentRatio / entryRatio;
-    const ilPercent = (1 - (2 * Math.sqrt(priceRatio) / (1 + priceRatio))) * 100;
+    const relativeLpValue = (2 * Math.sqrt(priceRatio)) / (1 + priceRatio);
+    const ilPercent = (1 - relativeLpValue) * 100;
 
     // Calculate position values
     const entryValue = (runeDep * runeEntry) + (assetDep * assetEntry);
     const hodlValue = (runeDep * runeCurrent) + (assetDep * assetCurrent);
-    const lpValue = entryValue * (1 - ilPercent / 100);
+    const lpValue = hodlValue * relativeLpValue;
     const ilUsd = hodlValue - lpValue;
 
     return {
@@ -77,7 +83,29 @@ export default function IlCalculator() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <section
+          aria-label="IL estimate assumptions"
+          className="grid gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-800/40 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          <div>
+            <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Basis</p>
+            <p className="font-medium text-zinc-900 dark:text-zinc-100">Manual estimate</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Formula</p>
+            <p className="font-medium text-zinc-900 dark:text-zinc-100">50/50 formula</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Fees</p>
+            <p className="font-medium text-zinc-900 dark:text-zinc-100">Excludes fees</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Confidence</p>
+            <p className="font-medium text-zinc-900 dark:text-zinc-100">Not source-confirmed</p>
+          </div>
+        </section>
+
+        <section aria-label="IL calculator inputs" className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Entry Prices */}
           <div className="space-y-4">
             <h3 className="text-sm font-medium uppercase text-zinc-500 dark:text-zinc-400">
@@ -176,48 +204,62 @@ export default function IlCalculator() {
           </div>
 
           {/* Results */}
-          <div className="space-y-4">
+          <section aria-label="IL estimate result" className="space-y-4">
             <h3 className="text-sm font-medium uppercase text-zinc-500 dark:text-zinc-400">
               Results
             </h3>
             {ilResult ? (
-              <div className="space-y-3 rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800/50">
-                <div className="flex justify-between">
-                  <span className="text-sm text-zinc-500">Impermanent Loss</span>
-                  <span className={`text-sm font-bold ${parseFloat(ilResult.ilPercent) >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'}`}>
-                    {ilResult.ilPercent}%
-                  </span>
+              <div className="space-y-4 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/20">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Estimated IL</span>
+                    <span className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                      Estimated loss
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-end justify-between gap-2">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400">Estimated, not source-confirmed</span>
+                    <span className="font-mono text-2xl font-semibold text-amber-800 dark:text-amber-200">
+                      {ilResult.ilPercent}%
+                    </span>
+                  </div>
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                    Review before withdrawing. Compare this estimate with earned fees, LP source confidence, and pool depth before acting.
+                  </p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-zinc-500">Entry Value</span>
-                  <span className="text-sm font-medium">{formatUsd(parseFloat(ilResult.entryValue))}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-zinc-500">HODL Value</span>
-                  <span className="text-sm font-medium">{formatUsd(parseFloat(ilResult.hodlValue))}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-zinc-500">LP Value (After IL)</span>
-                  <span className="text-sm font-medium">{formatUsd(parseFloat(ilResult.lpValue))}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-zinc-500">IL (USD)</span>
-                  <span className="text-sm font-bold text-[var(--color-danger)]">
-                    -{formatUsd(parseFloat(ilResult.ilUsd))}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-zinc-500">Price Ratio (RUNE/Asset)</span>
-                  <span className="text-sm font-medium">{ilResult.priceRatio}</span>
+
+                <div className="space-y-3 rounded-md bg-white/70 p-3 dark:bg-zinc-900/50">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-sm text-zinc-500">Estimated loss vs HODL</span>
+                    <span className="text-sm font-bold text-amber-800 dark:text-amber-200">
+                      {formatUsd(parseFloat(ilResult.ilUsd))}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-sm text-zinc-500">Entry Value</span>
+                    <span className="text-sm font-medium">{formatUsd(parseFloat(ilResult.entryValue))}</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-sm text-zinc-500">HODL Value</span>
+                    <span className="text-sm font-medium">{formatUsd(parseFloat(ilResult.hodlValue))}</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-sm text-zinc-500">LP Value (After IL)</span>
+                    <span className="text-sm font-medium">{formatUsd(parseFloat(ilResult.lpValue))}</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-sm text-zinc-500">Price Ratio (RUNE/Asset)</span>
+                    <span className="text-sm font-medium">{ilResult.priceRatio}</span>
+                  </div>
                 </div>
               </div>
             ) : (
               <div className="rounded-lg bg-zinc-50 p-4 text-sm text-zinc-500 dark:bg-zinc-800/50">
-                Enter valid prices to calculate impermanent loss
+                Enter valid prices and deposit amounts to estimate impermanent loss
               </div>
             )}
-          </div>
-        </div>
+          </section>
+        </section>
 
         <div className="flex gap-3">
           <Button variant="outline" onClick={handleReset}>

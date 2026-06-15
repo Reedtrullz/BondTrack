@@ -9,25 +9,28 @@ export function ChartDataTable({ caption, columns, rows }: ChartDataTableProps) 
 
   return (
     <div className="sr-only">
-      <table>
-        <caption>{caption}</caption>
-        <thead>
-          <tr>
+      <div role="table" aria-label={caption} className="w-px max-w-px overflow-hidden">
+        <div role="rowgroup" className="w-px max-w-px overflow-hidden">
+          <div role="row" className="w-px max-w-px overflow-hidden">
             {columns.map((column) => (
-              <th key={column} scope="col">{column}</th>
+              <span key={column} role="columnheader" className="block w-px max-w-px overflow-hidden">
+                {column}
+              </span>
             ))}
-          </tr>
-        </thead>
-        <tbody>
+          </div>
+        </div>
+        <div role="rowgroup" className="w-px max-w-px overflow-hidden">
           {rows.map((row, rowIndex) => (
-            <tr key={rowIndex}>
+            <div key={rowIndex} role="row" className="w-px max-w-px overflow-hidden">
               {row.map((cell, cellIndex) => (
-                <td key={cellIndex}>{cell}</td>
+                <span key={cellIndex} role="cell" className="block w-px max-w-px overflow-hidden">
+                  {cell}
+                </span>
               ))}
-            </tr>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      </div>
     </div>
   );
 }

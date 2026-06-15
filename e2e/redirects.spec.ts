@@ -15,11 +15,33 @@ test.describe('Dashboard redirects', () => {
     await expect(page).toHaveURL(`/dashboard?address=${MOCK_ADDRESS}`);
   });
 
-  test('shows the address-required state for overview without an address', async ({ page }) => {
+  test('recovers from overview without an address and preserves query params', async ({ page }) => {
+    const apiRequestsBeforeSubmit: string[] = [];
+
+    await page.route('**/api/**', async (route) => {
+      apiRequestsBeforeSubmit.push(new URL(route.request().url()).pathname);
+      await route.abort('failed');
+    });
+
     await page.goto('/dashboard/overview?view=test123');
 
     await expect(page).toHaveURL('/dashboard/overview?view=test123');
-    await expect(page.getByText('Enter an address to get started')).toBeVisible();
+    const diagnosis = page.getByLabel('Address required diagnosis');
+    await expect(diagnosis).toContainText('Address required');
+    await expect(diagnosis).toContainText('Choose a watched THORChain address to start triage');
+    await expect(page.getByText('Public read-only')).toBeVisible();
+    await expect(page.getByText('Freshness after lookup')).toBeVisible();
+    await page.waitForTimeout(300);
+    expect(apiRequestsBeforeSubmit).toEqual([]);
+
+    await page.unroute('**/api/**');
+    await mockDashboardApis(page, MOCK_ADDRESS);
+
+    await page.getByLabel('THORChain address or THORName').fill(MOCK_ADDRESS);
+    await page.getByRole('button', { name: 'Lookup' }).click();
+
+    await expect(page).toHaveURL(`/dashboard?view=test123&address=${MOCK_ADDRESS}`);
+    await expect(page.getByLabel('Command center diagnosis')).toBeVisible();
   });
 
   test('dashboard root restores saved address on the command center', async ({ page }) => {

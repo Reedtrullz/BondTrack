@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useWatchlist } from '../use-watchlist';
 
@@ -41,11 +41,44 @@ describe('useWatchlist', () => {
     });
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('initializes with empty array', async () => {
     const { result } = renderHook(() => useWatchlist());
     await waitFor(() => expect(result.current.isLoaded).toBe(true));
 
     expect(result.current.addresses).toEqual([]);
+  });
+
+  it('keeps an in-memory watchlist when browser storage is unavailable', async () => {
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new Error('localStorage denied');
+      },
+    });
+
+    try {
+      const { result } = renderHook(() => useWatchlist());
+      await waitFor(() => expect(result.current.isLoaded).toBe(true));
+
+      act(() => {
+        result.current.addAddress(NEW_ADDRESS);
+      });
+
+      expect(result.current.addresses).toEqual([NEW_ADDRESS]);
+      expect(result.current.isAddressSaved(NEW_ADDRESS)).toBe(true);
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      if (originalLocalStorage) {
+        Object.defineProperty(window, 'localStorage', originalLocalStorage);
+      }
+    }
   });
 
   it('loads addresses from localStorage', async () => {
@@ -60,20 +93,13 @@ describe('useWatchlist', () => {
   it('ignores invalid localStorage data', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    try {
-      localStorage.setItem(STORAGE_KEY, 'not valid json');
+    localStorage.setItem(STORAGE_KEY, 'not valid json');
 
-      const { result } = renderHook(() => useWatchlist());
-      await waitFor(() => expect(result.current.isLoaded).toBe(true));
+    const { result } = renderHook(() => useWatchlist());
+    await waitFor(() => expect(result.current.isLoaded).toBe(true));
 
-      expect(result.current.addresses).toEqual([]);
-      expect(consoleError).toHaveBeenCalledWith(
-        'Storage error while loading watchlist addresses:',
-        expect.any(SyntaxError)
-      );
-    } finally {
-      consoleError.mockRestore();
-    }
+    expect(result.current.addresses).toEqual([]);
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
   it('adds address to watchlist', async () => {

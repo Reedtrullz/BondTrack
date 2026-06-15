@@ -7,7 +7,15 @@ import {
   getUpgradeAlertDismissedStorageKey,
   LEGACY_STORAGE_KEYS,
   migrateDashboardAddressStorage,
+  readLocalStorageValue,
+  readDashboardAddress,
+  readThorNameReverseLookupCache,
+  removeLocalStorageValue,
+  removeDashboardAddress,
   STORAGE_KEYS,
+  writeLocalStorageValue,
+  writeDashboardAddress,
+  writeThorNameReverseLookupCache,
 } from './keys';
 
 const validCanonicalAddress = `thor1${'q'.repeat(38)}`;
@@ -105,5 +113,51 @@ describe('storage key registry and migrations', () => {
 
     expect(local.getItem('heimdall-last-address')).toBeNull();
     expect(session.getItem('dashboard-address')).toBeNull();
+  });
+
+  it('does not throw when browser localStorage is unavailable', () => {
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(window, 'localStorage');
+
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new Error('localStorage denied');
+      },
+    });
+
+    try {
+      expect(readDashboardAddress()).toBeNull();
+      expect(readLocalStorageValue(STORAGE_KEYS.watchlist)).toBeNull();
+      expect(() => writeLocalStorageValue(STORAGE_KEYS.watchlist, '[]')).not.toThrow();
+      expect(() => removeLocalStorageValue(STORAGE_KEYS.watchlist)).not.toThrow();
+      expect(() => writeDashboardAddress(validCanonicalAddress)).not.toThrow();
+      expect(() => removeDashboardAddress()).not.toThrow();
+      expect(() => clearLegacyDashboardAddressKeys()).not.toThrow();
+    } finally {
+      if (originalLocalStorage) {
+        Object.defineProperty(window, 'localStorage', originalLocalStorage);
+      }
+    }
+  });
+
+  it('does not throw when browser sessionStorage is unavailable', () => {
+    const originalSessionStorage = Object.getOwnPropertyDescriptor(window, 'sessionStorage');
+
+    Object.defineProperty(window, 'sessionStorage', {
+      configurable: true,
+      get() {
+        throw new Error('sessionStorage denied');
+      },
+    });
+
+    try {
+      expect(readThorNameReverseLookupCache(validCanonicalAddress)).toBeNull();
+      expect(() => writeThorNameReverseLookupCache(validCanonicalAddress, '__none__')).not.toThrow();
+      expect(() => clearLegacyDashboardAddressKeys()).not.toThrow();
+    } finally {
+      if (originalSessionStorage) {
+        Object.defineProperty(window, 'sessionStorage', originalSessionStorage);
+      }
+    }
   });
 });

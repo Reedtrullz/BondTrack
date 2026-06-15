@@ -14,14 +14,14 @@ function getBridgeStatus(midgard: ApiHealthStatus, thornode: ApiHealthStatus): A
 function getStatusCopy(status: ApiHealthStatus): { label: string; detail: string } {
   switch (status) {
     case 'healthy':
-      return { label: 'Sources healthy', detail: 'Midgard + THORNode confirmed' };
+      return { label: 'Sources responding', detail: 'Recent Midgard + THORNode checks succeeded' };
     case 'degraded':
-      return { label: 'Sources degraded', detail: 'One source is retrying' };
+      return { label: 'Source checks degraded', detail: 'One recent check is retrying' };
     case 'down':
-      return { label: 'Sources down', detail: 'Data may be unavailable' };
+      return { label: 'Source checks failing', detail: 'Current data may be unavailable' };
     case 'unknown':
     default:
-      return { label: 'Sources unknown', detail: 'Health check pending' };
+      return { label: 'Source checks pending', detail: 'Waiting for health probes' };
   }
 }
 

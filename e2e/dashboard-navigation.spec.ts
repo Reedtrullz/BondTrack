@@ -14,8 +14,9 @@ test.describe('Dashboard Navigation', () => {
   });
 
   test('displays dashboard shell with sidebar', async ({ page }) => {
-    await expect(page.getByText('Heimdall').first()).toBeVisible();
-    await expect(page.getByText('Heimdall').first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Heimdall Navigation' })).toHaveAttribute('href', '/');
+    await expect(sidebarLink(page, 'Portfolio')).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByRole('button', { name: 'Refresh dashboard data' })).toBeVisible();
   });
 
   test('sidebar contains all navigation links', async ({ page }) => {
@@ -68,6 +69,10 @@ test.describe('Dashboard Navigation', () => {
   });
 
   test('displays wallet connect button in header', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'Connect Wallet' }).first()).toBeVisible();
+    const walletConnect = page.getByTestId('wallet-connect-button');
+
+    await expect(walletConnect).toBeVisible();
+    await expect(walletConnect).toBeEnabled();
+    await expect(walletConnect).toHaveAccessibleName('Connect Wallet');
   });
 });

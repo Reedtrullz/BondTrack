@@ -55,6 +55,10 @@ function isAllowedPath(path: string): boolean {
   return ALLOWED_PATHS.some((pattern) => pattern.test(path));
 }
 
+function isThorNameReverseLookupPath(path: string): boolean {
+  return /^v2\/thorname\/rlookup\/[A-Za-z0-9._-]+$/.test(path);
+}
+
 function schemaForPath(path: string): QuerySchema {
   if (path === 'v2/actions') return ACTIONS_QUERY;
   if (/^v2\/history\/(earnings|rune)$/.test(path)) return HISTORY_QUERY;
@@ -221,6 +225,13 @@ export async function GET(
 
   if (upstreamResult.ok) {
     return createProxySuccessResponse(request, upstreamResult.data, {
+      extraOrigins: ['https://bond.thorchain.no'],
+      cacheControl: SUCCESS_CACHE_CONTROL,
+    });
+  }
+
+  if (isThorNameReverseLookupPath(decodedPath) && upstreamResult.statusCodes.includes(404)) {
+    return createProxySuccessResponse(request, { entry: null }, {
       extraOrigins: ['https://bond.thorchain.no'],
       cacheControl: SUCCESS_CACHE_CONTROL,
     });

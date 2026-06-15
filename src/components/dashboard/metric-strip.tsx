@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import type { InsightSeverity, MetricStripItem } from '@/lib/dashboard/insights';
 
 interface MetricStripProps {
+  id?: string;
   metrics: MetricStripItem[];
   title?: string;
 }
@@ -29,9 +30,9 @@ function SeverityIcon({ severity }: { severity?: InsightSeverity }) {
   return null;
 }
 
-export function MetricStrip({ metrics, title = 'Supporting metrics' }: MetricStripProps) {
+export function MetricStrip({ id, metrics, title = 'Supporting metrics' }: MetricStripProps) {
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white/90 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80" aria-label={title}>
+    <section id={id} className="rounded-2xl border border-zinc-200 bg-white/90 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80" aria-label={title}>
       <div className="mb-3 text-xs font-bold uppercase text-zinc-500 dark:text-zinc-400">{title}</div>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7">
         {metrics.map((metric) => (

@@ -2,11 +2,12 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
+import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { useCurrentBlockHeight } from '@/lib/hooks/use-current-block-height';
 import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
+import { useNetworkConstants } from '@/lib/hooks/use-network-constants';
 
 import { AlertTriangle, Shield, TrendingDown, Clock, Zap, AlertCircle, Lock, Hourglass, Activity, CheckCircle, TrendingUp, Minus, AlertCircle as AlertIcon } from 'lucide-react';
-import { calculatePortfolioHealth } from '@/lib/utils/health-score';
 import { SlashMonitor } from '@/components/dashboard/slash-monitor';
 import { ChurnOutRisk } from '@/components/dashboard/churn-out-risk';
 import { NetworkSecurityMetrics } from '@/components/dashboard/network-security-metrics';
@@ -14,16 +15,35 @@ import { NetworkSecurityCard } from '@/components/dashboard/network-security-car
 import { UnbondWindowTracker } from '@/components/dashboard/unbond-window-tracker';
 import { RiskRadar } from '@/components/dashboard/risk-radar';
 import { DashboardCard } from '@/components/shared/dashboard-card';
+import { DashboardLoadingSkeleton } from '@/components/shared/dashboard-loading-skeleton';
 import { ActionQueue } from '@/components/dashboard/action-queue';
+import {
+  CandidateScoreEvidence,
+  getCandidateScoreEvidenceSummary,
+  type CandidateScoreEvidenceInput,
+} from '@/components/dashboard/candidate-score-evidence';
 import { InsightHeader } from '@/components/dashboard/insight-header';
+import { SourceFreshnessPanel } from '@/components/dashboard/source-freshness-panel';
 import type { YieldGuardFlag, BondPosition } from '@/lib/types/node';
+import type { NodeRaw } from '@/lib/api/thornode';
 import { useState } from 'react';
 import { generatePortfolioAlerts } from '@/lib/utils/portfolio-alerts';
 import { cn } from '@/lib/utils';
 import { calculateNetworkSecurityState, estimateNextChurn } from '@/lib/utils/calculations';
-import { runeToNumber, formatCompactNumber, formatRuneFromNumber } from '@/lib/utils/formatters';
+import { runeToNumber, formatBasisPoints, formatCompactNumber, formatPercent, formatRuneDisplayNumber, formatRuneFromNumber } from '@/lib/utils/formatters';
 import { NETWORK } from '@/lib/config';
-import { buildDashboardInsightState } from '@/lib/dashboard/insights';
+import { buildDashboardInsightState, type ActionItem } from '@/lib/dashboard/insights';
+import { getCandidateBondSourceSafety, type CandidateBondSourceSafety } from '@/lib/dashboard/candidate-bond-source-safety';
+import {
+  getIncentivePendulumModel,
+  getNodeSeverityScore,
+  getRiskNodeElementId,
+  resolveFocusedNodeRiskContext,
+  sortRiskPositions,
+  summarizeRiskPositions,
+  type CandidateRiskContext,
+  type IncentivePendulumLevel,
+} from '@/lib/dashboard/risk-context';
 import { useApiHealthContext } from '@/lib/hooks/use-api-health';
 
 function formatRuneValue(value: number): string {
@@ -36,19 +56,212 @@ function formatRuneCompact(value: number): string {
   return formatCompactNumber(value);
 }
 
-function getNodeSeverityScore(p: BondPosition): number {
-  let score = 0;
-  if (p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical) score += NETWORK.NODE_SEVERITY_SCORES.criticalSlash;
-  else if (p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning) score += NETWORK.NODE_SEVERITY_SCORES.warningSlash;
-  else if (p.slashPoints > 0) score += NETWORK.NODE_SEVERITY_SCORES.minorSlash;
-  if (p.isJailed) score += NETWORK.NODE_SEVERITY_SCORES.jailed;
-  if (p.yieldGuardFlags?.includes('lowest_bond')) score += NETWORK.NODE_SEVERITY_SCORES.highRisk;
-  if (p.yieldGuardFlags?.includes('overbonded')) score += NETWORK.NODE_SEVERITY_SCORES.overbonded;
-  return score;
+function isUsableRiskMetric(value: number): boolean {
+  return Number.isFinite(value) && value >= 0;
+}
+
+function formatRiskPercent(value: number): string {
+  return isUsableRiskMetric(value) ? formatPercent(value) : '--';
+}
+
+function formatRiskRune(value: number): string {
+  return isUsableRiskMetric(value) && value > 0 ? `ᚱ${formatRuneDisplayNumber(value)}` : '--';
+}
+
+function formatRiskNumber(value: number): string {
+  return isUsableRiskMetric(value) ? value.toLocaleString() : '--';
+}
+
+function formatNodeAddress(nodeAddress: string): string {
+  return `${nodeAddress.slice(0, 12)}...${nodeAddress.slice(-6)}`;
+}
+
+function buildDashboardHref(path: string, address: string | null, nodeAddress?: string): string {
+  const params = new URLSearchParams();
+  if (address) {
+    params.set('address', address);
+  }
+  if (nodeAddress) {
+    params.set('node', nodeAddress);
+  }
+
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
+}
+
+function getActionNodeAddress(action: ActionItem): string | null {
+  try {
+    return new URL(action.href, 'https://heimdall.local').searchParams.get('node');
+  } catch {
+    return null;
+  }
+}
+
+function getNonFocusedRiskActions(actions: ActionItem[], focusedNodeAddress: string | null): ActionItem[] {
+  if (!focusedNodeAddress) return actions;
+
+  return actions.filter((action) => getActionNodeAddress(action) !== focusedNodeAddress);
+}
+
+function buildBondPrepHref(address: string | null, nodeAddress: string): string {
+  const params = new URLSearchParams();
+  if (address) {
+    params.set('address', address);
+  }
+  params.set('action', 'bond');
+  params.set('node', nodeAddress);
+
+  return `/dashboard/transactions?${params.toString()}`;
+}
+
+function getFocusedRiskCapacitySummary(candidateContext: CandidateRiskContext): string {
+  switch (candidateContext.candidateScore.capacityTrust) {
+    case 'available':
+      return 'Provider whitelisted';
+    case 'needs_whitelist':
+      return 'Whitelist needed';
+    case 'full':
+      return 'Provider slots full';
+    case 'unknown':
+      return 'Access unknown';
+  }
+}
+
+function getFocusedCandidateRiskDecision({
+  address,
+  candidateContext,
+  explorerHref,
+  nodeAddress,
+  sourceConfidenceHref,
+  sourceSafety,
+}: {
+  address: string | null;
+  candidateContext: CandidateRiskContext;
+  explorerHref: string;
+  nodeAddress: string;
+  sourceConfidenceHref: string;
+  sourceSafety: CandidateBondSourceSafety;
+}) {
+  const { candidateScore } = candidateContext;
+
+  if (candidateScore.capacityTrust === 'available' && candidateScore.quality === 'Strong') {
+    if (!sourceSafety.canPrepareBond) {
+      return {
+        detail: sourceSafety.detail,
+        href: sourceConfidenceHref,
+        label: 'Wait for source confidence',
+        linkLabel: 'Review source confidence',
+        tone: 'review' as const,
+      };
+    }
+
+    return {
+      detail: 'Watched address is already listed as a provider and the candidate score is strong.',
+      href: buildBondPrepHref(address, nodeAddress),
+      label: 'Prepare BOND memo',
+      linkLabel: 'Prepare BOND memo',
+      tone: 'ready' as const,
+    };
+  }
+
+  if (candidateScore.capacityTrust === 'needs_whitelist') {
+    return {
+      detail: 'Do not bond until this address is whitelisted.',
+      href: explorerHref,
+      label: 'Ask operator to whitelist',
+      linkLabel: 'Compare alternatives',
+      tone: 'blocked' as const,
+    };
+  }
+
+  if (candidateScore.capacityTrust === 'full') {
+    return {
+      detail: 'Provider slots are full; choose another node until capacity reopens.',
+      href: explorerHref,
+      label: 'Choose another candidate',
+      linkLabel: 'Compare alternatives',
+      tone: 'blocked' as const,
+    };
+  }
+
+  if (candidateScore.capacityTrust === 'unknown') {
+    return {
+      detail: 'Provider access is incomplete; verify before bonding.',
+      href: explorerHref,
+      label: 'Verify provider access',
+      linkLabel: 'Compare candidates',
+      tone: 'review' as const,
+    };
+  }
+
+  return {
+    detail: 'Provider access is available, but the candidate score still needs risk review before bonding.',
+    href: explorerHref,
+    label: 'Review risk evidence',
+    linkLabel: 'Compare candidates',
+    tone: 'review' as const,
+  };
+}
+
+function getFocusedBondedRiskDecision(position: BondPosition, severity: number) {
+  const flags = position.yieldGuardFlags ?? [];
+
+  if (position.isJailed) {
+    return {
+      detail: 'Node is jailed. Confirm operator recovery status before adding bond or changing exposure.',
+      label: 'Inspect jail status',
+      tone: 'critical' as const,
+    };
+  }
+
+  if (position.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical) {
+    return {
+      detail: 'Critical slash points exceed the network threshold. Review trend, jail risk, and operator status before acting.',
+      label: 'Review slash monitor',
+      tone: 'critical' as const,
+    };
+  }
+
+  if (position.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning || position.slashPoints > 0) {
+    return {
+      detail: 'Slash points are elevated. Watch this node before the next churn and before adding more bond.',
+      label: 'Review slash monitor',
+      tone: 'warning' as const,
+    };
+  }
+
+  if (flags.includes('lowest_bond')) {
+    return {
+      detail: 'This node is flagged near the low-bond edge. Review churn context before moving or adding exposure.',
+      label: 'Review churn risk',
+      tone: 'warning' as const,
+    };
+  }
+
+  if (position.status !== 'Active') {
+    return {
+      detail: 'This node is not active. Confirm status and earning continuity before taking bond action.',
+      label: 'Inspect node status',
+      tone: 'warning' as const,
+    };
+  }
+
+  if (severity >= NETWORK.NODE_SEVERITY_SCORES.highRisk) {
+    return {
+      detail: 'This node has risk flags. Review the underlying evidence before changing bond exposure.',
+      label: 'Review node evidence',
+      tone: 'warning' as const,
+    };
+  }
+
+  return {
+    detail: 'No immediate bonded-node action is required. Review evidence if this alert came from an older queue item.',
+    label: 'Review node evidence',
+    tone: 'ready' as const,
+  };
 }
 
 const YIELD_GUARD_CONFIG: Record<YieldGuardFlag, { icon: React.ReactNode; color: string; label: string }> = {
-  overbonded: { icon: <TrendingDown className="w-3 h-3" />, color: 'text-orange-500', label: 'Overbonded' },
   highest_slash: { icon: <AlertTriangle className="w-3 h-3" />, color: 'text-red-500', label: 'High Slash' },
   lowest_bond: { icon: <TrendingDown className="w-3 h-3" />, color: 'text-yellow-500', label: 'Lowest Bond' },
   oldest: { icon: <Clock className="w-3 h-3" />, color: 'text-purple-500', label: 'Oldest' },
@@ -58,26 +271,10 @@ const YIELD_GUARD_CONFIG: Record<YieldGuardFlag, { icon: React.ReactNode; color:
 function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
   const { data: network } = useNetworkMetrics();
   const { currentBlockHeight } = useCurrentBlockHeight();
-  
-  const totalBonded = positions.reduce((sum, p) => sum + p.bondAmount, 0);
-  const activeCount = positions.filter(p => p.status === 'Active').length;
-  const standbyCount = positions.filter(p => p.status === 'Standby').length;
-  const jailedCount = positions.filter(p => p.isJailed).length;
-  const atRiskCount = positions.filter(p => p.yieldGuardFlags && p.yieldGuardFlags.length > 0).length;
-  const criticalCount = positions.filter(p => p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical).length;
-  const warningCount = positions.filter(p => p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning && p.slashPoints < NETWORK.SLASH_POINT_THRESHOLDS.critical).length;
-  
-  // Use canonical health score from utility layer
-  const health = calculatePortfolioHealth(positions);
-  const healthScore = health.score;
-  
-  const hasCriticalSlash = criticalCount > 0;
-  const hasJailed = jailedCount > 0;
-  const isHealthy = healthScore >= NETWORK.HEALTH_SCORE_THRESHOLDS.healthy && !hasCriticalSlash && !hasJailed;
+  const summary = summarizeRiskPositions(positions);
 
-  const statusIcon = isHealthy ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : healthScore >= NETWORK.HEALTH_SCORE_THRESHOLDS.warning ? <AlertIcon className="w-5 h-5 text-amber-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />;
-  const statusText = isHealthy ? 'Healthy' : healthScore >= NETWORK.HEALTH_SCORE_THRESHOLDS.warning ? 'Needs Attention' : 'At Risk';
-  const statusColor = isHealthy ? 'text-emerald-600 dark:text-emerald-400' : healthScore >= NETWORK.HEALTH_SCORE_THRESHOLDS.warning ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
+  const statusIcon = summary.statusLabel === 'Healthy' ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : summary.statusLabel === 'Needs Attention' ? <AlertIcon className="w-5 h-5 text-amber-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />;
+  const statusColor = summary.statusLabel === 'Healthy' ? 'text-emerald-600 dark:text-emerald-400' : summary.statusLabel === 'Needs Attention' ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
 
   // Use NETWORK bonds for pendulum (active + standby)
   const networkBondRaw = network?.bondMetrics?.totalActiveBond || '0';
@@ -115,61 +312,69 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
 
   if (positions.length === 0) {
     return (
-      <div className="p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-center">
+      <section
+        aria-label="Risk summary"
+        className="p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-center"
+      >
         <Shield className="w-10 h-10 mx-auto mb-3 text-zinc-400" />
         <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">No Bond Positions</h3>
         <p className="text-sm text-zinc-500">Enter an address to view risk status.</p>
-      </div>
+      </section>
     );
   }
 
   return (
-    <div className="p-4 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+    <section
+      aria-label="Risk summary"
+      className="p-4 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
+    >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           {statusIcon}
           <div>
-            <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{healthScore}</div>
-            <div className={cn("text-sm font-medium", statusColor)}>{statusText}</div>
+            <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{summary.healthScore}</div>
+            <div aria-label="Risk health status" className={cn("text-sm font-medium", statusColor)}>
+              {summary.statusLabel}
+            </div>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneValue(totalBonded)}</div>
+          <div className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{formatRuneValue(summary.totalBonded)}</div>
           <div className="text-xs text-zinc-500">Total Bonded</div>
         </div>
       </div>
       <div className="flex flex-wrap gap-2 text-sm">
         <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
-          <Zap className="w-3 h-3" />{activeCount} active
+          <Zap className="w-3 h-3" />{summary.activeCount} active
         </span>
-        {standbyCount > 0 && (
+        {summary.standbyCount > 0 && (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
-            {standbyCount} standby
+            {summary.standbyCount} standby
           </span>
         )}
-        {jailedCount > 0 && (
+        {summary.jailedCount > 0 && (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
-            <Lock className="w-3 h-3" />{jailedCount} jailed
+            <Lock className="w-3 h-3" />{summary.jailedCount} jailed
           </span>
         )}
-        {atRiskCount > 0 && (
+        {summary.atRiskCount > 0 && (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
-            <AlertTriangle className="w-3 h-3" />{atRiskCount} at risk
+            <AlertTriangle className="w-3 h-3" />{summary.atRiskCount} at risk
           </span>
         )}
-        {criticalCount > 0 && (
+        {summary.criticalSlashCount > 0 && (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-300">
-            {criticalCount} critical
+            {summary.criticalSlashCount} critical
           </span>
         )}
-        {warningCount > 0 && (
+        {summary.warningSlashCount > 0 && (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
-            {warningCount} warning
+            {summary.warningSlashCount} warning
           </span>
         )}
       </div>
-      <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 flex items-center justify-between text-sm">
-        <div className="flex items-center gap-4">
+      <div className="mt-3 flex flex-col gap-2 border-t border-zinc-200 pt-3 text-sm dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between">
+        <div className="grid gap-2 sm:flex sm:items-center sm:gap-4">
           <div className="flex items-center gap-1.5">
             <Activity className="w-4 h-4 text-zinc-400" />
             <span className="text-zinc-500">Pendulum:</span>
@@ -184,17 +389,23 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
             <span className="font-medium text-zinc-700 dark:text-zinc-300">{nextChurnText}</span>
           </div>
         </div>
-        <div className="text-xs text-zinc-400">
+        <div className="text-xs text-zinc-400 sm:text-right">
           {networkLiquidity > 0 ? networkLiquidityDisplay : '--'} TVL
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
-function NodesList({ positions }: { positions: BondPosition[] }) {
+function NodesList({
+  positions,
+  focusedNodeAddress,
+}: {
+  positions: BondPosition[];
+  focusedNodeAddress?: string | null;
+}) {
   const alerts = generatePortfolioAlerts(positions);
-  const sortedPositions = [...positions].sort((a, b) => getNodeSeverityScore(b) - getNodeSeverityScore(a));
+  const sortedPositions = sortRiskPositions(positions);
   const totalBonded = positions.reduce((sum, p) => sum + p.bondAmount, 0);
 
   if (positions.length === 0) return null;
@@ -221,14 +432,19 @@ function NodesList({ positions }: { positions: BondPosition[] }) {
           });
           const severity = getNodeSeverityScore(pos);
           const isHighRisk = severity >= NETWORK.NODE_SEVERITY_SCORES.highRisk;
+          const isFocused = Boolean(focusedNodeAddress && pos.nodeAddress === focusedNodeAddress);
 
           return (
             <div 
               key={pos.nodeAddress} 
+              id={getRiskNodeElementId(pos.nodeAddress)}
               className={cn(
-                "p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors",
-                isHighRisk && "bg-red-50/50 dark:bg-red-900/10"
+                "scroll-mt-24 p-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50",
+                isHighRisk && "bg-red-50/50 dark:bg-red-900/10",
+                isFocused && "bg-amber-50 ring-2 ring-amber-400 dark:bg-amber-950/20 dark:ring-amber-500"
               )}
+              data-focused-node={isFocused ? 'true' : undefined}
+              aria-label={isFocused ? `Focused risk node ${pos.nodeAddress}` : undefined}
             >
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-3 min-w-0">
@@ -236,6 +452,11 @@ function NodesList({ positions }: { positions: BondPosition[] }) {
                     {pos.nodeAddress.slice(0, 12)}...{pos.nodeAddress.slice(-4)}
                   </div>
                   <div className="flex gap-1 shrink-0">
+                    {isFocused ? (
+                      <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
+                        Focused
+                      </span>
+                    ) : null}
                     {pos.yieldGuardFlags?.map(flag => {
                       const config = YIELD_GUARD_CONFIG[flag];
                       return (
@@ -292,21 +513,402 @@ function NodesList({ positions }: { positions: BondPosition[] }) {
   );
 }
 
+function FocusedNodeContext({
+  allNodes,
+  address,
+  detailsVisible,
+  focusedNodeAddress,
+  isLoading,
+  maxBondProviders,
+  onReviewDetails,
+  positions,
+  sourceConfidenceHref,
+  sourceSafety,
+}: {
+  allNodes: NodeRaw[];
+  address: string | null;
+  detailsVisible: boolean;
+  focusedNodeAddress: string | null;
+  isLoading: boolean;
+  maxBondProviders: number | null;
+  onReviewDetails: () => void;
+  positions: BondPosition[];
+  sourceConfidenceHref: string;
+  sourceSafety: CandidateBondSourceSafety;
+}) {
+  if (!focusedNodeAddress) return null;
+
+  if (isLoading) {
+    return (
+      <section
+        aria-label="Focused node risk context"
+        className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+        data-testid="focused-risk-context"
+      >
+        <div className="flex items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+          <Activity className="h-4 w-4 text-zinc-400" aria-hidden="true" />
+          Loading focused node context
+        </div>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          Heimdall is matching the focused node against bonded positions and current THORNode candidates.
+        </p>
+      </section>
+    );
+  }
+
+  const focusedContext = resolveFocusedNodeRiskContext({
+    allNodes,
+    focusedNodeAddress,
+    maxBondProviders,
+    positions,
+    userAddress: address,
+  });
+
+  if (focusedContext.kind === 'none') return null;
+
+  if (focusedContext.kind === 'candidate') {
+      const { candidateContext, node: focusedCandidate } = focusedContext;
+      const explorerHref = buildDashboardHref('/dashboard/explorer', address, focusedCandidate.node_address);
+      const qualityTone = candidateContext.candidateScore.quality === 'Avoid'
+        ? 'text-red-700 dark:text-red-300'
+        : candidateContext.candidateScore.quality === 'Watch'
+          ? 'text-amber-700 dark:text-amber-300'
+          : 'text-emerald-700 dark:text-emerald-300';
+      const riskDecision = getFocusedCandidateRiskDecision({
+        address,
+        candidateContext,
+        explorerHref,
+        nodeAddress: focusedCandidate.node_address,
+        sourceConfidenceHref,
+        sourceSafety,
+      });
+      const decisionToneClass = riskDecision.tone === 'ready'
+        ? 'border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100'
+        : riskDecision.tone === 'blocked'
+          ? 'border-red-200 bg-red-50 text-red-950 dark:border-red-900/60 dark:bg-red-950/25 dark:text-red-100'
+          : 'border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100';
+      const primaryLinkClass = riskDecision.tone === 'ready'
+        ? 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 dark:border-emerald-500 dark:bg-emerald-500 dark:text-zinc-950 dark:hover:bg-emerald-400'
+        : riskDecision.tone === 'blocked'
+          ? 'border-red-300 bg-white text-red-800 hover:bg-red-50 dark:border-red-800 dark:bg-zinc-950 dark:text-red-100 dark:hover:bg-red-950'
+          : 'border-amber-300 bg-white text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-zinc-950 dark:text-amber-100 dark:hover:bg-amber-950';
+      const secondaryLinkClass = 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900';
+      const metricSummary = [
+        getFocusedRiskCapacitySummary(candidateContext),
+        `Slash ${formatRiskNumber(focusedCandidate.slash_points)}`,
+        `Fee ${isUsableRiskMetric(candidateContext.operatorFee) ? formatBasisPoints(candidateContext.operatorFee) : '--'}`,
+      ].join(' · ');
+      const showSecondaryExplorerLink = riskDecision.href !== explorerHref;
+      const candidateScoreEvidence: CandidateScoreEvidenceInput = {
+        adjustedAPY: candidateContext.adjustedAPY,
+        candidateScore: candidateContext.candidateScore,
+        operatorFeePercent: candidateContext.operatorFee / 10000,
+        slash_points: focusedCandidate.slash_points,
+        totalBond: candidateContext.totalBond,
+      };
+      const inlineEvidenceSummary = getCandidateScoreEvidenceSummary(candidateScoreEvidence);
+      const inlineCapacityEvidence = getFocusedRiskCapacitySummary(candidateContext);
+      const inlineSourceEvidence = sourceSafety.canPrepareBond
+        ? `THORNode: ${inlineEvidenceSummary}. Capacity: ${inlineCapacityEvidence}.`
+        : `THORNode source: ${sourceSafety.value}. Capacity: ${inlineCapacityEvidence}.`;
+
+      return (
+        <section
+          aria-label="Focused node risk context"
+          className="rounded-xl border border-amber-200 bg-amber-50/70 p-2 dark:border-amber-900/60 dark:bg-amber-950/20 sm:p-4"
+          data-testid="focused-risk-context"
+        >
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold uppercase text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">
+                  <Shield className="h-3.5 w-3.5" aria-hidden="true" />
+                  Provider access review
+                </span>
+                <span className={cn("text-xs font-semibold uppercase", qualityTone)}>
+                  {candidateContext.candidateScore.quality} candidate · {candidateContext.candidateScore.score}/100
+                </span>
+              </div>
+              <h2 className="mt-2 break-all font-mono text-sm font-semibold text-zinc-950 dark:text-zinc-50 sm:text-base">
+                {focusedCandidate.node_address}
+              </h2>
+              <p className="mt-1 hidden text-sm text-zinc-700 dark:text-zinc-300 sm:block">
+                This node is not bonded to the watched address yet. Confirm provider access before preparing any BOND transaction.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-2 grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
+            <div
+              className={cn("rounded-lg border p-2 sm:p-3", decisionToneClass)}
+              data-testid="focused-risk-primary-action"
+            >
+              <div className="text-xs font-bold uppercase opacity-75">Next action</div>
+              <div className="mt-1 text-base font-semibold">{riskDecision.label}</div>
+              <p
+                className="mt-1 text-xs font-semibold opacity-80"
+                data-testid="focused-risk-inline-evidence"
+              >
+                {inlineSourceEvidence}
+              </p>
+              <p className="mt-1 text-sm opacity-85">{riskDecision.detail}</p>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:w-48 lg:grid-cols-1">
+              <a
+                href={riskDecision.href}
+                className={cn(
+                  "inline-flex min-h-9 items-center justify-center rounded-md border px-3 py-2 text-center text-sm font-semibold transition-colors",
+                  primaryLinkClass
+                )}
+                data-testid="focused-risk-primary-link"
+              >
+                {riskDecision.linkLabel}
+              </a>
+              {showSecondaryExplorerLink ? (
+                <a
+                  href={explorerHref}
+                  className={cn(
+                    "inline-flex min-h-9 items-center justify-center rounded-md border px-3 py-2 text-center text-sm font-semibold transition-colors",
+                    secondaryLinkClass
+                  )}
+                >
+                  Compare candidates
+                </a>
+              ) : null}
+            </div>
+          </div>
+
+          <CandidateScoreEvidence
+            candidate={candidateScoreEvidence}
+            className="mt-2 rounded-lg border border-amber-200/70 bg-white/70 p-3 dark:border-amber-900/50 dark:bg-zinc-950/40"
+            testId="focused-risk-score-evidence"
+          />
+
+          <details className="mt-2" data-testid="focused-risk-metric-details">
+            <summary className="cursor-pointer rounded-lg border border-amber-200/70 bg-white/70 px-3 py-1.5 text-sm font-semibold leading-snug text-zinc-800 transition-colors hover:bg-white dark:border-amber-900/50 dark:bg-zinc-950/40 dark:text-zinc-100 dark:hover:bg-zinc-950">
+              <span>Operational details</span>
+              <span className="mt-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                {metricSummary}
+              </span>
+            </summary>
+
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="focused-risk-candidate-metrics">
+              <div className="rounded-lg border border-amber-200/70 bg-white/70 p-3 dark:border-amber-900/50 dark:bg-zinc-950/40">
+                <div className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Adjusted APY</div>
+                <div className="mt-1 font-mono font-semibold text-zinc-950 dark:text-zinc-50">
+                  {formatRiskPercent(candidateContext.adjustedAPY)}
+                </div>
+              </div>
+              <div className="rounded-lg border border-amber-200/70 bg-white/70 p-3 dark:border-amber-900/50 dark:bg-zinc-950/40">
+                <div className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Slash points</div>
+                <div className={cn(
+                  "mt-1 font-mono font-semibold",
+                  isUsableRiskMetric(focusedCandidate.slash_points)
+                    ? focusedCandidate.slash_points > 0 ? qualityTone : 'text-emerald-700 dark:text-emerald-300'
+                    : 'text-zinc-600 dark:text-zinc-400'
+                )}>
+                  {formatRiskNumber(focusedCandidate.slash_points)}
+                </div>
+              </div>
+              <div className="rounded-lg border border-amber-200/70 bg-white/70 p-3 dark:border-amber-900/50 dark:bg-zinc-950/40">
+                <div className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Operator fee</div>
+                <div className="mt-1 font-mono font-semibold text-zinc-950 dark:text-zinc-50">
+                  {isUsableRiskMetric(candidateContext.operatorFee) ? formatBasisPoints(candidateContext.operatorFee) : '--'}
+                </div>
+              </div>
+              <div className="rounded-lg border border-amber-200/70 bg-white/70 p-3 dark:border-amber-900/50 dark:bg-zinc-950/40">
+                <div className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Total bond</div>
+                <div className="mt-1 font-mono font-semibold text-zinc-950 dark:text-zinc-50">
+                  {formatRiskRune(candidateContext.totalBond)}
+                </div>
+              </div>
+              <div className="rounded-lg border border-amber-200/70 bg-white/70 p-3 dark:border-amber-900/50 dark:bg-zinc-950/40">
+                <div className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Status</div>
+                <div className="mt-1 font-semibold text-zinc-950 dark:text-zinc-50">{focusedCandidate.status}</div>
+              </div>
+              <div className="rounded-lg border border-amber-200/70 bg-white/70 p-3 dark:border-amber-900/50 dark:bg-zinc-950/40">
+                <div className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Capacity trust</div>
+                <div className="mt-1 font-semibold text-zinc-950 dark:text-zinc-50">
+                  {candidateContext.candidateScore.trustLabel}
+                </div>
+              </div>
+              <div className="rounded-lg border border-amber-200/70 bg-white/70 p-3 sm:col-span-2 dark:border-amber-900/50 dark:bg-zinc-950/40">
+                <div className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Evidence</div>
+                <div className="mt-1 text-sm font-semibold text-zinc-950 dark:text-zinc-50">
+                  {candidateContext.candidateScore.reasons.join(', ')}
+                </div>
+              </div>
+            </div>
+          </details>
+        </section>
+      );
+  }
+
+  if (focusedContext.kind === 'missing') {
+    return (
+      <section
+        aria-label="Focused node risk context"
+        className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/20"
+        data-testid="focused-risk-context"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-100">
+              <AlertCircle className="h-4 w-4" aria-hidden="true" />
+              Focused node not in this address
+            </div>
+            <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
+              The focused node is <span className="font-mono">{formatNodeAddress(focusedContext.nodeAddress)}</span>, but it is not in the loaded bond positions for this dashboard address.
+            </p>
+            <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+              Treat this as candidate or stale-alert context until the node appears in the watched address positions.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const { position: focusedPosition, severity } = focusedContext;
+  const statusTone = focusedPosition.isJailed || severity >= NETWORK.NODE_SEVERITY_SCORES.highRisk
+    ? 'text-red-700 dark:text-red-300'
+    : focusedPosition.slashPoints > 0
+      ? 'text-amber-700 dark:text-amber-300'
+      : 'text-emerald-700 dark:text-emerald-300';
+  const flags = focusedPosition.yieldGuardFlags ?? [];
+  const flagLabels = flags.map((flag) => YIELD_GUARD_CONFIG[flag].label);
+  const decision = getFocusedBondedRiskDecision(focusedPosition, severity);
+  const decisionToneClass = decision.tone === 'critical'
+    ? 'border-red-200 bg-red-50 text-red-950 dark:border-red-900/60 dark:bg-red-950/25 dark:text-red-100'
+    : decision.tone === 'warning'
+      ? 'border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100'
+      : 'border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100';
+  const primaryButtonClass = decision.tone === 'critical'
+    ? 'border-red-300 bg-white text-red-800 hover:bg-red-50 dark:border-red-800 dark:bg-zinc-950 dark:text-red-100 dark:hover:bg-red-950'
+    : decision.tone === 'warning'
+      ? 'border-amber-300 bg-white text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-zinc-950 dark:text-amber-100 dark:hover:bg-amber-950'
+      : 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 dark:border-emerald-500 dark:bg-emerald-500 dark:text-zinc-950 dark:hover:bg-emerald-400';
+  const metricSummary = [
+    focusedPosition.status,
+    `Slash ${formatRiskNumber(focusedPosition.slashPoints)}`,
+    `Flags ${flagLabels.length > 0 ? flagLabels.join(', ') : 'None'}`,
+  ].join(' · ');
+  const inlineEvidence = [
+    `status ${focusedPosition.status}`,
+    focusedPosition.isJailed ? 'jailed' : null,
+    `slash ${formatRiskNumber(focusedPosition.slashPoints)}`,
+    flagLabels.length > 0 ? `flags ${flagLabels.join(', ')}` : 'no risk flags',
+  ].filter(Boolean).join(' · ');
+
+  return (
+    <section
+      aria-label="Focused node risk context"
+      className="rounded-xl border border-amber-200 bg-amber-50/70 p-2 dark:border-amber-900/60 dark:bg-amber-950/20 sm:p-4"
+      data-testid="focused-risk-context"
+    >
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold uppercase text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">
+              <Shield className="h-3.5 w-3.5" aria-hidden="true" />
+              Alert context
+            </span>
+            <span className={cn("text-xs font-semibold uppercase", statusTone)}>
+              {focusedPosition.isJailed ? 'Jailed node' : focusedPosition.slashPoints > 0 ? 'Slash context' : 'Node context'}
+            </span>
+          </div>
+          <h2 className="mt-2 font-mono text-sm font-semibold text-zinc-950 dark:text-zinc-50 sm:text-base">
+            {focusedPosition.nodeAddress}
+          </h2>
+          <p className="mt-1 hidden text-sm text-zinc-700 dark:text-zinc-300 sm:block">
+            Heimdall matched the alert to this bonded node. Review slash, jail, churn, and unbond context before acting.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-2 grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div
+          className={cn("rounded-lg border p-2 sm:p-3", decisionToneClass)}
+          data-testid="focused-bonded-primary-action"
+        >
+          <div className="text-xs font-bold uppercase opacity-75">Next action</div>
+          <div className="mt-1 text-base font-semibold">{decision.label}</div>
+          <p
+            className="mt-1 text-xs font-semibold opacity-80"
+            data-testid="focused-bonded-inline-evidence"
+          >
+            THORNode: {inlineEvidence}. Midgard: block height feeds jail and churn timing.
+          </p>
+          <p className="mt-1 text-sm opacity-85">{decision.detail}</p>
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:w-48 lg:grid-cols-1">
+          <button
+            type="button"
+            onClick={onReviewDetails}
+            className={cn(
+              "inline-flex min-h-9 items-center justify-center rounded-md border px-3 py-2 text-center text-sm font-semibold transition-colors",
+              primaryButtonClass
+            )}
+            data-testid="focused-bonded-primary-button"
+          >
+            {detailsVisible ? 'Hide risk details' : decision.label}
+          </button>
+          <a
+            href={`#${getRiskNodeElementId(focusedPosition.nodeAddress)}`}
+            className="inline-flex min-h-9 items-center justify-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-center text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+          >
+            Jump to highlighted row
+          </a>
+        </div>
+      </div>
+
+      <details className="mt-2" data-testid="focused-bonded-metric-details">
+        <summary className="cursor-pointer rounded-lg border border-amber-200/70 bg-white/70 px-3 py-1.5 text-sm font-semibold leading-snug text-zinc-800 transition-colors hover:bg-white dark:border-amber-900/50 dark:bg-zinc-950/40 dark:text-zinc-100 dark:hover:bg-zinc-950">
+          <span>Operational details</span>
+          <span className="mt-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+            {metricSummary}
+          </span>
+        </summary>
+
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="focused-bonded-metrics">
+          <div className="rounded-lg border border-amber-200/70 bg-white/70 p-3 dark:border-amber-900/50 dark:bg-zinc-950/40">
+            <div className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Status</div>
+            <div className={cn("mt-1 font-semibold", statusTone)}>{focusedPosition.status}</div>
+          </div>
+          <div className="rounded-lg border border-amber-200/70 bg-white/70 p-3 dark:border-amber-900/50 dark:bg-zinc-950/40">
+            <div className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Slash points</div>
+            <div className={cn("mt-1 font-mono font-semibold", focusedPosition.slashPoints > 0 ? statusTone : null)}>
+              {focusedPosition.slashPoints}
+            </div>
+          </div>
+          <div className="rounded-lg border border-amber-200/70 bg-white/70 p-3 dark:border-amber-900/50 dark:bg-zinc-950/40">
+            <div className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Your bond</div>
+            <div className="mt-1 font-mono font-semibold text-zinc-950 dark:text-zinc-50">
+              {formatRuneValue(focusedPosition.bondAmount)}
+            </div>
+          </div>
+          <div className="rounded-lg border border-amber-200/70 bg-white/70 p-3 dark:border-amber-900/50 dark:bg-zinc-950/40">
+            <div className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Flags</div>
+            <div className="mt-1 font-semibold text-zinc-950 dark:text-zinc-50">
+              {flagLabels.length > 0 ? flagLabels.join(', ') : 'None'}
+            </div>
+          </div>
+        </div>
+      </details>
+    </section>
+  );
+}
+
 function RiskKPIs({ positions }: { positions: BondPosition[] }) {
   const { currentBlockHeight } = useCurrentBlockHeight();
-  const activeCount = positions.filter(p => p.status === 'Active').length;
-  const standbyCount = positions.filter(p => p.status === 'Standby').length;
-  const jailedCount = positions.filter(p => p.isJailed).length;
-  const slashNodes = positions.filter(p => p.slashPoints > 0).length;
-  const criticalSlash = positions.filter(p => p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical).length;
-  const warningSlash = positions.filter(p => p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning && p.slashPoints < NETWORK.SLASH_POINT_THRESHOLDS.critical).length;
+  const summary = summarizeRiskPositions(positions);
   const nextChurnEstimate = currentBlockHeight ? estimateNextChurn(currentBlockHeight) : null;
   const churnDays = nextChurnEstimate ? Math.floor(nextChurnEstimate.estimatedSeconds / 86400) : null;
 
   const pills = [
-    { icon: <Zap className="w-4 h-4" />, value: activeCount, label: 'Earning', color: 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400', sub: standbyCount > 0 ? `${standbyCount} standby` : null },
-    { icon: <AlertTriangle className="w-4 h-4" />, value: slashNodes, label: 'Slash', color: criticalSlash > 0 ? 'bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400' : warningSlash > 0 ? 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400', sub: criticalSlash > 0 ? `${criticalSlash} crit` : warningSlash > 0 ? `${warningSlash} warn` : null },
-    { icon: <Lock className="w-4 h-4" />, value: jailedCount, label: 'Jailed', color: jailedCount > 0 ? 'bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400', sub: null },
+    { icon: <Zap className="w-4 h-4" />, value: summary.activeCount, label: 'Earning', color: 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400', sub: summary.standbyCount > 0 ? `${summary.standbyCount} standby` : null },
+    { icon: <AlertTriangle className="w-4 h-4" />, value: summary.slashNodeCount, label: 'Slash', color: summary.criticalSlashCount > 0 ? 'bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400' : summary.warningSlashCount > 0 ? 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400', sub: summary.criticalSlashCount > 0 ? `${summary.criticalSlashCount} crit` : summary.warningSlashCount > 0 ? `${summary.warningSlashCount} warn` : null },
+    { icon: <Lock className="w-4 h-4" />, value: summary.jailedCount, label: 'Jailed', color: summary.jailedCount > 0 ? 'bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400', sub: null },
     { icon: <Hourglass className="w-4 h-4" />, value: churnDays !== null ? churnDays + 'd' : '--', label: 'Churn', color: 'bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400', sub: null },
   ];
 
@@ -328,6 +930,35 @@ function RiskKPIs({ positions }: { positions: BondPosition[] }) {
   );
 }
 
+function getPendulumPresentation(level: IncentivePendulumLevel) {
+  switch (level) {
+    case 'well-secured':
+      return {
+        bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+        color: 'text-emerald-600 dark:text-emerald-400',
+        icon: <TrendingUp className="w-4 h-4" />,
+      };
+    case 'healthy':
+      return {
+        bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+        color: 'text-emerald-600 dark:text-emerald-400',
+        icon: <Minus className="w-4 h-4" />,
+      };
+    case 'building':
+      return {
+        bg: 'bg-amber-50 dark:bg-amber-900/20',
+        color: 'text-amber-600 dark:text-amber-400',
+        icon: <TrendingDown className="w-4 h-4" />,
+      };
+    case 'under-secured':
+      return {
+        bg: 'bg-red-50 dark:bg-red-900/20',
+        color: 'text-red-600 dark:text-red-400',
+        icon: <TrendingDown className="w-4 h-4" />,
+      };
+  }
+}
+
 function IncentivePendulum() {
   const { data: network } = useNetworkMetrics();
   
@@ -336,56 +967,8 @@ function IncentivePendulum() {
   const totalLiquidityRaw = network?.totalPooledRune || '0';
   const totalBonds = runeToNumber(totalActiveRaw) + runeToNumber(totalStandbyRaw);
   const totalLiquidity = runeToNumber(totalLiquidityRaw);
-  const bondToPoolRatio = totalLiquidity > 0 ? totalBonds / totalLiquidity : 0;
-  
-  // THORChain Incentive Pendulum:
-  // - >2.5x: Well Secured (nodes earn more)
-  // - 1.5-2.5x: Healthy (balanced)
-  // - 1.0-1.5x: Building (bond > liquidity but needs more)
-  // - <1.0x: Under-secured (liquidity > bond)
-  let pendulumStatus: { status: string; icon: React.ReactNode; color: string; bg: string; desc: string };
-  if (bondToPoolRatio > NETWORK.BOND_TO_POOL_THRESHOLDS.healthy) {
-    pendulumStatus = { 
-      status: "Well Secured", 
-      icon: <TrendingUp className="w-4 h-4" />, 
-      color: "text-emerald-600 dark:text-emerald-400",
-      bg: "bg-emerald-50 dark:bg-emerald-900/20",
-      desc: "Bond exceeds 2.5x liquidity. Node rewards maximized, LP yields reduced."
-    };
-  } else if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.building) {
-    pendulumStatus = { 
-      status: "Healthy", 
-      icon: <Minus className="w-4 h-4" />, 
-      color: "text-emerald-600 dark:text-emerald-400",
-      bg: "bg-emerald-50 dark:bg-emerald-900/20",
-      desc: "Bond 1.5-2x liquidity. Balanced reward distribution."
-    };
-  } else if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.underSecured) {
-    pendulumStatus = { 
-      status: "Building", 
-      icon: <TrendingDown className="w-4 h-4" />, 
-      color: "text-amber-600 dark:text-amber-400",
-      bg: "bg-amber-50 dark:bg-amber-900/20",
-      desc: "Bond > liquidity but below target. More bonding needed for full security."
-    };
-  } else {
-    pendulumStatus = { 
-      status: "Under-secured", 
-      icon: <TrendingDown className="w-4 h-4" />, 
-      color: "text-red-600 dark:text-red-400",
-      bg: "bg-red-50 dark:bg-red-900/20",
-      desc: "Liquidity exceeds bond. Network shifts rewards to nodes to encourage bonding."
-    };
-  }
-
-  // THORChain incentive pendulum: actual reward split formula
-  // When bond > liquidity: nodeShare = 1 - 1/(bondToPool + 1)
-  // When bond <= liquidity: nodeShare = bondToPool / (bondToPool + 1)
-  const nodeShareFraction = bondToPoolRatio > NETWORK.BOND_TO_POOL_THRESHOLDS.underSecured
-    ? 1 - 1 / (bondToPoolRatio + 1)
-    : bondToPoolRatio / (bondToPoolRatio + 1);
-  const nodeShare = nodeShareFraction * 100;
-  const lpShare = 100 - nodeShare;
+  const pendulum = getIncentivePendulumModel({ totalBonds, totalLiquidity });
+  const pendulumPresentation = getPendulumPresentation(pendulum.level);
 
   if (!network) {
     return (
@@ -401,15 +984,15 @@ function IncentivePendulum() {
         <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Incentive Pendulum</h3>
       </div>
 
-      <div className={cn("p-4", pendulumStatus.bg)}>
+      <div className={cn("p-4", pendulumPresentation.bg)}>
         <div className="flex items-center gap-2">
-          {pendulumStatus.icon}
-          <span className={cn("font-medium text-lg", pendulumStatus.color)}>
-            {pendulumStatus.status}
+          {pendulumPresentation.icon}
+          <span className={cn("font-medium text-lg", pendulumPresentation.color)}>
+            {pendulum.status}
           </span>
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-          {pendulumStatus.desc}
+          {pendulum.description}
         </p>
       </div>
 
@@ -420,7 +1003,7 @@ function IncentivePendulum() {
             <span className="text-xs text-emerald-700 dark:text-emerald-400">Nodes (Bond)</span>
           </div>
           <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{totalBonds > 0 ? formatRuneCompact(totalBonds) : '--'}</div>
-          <div className="text-xs text-emerald-600 dark:text-emerald-400">{nodeShare.toFixed(0)}%</div>
+          <div className="text-xs text-emerald-600 dark:text-emerald-400">{pendulum.nodeShare.toFixed(0)}%</div>
         </div>
         <div className="p-3 rounded bg-blue-50 dark:bg-blue-900/20 text-center">
           <div className="flex items-center justify-center gap-1 mb-1">
@@ -428,28 +1011,28 @@ function IncentivePendulum() {
             <span className="text-xs text-blue-700 dark:text-blue-400">LPs (Liquidity)</span>
           </div>
           <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{totalLiquidity > 0 ? formatRuneCompact(totalLiquidity) : '--'}</div>
-          <div className="text-xs text-blue-600 dark:text-blue-400">{lpShare.toFixed(0)}%</div>
+          <div className="text-xs text-blue-600 dark:text-blue-400">{pendulum.lpShare.toFixed(0)}%</div>
         </div>
       </div>
 
       <div className="p-4 pt-0">
         <div className="flex items-center justify-between text-sm mb-1">
           <span className="text-zinc-500">Bond-to-Pool Ratio</span>
-          <span className="font-medium text-zinc-700 dark:text-zinc-300">{bondToPoolRatio.toFixed(2)}x</span>
+          <span className="font-medium text-zinc-700 dark:text-zinc-300">{pendulum.bondToPoolRatio.toFixed(2)}x</span>
         </div>
         <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
           <div 
             className={cn(
               "h-full transition-all",
-              bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.building && bondToPoolRatio <= 3 ? 'bg-emerald-500' :
-              bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.underSecured ? 'bg-amber-500' : 'bg-red-500'
+              pendulum.level === 'well-secured' || pendulum.level === 'healthy' ? 'bg-emerald-500' :
+              pendulum.level === 'building' ? 'bg-amber-500' : 'bg-red-500'
             )}
-            style={{ width: `${Math.min(bondToPoolRatio * NETWORK.PROGRESS_BAR_MULTIPLIER, 100)}%` }}
+            style={{ width: `${pendulum.progressPercent}%` }}
           />
         </div>
         <div className="flex items-center justify-between text-xs text-zinc-400 mt-1">
           <span>Target: {NETWORK.BOND_TO_POOL_THRESHOLDS.building}x - 3x</span>
-          <span>Current: {bondToPoolRatio.toFixed(2)}x</span>
+          <span>Current: {pendulum.bondToPoolRatio.toFixed(2)}x</span>
         </div>
       </div>
     </div>
@@ -459,16 +1042,41 @@ function IncentivePendulum() {
 export default function RiskPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
-  const { positions } = useBondPositions(address);
+  const focusedNodeAddress = searchParams.get('node');
+  const { positions, isLoading: positionsLoading } = useBondPositions(address);
+  const { data: allNodes, isLoading: allNodesLoading } = useAllNodes();
   const { data: network, isLoading: networkLoading } = useNetworkMetrics();
+  const { constants: networkConstants } = useNetworkConstants();
   const apiHealth = useApiHealthContext();
+  const sourceSafety = getCandidateBondSourceSafety(apiHealth.thornode);
   const [showDetails, setShowDetails] = useState(false);
+  const maxBondProviders = networkConstants?.MaxBondProviders
+    ? Number(networkConstants.MaxBondProviders)
+    : null;
+
+  if (positionsLoading) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Risk</h1>
+        <DashboardLoadingSkeleton
+          title="Loading risk analysis"
+          detail="Waiting for THORNode bond positions before showing slash, jail, churn, or no-bond decisions."
+          cards={4}
+          className="p-0"
+        />
+      </div>
+    );
+  }
 
   const totalActiveBond = runeToNumber(network?.bondMetrics?.totalActiveBond || '0');
   const totalStandbyBond = runeToNumber(network?.bondMetrics?.totalStandbyBond || '0');
   const totalPooledRune = runeToNumber(network?.totalPooledRune || '0');
   const totalBonds = totalActiveBond + totalStandbyBond;
-  const bondToPoolRatio = totalPooledRune > 0 ? totalBonds / totalPooledRune : 0;
+  const pendulum = getIncentivePendulumModel({
+    totalBonds,
+    totalLiquidity: totalPooledRune,
+  });
+  const bondToPoolRatio = pendulum.bondToPoolRatio;
   const activeBondToPoolRatio = totalPooledRune > 0 ? totalActiveBond / totalPooledRune : 0;
   const securityState = calculateNetworkSecurityState(bondToPoolRatio);
   const riskInsight = buildDashboardInsightState({
@@ -476,7 +1084,32 @@ export default function RiskPage() {
     positions,
     network,
     apiHealth,
+    includeRunePriceSource: false,
   });
+
+  const handleToggleDetails = () => {
+    const willShowDetails = !showDetails;
+    setShowDetails(willShowDetails);
+
+    if (willShowDetails) {
+      window.setTimeout(() => {
+        const detailsPanel = document.getElementById('risk-details');
+        if (detailsPanel && typeof detailsPanel.scrollIntoView === 'function') {
+          detailsPanel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }
+      }, 0);
+    }
+  };
+  const riskPrimaryAction = positions.length === 0 || riskInsight.actions.length > 0
+    ? riskInsight.primaryAction
+    : {
+        label: showDetails ? 'Hide risk details' : 'Review risk details',
+        href: '#risk-details',
+        onClick: handleToggleDetails,
+      };
+  const visibleRiskActions = getNonFocusedRiskActions(riskInsight.actions, focusedNodeAddress).slice(0, 4);
+  const showActionQueue = !focusedNodeAddress || visibleRiskActions.length > 0;
+  const actionQueueTitle = focusedNodeAddress ? 'Other risks' : 'Riskiest actions';
 
   return (
     <div className="space-y-4">
@@ -486,25 +1119,38 @@ export default function RiskPage() {
         statusLabel={riskInsight.statusLabel}
         diagnosis={riskInsight.diagnosis}
         topRisk={riskInsight.topRisk}
+        headingLevel={2}
         metrics={riskInsight.headerMetrics}
-        primaryAction={{ label: showDetails ? 'Hide Details' : 'Show Details', href: '#risk-details' }}
-        eyebrow="Risk"
+        primaryAction={riskPrimaryAction}
+        eyebrow="Node security"
+        compactMobileMetrics
       />
-      <ActionQueue
-        items={riskInsight.actions.slice(0, 4)}
-        title="Riskiest actions"
-        emptyTitle="Risk queue is clear"
-        emptyDetail="No jail, critical slash, churn-risk, or source-confidence issue is visible now."
-        compact
-      />
-      <div className="flex items-center justify-end">
-        <button
-          onClick={() => setShowDetails(!showDetails)}
-          className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-        >
-          {showDetails ? 'Hide Details' : 'Show Details'}
-        </button>
+      <div id="risk-source-confidence" className="scroll-mt-24">
+        <SourceFreshnessPanel sources={riskInsight.sources} compact />
       </div>
+      {focusedNodeAddress ? (
+        <FocusedNodeContext
+          allNodes={allNodes ?? []}
+          address={address}
+          detailsVisible={showDetails}
+          focusedNodeAddress={focusedNodeAddress}
+          isLoading={positionsLoading || allNodesLoading}
+          maxBondProviders={maxBondProviders}
+          onReviewDetails={handleToggleDetails}
+          positions={positions}
+          sourceConfidenceHref="#risk-source-confidence"
+          sourceSafety={sourceSafety}
+        />
+      ) : null}
+      {showActionQueue ? (
+        <ActionQueue
+          items={visibleRiskActions}
+          title={actionQueueTitle}
+          emptyTitle="Risk queue is clear"
+          emptyDetail="No jail, critical slash, churn-risk, or source-confidence issue is visible now."
+          compact
+        />
+      ) : null}
 
       <RiskSummaryBanner positions={positions} />
 
@@ -541,7 +1187,7 @@ export default function RiskPage() {
         </DashboardCard>
       </div>
 
-      <NodesList positions={positions} />
+      <NodesList positions={positions} focusedNodeAddress={focusedNodeAddress} />
 
       {showDetails && (
         <div id="risk-details">

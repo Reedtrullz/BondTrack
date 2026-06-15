@@ -7,7 +7,7 @@
 |----------|---------|
 | `executeBondTransaction` | Sign & broadcast BOND transaction |
 | `executeUnbondTransaction` | Sign & broadcast UNBOND transaction |
-| `validateBondAmount` | Check min bond (1.02 RUNE) |
+| `validateBondAmount` | Check min bond payload (1 RUNE; wallet/network fees are separate) |
 | `canUnbondNode` | Check node status for unbond eligibility (must be Standby) |
 | `generateBondMemo` | Build `BOND:<node>:<provider>:<fee>` memo |
 | `generateUnbondMemo` | Build `UNBOND:<node>:<amount>` memo |

@@ -136,10 +136,14 @@ describe('transaction memo and amount helpers', () => {
   });
 
   it('validates bond amounts with strict decimal parsing', () => {
-    expect(validateBondAmount('1.02').valid).toBe(true);
+    expect(validateBondAmount('1').valid).toBe(true);
+    expect(validateBondAmount('1.00000001').valid).toBe(true);
     expect(validateBondAmount('1.02abc').valid).toBe(false);
     expect(validateBondAmount('1.123456789').valid).toBe(false);
-    expect(validateBondAmount('1.01').valid).toBe(false);
+    expect(validateBondAmount('0.99999999')).toEqual({
+      valid: false,
+      error: 'Minimum bond amount is 1 RUNE; wallet/network fees are confirmed separately',
+    });
   });
 
   it('validates THORChain-looking addresses before signing/memo generation', () => {
@@ -267,7 +271,7 @@ describe('wallet adapter transaction payloads', () => {
     await expect(executeBondTransaction({
       type: 'BOND',
       nodeAddress: NODE_ADDRESS,
-      amount: '1.02',
+      amount: '1',
       memo: generateBondMemo(NODE_ADDRESS),
       walletType: 'vultisig',
     }, SIGNER_ADDRESS)).resolves.toEqual({ success: true, txHash: 'vultisig-hash' });
@@ -282,7 +286,7 @@ describe('wallet adapter transaction payloads', () => {
 
     expect(request).toHaveBeenNthCalledWith(1, {
       method: 'deposit_transaction',
-      params: [{ type: 'BOND', to: NODE_ADDRESS, memo: `BOND:${NODE_ADDRESS}`, amount: '102000000', asset: 'rune', from_address: SIGNER_ADDRESS }],
+      params: [{ type: 'BOND', to: NODE_ADDRESS, memo: `BOND:${NODE_ADDRESS}`, amount: '100000000', asset: 'rune', from_address: SIGNER_ADDRESS }],
     });
     expect(request).toHaveBeenNthCalledWith(2, {
       method: 'deposit_transaction',

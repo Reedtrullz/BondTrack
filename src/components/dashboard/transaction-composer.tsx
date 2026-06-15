@@ -1,11 +1,12 @@
 'use client';
 
-import { Check, Copy, ExternalLink, X } from 'lucide-react';
+import { AlertTriangle, Check, Copy, ExternalLink, Info, X } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { BondPosition } from '@/lib/types/node';
 import { useWalletContext } from '@/lib/hooks/use-wallet';
 import { Button } from '@/components/ui/button';
 import { TransactionPreview, type TransactionPreviewData } from '@/components/wallet/transaction-preview';
+import type { TransactionSourceSafety } from '@/lib/dashboard/transaction-preflight';
 import {
   executeBondTransaction,
   executeUnbondTransaction,
@@ -36,14 +37,33 @@ const DEFAULT_COPY_FEEDBACK: CopyFeedbackState = {
   status: 'idle',
   message: '',
 };
+const WRONG_NETWORK_MESSAGE = 'Wallet is connected to the wrong network. Switch to THORChain mainnet before preview or broadcast.';
+const CONNECT_WALLET_MESSAGE = 'Connect a wallet when you are ready to preview and broadcast. Memo copy is available without a wallet.';
+const WALLET_REQUIRED_LABEL = 'Wallet required';
+const STALE_PREVIEW_MESSAGE = 'Transaction details changed after preview opened. Review the form again before broadcasting.';
+const DEFAULT_SOURCE_SAFETY: TransactionSourceSafety = {
+  canCopyBondMemo: true,
+  canCopyUnbondMemo: true,
+  canPreview: true,
+  detail: 'THORNode positions are available for node status and unbond eligibility checks.',
+  itemSeverity: 'ready',
+  status: 'Source verified',
+  value: 'THORNode fresh',
+};
 
 interface TransactionComposerProps {
   positions: BondPosition[];
   address?: string | null;
   onModeChange?: (mode: 'bond' | 'unbond') => void;
+  sourceSafety?: TransactionSourceSafety;
 }
 
-export function TransactionComposer({ positions, address, onModeChange }: TransactionComposerProps) {
+export function TransactionComposer({
+  positions,
+  address,
+  onModeChange,
+  sourceSafety = DEFAULT_SOURCE_SAFETY,
+}: TransactionComposerProps) {
   void address;
   const searchParams = useSearchParams();
   const paramNode = searchParams?.get('node');
@@ -59,13 +79,13 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
     }
   })();
 
-  const [mode, setMode] = useState<Mode>('BOND');
-  const [nodeAddress, setNodeAddress] = useState('');
-  const [bondAmount, setBondAmount] = useState('');
+  const [mode, setMode] = useState<Mode>(() => paramAction ?? 'BOND');
+  const [nodeAddress, setNodeAddress] = useState(() => paramNode ?? positions[0]?.nodeAddress ?? '');
+  const [bondAmount, setBondAmount] = useState(() => (paramAction === 'BOND' && paramAmount ? paramAmount : ''));
   const [showAdvancedBondFields, setShowAdvancedBondFields] = useState(false);
   const [bondProviderAddress, setBondProviderAddress] = useState('');
   const [nodeOperatorFee, setNodeOperatorFee] = useState('');
-  const [amountToUnbond, setAmountToUnbond] = useState('0');
+  const [amountToUnbond, setAmountToUnbond] = useState(() => (paramAction === 'UNBOND' && paramAmount ? paramAmount : '0'));
   const [copyFeedback, setCopyFeedback] = useState<CopyFeedbackState>(DEFAULT_COPY_FEEDBACK);
   const [showPreview, setShowPreview] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,24 +102,27 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
 
   const { address: walletAddress, walletType, isConnected, isNetworkMismatch } = useWalletContext();
 
+  const effectiveNodeAddress = nodeAddress || (!touchedFields.nodeAddress ? positions[0]?.nodeAddress ?? '' : '');
+
   const selectedPosition = useMemo(() => {
-    return positions.find((p) => p.nodeAddress === nodeAddress);
-  }, [positions, nodeAddress]);
+    return positions.find((p) => p.nodeAddress === effectiveNodeAddress);
+  }, [positions, effectiveNodeAddress]);
 
   useEffect(() => {
-    if (paramAction) setMode(paramAction);
-    if (paramNode) setNodeAddress(paramNode);
+    if (paramAction) {
+      setMode((current) => (current === paramAction ? current : paramAction));
+    }
+    if (paramNode) {
+      setNodeAddress((current) => (current === paramNode ? current : paramNode));
+    }
     if (paramAmount) {
-      if (paramAction === 'BOND') setBondAmount(paramAmount);
-      else if (paramAction === 'UNBOND') setAmountToUnbond(paramAmount);
+      if (paramAction === 'BOND') {
+        setBondAmount((current) => (current === paramAmount ? current : paramAmount));
+      } else if (paramAction === 'UNBOND') {
+        setAmountToUnbond((current) => (current === paramAmount ? current : paramAmount));
+      }
     }
   }, [paramAction, paramNode, paramAmount]);
-
-  useEffect(() => {
-    if (positions.length > 0 && !nodeAddress) {
-      setNodeAddress(positions[0].nodeAddress);
-    }
-  }, [positions, nodeAddress]);
 
   useEffect(() => {
     return () => {
@@ -110,9 +133,9 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
   }, []);
 
   const nodeValidation = useMemo(() => {
-    if (!nodeAddress.trim()) return { valid: false, error: 'Node address is required' };
-    return validateThorAddress(nodeAddress, 'Node address');
-  }, [nodeAddress]);
+    if (!effectiveNodeAddress.trim()) return { valid: false, error: 'Node address is required' };
+    return validateThorAddress(effectiveNodeAddress, 'Node address');
+  }, [effectiveNodeAddress]);
 
   const providerValidation = useMemo(() => {
     if (!showAdvancedBondFields) return { valid: true };
@@ -135,22 +158,22 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
   const memo = useMemo(() => {
     if (mode === 'BOND') {
       return generateBondMemo(
-        nodeAddress,
+        effectiveNodeAddress,
         showAdvancedBondFields ? bondProviderAddress : undefined,
         showAdvancedBondFields ? nodeOperatorFee : undefined
       );
     }
-    return generateUnbondMemo(nodeAddress, amountToUnbond);
-  }, [mode, nodeAddress, showAdvancedBondFields, bondProviderAddress, nodeOperatorFee, amountToUnbond]);
+    return generateUnbondMemo(effectiveNodeAddress, amountToUnbond);
+  }, [mode, effectiveNodeAddress, showAdvancedBondFields, bondProviderAddress, nodeOperatorFee, amountToUnbond]);
 
   const previewData: TransactionPreviewData = useMemo(() => ({
     type: mode,
-    nodeAddress,
+    nodeAddress: effectiveNodeAddress,
     amount: mode === 'BOND' ? bondAmount || '0' : amountToUnbond,
     memo,
-    feeNote: 'Estimated by wallet before broadcast',
+    feeNote: 'Confirmed by wallet/network before broadcast',
     walletType: walletType || 'keplr',
-  }), [mode, nodeAddress, bondAmount, amountToUnbond, memo, walletType]);
+  }), [mode, effectiveNodeAddress, bondAmount, amountToUnbond, memo, walletType]);
 
   const clearCopyFeedback = () => {
     if (copyFeedbackTimeoutRef.current !== null) {
@@ -175,6 +198,18 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
   const handleCopy = async (action: CopyAction) => {
     clearCopyFeedback();
 
+    const copyIsAllowed = mode === 'BOND'
+      ? sourceSafety.canCopyBondMemo && nodeValidation.valid && providerValidation.valid
+      : sourceSafety.canCopyUnbondMemo
+        && nodeValidation.valid
+        && Boolean(selectedPosition)
+        && unbondValidation.canUnbond
+        && unbondAmountValidation.valid;
+
+    if (!copyIsAllowed) {
+      return;
+    }
+
     try {
       await navigator.clipboard.writeText(memo);
       setCopyFeedback({
@@ -183,8 +218,7 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
         message: 'Memo copied to your clipboard. Paste it into your wallet when you are ready.',
       });
       scheduleCopyFeedbackReset();
-    } catch (err) {
-      console.error('Failed to copy:', err);
+    } catch {
       setCopyFeedback({
         action,
         status: 'error',
@@ -195,13 +229,27 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
   };
 
   const handleSignAndBroadcast = async () => {
-    if (!walletAddress || !walletType) return;
+    if (!sourceSafety.canPreview) {
+      setTxResult({ success: false, error: sourceSafety.detail });
+      return;
+    }
+
+    if (isNetworkMismatch) {
+      setTxResult({ success: false, error: WRONG_NETWORK_MESSAGE });
+      return;
+    }
+
+    if (!walletAddress || !walletType || !canSubmit) {
+      setTxResult({ success: false, error: STALE_PREVIEW_MESSAGE });
+      return;
+    }
+
     setIsSubmitting(true);
     setTxResult(null);
     try {
       const params = {
         type: mode,
-        nodeAddress,
+        nodeAddress: effectiveNodeAddress,
         amount: mode === 'BOND' ? bondAmount || '0' : amountToUnbond,
         memo,
         walletType,
@@ -218,33 +266,122 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
     }
   };
 
-  const canSubmit = useMemo(() => {
-    if (!isConnected || isNetworkMismatch || !nodeValidation.valid) return false;
-    if (mode === 'BOND') return bondAmountValidation.valid && providerValidation.valid;
-    if (mode === 'UNBOND') return Boolean(selectedPosition) && unbondValidation.canUnbond && unbondAmountValidation.valid;
-    return false;
-  }, [isConnected, isNetworkMismatch, nodeValidation, mode, bondAmountValidation, providerValidation, selectedPosition, unbondValidation, unbondAmountValidation]);
+  const nodeIsValid = nodeValidation.valid;
+  const bondAmountIsValid = bondAmountValidation.valid;
+  const providerIsValid = providerValidation.valid;
+  const canUnbond = unbondValidation.canUnbond;
+  const unbondAmountIsValid = unbondAmountValidation.valid;
+  const hasSelectedPosition = Boolean(selectedPosition);
+  const sourceAllowsPreview = sourceSafety.canPreview;
+  const sourceAllowsBondMemo = sourceSafety.canCopyBondMemo;
+  const sourceAllowsUnbondMemo = sourceSafety.canCopyUnbondMemo;
 
-  const validationMessage = useMemo(() => {
-    if (!nodeValidation.valid) return nodeValidation.error;
-    if (mode === 'BOND') return !bondAmountValidation.valid ? bondAmountValidation.error : !providerValidation.valid ? providerValidation.error : undefined;
-    if (!selectedPosition) return 'Select one of your bonded nodes before unbonding.';
-    if (!unbondValidation.canUnbond) return unbondValidation.reason;
-    if (!unbondAmountValidation.valid) return unbondAmountValidation.error;
-    return undefined;
-  }, [nodeValidation, mode, bondAmountValidation, providerValidation, selectedPosition, unbondValidation, unbondAmountValidation]);
+  const canSubmit = sourceAllowsPreview && isConnected && !isNetworkMismatch && nodeIsValid && (
+    mode === 'BOND'
+      ? bondAmountIsValid && providerIsValid
+      : hasSelectedPosition && canUnbond && unbondAmountIsValid
+  );
+  const previewBlockerReason = showPreview && !canSubmit
+    ? isNetworkMismatch
+      ? WRONG_NETWORK_MESSAGE
+      : STALE_PREVIEW_MESSAGE
+    : undefined;
 
   const shouldShowNodeError = submitAttempted || touchedFields.nodeAddress;
   const shouldShowBondAmountError = submitAttempted || touchedFields.bondAmount;
   const shouldShowUnbondAmountError = submitAttempted || touchedFields.unbondAmount;
   const shouldShowProviderError = submitAttempted || touchedFields.bondProviderAddress || touchedFields.nodeOperatorFee;
   const shouldShowValidationMessage = submitAttempted || Object.values(touchedFields).some(Boolean);
+  const actionGuidanceMessage = isNetworkMismatch
+    ? WRONG_NETWORK_MESSAGE
+    : !sourceAllowsPreview
+      ? sourceSafety.detail
+      : !isConnected
+      ? CONNECT_WALLET_MESSAGE
+      : undefined;
+  const actionGuidanceId = actionGuidanceMessage ? 'transaction-action-guidance' : undefined;
+  const ActionGuidanceIcon = isNetworkMismatch || !sourceAllowsPreview ? AlertTriangle : Info;
+
+  const validationMessage = useMemo(() => {
+    if (!nodeValidation.valid && shouldShowNodeError) return nodeValidation.error;
+
+    if (mode === 'BOND') {
+      if (!bondAmountValidation.valid && shouldShowBondAmountError) return bondAmountValidation.error;
+      if (!providerValidation.valid && shouldShowProviderError) return providerValidation.error;
+      return undefined;
+    }
+
+    if (!selectedPosition) {
+      return submitAttempted || shouldShowNodeError || shouldShowUnbondAmountError
+        ? 'Select one of your bonded nodes before unbonding.'
+        : undefined;
+    }
+
+    if (!unbondValidation.canUnbond && (submitAttempted || shouldShowNodeError || shouldShowUnbondAmountError)) {
+      return unbondValidation.reason;
+    }
+
+    if (!unbondAmountValidation.valid && shouldShowUnbondAmountError) return unbondAmountValidation.error;
+    return undefined;
+  }, [
+    nodeValidation,
+    shouldShowNodeError,
+    mode,
+    bondAmountValidation,
+    shouldShowBondAmountError,
+    providerValidation,
+    shouldShowProviderError,
+    selectedPosition,
+    submitAttempted,
+    shouldShowUnbondAmountError,
+    unbondValidation,
+    unbondAmountValidation,
+  ]);
 
   const nodeError = shouldShowNodeError && !nodeValidation.valid ? nodeValidation.error : undefined;
   const bondAmountError = mode === 'BOND' && shouldShowBondAmountError && !bondAmountValidation.valid ? bondAmountValidation.error : undefined;
   const unbondAmountError = mode === 'UNBOND' && shouldShowUnbondAmountError && !unbondAmountValidation.valid ? unbondAmountValidation.error : undefined;
   const providerError = mode === 'BOND' && showAdvancedBondFields && shouldShowProviderError && !providerValidation.valid ? providerValidation.error : undefined;
   const advancedPanelId = 'transaction-advanced-bond-fields';
+  const canCopyMemo = useMemo(() => {
+    if (!nodeValidation.valid) return false;
+    if (mode === 'BOND') return sourceAllowsBondMemo && providerValidation.valid;
+    if (!sourceAllowsUnbondMemo) return false;
+    return Boolean(selectedPosition) && unbondValidation.canUnbond && unbondAmountValidation.valid;
+  }, [
+    nodeValidation,
+    mode,
+    providerValidation,
+    selectedPosition,
+    sourceAllowsBondMemo,
+    sourceAllowsUnbondMemo,
+    unbondValidation,
+    unbondAmountValidation,
+  ]);
+  const memoReadout = canCopyMemo
+    ? memo
+    : mode === 'BOND'
+      ? !nodeValidation.valid
+        ? 'Enter a valid node address before copying a BOND memo.'
+        : !sourceAllowsBondMemo
+          ? 'THORNode source confidence must be fresh before copying a BOND memo.'
+          : 'Fix advanced BOND memo fields before copying.'
+      : !sourceAllowsUnbondMemo
+        ? 'THORNode source confidence must be fresh before copying an UNBOND memo.'
+      : 'Select an eligible standby node and valid amount before copying an UNBOND memo.';
+  const memoReadinessDetail = canCopyMemo
+    ? mode === 'BOND'
+      ? sourceAllowsPreview
+        ? 'Memo is ready to copy. Your wallet will confirm amount and fees before broadcast.'
+        : 'Memo is ready to copy. Preview and broadcast still wait for fresh THORNode source confidence.'
+      : 'UNBOND memo is ready to copy with the amount encoded in 1e8 base units.'
+    : mode === 'BOND'
+      ? !sourceAllowsBondMemo
+        ? 'BOND copy stays disabled until THORNode source confidence is fresh.'
+        : 'Copy stays disabled until the node address and advanced memo fields are valid.'
+      : !sourceAllowsUnbondMemo
+        ? 'UNBOND copy stays disabled until THORNode can prove standby eligibility.'
+      : 'Copy stays disabled until an eligible standby node and valid unbond amount are selected.';
 
   const inlineCopyState = copyFeedback.action === 'inline' ? copyFeedback.status : 'idle';
   const primaryCopyState = copyFeedback.action === 'button' ? copyFeedback.status : 'idle';
@@ -323,13 +460,22 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
 
       <div className="bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-5 space-y-5 hover:shadow-md hover:shadow-emerald-500/10 transition-all">
         <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
-          Minimum bond transaction reserve: <span className="font-mono text-zinc-700 dark:text-zinc-200">1.02 RUNE</span>
-          {mode === 'UNBOND' && <span className="block mt-1">Unbond request amounts are encoded in the memo in 1e8 base units.</span>}
+          {mode === 'BOND' ? (
+            <>
+              Bond payload minimum: <span className="font-mono text-zinc-700 dark:text-zinc-200">1 RUNE</span>
+              <span className="block mt-1">Network fees are dynamic and confirmed by the wallet before broadcast.</span>
+            </>
+          ) : (
+            <>
+              UNBOND uses a zero-RUNE deposit payload.
+              <span className="block mt-1">The requested amount is encoded in the memo in 1e8 base units; wallet/network fees are confirmed before broadcast.</span>
+            </>
+          )}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="space-y-1">
             <label htmlFor="transaction-node-address" className="block text-xs font-bold text-zinc-500 uppercase">Node Address</label>
-            <input id="transaction-node-address" type="text" placeholder="thor1..." value={nodeAddress} onChange={(e) => { markTouched('nodeAddress'); setNodeAddress(e.target.value); }} onBlur={() => markTouched('nodeAddress')} aria-invalid={Boolean(nodeError)} aria-describedby={nodeError ? 'transaction-node-address-error' : undefined} className={cn('w-full px-3 py-2 rounded-lg border bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100', nodeError ? 'border-red-500' : 'border-zinc-300 dark:border-zinc-700')} />
+            <input id="transaction-node-address" type="text" placeholder="thor1..." value={effectiveNodeAddress} onChange={(e) => { markTouched('nodeAddress'); setNodeAddress(e.target.value); }} onBlur={() => markTouched('nodeAddress')} aria-invalid={Boolean(nodeError)} aria-describedby={nodeError ? 'transaction-node-address-error' : undefined} className={cn('w-full px-3 py-2 rounded-lg border bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100', nodeError ? 'border-red-500' : 'border-zinc-300 dark:border-zinc-700')} />
             {nodeError && <p id="transaction-node-address-error" role="alert" className="text-xs text-red-600 dark:text-red-400">{nodeError}</p>}
           </div>
           {mode === 'BOND' ? (
@@ -406,12 +552,20 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
             <label className="block text-xs font-bold text-zinc-400 uppercase">Generated Memo</label>
           </div>
           <div className="flex items-center gap-2">
-            <code className="flex-1 font-mono text-sm text-zinc-100 break-all">{memo}</code>
+            <code
+              className={cn(
+                'flex-1 font-mono text-sm break-all',
+                canCopyMemo ? 'text-zinc-100' : 'text-zinc-400'
+              )}
+            >
+              {memoReadout}
+            </code>
             <Button
               type="button"
               size="sm"
               variant="outline"
               onClick={() => handleCopy('inline')}
+              disabled={!canCopyMemo}
               aria-describedby={copyFeedbackId}
               className={cn(
                 'shrink-0 gap-2 border-zinc-700 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 hover:text-white dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700',
@@ -423,6 +577,7 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
               {inlineCopyState === 'success' ? 'Copied' : inlineCopyState === 'error' ? 'Retry copy' : 'Copy'}
             </Button>
           </div>
+          <p className="mt-2 text-xs text-zinc-400">{memoReadinessDetail}</p>
         </div>
 
         {validationMessage && shouldShowValidationMessage && (
@@ -436,6 +591,7 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
             type="button"
             variant={primaryCopyState === 'success' ? 'success' : primaryCopyState === 'error' ? 'destructive' : 'outline'}
             onClick={() => handleCopy('button')}
+            disabled={!canCopyMemo}
             aria-describedby={copyFeedbackId}
             className="flex-1 gap-2"
           >
@@ -443,11 +599,35 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
             {primaryCopyState === 'success' ? 'Memo copied' : primaryCopyState === 'error' ? 'Copy failed' : 'Copy Memo'}
           </Button>
           {isConnected ? (
-            <Button onClick={handleOpenPreview} disabled={!canSubmit} className="flex-1">Sign & Broadcast</Button>
+            <Button
+              onClick={handleOpenPreview}
+              disabled={!canSubmit}
+              aria-describedby={actionGuidanceId}
+              className="flex-1"
+            >
+              Review Transaction
+            </Button>
           ) : (
-            <Button disabled className="flex-1">Connect Wallet</Button>
+            <Button disabled aria-describedby={actionGuidanceId} className="flex-1">{WALLET_REQUIRED_LABEL}</Button>
           )}
         </div>
+        {actionGuidanceMessage && (
+          <div
+            id="transaction-action-guidance"
+            role="status"
+            className={cn(
+              'flex items-start gap-2 rounded-lg border px-4 py-3 text-sm shadow-sm',
+              isNetworkMismatch
+                ? 'border-red-200 bg-red-50 text-red-700 shadow-red-500/10 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300'
+                : !sourceAllowsPreview
+                  ? 'border-amber-200 bg-amber-50 text-amber-800 shadow-amber-500/10 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200'
+                : 'border-sky-200 bg-sky-50 text-sky-700 shadow-sky-500/10 dark:border-sky-800 dark:bg-sky-900/20 dark:text-sky-300'
+            )}
+          >
+            <ActionGuidanceIcon className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>{actionGuidanceMessage}</p>
+          </div>
+        )}
         {copyFeedback.status !== 'idle' && (
           <div
             id="transaction-copy-feedback"
@@ -468,7 +648,18 @@ export function TransactionComposer({ positions, address, onModeChange }: Transa
           </div>
         )}
       </div>
-      {showPreview && <TransactionPreview data={previewData} onConfirm={handleSignAndBroadcast} onCancel={() => setShowPreview(false)} isLoading={isSubmitting} error={txResult?.error} position={selectedPosition} />}
+      {showPreview && (
+        <TransactionPreview
+          data={previewData}
+          onConfirm={handleSignAndBroadcast}
+          onCancel={() => setShowPreview(false)}
+          isLoading={isSubmitting}
+          error={txResult?.error}
+          confirmDisabled={Boolean(previewBlockerReason)}
+          confirmDisabledReason={previewBlockerReason}
+          position={selectedPosition}
+        />
+      )}
     </div>
   );
 }

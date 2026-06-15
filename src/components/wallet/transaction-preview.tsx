@@ -20,6 +20,8 @@ interface TransactionPreviewProps {
   onCancel: () => void;
   isLoading: boolean;
   error?: string;
+  confirmDisabled?: boolean;
+  confirmDisabledReason?: string;
   position?: BondPosition;
 }
 
@@ -29,6 +31,8 @@ export function TransactionPreview({
   onCancel,
   isLoading,
   error,
+  confirmDisabled = false,
+  confirmDisabledReason,
   position,
 }: TransactionPreviewProps) {
   const isLargeAmount = parseFloat(data.amount) > 2000;
@@ -107,6 +111,13 @@ export function TransactionPreview({
             </div>
           )}
 
+          {confirmDisabledReason && (
+            <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700 dark:text-red-300">{confirmDisabledReason}</p>
+            </div>
+          )}
+
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-xs text-blue-700 dark:text-blue-300">
               By confirming, you authorize this THORChain deposit transaction using your{' '}
@@ -126,7 +137,7 @@ export function TransactionPreview({
           </Button>
           <Button
             onClick={onConfirm}
-            disabled={isLoading}
+            disabled={isLoading || confirmDisabled}
             className="flex-1"
             variant={data.type === 'BOND' ? 'default' : 'default'}
           >

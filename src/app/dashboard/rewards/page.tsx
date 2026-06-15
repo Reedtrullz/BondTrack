@@ -12,24 +12,19 @@ import { AutoCompoundChart } from '@/components/dashboard/auto-compound-chart';
 import { PriceChart } from '@/components/dashboard/price-chart';
 import { useMemo, useState, useEffect, type ReactNode } from 'react';
 import { AlertTriangle, BarChart3, Download, FileText, Search, TrendingUp, Zap } from 'lucide-react';
-import { calculateWeightedApy } from '@/lib/utils/fee-calculations';
 import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
 import { Button } from '@/components/ui/button';
 import { DashboardCard } from '@/components/shared/dashboard-card';
+import { DashboardLoadingSkeleton } from '@/components/shared/dashboard-loading-skeleton';
 import { FocusDialog } from '@/components/ui/focus-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DisclosureSection } from '@/components/dashboard/disclosure-section';
 import { InsightHeader } from '@/components/dashboard/insight-header';
-import { buildDashboardInsightState } from '@/lib/dashboard/insights';
+import { MetricStrip } from '@/components/dashboard/metric-strip';
+import { buildDashboardInsightState, resolveThornodeGatedBondAction } from '@/lib/dashboard/insights';
+import { buildRewardsPageModel } from '@/lib/dashboard/rewards-context';
 import { useApiHealthContext } from '@/lib/hooks/use-api-health';
-import { formatPercent, formatRuneFromNumber, formatUsd } from '@/lib/utils/formatters';
-
-function normalizeApyPercent(raw: string | number | undefined): number | undefined {
-  if (raw === undefined || raw === null) return undefined;
-  const value = typeof raw === 'string' ? Number(raw) : raw;
-  if (!Number.isFinite(value) || value <= 0) return undefined;
-  return value > 1 ? value : value * 100;
-}
+import { formatPercent, formatRuneFromNumber } from '@/lib/utils/formatters';
 
 function RewardsStateCard({
   tone,
@@ -64,20 +59,12 @@ function RewardsStateCard({
 
 function RewardsLoadingState() {
   return (
-    <div className="space-y-8 pb-20" aria-label="Loading rewards dashboard">
-      <DashboardCard className="animate-pulse">
-        <div className="h-6 w-48 rounded bg-zinc-200 dark:bg-zinc-800" />
-        <div className="mt-4 h-4 w-full max-w-2xl rounded bg-zinc-200 dark:bg-zinc-800" />
-        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="h-28 rounded-xl bg-zinc-100 dark:bg-zinc-800/70" />
-          ))}
-        </div>
-      </DashboardCard>
-      <DashboardCard className="h-72 animate-pulse bg-white dark:bg-zinc-900">
-        <div className="sr-only">Loading market context</div>
-      </DashboardCard>
-    </div>
+    <DashboardLoadingSkeleton
+      title="Loading rewards data"
+      detail="Waiting for bond positions, reward history, RUNE price, and network APY before showing return, fees, forecast, or tax worksheet context."
+      cards={3}
+      className="p-0 pb-20"
+    />
   );
 }
 
@@ -99,12 +86,27 @@ export default function RewardsPage() {
   const [taxExportLoading, setTaxExportLoading] = useState(false);
   const [taxError, setTaxError] = useState<string | null>(null);
   const [taxWarning, setTaxWarning] = useState<string | null>(null);
+  const [activeRewardsTab, setActiveRewardsTab] = useState('return');
   const safePositions = useMemo(() => positions ?? [], [positions]);
-  const networkApy = normalizeApyPercent(networkData?.bondingAPY);
-  const weightedApy = useMemo(() => {
-    if (!networkApy) return 0;
-    return calculateWeightedApy(safePositions, networkApy);
-  }, [safePositions, networkApy]);
+  const rewardsModel = useMemo(() => buildRewardsPageModel({
+    actionsError,
+    bondHistory,
+    isLoadingActions,
+    networkBondingAPY: networkData?.bondingAPY,
+    positions: safePositions,
+    runePrice,
+    runePriceIsStale,
+  }), [
+    actionsError,
+    bondHistory,
+    isLoadingActions,
+    networkData?.bondingAPY,
+    runePrice,
+    runePriceIsStale,
+    safePositions,
+  ]);
+  const weightedApy = rewardsModel.weightedApy;
+  const runePriceMetric = rewardsModel.runePriceMetric;
   const rewardsInsight = useMemo(() => buildDashboardInsightState({
     address,
     positions: safePositions,
@@ -122,6 +124,12 @@ export default function RewardsPage() {
     runePriceIsStale,
     runePriceUpdatedAt,
   ]);
+  const bondComposerAction = resolveThornodeGatedBondAction(rewardsInsight.actions, {
+    label: 'Open Bond Composer',
+    href: address
+      ? `/dashboard/transactions?address=${encodeURIComponent(address)}`
+      : '/dashboard/transactions',
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -135,6 +143,26 @@ export default function RewardsPage() {
     }
 
     router.push(`/dashboard/risk?${params.toString()}`);
+  };
+
+  const handleReviewFees = () => {
+    setActiveRewardsTab('fees');
+
+    window.setTimeout(() => {
+      const feesPanel = document.getElementById('rewards-fees-panel');
+      if (feesPanel && typeof feesPanel.scrollIntoView === 'function') {
+        feesPanel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+    }, 0);
+  };
+
+  const handleReviewDataConfidence = () => {
+    window.setTimeout(() => {
+      const confidencePanel = document.getElementById('rewards-data-confidence');
+      if (confidencePanel && typeof confidencePanel.scrollIntoView === 'function') {
+        confidencePanel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+    }, 0);
   };
 
   const handleExportTaxReport = async () => {
@@ -157,7 +185,7 @@ export default function RewardsPage() {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || 'Failed to generate tax report');
+        throw new Error(payload.error || 'Failed to generate tax worksheet');
       }
 
       const warningsHeader = response.headers.get('X-Heimdall-Tax-Warnings');
@@ -167,17 +195,16 @@ export default function RewardsPage() {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = `tax-report-${address.slice(0, 8)}-${taxStartDate}-to-${taxEndDate}.csv`;
+      anchor.download = `tax-worksheet-${address.slice(0, 8)}-${taxStartDate}-to-${taxEndDate}.csv`;
       anchor.click();
       URL.revokeObjectURL(url);
       if (warnings.length > 0) {
-        setTaxWarning(warnings.map((warning) => warning.message).filter(Boolean).join(' ') || 'Tax report downloaded, but older history may be incomplete.');
+        setTaxWarning(warnings.map((warning) => warning.message).filter(Boolean).join(' ') || 'Worksheet downloaded, but older history may be incomplete.');
       } else {
         setShowTaxModal(false);
       }
     } catch (err) {
-      setTaxError(err instanceof Error ? err.message : 'Tax export failed.');
-      console.error('Tax export failed:', err);
+      setTaxError(err instanceof Error ? err.message : 'Tax worksheet export failed.');
     } finally {
       setTaxExportLoading(false);
     }
@@ -197,7 +224,7 @@ export default function RewardsPage() {
         <RewardsStateCard
           tone="empty"
           title="Enter a THORChain address"
-          description="Paste a bond-provider address to calculate net rewards, operator fee leakage, and tax-ready reward history."
+          description="Paste a bond-provider address to calculate net rewards, operator fee leakage, and tax worksheet context."
           detail="Rewards stay hidden until there is an address to query, so the page does not confuse a missing input with a confirmed zero-reward portfolio."
         />
         <DashboardCard>
@@ -225,6 +252,31 @@ export default function RewardsPage() {
   }
 
   const hasPositions = safePositions.length > 0;
+  const primaryConfidenceIssue = rewardsModel.primaryConfidenceIssue;
+  const weightedApyCopy = weightedApy > 0 ? formatPercent(weightedApy) : 'not available yet';
+  const rewardsDiagnosis = primaryConfidenceIssue
+    ? `${primaryConfidenceIssue.label} is ${primaryConfidenceIssue.value.toLowerCase()}. ${primaryConfidenceIssue.detail}. Weighted net APY is ${weightedApyCopy}; use the confidence panel before relying on return, forecast, or tax outputs.`
+    : `Weighted net APY is ${weightedApyCopy}. Returns, fee leakage, forecast assumptions, and tax worksheet context are separated below so each decision has its own context.`;
+  const rewardsTopRisk = primaryConfidenceIssue
+    ? `${primaryConfidenceIssue.label}: ${primaryConfidenceIssue.value}`
+    : weightedApy > 0
+      ? `Net reward stance: ${formatPercent(weightedApy)} weighted APY`
+      : rewardsInsight.topRisk;
+  const rewardsPrimaryAction = primaryConfidenceIssue
+    ? {
+        label: 'Review data confidence',
+        href: '#rewards-data-confidence',
+        onClick: handleReviewDataConfidence,
+      }
+    : {
+        label: 'Review Fees',
+        href: '#rewards-fees-panel',
+        onClick: handleReviewFees,
+      };
+  const rewardsSeverity = primaryConfidenceIssue?.severity ?? rewardsInsight.severity;
+  const rewardsStatusLabel = primaryConfidenceIssue
+    ? primaryConfidenceIssue.severity === 'critical' ? 'At Risk' : 'Needs Attention'
+    : rewardsInsight.statusLabel;
 
   return (
     <div className="space-y-12 pb-20">
@@ -232,20 +284,24 @@ export default function RewardsPage() {
       {hasPositions ? (
         <>
           <InsightHeader
-            severity={rewardsInsight.severity}
-            statusLabel={rewardsInsight.statusLabel}
-            diagnosis={`Weighted net APY is ${weightedApy > 0 ? formatPercent(weightedApy) : 'not available yet'}. Returns, fee leakage, forecast assumptions, and tax export are separated below so each decision has its own context.`}
-            topRisk={weightedApy > 0 ? `Net reward stance: ${formatPercent(weightedApy)} weighted APY` : rewardsInsight.topRisk}
+            severity={rewardsSeverity}
+            statusLabel={rewardsStatusLabel}
+            diagnosis={rewardsDiagnosis}
+            topRisk={rewardsTopRisk}
+            headingLevel={2}
             metrics={[
               { label: 'Weighted APY', value: weightedApy > 0 ? formatPercent(weightedApy) : '--', detail: 'After operator fees' },
               { label: 'Bonded', value: formatRuneFromNumber(safePositions.reduce((sum, position) => sum + position.bondAmount, 0)), detail: `${safePositions.length} node${safePositions.length === 1 ? '' : 's'}` },
-              { label: 'RUNE price', value: runePrice ? formatUsd(runePrice, 4, 2) : '--', detail: runePriceIsStale ? 'Stale quote' : 'Live quote' },
+              { label: 'RUNE price', ...runePriceMetric },
             ]}
-            primaryAction={{ label: 'Review Fees', href: '#fees' }}
+            primaryAction={rewardsPrimaryAction}
             eyebrow="Rewards"
+            compactMobileMetrics
           />
 
-          <Tabs defaultValue="return" className="space-y-4">
+          <MetricStrip id="rewards-data-confidence" metrics={rewardsModel.confidenceMetrics} title="Rewards data confidence" />
+
+          <Tabs value={activeRewardsTab} onValueChange={setActiveRewardsTab} className="space-y-4">
             <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800 md:grid-cols-4">
               <TabsTrigger value="return">Return</TabsTrigger>
               <TabsTrigger value="fees">Fees</TabsTrigger>
@@ -273,7 +329,7 @@ export default function RewardsPage() {
               </DashboardCard>
             </TabsContent>
 
-            <TabsContent id="fees" value="fees">
+            <TabsContent id="rewards-fees-panel" value="fees">
               <DashboardCard>
                 <div className="mb-4 flex items-center gap-2">
                   <Zap className="w-5 h-5 text-amber-500" aria-hidden="true" />
@@ -294,7 +350,7 @@ export default function RewardsPage() {
                   <FileText className="mb-3 h-8 w-8 text-zinc-400" aria-hidden="true" />
                   <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">APY baseline unavailable</h3>
                   <p className="mt-2 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
-                    Network APY has not loaded yet, so compounding forecasts are withheld instead of showing a placeholder projection.
+                    Neither node-level APY nor a network fallback has loaded yet, so compounding forecasts are withheld instead of showing a placeholder projection.
                   </p>
                 </DashboardCard>
               )}
@@ -304,9 +360,9 @@ export default function RewardsPage() {
               <DashboardCard>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Tax-ready reward export</h2>
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Reward tax worksheet</h2>
                     <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                      CSV includes date-inclusive FIFO bond rows and estimated LP confidence metadata.
+                      CSV includes date-inclusive FIFO bond rows and estimated LP confidence metadata. It is not a filing-ready tax report.
                     </p>
                   </div>
                   <Button
@@ -320,7 +376,7 @@ export default function RewardsPage() {
                     }}
                   >
                     <Download className="mr-2 h-4 w-4" aria-hidden="true" />
-                    Export Tax Report
+                    Export Worksheet CSV
                   </Button>
                 </div>
               </DashboardCard>
@@ -356,10 +412,10 @@ export default function RewardsPage() {
           tone="empty"
           title="No bonded positions found"
           description="The address was queried successfully, but it is not currently listed as a bond provider on an active node."
-          detail="Bond RUNE to a node operator first; then this page will show net APY, operator fee impact, reward velocity, and tax export options."
+          detail="Bond RUNE to a node operator first; then this page will show net APY, operator fee impact, reward velocity, and tax worksheet options."
           action={
-            <Button type="button" size="sm" onClick={() => router.push(`/dashboard/transactions?address=${encodeURIComponent(address)}`)}>
-              Open Bond Composer
+            <Button type="button" size="sm" onClick={() => router.push(bondComposerAction.href)}>
+              {bondComposerAction.label}
             </Button>
           }
         />
@@ -384,9 +440,9 @@ export default function RewardsPage() {
           <div
             className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg dark:bg-zinc-900"
           >
-            <h3 id="tax-export-title" className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Export Tax Report</h3>
+            <h3 id="tax-export-title" className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Export tax worksheet CSV</h3>
             <p id="tax-export-description" className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-              CSV includes date-inclusive FIFO bond rows and estimated LP income confidence metadata.
+              Choose a date range for FIFO bond rows and estimated LP income confidence metadata. Use it for reconciliation before tax filing; it is not a filing-ready tax report.
             </p>
             <div className="mt-5 space-y-4">
               <div>

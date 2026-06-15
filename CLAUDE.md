@@ -114,12 +114,15 @@ entries with the same names are retained for server-side rendering and
 diagnostics, but changing them cannot mutate already-built client JavaScript.
 Runtime-only vars (`PORT`, `HOSTNAME`, `NODE_ENV`, `VERSION`) and server-only
 secrets/proxy vars (`COINAPI_KEY`, `THORNODE_API_URL`, `MIDGARD_API_URL`,
-`MIDGARD_FALLBACK_URL`) are set in Ansible; `COINAPI_KEY` comes from the
-existing `vault_coinapi_key` without reading or documenting the secret. The
-manual `compose.production.yml` fallback requires `IMAGE_SHA=<exact-short-sha>`
-and should be run through `scripts/compose-production.sh` so non-hex values are
-rejected before Compose interpolation. See `.env.example` for local,
-non-secret documentation of public and server-side variables.
+`MIDGARD_FALLBACK_URL`, `TRUST_PROXY_HEADERS`, `TRUST_X_FORWARDED_FOR`) are set
+in Ansible; `COINAPI_KEY` comes from the existing `vault_coinapi_key` without
+reading or documenting the secret. The manual `compose.production.yml` fallback
+requires `IMAGE_SHA=<exact-short-sha>` and should be run through
+`scripts/compose-production.sh` so non-hex values are rejected before Compose
+interpolation. See `.env.example` for local, non-secret documentation of public
+and server-side variables. Production trusts the Caddy-overwritten `X-Real-IP`
+for best-effort rate limiting; do not trust `X-Forwarded-For` unless the full
+proxy chain sanitizes it.
 
 | Variable | Purpose |
 |---|---|
@@ -133,6 +136,8 @@ non-secret documentation of public and server-side variables.
 | `NEXT_PUBLIC_THORCHAIN_NETWORK` | `mainnet` / `stagenet` |
 | `NEXT_PUBLIC_USE_MOCK_DATA` | Local/test mock-data toggle |
 | `COINAPI_KEY` | Server-side CoinAPI key from vault |
+| `TRUST_PROXY_HEADERS` | Trust deployment proxy `X-Real-IP` for rate limiting |
+| `TRUST_X_FORWARDED_FOR` | Also trust sanitized `X-Forwarded-For` chains |
 | `VERSION` | Runtime image tag, set to the immutable deployed `sha-<short>` tag |
 
 ## Health Endpoints

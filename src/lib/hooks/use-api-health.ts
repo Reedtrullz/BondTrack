@@ -18,6 +18,7 @@ export interface ApiHealthState {
 const CONSECUTIVE_FAILURES_FOR_DOWN = 3;
 const MIDGARD_INTERVAL_MS = 30_000;
 const THORNODE_INTERVAL_MS = 60_000;
+const HEALTH_PROBE_HEADER = 'X-Heimdall-Health-Probe';
 
 function isHttpOrNetworkError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -56,7 +57,11 @@ export function useApiHealth(): ApiHealthState {
 
   const checkMidgard = useCallback(async () => {
     try {
-      await getHealth();
+      await getHealth({
+        cache: 'no-store',
+        headers: { [HEALTH_PROBE_HEADER]: 'midgard' },
+        retry: false,
+      });
       midgardFailures.current = 0;
       setMidgardStatus('healthy');
       setLastSuccessful((previous) => ({ ...previous, midgard: new Date() }));
@@ -71,7 +76,11 @@ export function useApiHealth(): ApiHealthState {
 
   const checkThornode = useCallback(async () => {
     try {
-      await getAllNodes();
+      await getAllNodes({
+        cache: 'no-store',
+        headers: { [HEALTH_PROBE_HEADER]: 'thornode' },
+        retry: false,
+      });
       thornodeFailures.current = 0;
       setThornodeStatus('healthy');
       setLastSuccessful((previous) => ({ ...previous, thornode: new Date() }));

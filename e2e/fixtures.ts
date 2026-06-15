@@ -41,7 +41,13 @@ function matchesApiErrorAllowlist(rawUrl: Request | string, allowlist: ApiErrorP
   const url = typeof rawUrl === 'string' ? rawUrl : rawUrl.url();
   return allowlist.some((pattern) => {
     if (typeof pattern === 'string') {
-      return url.includes(pattern);
+      const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000';
+
+      try {
+        return new URL(url, baseUrl).pathname === pattern;
+      } catch {
+        return url === pattern;
+      }
     }
     return pattern.test(url);
   });

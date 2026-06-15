@@ -2,35 +2,43 @@
 
 import React from 'react';
 import { useSearchParams } from 'next/navigation';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
 import { NodeStatusCard } from '@/components/dashboard/node-status-card';
 import { NetworkComparisonTable } from '@/components/dashboard/network-comparison-table';
 import { DashboardCard } from '@/components/shared/dashboard-card';
+import { DashboardLoadingSkeleton } from '@/components/shared/dashboard-loading-skeleton';
 import { ExportButton } from '@/components/shared/export-button';
 import { ActionQueue } from '@/components/dashboard/action-queue';
 import { DisclosureSection } from '@/components/dashboard/disclosure-section';
 import { InsightHeader } from '@/components/dashboard/insight-header';
-import { NETWORK } from '@/lib/config';
 import { buildDashboardInsightState } from '@/lib/dashboard/insights';
+import {
+  buildNodesPageModel,
+  calculateNodeRiskScore,
+  getNodeRowRiskClass,
+  isUrgentNodeException,
+  type NodesSortDirection,
+  type NodesSortField,
+} from '@/lib/dashboard/nodes-context';
+import { getCandidateBondSourceSafety } from '@/lib/dashboard/candidate-bond-source-safety';
 import { useApiHealthContext } from '@/lib/hooks/use-api-health';
-import { formatRuneFromNumber, formatBasisPoints } from '@/lib/utils/formatters';
-import type { BondPosition } from '@/lib/types/node';
+import { formatRuneDisplayNumber, formatBasisPoints, formatPercent } from '@/lib/utils/formatters';
 
-type SortField = 'nodeAddress' | 'status' | 'bondAmount' | 'netAPY' | 'slashPoints' | 'operatorFee' | 'riskScore';
-
-function calculateRiskScore(position: BondPosition): number {
-  if (position.isJailed) return 100;
-  return Math.min((position.slashPoints / NETWORK.SLASH_POINT_THRESHOLDS.critical) * 100, 100);
+function isUsableNodeMetric(value: number): boolean {
+  return Number.isFinite(value) && value >= 0;
 }
 
-function getRowRiskClass(position: BondPosition): string {
-  if (position.isJailed || position.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical) {
-    return 'bg-red-50 dark:bg-red-950/30';
-  }
-  if (position.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning) {
-    return 'bg-amber-50 dark:bg-amber-950/30';
-  }
-  return '';
+function formatNodeRune(value: number): string {
+  return isUsableNodeMetric(value) ? formatRuneDisplayNumber(value) : '--';
+}
+
+function formatNodePercent(value: number): string {
+  return isUsableNodeMetric(value) ? formatPercent(value) : '--';
+}
+
+function formatNodeNumber(value: number): string {
+  return isUsableNodeMetric(value) ? value.toLocaleString() : '--';
 }
 
 function SortHeader({
@@ -41,17 +49,29 @@ function SortHeader({
   onSort,
 }: {
   label: string;
-  field: SortField;
-  sortField: SortField;
-  sortDirection: 'asc' | 'desc';
-  onSort: (field: SortField) => void;
+  field: NodesSortField;
+  sortField: NodesSortField;
+  sortDirection: NodesSortDirection;
+  onSort: (field: NodesSortField) => void;
 }) {
+  const isActive = sortField === field;
+  const Icon = isActive ? (sortDirection === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+  const nextDirection = isActive && sortDirection === 'asc' ? 'descending' : 'ascending';
+
   return (
     <th
-      className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
-      onClick={() => onSort(field)}
+      aria-sort={isActive ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+      className="px-2 py-2 text-left text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400"
     >
-      {label} {sortField === field && (sortDirection === 'asc' ? '↑' : '↓')}
+      <button
+        type="button"
+        className="inline-flex min-h-10 w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-zinc-100 hover:text-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+        aria-label={`Sort by ${label} ${nextDirection}`}
+        onClick={() => onSort(field)}
+      >
+        <span className="whitespace-nowrap">{label}</span>
+        <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      </button>
     </th>
   );
 }
@@ -62,10 +82,10 @@ export default function NodesPage() {
   const { positions, isLoading } = useBondPositions(address);
   const apiHealth = useApiHealthContext();
 
-  const [sortField, setSortField] = React.useState<SortField>('riskScore');
-  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
+  const [sortField, setSortField] = React.useState<NodesSortField>('riskScore');
+  const [sortDirection, setSortDirection] = React.useState<NodesSortDirection>('desc');
 
-  const handleSort = React.useCallback((field: SortField) => {
+  const handleSort = React.useCallback((field: NodesSortField) => {
     setSortField((prev) => {
       if (prev === field) {
         setSortDirection((dir) => (dir === 'asc' ? 'desc' : 'asc'));
@@ -76,59 +96,68 @@ export default function NodesPage() {
     });
   }, []);
 
-  const sortedPositions = React.useMemo(() => {
-    return [...positions].sort((left, right) => {
-      let comparison = 0;
-
-      switch (sortField) {
-        case 'nodeAddress':
-          comparison = left.nodeAddress.localeCompare(right.nodeAddress);
-          break;
-        case 'status':
-          comparison = left.status.localeCompare(right.status);
-          break;
-        case 'bondAmount':
-          comparison = left.bondAmount - right.bondAmount;
-          break;
-        case 'netAPY':
-          comparison = left.netAPY - right.netAPY;
-          break;
-        case 'slashPoints':
-          comparison = left.slashPoints - right.slashPoints;
-          break;
-        case 'operatorFee':
-          comparison = left.operatorFee - right.operatorFee;
-          break;
-        case 'riskScore':
-          comparison = calculateRiskScore(left) - calculateRiskScore(right);
-          break;
-      }
-
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
-  }, [positions, sortField, sortDirection]);
+  const nodesModel = React.useMemo(() => buildNodesPageModel({
+    positions,
+    sortDirection,
+    sortField,
+  }), [positions, sortDirection, sortField]);
+  const { exceptionPositions, sortedPositions } = nodesModel;
 
   const nodeInsight = React.useMemo(() => buildDashboardInsightState({
     address,
     positions,
     apiHealth,
     network: null,
+    includeRunePriceSource: false,
   }), [address, positions, apiHealth]);
-  const exceptionPositions = React.useMemo(() => (
-    positions.filter((position) => (
-      position.isJailed ||
-      position.status !== 'Active' ||
-      position.slashPoints > 0 ||
-      (position.yieldGuardFlags?.length ?? 0) > 0
-    ))
-  ), [positions]);
+  const bondSourceSafety = React.useMemo(
+    () => getCandidateBondSourceSafety(apiHealth.thornode),
+    [apiHealth.thornode]
+  );
 
   if (isLoading) {
-    return <div className="animate-pulse space-y-4">{[...Array(3)].map((_, i) => <div key={i} className="h-48 rounded-lg bg-zinc-200 dark:bg-zinc-800" />)}</div>;
+    return (
+      <DashboardLoadingSkeleton
+        title="Loading node positions"
+        detail="Waiting for THORNode source responses before ranking node exceptions, slash points, and validator status."
+        cards={3}
+        className="p-0"
+      />
+    );
   }
 
   if (positions.length === 0) {
-    return <p className="text-zinc-500">No bonded positions found.</p>;
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Nodes</h1>
+        <InsightHeader
+          severity={nodeInsight.severity}
+          statusLabel={nodeInsight.statusLabel}
+          diagnosis={nodeInsight.diagnosis}
+          topRisk={nodeInsight.topRisk}
+          headingLevel={2}
+          metrics={nodeInsight.headerMetrics}
+          primaryAction={nodeInsight.primaryAction}
+          eyebrow="Node"
+          compactMobileMetrics
+        />
+        <ActionQueue
+          items={nodeInsight.actions.slice(0, 4)}
+          title="Node exceptions"
+          emptyTitle="No tracked node exceptions"
+          emptyDetail="This address is valid, but no bonded nodes are attached to it yet."
+          compact
+        />
+        <DashboardCard className="p-5">
+          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+            No bonded nodes tracked
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+            Confirm the provider address, prepare a BOND transaction, or use Node Discovery to inspect candidate nodes before committing capital.
+          </p>
+        </DashboardCard>
+      </div>
+    );
   }
 
   return (
@@ -140,31 +169,33 @@ export default function NodesPage() {
           statusLabel={nodeInsight.statusLabel}
           diagnosis={nodeInsight.diagnosis}
           topRisk={nodeInsight.topRisk}
+          headingLevel={2}
           metrics={nodeInsight.headerMetrics}
           primaryAction={nodeInsight.primaryAction}
           eyebrow="Node"
+          compactMobileMetrics
         />
         <ActionQueue
           items={nodeInsight.actions.slice(0, 4)}
           title="Node exceptions"
           emptyTitle="No node exceptions"
-          emptyDetail="All tracked nodes are active, unjailed, and below slash warning thresholds."
+          emptyDetail="All tracked nodes are active, unjailed, below slash warning thresholds, and clear of churn-risk flags."
           compact
         />
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Exception cards</h2>
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Urgent exception cards</h2>
           {positions.length > 0 && <ExportButton bondPositions={positions} />}
         </div>
         {exceptionPositions.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <section aria-label="Urgent node exception cards" className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {exceptionPositions.map((pos) => (
-              <NodeStatusCard key={pos.nodeAddress} position={pos} address={address} />
+              <NodeStatusCard key={pos.nodeAddress} position={pos} address={address} sourceSafety={bondSourceSafety} />
             ))}
-          </div>
+          </section>
         ) : (
           <DashboardCard className="p-5">
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              No exception cards to show. Use the comparison table below for full node detail.
+              No urgent exception cards to show. Minor slash history and routine node metrics remain visible in the comparison table below.
             </p>
           </DashboardCard>
         )}
@@ -175,12 +206,15 @@ export default function NodesPage() {
           <div>
             <h2 className="text-2xl font-bold text-zinc-950 dark:text-zinc-50">Node Comparison</h2>
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-              Sortable overview of all bonded nodes. Rows are color-coded by risk: red for jailed or critical slash, amber for elevated slash points.
+              Sortable overview of all bonded nodes. Rows are color-coded by risk: red for jailed or critical slash, amber for warning-level slash points.
             </p>
           </div>
         </div>
-        <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
-          <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-800">
+        <div
+          className="max-w-full overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800"
+          aria-label="Scrollable node comparison"
+        >
+          <table className="min-w-[56rem] divide-y divide-zinc-200 dark:divide-zinc-800">
             <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-950/60">
               <tr>
                 <SortHeader label="Node Address" field="nodeAddress" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
@@ -196,7 +230,8 @@ export default function NodesPage() {
               {sortedPositions.map((position) => (
                 <tr
                   key={position.nodeAddress}
-                  className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors ${getRowRiskClass(position)}`}
+                  className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors ${getNodeRowRiskClass(position)}`}
+                  data-urgent-exception={isUrgentNodeException(position) ? 'true' : 'false'}
                 >
                   <td className="px-4 py-3 font-mono text-sm text-zinc-900 dark:text-zinc-100">
                     {position.nodeAddress.slice(0, 8)}...{position.nodeAddress.slice(-4)}
@@ -210,19 +245,19 @@ export default function NodesPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                    {formatRuneFromNumber(position.bondAmount)}
+                    {formatNodeRune(position.bondAmount)}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                    {position.netAPY.toFixed(2)}%
+                    {formatNodePercent(position.netAPY)}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                    {position.slashPoints.toLocaleString()}
+                    {formatNodeNumber(position.slashPoints)}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                    {formatBasisPoints(position.operatorFee)}
+                    {isUsableNodeMetric(position.operatorFee) ? formatBasisPoints(position.operatorFee) : '--'}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                    {calculateRiskScore(position).toFixed(0)}
+                    {calculateNodeRiskScore(position).toFixed(0)}
                   </td>
                 </tr>
               ))}
@@ -235,11 +270,11 @@ export default function NodesPage() {
         title="All node cards"
         summary="Detailed per-node cards are collapsed because the exception queue above is the primary operator view."
       >
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <section aria-label="All node status cards" className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {positions.map((pos) => (
-            <NodeStatusCard key={pos.nodeAddress} position={pos} address={address} />
+            <NodeStatusCard key={pos.nodeAddress} position={pos} address={address} sourceSafety={bondSourceSafety} />
           ))}
-        </div>
+        </section>
       </DisclosureSection>
 
       <NetworkComparisonTable address={address} />

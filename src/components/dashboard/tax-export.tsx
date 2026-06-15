@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Download, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { AlertCircle, Download, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { useLpPositions } from '@/lib/hooks/use-lp-positions';
 import type { LpPosition } from '@/lib/types/lp';
 import { rawRuneToDisplayNumber } from '@/lib/utils/formatters';
@@ -13,6 +13,9 @@ interface TaxExportProps {
   address: string | null;
   isHistoricalEnrichmentLoading?: boolean;
 }
+
+const LP_CSV_EXPORT_FAILURE =
+  'LP CSV export failed. No file was downloaded. Try again after source data is available.';
 
 function formatTaxPositionDate(rawTimestamp: string): string {
   return normalizeMidgardTimestampToDate(rawTimestamp)?.toISOString().split('T')[0] ?? 'Unknown';
@@ -34,6 +37,7 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
     error,
   } = useLpPositions(address);
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const isHistoricalEnrichmentLoading = Boolean(
     parentHistoricalEnrichmentLoading || hookHistoricalEnrichmentLoading
   );
@@ -55,6 +59,7 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
     if (isExportDisabled) return;
 
     setExporting(true);
+    setExportError(null);
 
     try {
       const exportedAt = new Date().toISOString();
@@ -126,9 +131,8 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Error generating LP position CSV:', err);
-      alert('Failed to generate LP position CSV. Please try again.');
+    } catch {
+      setExportError(LP_CSV_EXPORT_FAILURE);
     } finally {
       setExporting(false);
     }
@@ -183,6 +187,19 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
         ) : hasIncompleteHistoricalPricing ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
             Complete historical entry pricing is unavailable for {positionsWithIncompleteHistoricalPricing.length} position{positionsWithIncompleteHistoricalPricing.length !== 1 ? 's' : ''}. Estimated/current-only LP CSV export is disabled to avoid incomplete position data.
+          </div>
+        ) : null}
+
+        {exportError ? (
+          <div
+            role="alert"
+            className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"
+          >
+            <AlertCircle className="mt-0.5 h-4 w-4 flex-none" aria-hidden="true" />
+            <div>
+              <p className="font-medium">CSV export failed</p>
+              <p className="mt-1">{exportError}</p>
+            </div>
           </div>
         ) : null}
 

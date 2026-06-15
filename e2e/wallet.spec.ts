@@ -63,7 +63,7 @@ async function setupWalletPageApiMocks(page: Page) {
     }
 
     if (url.pathname === '/api/thorchain/thorchain/constants') {
-      await route.fulfill({ json: { int_64_values: { OptimalBondD: 2500000000000 }, bool_values: {}, string_values: {} } });
+      await route.fulfill({ json: { int_64_values: { MaxBondProviders: 100 }, bool_values: {}, string_values: {} } });
       return;
     }
 
@@ -76,11 +76,25 @@ async function setupWalletPageApiMocks(page: Page) {
   });
 
   await page.route('**/api/coinapi/**', async (route) => {
-    await route.fulfill({ json: { price: 1.5 } });
+    const url = new URL(route.request().url());
+
+    if (url.pathname === '/api/coinapi/rune-price') {
+      await route.fulfill({ json: { price: 1.5 } });
+      return;
+    }
+
+    await route.fulfill({ status: 404, json: { error: `Unhandled CoinAPI mock: ${url.pathname}` } });
   });
 
   await page.route('**/api/coingecko/**', async (route) => {
-    await route.fulfill({ json: { thorchain: { usd: 1.5 } } });
+    const url = new URL(route.request().url());
+
+    if (url.pathname === '/api/coingecko/coins/thorchain/market_chart/range') {
+      await route.fulfill({ json: { prices: [[Date.now(), 1.5]] } });
+      return;
+    }
+
+    await route.fulfill({ status: 404, json: { error: `Unhandled CoinGecko mock: ${url.pathname}` } });
   });
 }
 
@@ -126,9 +140,13 @@ test.describe('Wallet Connection', () => {
     await gotoWalletPage(page);
     await openWalletMenu(page);
 
+    await expect(page.getByText('No wallet provider was detected in this browser.')).toBeVisible();
     await expect(page.getByTestId('wallet-option-keplr')).toHaveText('Keplr Wallet');
     await expect(page.getByTestId('wallet-option-xdefi')).toHaveText('XDEFI Wallet');
     await expect(page.getByTestId('wallet-option-vultisig')).toHaveText('Vultisig Wallet');
+    await expect(page.getByTestId('wallet-option-keplr')).toBeDisabled();
+    await expect(page.getByTestId('wallet-option-xdefi')).toBeDisabled();
+    await expect(page.getByTestId('wallet-option-vultisig')).toBeDisabled();
   });
 
   test('displays error message on connection failure', async ({ page, context }) => {
@@ -178,7 +196,10 @@ test.describe('Wallet Connection', () => {
     await chooseWallet(page, 'keplr');
     await expect(page.getByTestId('wallet-account-menu-button')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Disconnect', exact: true }).first().click();
+    await page.getByTestId('wallet-account-menu-button').click();
+    const walletMenu = page.getByRole('menu', { name: 'Connected wallet actions' });
+    await expect(walletMenu).toBeVisible();
+    await walletMenu.getByRole('menuitem', { name: 'Disconnect', exact: true }).click();
 
     await expect(page.getByTestId('wallet-connect-button')).toBeVisible();
   });

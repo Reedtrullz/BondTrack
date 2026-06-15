@@ -5,10 +5,13 @@ import {
   dedupeActionItems,
   formatFreshnessAge,
   rankActionItems,
+  resolveThornodeGatedBondAction,
   type ActionItem,
 } from './insights';
+import type { NetworkRaw } from '@/lib/api/midgard';
 import type { ApiHealthState } from '@/lib/hooks/use-api-health';
 import type { BondPosition } from '@/lib/types/node';
+import type { LpPosition } from '@/lib/types/lp';
 
 const NOW = new Date('2026-06-12T12:00:00.000Z');
 
@@ -60,6 +63,84 @@ function bondPosition(overrides: Partial<BondPosition> = {}): BondPosition {
   };
 }
 
+function lpPosition(overrides: Partial<LpPosition> = {}): LpPosition {
+  return {
+    address: 'thor1lpaddress',
+    pool: 'BTC.BTC',
+    assetSymbol: 'BTC',
+    runeDeposit: '100',
+    asset2Deposit: '1',
+    liquidityUnits: '1000',
+    runeAdded: '100',
+    runePending: '0',
+    runeWithdrawn: '0',
+    asset2Added: '1',
+    asset2Pending: '0',
+    asset2Withdrawn: '0',
+    volume24h: '0',
+    runeDepth: '1000',
+    asset2Depth: '10',
+    dateFirstAdded: '2026-01-01T00:00:00.000Z',
+    dateLastAdded: '2026-01-01T00:00:00.000Z',
+    poolApy: 0,
+    poolStatus: 'available',
+    ownershipPercent: 1,
+    hasPending: false,
+    runeDepositedValue: '100',
+    asset2DepositedValue: '1',
+    runeWithdrawable: '100',
+    asset2Withdrawable: '1',
+    currentRunePriceUsd: 1,
+    currentAssetPriceUsd: 100,
+    entryRunePriceUsd: null,
+    entryAssetPriceUsd: null,
+    currentTotalValueUsd: 200,
+    depositedTotalValueUsd: null,
+    netProfitLoss: '0',
+    netProfitLossUsd: null,
+    netProfitLossPercent: null,
+    hodlValueUsd: null,
+    impermanentLossUsd: null,
+    impermanentLossPercent: null,
+    impermanentLossValue: null,
+    pricingSource: 'historical',
+    runeEntryPrice: null,
+    asset2EntryPrice: null,
+    ...overrides,
+  };
+}
+
+function network(overrides: Partial<NetworkRaw> = {}): NetworkRaw {
+  return {
+    activeBonds: [],
+    activeNodeCount: '0',
+    standbyBonds: [],
+    standbyNodeCount: '0',
+    totalPooledRune: '0',
+    totalReserve: '0',
+    bondMetrics: {
+      totalActiveBond: '9600000000000000',
+      totalStandbyBond: '39021221000000',
+      averageActiveBond: '0',
+      averageStandbyBond: '0',
+      medianActiveBond: '0',
+      minimumActiveBond: '0',
+      maximumActiveBond: '0',
+      bondHardCap: '0',
+    },
+    bondingAPY: '0',
+    liquidityAPY: '0',
+    blockRewards: {
+      blockReward: '0',
+      bondReward: '0',
+      poolReward: '0',
+    },
+    nextChurnHeight: '0',
+    poolActivationCountdown: '0',
+    ...overrides,
+  };
+}
+
 describe('dashboard insights', () => {
   it('ranks action items by deterministic severity and recency order', () => {
     const ranked = rankActionItems([
@@ -106,6 +187,268 @@ describe('dashboard insights', () => {
     ]));
   });
 
+  it('describes failed source probes as current readings rather than live readings', () => {
+    const sources = buildSourceFreshness(
+      apiHealth({
+        midgard: 'down',
+        thornode: 'healthy',
+      }),
+      { includeRunePriceSource: false }
+    );
+
+    expect(sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source: 'Midgard',
+        detail: 'Multiple probes failed. Treat current readings as unreliable.',
+      }),
+    ]));
+    expect(sources.map((source) => source.detail)).not.toContain('Multiple probes failed. Treat live readings as unreliable.');
+  });
+
+  it('does not call an old loaded RUNE price fresh when the stale flag is missing', () => {
+    const sources = buildSourceFreshness(
+      apiHealth(),
+      {
+        now: NOW,
+        runePriceUpdatedAt: new Date('2026-06-10T23:00:00.000Z'),
+        runePriceIsStale: false,
+        runePriceStaleAfterMs: 36 * 60 * 60 * 1000,
+      }
+    );
+
+    expect(sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source: 'RUNE price',
+        status: 'stale',
+        detail: 'Price feed is stale; USD values use the last successful quote.',
+      }),
+    ]));
+  });
+
+  it('does not claim an unloaded RUNE price quote is available', () => {
+    const sources = buildSourceFreshness(apiHealth());
+
+    expect(sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source: 'RUNE price',
+        status: 'unknown',
+        detail: 'No RUNE price quote has loaded yet; USD values are unavailable.',
+      }),
+    ]));
+  });
+
+  it('can omit RUNE price source confidence on pages that do not use USD values', () => {
+    const sources = buildSourceFreshness(apiHealth(), { includeRunePriceSource: false });
+
+    expect(sources.map((source) => source.source)).toEqual(['THORNode', 'Midgard']);
+  });
+
+  it('uses the fallback generic BOND action when THORNode confidence has no action', () => {
+    const resolved = resolveThornodeGatedBondAction([
+      action({
+        id: 'source:midgard:degraded',
+        source: 'Midgard',
+        href: '/dashboard?address=thor1provider#source-confidence',
+        primaryAction: 'Review source confidence',
+      }),
+    ], {
+      label: 'Open BOND',
+      href: '/dashboard/transactions?address=thor1provider&action=bond',
+    });
+
+    expect(resolved).toEqual({
+      kind: 'bond-ready',
+      label: 'Open BOND',
+      href: '/dashboard/transactions?address=thor1provider&action=bond',
+    });
+  });
+
+  it('routes the generic BOND action to THORNode source confidence when present', () => {
+    const sourceAction = action({
+      id: 'source:thornode:degraded',
+      source: 'THORNode',
+      href: '/dashboard?address=thor1provider#source-confidence',
+      primaryAction: 'Review source confidence',
+    });
+
+    const resolved = resolveThornodeGatedBondAction([sourceAction], {
+      label: 'Prepare BOND Memo',
+      href: '/dashboard/transactions?address=thor1provider&action=bond',
+    });
+
+    expect(resolved).toEqual({
+      kind: 'source-confidence',
+      label: 'Review source confidence',
+      href: '/dashboard?address=thor1provider#source-confidence',
+      sourceAction,
+    });
+  });
+
+  it('treats an empty bond portfolio as informational rather than healthy', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth(),
+      positions: [],
+      runePriceUpdatedAt: NOW,
+    });
+
+    expect(state.severity).toBe('info');
+    expect(state.statusLabel).toBe('No Bond');
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Start by confirming the address or preparing a BOND transaction.');
+    expect(state.topRisk).toBe('No bonded positions detected');
+    expect(state.primaryAction).toEqual({
+      label: 'Open Bond Composer',
+      href: '/dashboard/transactions?address=thor1provider',
+    });
+    expect(state.headerMetrics[0]).toEqual({
+      label: 'Health score',
+      value: '--',
+      detail: 'No bonded positions to score',
+    });
+  });
+
+  it('keeps no-bond pages focused on missing node positions when price confidence is irrelevant', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth(),
+      positions: [],
+      includeRunePriceSource: false,
+    });
+
+    expect(state.statusLabel).toBe('No Bond');
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Start by confirming the address or preparing a BOND transaction.');
+    expect(state.topRisk).toBe('No bonded positions detected');
+    expect(state.actions.map((item) => item.title)).not.toContain('RUNE price is unknown');
+    expect(state.sources.map((source) => source.source)).toEqual(['THORNode', 'Midgard']);
+  });
+
+  it('keeps no-bond as the headline state even while a source check is pending', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth({
+        midgard: 'unknown',
+        lastSuccessful: {
+          midgard: null,
+          thornode: NOW,
+        },
+      }),
+      positions: [],
+      runePriceUpdatedAt: NOW,
+    });
+
+    expect(state.statusLabel).toBe('No Bond');
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Start by confirming the address or preparing a BOND transaction.');
+    expect(state.topRisk).toBe('No bonded positions detected');
+    expect(state.primaryAction).toEqual({
+      label: 'Open Bond Composer',
+      href: '/dashboard/transactions?address=thor1provider',
+    });
+    expect(state.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'source:midgard:unknown',
+        severity: 'warning',
+      }),
+    ]));
+  });
+
+  it('routes no-bond BOND entry to source confidence when THORNode confidence is degraded', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth({
+        thornode: 'degraded',
+        lastSuccessful: {
+          midgard: NOW,
+          thornode: null,
+        },
+      }),
+      positions: [],
+      runePriceUpdatedAt: NOW,
+    });
+
+    expect(state.statusLabel).toBe('No Bond');
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Confirm the address, then wait for fresh THORNode source confidence before preparing a BOND transaction.');
+    expect(state.topRisk).toBe('No bonded positions detected');
+    expect(state.primaryAction).toEqual({
+      label: 'Review source confidence',
+      href: '/dashboard?address=thor1provider#source-confidence',
+    });
+    expect(state.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'source:thornode:degraded',
+        source: 'THORNode',
+        primaryAction: 'Review source confidence',
+      }),
+    ]));
+  });
+
+  it.each(['down', 'unknown'] as const)('routes no-bond BOND entry to source confidence when THORNode confidence is %s', (thornode) => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth({
+        thornode,
+        lastSuccessful: {
+          midgard: NOW,
+          thornode: null,
+        },
+      }),
+      positions: [],
+      runePriceUpdatedAt: NOW,
+    });
+
+    expect(state.statusLabel).toBe('No Bond');
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Confirm the address, then wait for fresh THORNode source confidence before preparing a BOND transaction.');
+    expect(state.primaryAction).toEqual({
+      label: 'Review source confidence',
+      href: '/dashboard?address=thor1provider#source-confidence',
+    });
+    expect(state.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source: 'THORNode',
+        primaryAction: 'Review source confidence',
+      }),
+    ]));
+  });
+
+  it('uses compact RUNE values in the supporting metric strip', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth(),
+      positions: [bondPosition()],
+      network: network(),
+    });
+
+    expect(state.metrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'total-bond',
+        value: 'ᚱ12.5K',
+      }),
+      expect.objectContaining({
+        id: 'network-bond',
+        value: 'ᚱ96.4M',
+      }),
+    ]));
+  });
+
+  it('describes a healthy bonded portfolio as current source responses, not absolute live safety', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth(),
+      positions: [bondPosition()],
+      runePriceUpdatedAt: NOW,
+    });
+
+    expect(state.statusLabel).toBe('Healthy');
+    expect(state.diagnosis).toBe('Current source responses show no urgent node, source, or LP confidence issues.');
+    expect(state.diagnosis).not.toContain('current live data');
+  });
+
   it('builds a critical diagnosis from jail and keeps churn/slash actions per node', () => {
     const state = buildDashboardInsightState({
       address: 'thor1provider',
@@ -131,6 +474,131 @@ describe('dashboard insights', () => {
       'slash-critical:thor1criticalnode000000000000000000000000000',
       'churn-risk:thor1criticalnode000000000000000000000000000',
     ]));
+    expect(state.primaryAction.href).toBe(
+      '/dashboard/risk?address=thor1provider&node=thor1criticalnode000000000000000000000000000'
+    );
+    expect(state.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'jail:thor1criticalnode000000000000000000000000000',
+        href: '/dashboard/risk?address=thor1provider&node=thor1criticalnode000000000000000000000000000',
+      }),
+      expect.objectContaining({
+        id: 'slash-critical:thor1criticalnode000000000000000000000000000',
+        href: '/dashboard/risk?address=thor1provider&node=thor1criticalnode000000000000000000000000000',
+      }),
+      expect.objectContaining({
+        id: 'churn-risk:thor1criticalnode000000000000000000000000000',
+        href: '/dashboard/risk?address=thor1provider&node=thor1criticalnode000000000000000000000000000',
+      }),
+    ]));
+  });
+
+  it('routes non-active node status actions to focused risk context', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth(),
+      positions: [
+        bondPosition({
+          nodeAddress: 'thor1standbynode0000000000000000000000000000',
+          status: 'Standby',
+        }),
+      ],
+    });
+
+    expect(state.severity).toBe('warning');
+    expect(state.statusLabel).toBe('Needs Attention');
+    expect(state.headerMetrics[0]).toEqual(expect.objectContaining({
+      value: '75/100',
+      detail: 'thor1sta...0000 is Standby',
+    }));
+    expect(state.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'status:thor1standbynode0000000000000000000000000000:Standby',
+        severity: 'warning',
+        href: '/dashboard/risk?address=thor1provider&node=thor1standbynode0000000000000000000000000000',
+      }),
+    ]));
+  });
+
+  it('does not call a bonded portfolio healthy while source confidence is unknown', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth({
+        lastSuccessful: {
+          midgard: null,
+          thornode: NOW,
+        },
+        midgard: 'unknown',
+      }),
+      positions: [bondPosition()],
+      runePriceUpdatedAt: NOW,
+    });
+
+    expect(state.severity).toBe('warning');
+    expect(state.statusLabel).toBe('Needs Attention');
+    expect(state.topRisk).toBe('Midgard is unknown');
+    expect(state.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'source:midgard:unknown',
+        severity: 'warning',
+      }),
+    ]));
+  });
+
+  it('routes degraded source actions to source confidence with source-specific consequences', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth({
+        midgard: 'degraded',
+        lastSuccessful: {
+          midgard: new Date('2026-06-12T11:58:00.000Z'),
+          thornode: NOW,
+        },
+      }),
+      positions: [bondPosition()],
+      runePriceUpdatedAt: NOW,
+    });
+
+    expect(state.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'source:midgard:degraded',
+        source: 'Midgard',
+        title: 'Midgard is degraded',
+        impact: 'Do not use reward history, LP performance, or transaction history for final decisions until Midgard recovers.',
+        href: '/dashboard?address=thor1provider#source-confidence',
+        primaryAction: 'Review source confidence',
+      }),
+    ]));
+  });
+
+  it('does not call a portfolio healthy while LP performance is current-only or estimated', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth(),
+      positions: [bondPosition()],
+      lpPositions: [
+        lpPosition({ pool: 'BTC.BTC', pricingSource: 'current-only' }),
+        lpPosition({ pool: 'ETH.ETH', pricingSource: 'estimated' }),
+      ],
+      runePriceUpdatedAt: NOW,
+    });
+
+    expect(state.severity).toBe('warning');
+    expect(state.statusLabel).toBe('Needs Attention');
+    expect(state.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'lp:current-only-pricing',
+        severity: 'warning',
+      }),
+      expect.objectContaining({
+        id: 'lp:estimated-pricing',
+        severity: 'warning',
+      }),
+    ]));
   });
 
   it('uses the active warning as health-score context instead of saying all positions are healthy', () => {
@@ -151,5 +619,30 @@ describe('dashboard insights', () => {
       value: '95/100',
       detail: 'thor1war...0000 is near churn risk',
     }));
+  });
+
+  it('uses slash-monitor copy for warning-level slash actions', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth(),
+      positions: [
+        bondPosition({
+          nodeAddress: 'thor1slashwarning0000000000000000000000000000',
+          slashPoints: 75,
+        }),
+      ],
+    });
+
+    expect(state.primaryAction).toEqual({
+      label: 'Review slash monitor',
+      href: '/dashboard/risk?address=thor1provider&node=thor1slashwarning0000000000000000000000000000',
+    });
+    expect(state.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'slash-warning:thor1slashwarning0000000000000000000000000000',
+        primaryAction: 'Review slash monitor',
+      }),
+    ]));
   });
 });

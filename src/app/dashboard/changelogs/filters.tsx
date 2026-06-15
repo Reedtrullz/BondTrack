@@ -6,17 +6,17 @@ type ImpactFilter = 'operator-impact' | 'lp-impact' | 'chain-halt' | 'upgrade-re
 
 export type FilterType = 'all' | ChangelogEntry['type'] | ImpactFilter;
 
-export const FILTER_OPTIONS: { value: FilterType; label: string; icon: React.ReactNode }[] = [
+export const FILTER_OPTIONS: { value: FilterType; label: string; shortLabel?: string; icon: React.ReactNode }[] = [
   { value: 'all', label: 'All', icon: <Zap className="w-3 h-3" /> },
   { value: 'update', label: 'Update', icon: <Zap className="w-3 h-3" /> },
   { value: 'adr', label: 'ADR', icon: <FileText className="w-3 h-3" /> },
   { value: 'chain', label: 'Chain', icon: <LinkIcon className="w-3 h-3" /> },
   { value: 'feature', label: 'Feature', icon: <Rocket className="w-3 h-3" /> },
   { value: 'bug', label: 'Bug', icon: <Wrench className="w-3 h-3" /> },
-  { value: 'operator-impact', label: 'Operator Impact', icon: <ShieldAlert className="w-3 h-3" /> },
-  { value: 'lp-impact', label: 'LP Impact', icon: <Coins className="w-3 h-3" /> },
-  { value: 'chain-halt', label: 'Chain Halt', icon: <PauseCircle className="w-3 h-3" /> },
-  { value: 'upgrade-required', label: 'Upgrade Required', icon: <AlertTriangle className="w-3 h-3" /> },
+  { value: 'operator-impact', label: 'Operator Impact', shortLabel: 'Operator', icon: <ShieldAlert className="w-3 h-3" /> },
+  { value: 'lp-impact', label: 'LP Impact', shortLabel: 'LP', icon: <Coins className="w-3 h-3" /> },
+  { value: 'chain-halt', label: 'Chain Halt', shortLabel: 'Halt', icon: <PauseCircle className="w-3 h-3" /> },
+  { value: 'upgrade-required', label: 'Upgrade Required', shortLabel: 'Upgrade', icon: <AlertTriangle className="w-3 h-3" /> },
 ];
 
 export function buildChangelogQuery(currentParams: URLSearchParams, searchQuery: string, typeFilter: FilterType): string {

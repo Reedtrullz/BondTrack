@@ -31,16 +31,20 @@ export function getCandidateSortLabel(field: NodeCandidateSortField): string {
   }
 }
 
+function finiteSortNumber(value: number, fallback: number): number {
+  return Number.isFinite(value) ? value : fallback;
+}
+
 function getSortValue(node: SortableNodeCandidate, field: NodeCandidateSortField): number | string {
   switch (field) {
     case 'apy':
-      return node.adjustedAPY;
+      return finiteSortNumber(node.adjustedAPY, Number.NEGATIVE_INFINITY);
     case 'quality':
-      return node.candidateScore.score;
+      return finiteSortNumber(node.candidateScore.score, Number.NEGATIVE_INFINITY);
     case 'bond':
-      return node.totalBond;
+      return finiteSortNumber(node.totalBond, Number.NEGATIVE_INFINITY);
     case 'slash':
-      return node.slash_points;
+      return finiteSortNumber(node.slash_points, Number.POSITIVE_INFINITY);
     case 'version':
       return node.version;
   }

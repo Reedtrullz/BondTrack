@@ -7,76 +7,80 @@ import { useLpPositions } from '@/lib/hooks/use-lp-positions';
 import { LpSummaryCard } from '@/components/dashboard/lp-summary-card';
 import IlCalculator from '@/components/dashboard/il-calculator';
 import TaxExport from '@/components/dashboard/tax-export';
+import { InsightHeader } from '@/components/dashboard/insight-header';
 import { MetricStrip } from '@/components/dashboard/metric-strip';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Coins, Calculator, FileSpreadsheet, ArrowLeft } from 'lucide-react';
 import { formatUsd } from '@/lib/utils/formatters';
+import { buildLpPageModel } from '@/lib/dashboard/lp-context';
+import type { MetricStripItem } from '@/lib/dashboard/insights';
+
+function formatSignedUsd(value: number): string {
+  return `${value >= 0 ? '+' : ''}${formatUsd(value)}`;
+}
+
+function getLpIssueDiagnosis(issue: MetricStripItem, totalValue: string): string {
+  const issueDetail = issue.detail ?? 'Review source confidence before acting';
+
+  switch (issue.id) {
+    case 'current-only-lp-values':
+      return `${issue.value} current-only LP position${issue.value === '1' ? '' : 's'} ${issueDetail.toLowerCase()}. Total LP value is ${totalValue}, but aggregate P/L and LP vs HODL exclude positions without historical entry pricing.`;
+    case 'estimated-lp-values':
+      return `${issue.value} LP position${issue.value === '1' ? ' uses' : 's use'} estimated entry pricing. Total LP value is ${totalValue}, but estimated performance stays out of aggregate P/L.`;
+    case 'lp-price-feed':
+      return `RUNE price confidence is ${issue.value.toLowerCase()}. Total LP value is ${totalValue}; treat USD values as advisory until the quote recovers.`;
+    case 'trusted-lp-values':
+      return `No LP position has historical entry pricing yet. Total LP value is ${totalValue}, but aggregate performance is withheld until trusted entry pricing is available.`;
+    default:
+      return `${issue.label} is ${issue.value.toLowerCase()}. ${issueDetail}`;
+  }
+}
 
 export default function LpPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
   const { positions, isLoading, isHistoricalEnrichmentLoading, error, retry, runePriceFreshness } = useLpPositions(address);
   const [activeTab, setActiveTab] = useState('positions');
+  const pageModel = buildLpPageModel({
+    isHistoricalEnrichmentLoading,
+    isLoading,
+    positions,
+    runePriceFreshness,
+  });
+  const primaryConfidenceIssue = pageModel.primaryConfidenceIssue;
+  const totalLpValue = formatUsd(pageModel.totalLpValueUsd);
+  const lpDiagnosis = primaryConfidenceIssue
+    ? getLpIssueDiagnosis(primaryConfidenceIssue, totalLpValue)
+    : `All LP positions have historical entry pricing and current RUNE price confidence. Total LP value is ${totalLpValue}; aggregate P/L and LP vs HODL are ready for review.`;
+  const lpTopRisk = primaryConfidenceIssue
+    ? `${primaryConfidenceIssue.label}: ${primaryConfidenceIssue.value}`
+    : 'LP performance is historically priced';
+  const lpHeaderSeverity = primaryConfidenceIssue?.severity ?? 'healthy';
+  const lpStatusLabel = primaryConfidenceIssue
+    ? primaryConfidenceIssue.severity === 'info' ? 'Review Estimates' : 'Needs Attention'
+    : 'Trusted';
+  const handleReviewLpConfidence = () => {
+    window.setTimeout(() => {
+      const confidencePanel = document.getElementById('lp-data-confidence');
+      if (confidencePanel && typeof confidencePanel.scrollIntoView === 'function') {
+        confidencePanel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+    }, 0);
+  };
+  const handleReviewLpPositions = () => {
+    setActiveTab('positions');
 
-  // Calculate total LP stats. Aggregate performance only uses true historical entry pricing.
-  const trustedHistoricalPositions = positions?.filter((pos) => pos.pricingSource === 'historical') ?? [];
-  const totalStats = trustedHistoricalPositions.reduce(
-    (acc, pos) => {
-      acc.totalPnl += pos.netProfitLossUsd ?? 0;
-      acc.totalIl += pos.impermanentLossUsd ?? 0;
-      return acc;
-    },
-    { totalPnl: 0, totalIl: 0 }
+    window.setTimeout(() => {
+      const positionsPanel = document.getElementById('lp-positions-tabs');
+      if (positionsPanel && typeof positionsPanel.scrollIntoView === 'function') {
+        positionsPanel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+    }, 0);
+  };
+  const confidenceStrip = (
+    <MetricStrip id="lp-data-confidence" metrics={pageModel.confidenceMetrics} title="LP data confidence" />
   );
-  const totalLpValue = positions?.reduce((sum, pos) => sum + (pos.currentTotalValueUsd ?? 0), 0) ?? 0;
-  const estimatedPositions = positions?.filter(p => p.pricingSource === 'estimated') ?? [];
-  const hasUntrustedPerformance = isHistoricalEnrichmentLoading || (positions?.some(
-    (position) =>
-      position.pricingSource === 'current-only' ||
-      position.pricingSource === 'estimated' ||
-      position.netProfitLossUsd === null ||
-      position.impermanentLossUsd === null
-  ) ?? false);
-  const hasTrustedHistoricalPerformance = trustedHistoricalPositions.length > 0;
-  const performancePendingLabel = isHistoricalEnrichmentLoading ? 'Enriching...' : hasTrustedHistoricalPerformance ? 'Historical only' : 'Incomplete';
-
-  // Count positions lacking historical pricing
-  const positionsWithoutHistory = positions?.filter(p => p.pricingSource === 'current-only') ?? [];
-  const showHistoricalEnrichmentNotice = isHistoricalEnrichmentLoading && positionsWithoutHistory.length > 0;
-  const showPricingWarning = !showHistoricalEnrichmentNotice && positionsWithoutHistory.length > 0;
-  const showEstimatedWarning = estimatedPositions.length > 0;
-  const confidenceMetrics = [
-    {
-      id: 'trusted-lp-values',
-      label: 'Trusted values',
-      value: String(trustedHistoricalPositions.length),
-      detail: 'Historical entry pricing',
-      severity: trustedHistoricalPositions.length > 0 ? 'healthy' as const : 'info' as const,
-    },
-    {
-      id: 'estimated-lp-values',
-      label: 'Estimated values',
-      value: String(estimatedPositions.length),
-      detail: showEstimatedWarning ? 'Excluded from aggregate P/L' : 'None',
-      severity: showEstimatedWarning ? 'info' as const : 'healthy' as const,
-    },
-    {
-      id: 'current-only-lp-values',
-      label: 'Current-only',
-      value: String(positionsWithoutHistory.length),
-      detail: showHistoricalEnrichmentNotice ? 'Enriching now' : showPricingWarning ? 'History unavailable' : 'None',
-      severity: showPricingWarning || showHistoricalEnrichmentNotice ? 'warning' as const : 'healthy' as const,
-    },
-    {
-      id: 'lp-price-feed',
-      label: 'RUNE price',
-      value: runePriceFreshness?.isStale ? 'Stale' : 'Fresh',
-      detail: runePriceFreshness?.updatedAt ? `Updated ${runePriceFreshness.updatedAt.toLocaleString()}` : 'Midgard quote',
-      severity: runePriceFreshness?.isStale ? 'warning' as const : 'healthy' as const,
-    },
-  ];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -97,10 +101,6 @@ export default function LpPage() {
             Manage liquidity positions, calculate impermanent loss, and download position snapshots
           </p>
         </div>
-      </div>
-
-      <div className="mb-6">
-        <MetricStrip metrics={confidenceMetrics} title="LP data confidence" />
       </div>
 
       {/* Error State */}
@@ -127,64 +127,60 @@ export default function LpPage() {
             Enter a THORChain address
           </h3>
           <p className="mt-2 text-zinc-500">
-            Paste an address to inspect live liquidity positions.
+            Paste an address to inspect source-backed liquidity positions.
           </p>
         </div>
+      ) : isLoading ? (
+        /* Loading State */
+        <>
+          <div className="rounded-xl border border-zinc-200 bg-white/80 p-8 text-center shadow-md backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80">
+            <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-zinc-300 border-t-[var(--color-primary)]"></div>
+            <h3 className="mt-4 text-lg font-medium text-zinc-900 dark:text-zinc-100">
+              Checking LP positions
+            </h3>
+            <p className="mt-2 text-zinc-500">
+              Waiting for Midgard member data before declaring this address empty.
+            </p>
+          </div>
+          <div className="mt-6">
+            {confidenceStrip}
+          </div>
+        </>
       ) : positions && positions.length > 0 ? (
         <>
-          {/* Total Stats */}
-          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Card className="border-zinc-200 bg-white/80 shadow-md backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80">
-              <CardContent className="p-4">
-                <div className="text-sm text-zinc-500">Total LP Value</div>
-                <div className="text-2xl font-bold font-display text-zinc-900 dark:text-zinc-100">
-                  {formatUsd(totalLpValue)}
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-zinc-200 bg-white/80 shadow-md backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80">
-              <CardContent className="p-4">
-                <div className="text-sm text-zinc-500">Net P/L</div>
-                <div className={`text-2xl font-bold font-display ${
-                  hasUntrustedPerformance
-                    ? 'text-zinc-500 dark:text-zinc-400'
-                    : totalStats.totalPnl >= 0
-                      ? 'text-[var(--color-success)]'
-                      : 'text-[var(--color-danger)]'
-                }`}>
-                  {hasUntrustedPerformance
-                    ? performancePendingLabel
-                    : `${totalStats.totalPnl >= 0 ? '+' : ''}${formatUsd(totalStats.totalPnl)}`}
-                </div>
-                {hasUntrustedPerformance && hasTrustedHistoricalPerformance ? (
-                  <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                    {`${totalStats.totalPnl >= 0 ? '+' : ''}${formatUsd(totalStats.totalPnl)} from historical positions; estimated/current-only excluded`}
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-            <Card className="border-zinc-200 bg-white/80 shadow-md backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80">
-              <CardContent className="p-4">
-                <div className="text-sm text-zinc-500">Total Impermanent Loss</div>
-                <div className={`text-2xl font-bold font-display ${
-                  hasUntrustedPerformance
-                    ? 'text-zinc-500 dark:text-zinc-400'
-                    : totalStats.totalIl < 0
-                      ? 'text-[var(--color-danger)]'
-                      : totalStats.totalIl > 0
-                        ? 'text-[var(--color-success)]'
-                        : 'text-zinc-600 dark:text-zinc-400'
-                }`}>
-                  {hasUntrustedPerformance
-                    ? performancePendingLabel
-                    : `${totalStats.totalIl > 0 ? '+' : ''}${formatUsd(totalStats.totalIl)}`}
-                </div>
-              </CardContent>
-            </Card>
+          <div className="mb-6">
+            <InsightHeader
+              severity={lpHeaderSeverity}
+              statusLabel={lpStatusLabel}
+              diagnosis={lpDiagnosis}
+              topRisk={lpTopRisk}
+              headingLevel={2}
+              metrics={[
+                { label: 'Total LP value', value: totalLpValue, detail: pageModel.totalValueDetail },
+                {
+                  label: 'Trusted P/L',
+                  value: pageModel.hasTrustedHistoricalPerformance ? formatSignedUsd(pageModel.totalPnlUsd) : pageModel.performancePendingLabel,
+                  detail: pageModel.aggregatePnlDetail,
+                },
+                {
+                  label: 'LP vs HODL',
+                  value: pageModel.hasTrustedHistoricalPerformance ? formatSignedUsd(pageModel.totalIlUsd) : pageModel.performancePendingLabel,
+                  detail: pageModel.aggregateIlDetail,
+                },
+              ]}
+              primaryAction={primaryConfidenceIssue
+                ? { label: 'Review LP confidence', href: '#lp-data-confidence', onClick: handleReviewLpConfidence }
+                : { label: 'Review positions', href: '#lp-positions-tabs', onClick: handleReviewLpPositions }}
+              eyebrow="LP performance"
+              compactMobileMetrics
+            />
+          </div>
+          <div className="mb-6">
+            {confidenceStrip}
           </div>
 
           {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <Tabs id="lp-positions-tabs" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-3 bg-zinc-100 dark:bg-zinc-800">
               <TabsTrigger value="positions" className="gap-2">
                 <Coins className="h-4 w-4" />
@@ -236,20 +232,25 @@ export default function LpPage() {
         </>
       ) : (
         /* Empty State */
-        <div className="rounded-xl border border-zinc-200 bg-white/80 p-8 text-center shadow-md backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80">
-          <Coins className="mx-auto mb-4 h-12 w-12 text-zinc-400" />
-          <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
-            No LP positions found
-          </h3>
-          <p className="mt-2 text-zinc-500">
-            {address
-              ? 'This address has no active liquidity positions.'
-              : 'Connect a wallet to view your LP positions.'}
-          </p>
-          <p className="mt-1 text-sm text-zinc-400">
-            Successful member lookup — the address is valid but has no LP positions.
-          </p>
-        </div>
+        <>
+          <div className="rounded-xl border border-zinc-200 bg-white/80 p-8 text-center shadow-md backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80">
+            <Coins className="mx-auto mb-4 h-12 w-12 text-zinc-400" />
+            <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+              No LP positions found
+            </h3>
+            <p className="mt-2 text-zinc-500">
+              {address
+                ? 'This address has no active liquidity positions.'
+                : 'Connect a wallet to view your LP positions.'}
+            </p>
+            <p className="mt-1 text-sm text-zinc-400">
+              Successful member lookup — the address is valid but has no LP positions.
+            </p>
+          </div>
+          <div className="mt-6">
+            {confidenceStrip}
+          </div>
+        </>
       )}
     </div>
   );

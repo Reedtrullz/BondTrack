@@ -33,7 +33,6 @@ export function IntelligenceFeed({ positions, benchmarks, allNodes, providerAddr
     const optimization = analyzeBondOptimization(positions, benchmarks, allNodes);
     const alerts = generatePortfolioAlerts(positions);
     
-    // Combine into a unified feed of "Heimdall's Sight"
     return [
       ...alerts.map(a => ({ ...a, category: 'security' as const })),
       ...optimization.map(o => ({
@@ -41,8 +40,8 @@ export function IntelligenceFeed({ positions, benchmarks, allNodes, providerAddr
         severity: 'info' as const,
         category: 'yield' as const,
         message: o.reason,
-        suggestion: `Move bond from ${o.currentNodeAddress.slice(0, 6)} to ${o.suggestedNodeAddress.slice(0, 6)}`,
-        actionLabel: 'Optimize',
+        suggestion: `Review opportunity from ${o.currentNodeAddress.slice(0, 6)} to ${o.suggestedNodeAddress.slice(0, 6)}. Confirm node risk and wallet preview before preparing a transaction.`,
+        actionLabel: 'Review opportunity',
         actionLink: '/dashboard/transactions',
         data: o
       }))
@@ -61,19 +60,18 @@ export function IntelligenceFeed({ positions, benchmarks, allNodes, providerAddr
 
   if (insights.length === 0 && positions.length > 0) {
     return (
-      <div className="relative p-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/5 text-center group overflow-hidden shadow-sm">
-        <div className="absolute -inset-px bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className="relative overflow-hidden rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-6 text-center shadow-sm dark:bg-emerald-500/5">
         <div className="relative z-10">
           <div className="flex justify-center mb-3">
             <div className="p-3 rounded-full bg-emerald-100/80 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 shadow-inner">
               <ShieldCheck className="w-6 h-6" />
             </div>
           </div>
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1 uppercase font-serif italic">
-            All-Seeing Guard
+          <h3 className="mb-1 text-sm font-bold uppercase text-zinc-900 dark:text-zinc-100">
+            No immediate alerts
           </h3>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-[200px] mx-auto">
-            Heimdall sees no threats to your bond. Your positions are optimal.
+          <p className="mx-auto max-w-xs text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+            No slash, jail, or churn-risk signals are currently detected. Keep reviewing source freshness before acting.
           </p>
         </div>
       </div>
@@ -85,6 +83,7 @@ export function IntelligenceFeed({ positions, benchmarks, allNodes, providerAddr
       {insights.map((insight) => (
         <div 
           key={insight.id}
+          data-testid="intelligence-item"
           className={cn(
             "p-4 rounded-xl border transition-all duration-300 group relative overflow-hidden shadow-sm",
             insight.severity === 'critical' 
@@ -112,7 +111,7 @@ export function IntelligenceFeed({ positions, benchmarks, allNodes, providerAddr
                   "text-[10px] font-bold uppercase",
                   insight.severity === 'critical' ? "text-red-600" : "text-zinc-400"
                 )}>
-                  {insight.category === 'security' ? 'Heimdall Alert' : 'Yield Insight'}
+                  {insight.category === 'security' ? 'Heimdall alert' : 'Yield review'}
                 </span>
                 {insight.severity === 'critical' && (
                   <Zap className="w-3 h-3 text-red-500 animate-pulse" />

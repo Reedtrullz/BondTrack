@@ -74,6 +74,8 @@
           THORNODE_API_URL: "{{ thornode_api | default('https://gateway.liquify.com/chain/thorchain_api') }}/thorchain"
           MIDGARD_API_URL: "{{ midgard_api | default('https://gateway.liquify.com/chain/thorchain_midgard') }}"
           MIDGARD_FALLBACK_URL: "{{ midgard_fallback | default('https://midgard.thorchain.network') }}"
+          TRUST_PROXY_HEADERS: "{{ trust_proxy_headers | default('true') }}"
+          TRUST_X_FORWARDED_FOR: "{{ trust_x_forwarded_for | default('false') }}"
           # Existing Ansible Vault variable; do not store or log the value in docs.
           COINAPI_KEY: "{{ vault_coinapi_key | default('', true) }}"
 
@@ -131,6 +133,8 @@
           THORNODE_API_URL: "{{ thornode_api | default('https://gateway.liquify.com/chain/thorchain_api') }}/thorchain"
           MIDGARD_API_URL: "{{ midgard_api | default('https://gateway.liquify.com/chain/thorchain_midgard') }}"
           MIDGARD_FALLBACK_URL: "{{ midgard_fallback | default('https://midgard.thorchain.network') }}"
+          TRUST_PROXY_HEADERS: "{{ trust_proxy_headers | default('true') }}"
+          TRUST_X_FORWARDED_FOR: "{{ trust_x_forwarded_for | default('false') }}"
           COINAPI_KEY: "{{ vault_coinapi_key | default('', true) }}"
       when:
         - readiness_check is not succeeded or readiness_check.json.status != "ready"

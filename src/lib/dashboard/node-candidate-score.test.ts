@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { scoreNodeCandidate } from './node-candidate-score';
+import { getDirectBondAccessTrust, scoreNodeCandidate } from './node-candidate-score';
 
 describe('scoreNodeCandidate', () => {
   it('penalizes high slash enough to beat APY-only ranking', () => {
@@ -25,7 +25,7 @@ describe('scoreNodeCandidate', () => {
     expect(highSlashCandidate.reasons).toContain('220 slash points');
   });
 
-  it('surfaces unavailable or unknown bond/capacity trust as visible labels', () => {
+  it('surfaces unavailable or unknown direct-bond access as visible labels', () => {
     const unknownCandidate = scoreNodeCandidate({
       adjustedAPY: 80,
       totalBond: 0,
@@ -35,10 +35,71 @@ describe('scoreNodeCandidate', () => {
       capacityTrust: 'unknown',
     });
 
-    expect(unknownCandidate.trustLabel).toBe('Capacity unknown');
+    expect(unknownCandidate.capacityTrust).toBe('unknown');
+    expect(unknownCandidate.trustLabel).toBe('Direct-bond access unknown');
     expect(unknownCandidate.reasons).toEqual(expect.arrayContaining([
-      'capacity unknown',
+      'direct-bond access unknown',
       'bond data unavailable',
     ]));
+  });
+
+  it('keeps malformed candidate metrics from producing a NaN quality score', () => {
+    const malformedCandidate = scoreNodeCandidate({
+      adjustedAPY: Number.NaN,
+      totalBond: Number.NEGATIVE_INFINITY,
+      operatorFeePercent: Number.POSITIVE_INFINITY,
+      slashPoints: Number.NaN,
+      status: 'Active',
+      capacityTrust: 'available',
+    });
+
+    expect(Number.isFinite(malformedCandidate.score)).toBe(true);
+    expect(malformedCandidate.score).toBeGreaterThanOrEqual(0);
+    expect(malformedCandidate.score).toBeLessThanOrEqual(100);
+    expect(malformedCandidate.quality).toBe('Avoid');
+    expect(malformedCandidate.reasons).toEqual(expect.arrayContaining([
+      'slash data unavailable',
+      'operator fee unavailable',
+      'bond data unavailable',
+    ]));
+  });
+
+  it('derives direct-bond trust from the watched address provider whitelist', () => {
+    expect(getDirectBondAccessTrust({
+      maxBondProviders: 100,
+      providers: [{ bond_address: 'thor1provider' }],
+      userAddress: 'thor1provider',
+    })).toBe('available');
+    expect(getDirectBondAccessTrust({
+      maxBondProviders: 100,
+      providers: [{ bond_address: 'thor1other' }],
+      userAddress: 'thor1provider',
+    })).toBe('needs_whitelist');
+    expect(getDirectBondAccessTrust({
+      maxBondProviders: 1,
+      providers: [{ bond_address: 'thor1other' }],
+      userAddress: 'thor1provider',
+    })).toBe('full');
+    expect(getDirectBondAccessTrust({
+      maxBondProviders: 100,
+      providers: [],
+      userAddress: null,
+    })).toBe('unknown');
+
+    const fullCandidate = scoreNodeCandidate({
+      adjustedAPY: 80,
+      totalBond: 25_000,
+      operatorFeePercent: 0.05,
+      slashPoints: 0,
+      status: 'Active',
+      capacityTrust: getDirectBondAccessTrust({
+        maxBondProviders: 1,
+        providers: [{ bond_address: 'thor1other' }],
+        userAddress: 'thor1provider',
+      }),
+    });
+
+    expect(fullCandidate.trustLabel).toBe('Provider slots full');
+    expect(fullCandidate.reasons).toContain('provider slots full');
   });
 });

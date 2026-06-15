@@ -89,6 +89,27 @@ describe('API client proxy fetchers', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('can skip retries for fail-fast source health probes', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(jsonResponse(
+      { error: 'temporarily down' },
+      { status: 503, statusText: 'Service Unavailable' }
+    ));
+
+    await expect(fetchThornode('/thorchain/nodes', {
+      cache: 'no-store',
+      retry: false,
+    })).rejects.toThrow(
+      'THORNode proxy failed: API error: 503 Service Unavailable at /api/thorchain/thorchain/nodes'
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/thorchain/thorchain/nodes',
+      expect.not.objectContaining({ retry: expect.anything() })
+    );
+  });
+
   it('retries network failures and wraps the final failure with proxy context', async () => {
     vi.useFakeTimers();
     const fetchMock = vi.mocked(fetch);

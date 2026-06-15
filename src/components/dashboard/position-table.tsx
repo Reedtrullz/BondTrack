@@ -2,10 +2,10 @@
 
 import { useMemo } from 'react';
 import type { BondPosition, YieldGuardFlag } from '@/lib/types/node';
-import { formatRuneAmount, numberToRune } from '@/lib/utils/formatters';
+import { formatRuneDisplayNumber, formatRuneFromNumber, formatPercent } from '@/lib/utils/formatters';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Badge } from '@/components/shared/badge';
-import { AlertTriangle, TrendingDown, Clock, UserMinus, Gauge, Inbox } from 'lucide-react';
+import { AlertTriangle, TrendingDown, Clock, UserMinus, Inbox } from 'lucide-react';
 import { MetricTooltip, METRIC_EXPLANATIONS } from '@/components/shared/metric-tooltip';
 
 interface PositionTableProps {
@@ -13,12 +13,6 @@ interface PositionTableProps {
 }
 
 const YIELD_GUARD_LABELS: Record<YieldGuardFlag, { label: string; icon: React.ReactNode; color: string; tooltip: string }> = {
-  overbonded: {
-    label: 'Overbonded',
-    icon: <Gauge className="w-3 h-3" />,
-    color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-    tooltip: 'Node is at or above optimal bond - no additional yield',
-  },
   highest_slash: {
     label: 'High Slash',
     icon: <AlertTriangle className="w-3 h-3" />,
@@ -67,11 +61,30 @@ function YieldGuardBadge({ flags }: { flags: YieldGuardFlag[] }) {
   );
 }
 
+function isUsablePositionNumber(value: number): boolean {
+  return Number.isFinite(value) && value >= 0;
+}
+
+function formatPositionRune(value: number): string {
+  return isUsablePositionNumber(value) ? formatRuneDisplayNumber(value) : '--';
+}
+
+function formatPositionPercent(value: number): string {
+  return isUsablePositionNumber(value) ? formatPercent(value) : '--';
+}
+
+function getShareBarWidth(value: number): string {
+  if (!isUsablePositionNumber(value)) return '0%';
+  return `${Math.min(value, 100)}%`;
+}
+
 export function PositionTable({ positions }: PositionTableProps) {
-  const totalBonded = useMemo(
-    () => positions.reduce((sum, p) => sum + p.bondAmount, 0),
-    [positions]
-  );
+  const totalBonded = useMemo(() => {
+    const hasInvalidBond = positions.some((position) => !isUsablePositionNumber(position.bondAmount));
+    if (hasInvalidBond) return null;
+
+    return positions.reduce((sum, position) => sum + position.bondAmount, 0);
+  }, [positions]);
 
   if (positions.length === 0) {
     return (
@@ -94,14 +107,21 @@ export function PositionTable({ positions }: PositionTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-          Bonded Positions
-          <MetricTooltip label="Bonded Positions" explanation={METRIC_EXPLANATIONS.totalBonded} />
-        </h2>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-1">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            Bonded Positions
+          </h2>
+          <MetricTooltip
+            label="Bonded Positions"
+            explanation={METRIC_EXPLANATIONS.totalBonded}
+            showLabel={false}
+          />
+        </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-zinc-500">
-            {positions.length} node{positions.length !== 1 ? 's' : ''} · {formatRuneAmount(numberToRune(totalBonded))} total
+            {positions.length} node{positions.length !== 1 ? 's' : ''} ·{' '}
+            {totalBonded === null ? 'total unavailable' : `${formatRuneFromNumber(totalBonded)} total`}
           </span>
         </div>
       </div>
@@ -122,43 +142,51 @@ export function PositionTable({ positions }: PositionTableProps) {
               <StatusBadge status={pos.status} isJailed={pos.isJailed} />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex items-center gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="flex items-center justify-between gap-3">
                 <div className="text-xs text-zinc-500">Bond</div>
                 <div className="font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                  {pos.bondAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  {formatPositionRune(pos.bondAmount)}
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-3">
+              <div className="flex items-center justify-between gap-3">
                 <div className="text-xs text-zinc-500 flex items-center gap-1">
                   Share
-                  <MetricTooltip label="Bond Share" explanation={METRIC_EXPLANATIONS.bondShare} />
+                  <MetricTooltip
+                    label="Bond Share"
+                    explanation={METRIC_EXPLANATIONS.bondShare}
+                    showLabel={false}
+                  />
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                   <span className="font-mono text-sm text-zinc-600 dark:text-zinc-400">
-                    {pos.bondSharePercent.toFixed(2)}%
+                    {formatPositionPercent(pos.bondSharePercent)}
                   </span>
                   <div className="w-12 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                      style={{ width: `${Math.min(pos.bondSharePercent, 100)}%` }}
+                      style={{ width: getShareBarWidth(pos.bondSharePercent) }}
                     />
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between gap-3">
                 <div className="text-xs text-zinc-500">Fee</div>
                 <div className="font-mono text-sm text-zinc-600 dark:text-zinc-400">
                   {pos.operatorFeeFormatted}
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between gap-3">
                 <div className="text-xs text-zinc-500 flex items-center gap-1">
                   Est. APY
-                  <MetricTooltip label="Estimated APY" explanation={METRIC_EXPLANATIONS.weightedApy} />
+                  <MetricTooltip
+                    label="Estimated APY"
+                    explanation={METRIC_EXPLANATIONS.weightedApy}
+                    showLabel={false}
+                  />
                 </div>
                 <div className="font-mono text-sm font-medium text-emerald-600">
-                  {pos.netAPY.toFixed(2)}%
+                  {formatPositionPercent(pos.netAPY)}
                 </div>
               </div>
             </div>
@@ -178,7 +206,11 @@ export function PositionTable({ positions }: PositionTableProps) {
               <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap">Fee</th>
               <th className="px-3 py-3 text-right font-medium text-zinc-500 whitespace-nowrap flex items-center justify-end gap-1">
                 Est. APY
-                <MetricTooltip label="Estimated APY" explanation={METRIC_EXPLANATIONS.weightedApy} />
+                <MetricTooltip
+                  label="Estimated APY"
+                  explanation={METRIC_EXPLANATIONS.weightedApy}
+                  showLabel={false}
+                />
               </th>
             </tr>
           </thead>
@@ -205,17 +237,17 @@ export function PositionTable({ positions }: PositionTableProps) {
                   )}
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100 whitespace-nowrap align-middle">
-                  {pos.bondAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  {formatPositionRune(pos.bondAmount)}
                 </td>
                 <td className="px-3 py-3 text-right whitespace-nowrap align-middle">
                   <div className="flex items-center justify-end gap-3">
                     <span className="font-mono text-sm text-zinc-600 dark:text-zinc-400">
-                      {pos.bondSharePercent.toFixed(2)}%
+                      {formatPositionPercent(pos.bondSharePercent)}
                     </span>
                     <div className="w-16 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                        style={{ width: `${Math.min(pos.bondSharePercent, 100)}%` }}
+                        style={{ width: getShareBarWidth(pos.bondSharePercent) }}
                       />
                     </div>
                   </div>
@@ -224,7 +256,7 @@ export function PositionTable({ positions }: PositionTableProps) {
                   {pos.operatorFeeFormatted}
                 </td>
                 <td className="px-3 py-3 text-right font-medium text-emerald-600 whitespace-nowrap align-middle">
-                  {pos.netAPY.toFixed(2)}%
+                  {formatPositionPercent(pos.netAPY)}
                 </td>
               </tr>
             ))}

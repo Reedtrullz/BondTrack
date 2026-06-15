@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { SWRConfig } from 'swr';
-import { useBondPositions } from '../use-bond-positions';
+import { __getMockCurrentAwardForTests, useBondPositions } from '../use-bond-positions';
 import * as thornode from '@/lib/api/thornode';
 import * as midgard from '@/lib/api/midgard';
 
@@ -87,6 +87,8 @@ describe('useBondPositions', () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.positions).toEqual([]);
+    expect(thornode.getAllNodes).not.toHaveBeenCalled();
+    expect(midgard.getHealth).not.toHaveBeenCalled();
   });
 
   it('returns empty positions when user has no bonds', async () => {
@@ -114,7 +116,7 @@ describe('useBondPositions', () => {
     expect(result.current.positions[1].status).toBe('Active');
   });
 
-  it('marks overbonded positions when optimal bond uses the same raw unit as node total bond', async () => {
+  it('does not request stale OptimalBondD constants for bond position risk flags', async () => {
     vi.mocked(thornode.getAllNodes).mockResolvedValueOnce(mockNodes as unknown as thornode.NodeRaw[]);
     vi.mocked(thornode.getNetworkConstants).mockResolvedValueOnce({
       int_64_values: { OptimalBondD: 2507476277808 },
@@ -126,7 +128,8 @@ describe('useBondPositions', () => {
     const { result } = renderHook(() => useBondPositions('thor1user123456789abcdef'), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(result.current.positions[0].yieldGuardFlags).toContain('overbonded');
+    expect(thornode.getNetworkConstants).not.toHaveBeenCalled();
+    expect(result.current.positions[0].yieldGuardFlags).not.toContain('overbonded');
   });
 
   it('handles error state', async () => {
@@ -179,5 +182,11 @@ describe('useBondPositions', () => {
     if (node1 && node2) {
       expect(node1.netAPY).not.toBe(node2.netAPY);
     }
+  });
+
+  it('derives mock current_award from intended APY instead of total bond size', () => {
+    expect(__getMockCurrentAwardForTests({ netAPY: 0.125 })).toBe('0.125');
+    expect(__getMockCurrentAwardForTests({ netAPY: 12.5 })).toBe('0.125');
+    expect(Number(__getMockCurrentAwardForTests({ netAPY: 0.125 }))).toBeLessThan(1e7);
   });
 });

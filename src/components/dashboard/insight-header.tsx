@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { AlertCircle, AlertTriangle, CheckCircle2, Info, ShieldCheck } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { InsightHeaderMetric, InsightSeverity } from '@/lib/dashboard/insights';
 
@@ -12,12 +12,15 @@ interface InsightHeaderProps {
   statusLabel: string;
   diagnosis: string;
   topRisk: string;
+  headingLevel?: 1 | 2;
   metrics: InsightHeaderMetric[];
   primaryAction: {
     label: string;
     href: string;
+    onClick?: () => void;
   };
   eyebrow?: string;
+  compactMobileMetrics?: boolean;
 }
 
 const severityConfig: Record<InsightSeverity, {
@@ -62,21 +65,32 @@ export function InsightHeader({
   statusLabel,
   diagnosis,
   topRisk,
+  headingLevel = 1,
   metrics,
   primaryAction,
   eyebrow = 'Command center',
+  compactMobileMetrics = false,
 }: InsightHeaderProps) {
   const config = severityConfig[severity];
+  const Heading = headingLevel === 1 ? 'h1' : 'h2';
+  const actionVariant = severity === 'critical'
+    ? 'destructive'
+    : severity === 'warning'
+      ? 'primary'
+      : severity === 'info'
+        ? 'outline'
+        : 'success';
 
   return (
     <section
       className={cn(
-        'rounded-2xl border p-5 shadow-sm sm:p-6',
+        'rounded-2xl border shadow-sm sm:p-6',
+        compactMobileMetrics ? 'p-4' : 'p-5',
         config.container
       )}
       aria-label={`${eyebrow} diagnosis`}
     >
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+      <div className={cn('flex flex-col lg:flex-row lg:items-start lg:justify-between', compactMobileMetrics ? 'gap-4 sm:gap-5' : 'gap-5')}>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className={cn('inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase', config.badge)}>
@@ -87,34 +101,47 @@ export function InsightHeader({
               {eyebrow}
             </span>
           </div>
-          <h1 className="mt-4 text-2xl font-bold leading-tight text-zinc-950 dark:text-zinc-50 sm:text-3xl">
+          <Heading className={cn('font-bold leading-tight text-zinc-950 dark:text-zinc-50 sm:mt-4 sm:text-3xl', compactMobileMetrics ? 'mt-3 text-xl' : 'mt-4 text-2xl')}>
             {topRisk}
-          </h1>
+          </Heading>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-700 dark:text-zinc-300">
             {diagnosis}
           </p>
         </div>
 
-        <Link href={primaryAction.href} className="shrink-0">
-          <Button variant={severity === 'critical' ? 'destructive' : severity === 'warning' ? 'primary' : 'success'} className="w-full gap-2 sm:w-auto">
+        {primaryAction.onClick ? (
+          <div className="shrink-0">
+            <Button type="button" variant={actionVariant} className="w-full gap-2 sm:w-auto" onClick={primaryAction.onClick}>
+              <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+              {primaryAction.label}
+            </Button>
+          </div>
+        ) : (
+          <Link
+            href={primaryAction.href}
+            className={cn('shrink-0 w-full gap-2 sm:w-auto', buttonVariants({ variant: actionVariant }))}
+          >
             <ShieldCheck className="h-4 w-4" aria-hidden="true" />
             {primaryAction.label}
-          </Button>
-        </Link>
+          </Link>
+        )}
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className={cn('mt-5 grid sm:grid-cols-3', compactMobileMetrics ? 'grid-cols-3 gap-2 sm:gap-3' : 'grid-cols-1 gap-3')}>
         {metrics.map((metric) => (
           <div
             key={`${metric.label}:${metric.value}`}
-            className="rounded-xl border border-white/70 bg-white/60 p-3 dark:border-zinc-800/70 dark:bg-zinc-950/30"
+            className={cn(
+              'rounded-xl border border-white/70 bg-white/60 dark:border-zinc-800/70 dark:bg-zinc-950/30',
+              compactMobileMetrics ? 'min-w-0 p-2 sm:p-3' : 'p-3'
+            )}
           >
-            <div className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">{metric.label}</div>
-            <div className={cn('mt-1 font-mono text-lg font-bold text-zinc-950 dark:text-zinc-50', metric.label === 'Health score' ? config.accent : null)}>
+            <div className={cn('font-semibold uppercase text-zinc-500 dark:text-zinc-400', compactMobileMetrics ? 'text-[10px] leading-3 sm:text-xs sm:leading-4' : 'text-xs')}>{metric.label}</div>
+            <div className={cn('mt-1 break-words font-mono font-bold leading-tight text-zinc-950 dark:text-zinc-50 sm:text-lg', compactMobileMetrics ? 'text-sm' : 'text-lg', metric.label === 'Health score' ? config.accent : null)}>
               {metric.value}
             </div>
             {metric.detail ? (
-              <div className="mt-1 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400">{metric.detail}</div>
+              <div className={cn('mt-1 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400', compactMobileMetrics ? 'hidden sm:block' : null)}>{metric.detail}</div>
             ) : null}
           </div>
         ))}

@@ -188,8 +188,9 @@ describe('ChurnOutRisk', () => {
       expect(screen.getByText('50%')).toBeInTheDocument();
 
       expect(within(screen.getByText('At Risk').parentElement as HTMLElement).getByText('1')).toBeInTheDocument();
-      expect(within(screen.getByText('Safe').parentElement as HTMLElement).getByText('1')).toBeInTheDocument();
+      expect(within(screen.getByText('Outside Band').parentElement as HTMLElement).getByText('1')).toBeInTheDocument();
       expect(within(screen.getByText('Total').parentElement as HTMLElement).getByText('2')).toBeInTheDocument();
+      expect(screen.queryByText('Safe')).not.toBeInTheDocument();
     });
 
     it('truncates node addresses using the last 6 characters', () => {
@@ -218,7 +219,7 @@ describe('ChurnOutRisk', () => {
       const warningIcons = container.querySelectorAll('svg.text-red-500');
 
       expect(warningIcons).toHaveLength(1);
-      expect(screen.getByText('1 of your nodes at risk of churn-out')).toBeInTheDocument();
+      expect(screen.getByText('1 active node is in the churn-risk band.')).toBeInTheDocument();
     });
 
     it('shows correct summary when no nodes are at risk', () => {
@@ -235,7 +236,8 @@ describe('ChurnOutRisk', () => {
 
       render(<ChurnOutRisk positions={[mockPositions[0]]} />);
 
-      expect(screen.getByText('All your active nodes are safe')).toBeInTheDocument();
+      expect(screen.getByText('No active nodes are in the churn-risk band right now.')).toBeInTheDocument();
+      expect(screen.queryByText(/safe/i)).not.toBeInTheDocument();
     });
   });
 
@@ -251,7 +253,7 @@ describe('ChurnOutRisk', () => {
       expect(screen.getByText('thor1abc123...abc123')).toBeInTheDocument();
       expect(screen.getByText('#10/100')).toBeInTheDocument();
       expect(screen.getByText('15%')).toBeInTheDocument();
-      expect(within(screen.getByText('Safe').parentElement as HTMLElement).getByText('1')).toBeInTheDocument();
+      expect(within(screen.getByText('Outside Band').parentElement as HTMLElement).getByText('1')).toBeInTheDocument();
       expect(within(screen.getByText('Total').parentElement as HTMLElement).getByText('1')).toBeInTheDocument();
     });
 
@@ -280,9 +282,9 @@ describe('ChurnOutRisk', () => {
       const { container } = render(<ChurnOutRisk positions={mockPositions} />);
 
       expect(within(screen.getByText('At Risk').parentElement as HTMLElement).getByText('2')).toBeInTheDocument();
-      expect(within(screen.getByText('Safe').parentElement as HTMLElement).getByText('0')).toBeInTheDocument();
+      expect(within(screen.getByText('Outside Band').parentElement as HTMLElement).getByText('0')).toBeInTheDocument();
       expect(within(screen.getByText('Total').parentElement as HTMLElement).getByText('2')).toBeInTheDocument();
-      expect(screen.getByText('2 of your nodes at risk of churn-out')).toBeInTheDocument();
+      expect(screen.getByText('2 active nodes are in the churn-risk band.')).toBeInTheDocument();
 
       const warningIcons = container.querySelectorAll('svg.text-red-500');
 

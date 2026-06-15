@@ -1,4 +1,4 @@
-import { fetchMidgard } from './client';
+import { fetchMidgard, type ApiRequestInit } from './client';
 import { getCoingeckoRunePrice } from './coingecko';
 import { NETWORK } from '../config';
 import { normalizeMidgardTimestampToSeconds } from '@/lib/utils/midgard-time';
@@ -402,12 +402,7 @@ export async function getHistoricalRunePrice(timestamp: number): Promise<number 
 
     // Fallback 2: Try CoinGecko if Midgard has no data for this range
     return getCoingeckoRunePrice(normalizedTimestamp);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    // Don't log 404, 500, or 502 as full errors for historical price lookups
-    if (!message.includes('404') && !message.includes('500') && !message.includes('502')) {
-      console.error('Error fetching historical RUNE price:', error);
-    }
+  } catch {
     return null;
   }
 }
@@ -588,12 +583,7 @@ export async function getPoolHistoryAtTimestamp(pool: string, timestamp: number)
     }
 
     return closestEntry;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    // Don't log 404, 500, or 502 as full errors for historical pool history lookups
-    if (!message.includes('404') && !message.includes('500') && !message.includes('502')) {
-      console.error(`Failed to fetch pool history for ${pool} at ${timestamp}:`, error);
-    }
+  } catch {
     return null;
   }
 }
@@ -602,6 +592,6 @@ export async function getMemberDetails(address: string): Promise<MemberDetailsRa
   return fetchMidgard<MemberDetailsRaw>(`/v2/member/${encodeURIComponent(address)}`);
 }
 
-export async function getHealth(init?: RequestInit): Promise<HealthRaw> {
+export async function getHealth(init?: ApiRequestInit): Promise<HealthRaw> {
   return fetchMidgard<HealthRaw>('/v2/health', init);
 }

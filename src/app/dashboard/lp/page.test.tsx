@@ -51,6 +51,14 @@ const basePosition = {
   asset2EntryPrice: 1.8,
 };
 
+const freshRunePrice = {
+  updatedAt: new Date('2026-06-12T10:00:00.000Z'),
+  updatedAtTimestampSeconds: 1781258400,
+  ageMs: 1_000,
+  isStale: false,
+  staleAfterMs: 129_600_000,
+};
+
 vi.mock('next/navigation', () => ({
   useSearchParams: () => ({
     get: (key: string) => mocks.searchParams.current.get(key),
@@ -128,6 +136,35 @@ describe('LpDashboardPage', () => {
 
     expect(await screen.findByText('No LP positions found')).toBeInTheDocument();
     expect(screen.getByText(/successful member lookup/i)).toBeInTheDocument();
+    const emptyHeading = screen.getByRole('heading', { name: 'No LP positions found' });
+    const confidence = screen.getByLabelText('LP data confidence');
+    expect(emptyHeading.compareDocumentPosition(confidence) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(confidence).getByText('RUNE price')).toBeInTheDocument();
+    expect(within(confidence).getByText('Not used')).toBeInTheDocument();
+    expect(within(confidence).getByText('No LP values')).toBeInTheDocument();
+    expect(within(confidence).queryByText('Fresh')).not.toBeInTheDocument();
+  });
+
+  it('does not declare an address empty while LP member data is still loading', async () => {
+    mockUseLpPositions.mockReturnValue({
+      positions: [],
+      isLoading: true,
+      state: 'empty',
+      error: undefined,
+      retry: vi.fn(),
+    });
+
+    render(<LpDashboardPage />);
+
+    expect(await screen.findByText('Checking LP positions')).toBeInTheDocument();
+    expect(screen.getByText(/Waiting for Midgard member data/)).toBeInTheDocument();
+    expect(screen.queryByText('No LP positions found')).not.toBeInTheDocument();
+
+    const loadingHeading = screen.getByRole('heading', { name: 'Checking LP positions' });
+    const confidence = screen.getByLabelText('LP data confidence');
+    expect(loadingHeading.compareDocumentPosition(confidence) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(confidence).getByText('RUNE price')).toBeInTheDocument();
+    expect(within(confidence).getByText('Pending')).toBeInTheDocument();
   });
 
   it('shows a missing-address prompt when no address query param is present', async () => {
@@ -143,8 +180,10 @@ describe('LpDashboardPage', () => {
     render(<LpDashboardPage />);
 
     expect(await screen.findByText('Enter a THORChain address')).toBeInTheDocument();
-    expect(screen.getByText(/paste an address to inspect live liquidity positions/i)).toBeInTheDocument();
+    expect(screen.getByText(/paste an address to inspect source-backed liquidity positions/i)).toBeInTheDocument();
+    expect(screen.queryByText(/inspect live liquidity positions/i)).not.toBeInTheDocument();
     expect(screen.queryByText('No LP positions found')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('LP data confidence')).not.toBeInTheDocument();
   });
 
   it('renders the usd portfolio hero instead of the mixed-unit summary cards', async () => {
@@ -154,17 +193,38 @@ describe('LpDashboardPage', () => {
       state: 'ready',
       error: undefined,
       retry: vi.fn(),
+      runePriceFreshness: freshRunePrice,
     });
 
     render(<LpDashboardPage />);
 
-    expect(await screen.findByText('Total LP Value')).toBeInTheDocument();
-    expect(screen.getByText('Net P/L')).toBeInTheDocument();
+    const diagnosis = await screen.findByLabelText('LP performance diagnosis');
+    expect(within(diagnosis).getByRole('heading', { name: 'LP performance is historically priced' })).toBeInTheDocument();
+    expect(within(diagnosis).getByRole('button', { name: 'Review positions' })).toBeInTheDocument();
+    expect(within(diagnosis).getByText('Total LP value')).toBeInTheDocument();
+    expect(within(diagnosis).getByText('Trusted P/L')).toBeInTheDocument();
     expect(screen.getByText('Positions')).toBeInTheDocument();
     expect(screen.getByText('Last Activity')).toBeInTheDocument();
     expect(screen.queryByText('ASSET 2 Deposit')).not.toBeInTheDocument();
     expect(screen.queryByText('Total Withdrawable')).not.toBeInTheDocument();
     expect(screen.getByText(/BTC\.BTC summary/i)).toBeInTheDocument();
+  });
+
+  it('labels aggregate IL as LP versus HODL instead of implying every signed value is a loss', async () => {
+    mockUseLpPositions.mockReturnValue({
+      positions: [basePosition],
+      isLoading: false,
+      state: 'ready',
+      error: undefined,
+      retry: vi.fn(),
+      runePriceFreshness: freshRunePrice,
+    });
+
+    render(<LpDashboardPage />);
+
+    expect((await screen.findAllByText('LP vs HODL')).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('LP value minus HODL value for historical positions')).toBeInTheDocument();
+    expect(screen.queryByText('Total Impermanent Loss')).not.toBeInTheDocument();
   });
 
   it('shows stale RUNE price confidence when LP current values use stale Midgard price data', async () => {
@@ -188,6 +248,25 @@ describe('LpDashboardPage', () => {
     const confidence = await screen.findByLabelText('LP data confidence');
     expect(within(confidence).getByText('RUNE price')).toBeInTheDocument();
     expect(within(confidence).getByText('Stale')).toBeInTheDocument();
+  });
+
+  it('does not claim LP USD values use a fresh RUNE price before a quote has loaded', async () => {
+    mockUseLpPositions.mockReturnValue({
+      positions: [basePosition],
+      isLoading: false,
+      state: 'ready',
+      error: undefined,
+      retry: vi.fn(),
+      runePriceFreshness: undefined,
+    });
+
+    render(<LpDashboardPage />);
+
+    const confidence = await screen.findByLabelText('LP data confidence');
+    expect(within(confidence).getByText('RUNE price')).toBeInTheDocument();
+    expect(within(confidence).getByText('Unknown')).toBeInTheDocument();
+    expect(within(confidence).getByText('No Midgard quote loaded')).toBeInTheDocument();
+    expect(within(confidence).queryByText('Fresh')).not.toBeInTheDocument();
   });
 
   it('shows current-only confidence when any position lacks historical pricing', async () => {
@@ -217,10 +296,62 @@ describe('LpDashboardPage', () => {
 
     render(<LpDashboardPage />);
 
+    const diagnosis = await screen.findByLabelText('LP performance diagnosis');
+    expect(within(diagnosis).getByRole('heading', { name: 'Current-only: 1' })).toBeInTheDocument();
+    expect(within(diagnosis).getByText(/1 current-only LP position history unavailable/i)).toBeInTheDocument();
+    expect(within(diagnosis).getByRole('button', { name: 'Review LP confidence' })).toBeInTheDocument();
+    expect(within(diagnosis).queryByRole('button', { name: 'Review positions' })).not.toBeInTheDocument();
     const confidence = await screen.findByLabelText('LP data confidence');
     expect(within(confidence).getByText('Current-only')).toBeInTheDocument();
     expect(within(confidence).getByText('History unavailable')).toBeInTheDocument();
-    expect(screen.getAllByText('Incomplete')).toHaveLength(2);
+    expect(screen.getAllByText('Incomplete').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('explains which LP positions are excluded from aggregate performance', async () => {
+    mockUseLpPositions.mockReturnValue({
+      positions: [
+        basePosition,
+        {
+          ...basePosition,
+          pool: 'ETH.ETH',
+          assetSymbol: 'ETH',
+          pricingSource: 'estimated',
+          currentTotalValueUsd: 50,
+          netProfitLossUsd: 7,
+          impermanentLossUsd: -2,
+        },
+        {
+          ...basePosition,
+          pool: 'GAIA.ATOM',
+          assetSymbol: 'ATOM',
+          pricingSource: 'current-only',
+          currentTotalValueUsd: 72,
+          netProfitLoss: 'Current value only',
+          netProfitLossUsd: null,
+          netProfitLossPercent: null,
+          impermanentLossUsd: null,
+          impermanentLossPercent: null,
+          impermanentLossValue: null,
+          entryRunePriceUsd: null,
+          entryAssetPriceUsd: null,
+          runeEntryPrice: null,
+          asset2EntryPrice: null,
+        },
+      ],
+      isLoading: false,
+      state: 'ready',
+      error: undefined,
+      retry: vi.fn(),
+      runePriceFreshness: freshRunePrice,
+    });
+
+    render(<LpDashboardPage />);
+
+    const diagnosis = await screen.findByLabelText('LP performance diagnosis');
+    expect(within(diagnosis).getByText('Total LP value')).toBeInTheDocument();
+    expect(within(diagnosis).getByText('Current value includes all pools; 1 estimated position and 1 current-only position need confidence review')).toBeInTheDocument();
+    expect(within(diagnosis).getByText('+$4.68 from historical positions; 1 estimated position and 1 current-only position excluded')).toBeInTheDocument();
+    expect(within(diagnosis).getByText('+$0.18 from historical positions; 1 estimated position and 1 current-only position excluded')).toBeInTheDocument();
   });
 
   it('labels in-flight historical enrichment without presenting performance as finally unavailable', async () => {
@@ -244,6 +375,7 @@ describe('LpDashboardPage', () => {
       state: 'ready',
       error: undefined,
       retry: vi.fn(),
+      runePriceFreshness: freshRunePrice,
     });
 
     render(<LpDashboardPage />);

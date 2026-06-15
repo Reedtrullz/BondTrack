@@ -9,6 +9,7 @@ interface SourceFreshnessPanelProps {
   sources: SourceFreshness[];
   now?: Date;
   title?: string;
+  compact?: boolean;
 }
 
 const statusConfig: Record<SourceStatus, {
@@ -42,7 +43,62 @@ export function SourceFreshnessPanel({
   sources,
   now = new Date(),
   title = 'Source freshness',
+  compact = false,
 }: SourceFreshnessPanelProps) {
+  if (compact) {
+    const degradedCount = sources.filter((source) => source.status === 'degraded' || source.status === 'stale').length;
+    const unknownCount = sources.filter((source) => source.status === 'unknown').length;
+    const summaryLabel = degradedCount > 0
+      ? `${degradedCount} degraded`
+      : unknownCount > 0
+        ? `${unknownCount} unknown`
+        : 'All fresh';
+
+    return (
+      <section
+        className="rounded-2xl border border-zinc-200 bg-white/90 p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80"
+        aria-label="Source confidence"
+        data-variant="compact"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden="true" />
+            <div className="min-w-0">
+              <h2 className="text-sm font-bold text-zinc-950 dark:text-zinc-50">{title}</h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Data source confidence</p>
+            </div>
+          </div>
+          <span className="shrink-0 rounded-full border border-zinc-200 px-2 py-0.5 text-[11px] font-bold text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+            {summaryLabel}
+          </span>
+        </div>
+
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {sources.map((source) => {
+            const config = statusConfig[source.status];
+            return (
+              <div
+                key={source.source}
+                className="min-w-0 rounded-xl border border-zinc-200 bg-zinc-50/70 p-2 dark:border-zinc-800 dark:bg-zinc-950/30"
+              >
+                <div className="truncate text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
+                  {source.source}
+                </div>
+                <span className={cn('mt-1 inline-flex max-w-full items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-bold', config.className)}>
+                  <span className="shrink-0">{config.icon}</span>
+                  <span className="truncate">{config.label}</span>
+                </span>
+                <div className="mt-1 truncate text-[10px] text-zinc-500 dark:text-zinc-400">
+                  {formatFreshnessAge(source.lastSuccess, now)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="rounded-2xl border border-zinc-200 bg-white/90 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80" aria-label={title}>
       <div className="mb-4 flex items-start gap-2">
@@ -50,7 +106,7 @@ export function SourceFreshnessPanel({
         <div>
           <h2 className="text-lg font-bold text-zinc-950 dark:text-zinc-50">{title}</h2>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Confidence for the live readings on this screen.
+            Confidence for the readings on this screen.
           </p>
         </div>
       </div>

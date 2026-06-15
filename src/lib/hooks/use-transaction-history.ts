@@ -7,18 +7,26 @@ export interface Transaction {
   amount: number;
   nodeAddress: string;
   timestamp: Date;
+  timestampKnown: boolean;
   txHash: string;
   status: string;
 }
 
-function getBondHistoryTxType(action: ActionRaw): 'bond' | 'unbond' | 'leave' | 'unstake' | null {
+interface TransactionHistoryResponse {
+  response: ActionsResponseRaw;
+  loadedAt: Date;
+}
+
+export const TRANSACTION_HISTORY_LIMIT = 50;
+
+function getBondHistoryTxType(action: ActionRaw): 'bond' | 'unbond' | null {
   const metadataTxType = action.metadata?.refund?.txType;
 
-  if (metadataTxType === 'bond' || metadataTxType === 'unbond' || metadataTxType === 'leave' || metadataTxType === 'unstake') {
+  if (metadataTxType === 'bond' || metadataTxType === 'unbond') {
     return metadataTxType;
   }
 
-  if (action.type === 'bond' || action.type === 'unbond' || action.type === 'leave' || action.type === 'unstake') {
+  if (action.type === 'bond' || action.type === 'unbond') {
     return action.type;
   }
 
@@ -26,7 +34,6 @@ function getBondHistoryTxType(action: ActionRaw): 'bond' | 'unbond' | 'leave' | 
 
   if (memo.startsWith('BOND:')) return 'bond';
   if (memo.startsWith('UNBOND:')) return 'unbond';
-  if (memo.startsWith('LEAVE:')) return 'leave';
 
   return null;
 }
@@ -39,12 +46,34 @@ function getBondHistoryNodeAddress(action: ActionRaw): string {
   return action.metadata?.bond?.nodeAddress || memoNodeAddress || action.in?.[0]?.address || action.tx?.address || '';
 }
 
+function parseActionTimestamp(rawDate: string | undefined): { timestamp: Date; timestampKnown: boolean } {
+  if (!rawDate) {
+    return { timestamp: new Date(0), timestampKnown: false };
+  }
+
+  try {
+    const timestamp = new Date(Number(BigInt(rawDate) / BigInt(1000000)));
+    if (Number.isNaN(timestamp.getTime())) {
+      return { timestamp: new Date(0), timestampKnown: false };
+    }
+
+    return { timestamp, timestampKnown: true };
+  } catch {
+    const timestamp = new Date(Number(rawDate) / 1e6);
+    if (Number.isNaN(timestamp.getTime())) {
+      return { timestamp: new Date(0), timestampKnown: false };
+    }
+
+    return { timestamp, timestampKnown: true };
+  }
+}
+
 function parseActions(actions: ActionRaw[]): Transaction[] {
   if (!actions || !Array.isArray(actions)) return [];
 
   return actions
     .map((action) => ({ action, txType: getBondHistoryTxType(action) }))
-    .filter((entry): entry is { action: ActionRaw; txType: 'bond' | 'unbond' | 'leave' | 'unstake' } => entry.txType !== null)
+    .filter((entry): entry is { action: ActionRaw; txType: 'bond' | 'unbond' } => entry.txType !== null)
     .map(({ action, txType }): Transaction => {
       let amount = 0;
 
@@ -71,67 +100,74 @@ function parseActions(actions: ActionRaw[]): Transaction[] {
       const type = (txType === 'bond') ? 'BOND' : 'UNBOND';
       const nodeAddress = getBondHistoryNodeAddress(action);
 
-      // Use BigInt for safer timestamp parsing to avoid precision loss
-      let timestamp = new Date();
-      if (action.date) {
-        try {
-          timestamp = new Date(Number(BigInt(action.date) / BigInt(1000000)));
-        } catch (e) {
-          console.error('Error parsing date:', action.date, e);
-          // Fallback to less precise parsing
-          timestamp = new Date(Number(action.date) / 1e6);
-        }
-      }
+      const { timestamp, timestampKnown } = parseActionTimestamp(action.date);
 
       return {
         type,
         amount,
         nodeAddress,
         timestamp,
+        timestampKnown,
         txHash: action.in?.[0]?.txID || action.tx?.txID || action.out?.[0]?.txID || '',
         status: action.status || 'unknown',
       };
     })
-    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    .sort((a, b) => {
+      if (a.timestampKnown !== b.timestampKnown) {
+        return a.timestampKnown ? -1 : 1;
+      }
+
+      return b.timestamp.getTime() - a.timestamp.getTime();
+    });
 }
 
 async function fetchActionsWithFallback(address: string): Promise<ActionsResponseRaw> {
   // 1. Try txType=bond,unbond (removed 'leave' as it can cause 500s on some nodes)
   try {
-    const result = await getActions(address, 50, 'bond,unbond', 'txType');
+    const result = await getActions(address, TRANSACTION_HISTORY_LIMIT, 'bond,unbond', 'txType');
     if (result.actions && result.actions.length > 0) return result;
-  } catch (err) {
-    console.warn('Midgard txType query failed, trying type filter...', err);
+  } catch {
+    // Fall through to the broader action filter.
   }
 
   // 2. Fallback: try type=bond,unbond (more standard high-level types)
   try {
-    const result = await getActions(address, 50, 'bond,unbond', 'type');
+    const result = await getActions(address, TRANSACTION_HISTORY_LIMIT, 'bond,unbond', 'type');
     if (result.actions && result.actions.length > 0) return result;
-  } catch (err) {
-    console.warn('Midgard type query failed, trying unfiltered actions...', err);
+  } catch {
+    // Fall through to unfiltered actions and filter locally.
   }
 
   // 3. Last resort: fetch recent actions and filter locally
-  return await getActions(address, 50);
+  return await getActions(address, TRANSACTION_HISTORY_LIMIT);
+}
+
+async function fetchTransactionHistory(address: string): Promise<TransactionHistoryResponse> {
+  const response = await fetchActionsWithFallback(address);
+
+  return {
+    response,
+    loadedAt: new Date(),
+  };
 }
 
 export function useTransactionHistory(address: string | null) {
-  const { data, error, isLoading } = useSWR<ActionsResponseRaw>(
+  const { data, error, isLoading } = useSWR<TransactionHistoryResponse>(
     address ? ['transaction-history', address] : null,
-    () => fetchActionsWithFallback(address!),
+    () => fetchTransactionHistory(address!),
     {
       refreshInterval: 60_000,
-      onError: (err) => console.error('Actions API error:', err),
       shouldRetryOnError: false, // We handle retries/fallbacks manually in the fetcher
     }
   );
 
-  const transactions = data?.actions ? parseActions(data.actions) : [];
+  const transactions = data?.response.actions ? parseActions(data.response.actions) : [];
 
   return {
     transactions,
     isLoading,
     error,
+    loadedAt: data?.loadedAt ?? null,
+    historyLimit: TRANSACTION_HISTORY_LIMIT,
   };
 }

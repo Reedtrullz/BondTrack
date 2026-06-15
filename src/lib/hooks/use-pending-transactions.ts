@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { STORAGE_KEYS } from '@/lib/storage/keys';
+import { readLocalStorageValue, STORAGE_KEYS, writeLocalStorageValue } from '@/lib/storage/keys';
 
 export interface PendingTransaction {
   txHash: string;
@@ -15,29 +15,31 @@ export interface PendingTransaction {
 const STORAGE_KEY = STORAGE_KEYS.pendingTransactions;
 const TIMEOUT_MS = 10 * 60 * 1000;
 
+function isActivePendingTx(tx: PendingTransaction, now = Date.now()): boolean {
+  const age = now - tx.timestamp;
+  return age < TIMEOUT_MS && tx.status === 'pending';
+}
+
 // Lazy initializer for pending transactions from localStorage
 function getInitialPendingTxs(): PendingTransaction[] {
   if (typeof window === 'undefined') return [];
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = readLocalStorageValue(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored) as PendingTransaction[];
-      return parsed.filter(tx => {
-        const age = Date.now() - tx.timestamp;
-        return age < TIMEOUT_MS && tx.status === 'pending';
-      });
+      return parsed.filter(tx => isActivePendingTx(tx));
     }
-  } catch (error) {
-    console.error('Storage error while loading pending transactions:', error);
+  } catch {
+    // Corrupt or unavailable storage should not block in-memory transaction tracking.
   }
   return [];
 }
 
 function savePendingTxs(pendingTxs: PendingTransaction[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(pendingTxs));
-  } catch (error) {
-    console.error('Storage error while saving pending transactions:', error);
+    writeLocalStorageValue(STORAGE_KEY, JSON.stringify(pendingTxs));
+  } catch {
+    // Corrupt or unavailable storage should not block in-memory transaction tracking.
   }
 }
 
@@ -47,10 +49,7 @@ export function usePendingTransactions() {
   useEffect(() => {
     const interval = setInterval(() => {
       setPendingTxs(current => {
-        const validTxs = current.filter(tx => {
-          const age = Date.now() - tx.timestamp;
-          return age < TIMEOUT_MS;
-        });
+        const validTxs = current.filter(tx => isActivePendingTx(tx));
         if (validTxs.length !== current.length) {
           savePendingTxs(validTxs);
         }
@@ -85,7 +84,7 @@ export function usePendingTransactions() {
     setPendingTxs(current => {
       const updated = current.map(tx =>
         tx.txHash === txHash ? { ...tx, status } : tx
-      );
+      ).filter(tx => isActivePendingTx(tx));
       savePendingTxs(updated);
       return updated;
     });
@@ -99,7 +98,7 @@ export function usePendingTransactions() {
     });
   }, []);
 
-  const hasPendingTx = useCallback(() => pendingTxs.length > 0, [pendingTxs]);
+  const hasPendingTx = useCallback(() => pendingTxs.some(tx => isActivePendingTx(tx)), [pendingTxs]);
 
   return {
     pendingTxs,

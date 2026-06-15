@@ -1,6 +1,8 @@
 import { expect, test, type Page } from './fixtures';
 
 const MOCK_ADDRESS = 'thor12mpnw4stg9fw8yngs3rpzzc6zdprepev3e0346';
+const MIDGARD_ERROR_COPY = 'Midgard API is temporarily unavailable — some data may be stale';
+const THORNODE_ERROR_COPY = 'THORNode API is temporarily unavailable — some data may be stale';
 
 const mockNodes = [
   {
@@ -179,7 +181,7 @@ const mockPoolHistory = {
 
 async function setupPortfolioMocks(
   page: Page,
-  options: { midgardHealthStatus?: number; thornodeHealthStatus?: number }
+  options: { midgardHealthStatus?: number; thornodeNodesStatus?: number }
 ) {
   await page.route('**/api/midgard/**', async (route) => {
     const url = new URL(route.request().url());
@@ -236,8 +238,8 @@ async function setupPortfolioMocks(
     const url = new URL(route.request().url());
 
     if (url.pathname === '/api/thorchain/thorchain/nodes') {
-      if (options.thornodeHealthStatus) {
-        await route.fulfill({ status: options.thornodeHealthStatus, json: { error: 'Health check failed' } });
+      if (options.thornodeNodesStatus && options.thornodeNodesStatus >= 400) {
+        await route.fulfill({ status: options.thornodeNodesStatus, json: { error: 'THORNode /nodes request failed' } });
         return;
       }
 
@@ -248,7 +250,7 @@ async function setupPortfolioMocks(
     if (url.pathname === '/api/thorchain/thorchain/constants') {
       await route.fulfill({
         json: {
-          int_64_values: { OptimalBondD: 2500000000000 },
+          int_64_values: { MaxBondProviders: 100 },
           bool_values: {},
           string_values: {},
         },
@@ -256,7 +258,7 @@ async function setupPortfolioMocks(
       return;
     }
 
-    if (url.pathname.includes('/api/thorchain/thorchain/pool/') && url.pathname.includes('/liquidity_provider/')) {
+    if (/^\/api\/thorchain\/thorchain\/pool\/[^/]+\/liquidity_provider\/[^/]+$/.test(url.pathname)) {
       await route.fulfill({
         json: {
           rune_address: MOCK_ADDRESS,
@@ -283,9 +285,22 @@ async function gotoPortfolio(page: Page) {
   await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
 }
 
-async function waitForApiHealthResponse(page: Page, path: string, status: number) {
+async function waitForApiHealthResponse(
+  page: Page,
+  path: string,
+  status: number,
+  expectedProbeTarget?: string
+) {
   await page.waitForResponse(
-    (response) => new URL(response.url()).pathname === path && response.status() === status
+    (response) => {
+      const hasExpectedProbeHeader = expectedProbeTarget
+        ? response.request().headers()['x-heimdall-health-probe'] === expectedProbeTarget
+        : true;
+
+      return new URL(response.url()).pathname === path
+        && response.status() === status
+        && hasExpectedProbeHeader;
+    }
   );
 }
 
@@ -293,29 +308,27 @@ test.describe('API health banner', () => {
   test('shows Midgard error message when /api/midgard fails with 502', async ({ page, allowApiErrors }) => {
     allowApiErrors([/\/api\/midgard\/v2\/health$/]);
     await setupPortfolioMocks(page, { midgardHealthStatus: 502 });
-    const midgardResponse = waitForApiHealthResponse(page, '/api/midgard/v2/health', 502);
+    const midgardResponse = waitForApiHealthResponse(page, '/api/midgard/v2/health', 502, 'midgard');
     await gotoPortfolio(page);
     await midgardResponse;
 
-    const banner = page.getByTestId('api-health-banner');
-    await expect(banner).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('api-health-banner-midgard-message')).toContainText(
-      'Midgard API is temporarily unavailable — some data may be stale'
-    );
+    await expect(page.getByTestId('api-health-banner-midgard-message')).toContainText(MIDGARD_ERROR_COPY, {
+      timeout: 30000,
+    });
+    await expect(page.getByTestId('api-health-banner')).toBeVisible();
   });
 
-  test('shows THORNode error message when /api/thorchain fails with 500', async ({ page, allowApiErrors }) => {
+  test('shows THORNode error message when /api/thorchain/thorchain/nodes fails with 500', async ({ page, allowApiErrors }) => {
     allowApiErrors([/\/api\/thorchain\/thorchain\/nodes$/]);
-    await setupPortfolioMocks(page, { thornodeHealthStatus: 500 });
-    const thornodeResponse = waitForApiHealthResponse(page, '/api/thorchain/thorchain/nodes', 500);
+    await setupPortfolioMocks(page, { thornodeNodesStatus: 500 });
+    const thornodeResponse = waitForApiHealthResponse(page, '/api/thorchain/thorchain/nodes', 500, 'thornode');
     await gotoPortfolio(page);
     await thornodeResponse;
 
-    const banner = page.getByTestId('api-health-banner');
-    await expect(banner).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('api-health-banner-thornode-message')).toContainText(
-      'THORNode API is temporarily unavailable — some data may be stale'
-    );
+    await expect(page.getByTestId('api-health-banner-thornode-message')).toContainText(THORNODE_ERROR_COPY, {
+      timeout: 30000,
+    });
+    await expect(page.getByTestId('api-health-banner')).toBeVisible();
   });
 
   test('hides the banner when both APIs are healthy', async ({ page }) => {
@@ -336,7 +349,10 @@ test.describe('API health banner', () => {
     await midgardResponse;
 
     const banner = page.getByTestId('api-health-banner');
-    await expect(banner).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('api-health-banner-midgard-message')).toContainText(MIDGARD_ERROR_COPY, {
+      timeout: 30000,
+    });
+    await expect(banner).toBeVisible();
 
     await page.getByTestId('api-health-banner-dismiss').click();
 

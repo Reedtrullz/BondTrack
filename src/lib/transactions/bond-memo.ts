@@ -7,6 +7,7 @@ export interface ValidationResult {
 
 const RUNE_BASE = 100_000_000n;
 const RUNE_DECIMALS = 8;
+const MIN_BOND_BASE_UNITS = RUNE_BASE;
 const THOR_ADDRESS_PATTERN = /^thor1[ac-hj-np-z02-9]{38,}$/;
 
 export function parseRuneAmountToBaseUnits(amount: string): string | null {
@@ -38,8 +39,8 @@ export function validateBondAmount(amount: string): ValidationResult {
     return { valid: false, error: 'Amount must be a positive RUNE value with up to 8 decimals' };
   }
 
-  if (BigInt(baseUnits) < 102_000_000n) {
-    return { valid: false, error: 'Minimum bond amount is 1.02 RUNE' };
+  if (BigInt(baseUnits) < MIN_BOND_BASE_UNITS) {
+    return { valid: false, error: 'Minimum bond amount is 1 RUNE; wallet/network fees are confirmed separately' };
   }
 
   return { valid: true };

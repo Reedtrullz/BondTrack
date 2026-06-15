@@ -18,11 +18,13 @@ import { useYieldBenchmarks } from '@/lib/hooks/use-yield-benchmarks';
 import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { usePools } from '@/lib/hooks/use-pools';
 import { useFeeRevenue } from '@/lib/hooks/use-fee-revenue';
-import { useApiHealthContext } from '@/lib/hooks/use-api-health';
-import { buildDashboardInsightState } from '@/lib/dashboard/insights';
+import { useApiHealthContext, type ApiHealthStatus } from '@/lib/hooks/use-api-health';
+import { buildDashboardInsightState, resolveThornodeGatedBondAction } from '@/lib/dashboard/insights';
+import { buildPortfolioPageModel } from '@/lib/dashboard/portfolio-context';
 import { formatUsd, runeToNumber } from '@/lib/utils/formatters';
 import { ActionQueue } from '@/components/dashboard/action-queue';
 import { InsightHeader } from '@/components/dashboard/insight-header';
+import { MetricStrip } from '@/components/dashboard/metric-strip';
 import { PortfolioSummary } from '@/components/dashboard/portfolio-summary';
 import { FeeRevenueChart } from '@/components/dashboard/fee-revenue-chart';
 import { FeeRevenueSummary } from '@/components/dashboard/fee-revenue-summary';
@@ -31,9 +33,11 @@ import { MarketOverview } from '@/components/dashboard/market-overview';
 import { IntelligenceFeed } from '@/components/dashboard/intelligence-feed';
 import { ExportButton } from '@/components/shared/export-button';
 import { DashboardCard } from '@/components/shared/dashboard-card';
+import { DashboardLoadingSkeleton } from '@/components/shared/dashboard-loading-skeleton';
 import { ChartDataTable } from '@/components/shared/chart-data-table';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import {
+  AlertTriangle,
   TrendingUp,
   BarChart3,
   ArrowRight,
@@ -41,16 +45,49 @@ import {
   Coins,
   Plus,
   Minus,
-  Sparkles,
   Eye,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const COLORS = ['#10b981', '#f59e0b'];
-
 type TransactionAction = 'bond' | 'unbond';
+
+function getPortfolioSourceStatus(midgard: ApiHealthStatus, thornode: ApiHealthStatus) {
+  if (midgard === 'down' || thornode === 'down') {
+    return {
+      label: 'Sources down',
+      detail: 'Current data may be unavailable',
+      dotClass: 'bg-red-500',
+      className: 'border-red-200/70 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200',
+    };
+  }
+
+  if (midgard === 'unknown' || thornode === 'unknown') {
+    return {
+      label: 'Sources unknown',
+      detail: 'Health check pending',
+      dotClass: 'bg-amber-500',
+      className: 'border-amber-200/70 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200',
+    };
+  }
+
+  if (midgard === 'degraded' || thornode === 'degraded') {
+    return {
+      label: 'Sources degraded',
+      detail: 'One source is retrying',
+      dotClass: 'bg-amber-500',
+      className: 'border-amber-200/70 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200',
+    };
+  }
+
+  return {
+    label: 'Sources responding',
+    detail: 'Recent Midgard + THORNode checks succeeded',
+    dotClass: 'bg-emerald-500',
+    className: 'border-emerald-200/70 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200',
+  };
+}
 
 function buildTransactionHref(address: string | null, action: TransactionAction) {
   const params = new URLSearchParams();
@@ -84,8 +121,8 @@ export default function PortfolioPage() {
     positions: lpPositions,
     error: lpError,
   } = useLpPositions(address);
-  const { price: runePrice, intervals: runePriceHistory, isLoading: priceLoading, isStale: runePriceIsStale, updatedAt: runePriceUpdatedAt } = useRunePriceHistory('hour', 24 * 7 + 1);
-  const { data: marketNetwork, isLoading: metricsLoading } = useNetworkMetrics();
+  const { price: runePrice, intervals: runePriceHistory, isStale: runePriceIsStale, updatedAt: runePriceUpdatedAt } = useRunePriceHistory('hour', 24 * 7 + 1);
+  const { data: marketNetwork } = useNetworkMetrics();
   const { benchmarks, isLoading: benchmarksLoading } = useYieldBenchmarks();
   const { data: allNodes, isLoading: allNodesLoading } = useAllNodes();
   const { pools: marketPools, isLoading: marketLoading } = usePools();
@@ -96,26 +133,33 @@ export default function PortfolioPage() {
   const [showMarket, setShowMarket] = useState(false);
   const [showIntelligence, setShowIntelligence] = useState(false);
 
-  const isLoading = bondLoading || priceLoading || metricsLoading || benchmarksLoading || allNodesLoading || marketLoading;
+  const thornodeSourceUnreliable = apiHealth.thornode === 'degraded' || apiHealth.thornode === 'down';
+  const isLoading = bondLoading && !thornodeSourceUnreliable;
 
-  const totalBondedRune = bondPositions.reduce((sum, p) => sum + p.bondAmount, 0);
-  const totalBondedValueUsd = totalBondedRune * runePrice;
-
-  const lpDataUnavailable = Boolean(lpError);
-  const effectiveLpPositions = useMemo(
-    () => (lpDataUnavailable ? [] : lpPositions),
-    [lpDataUnavailable, lpPositions]
-  );
-  const totalLpValueUsd = effectiveLpPositions.reduce(
-    (sum, p) => sum + p.currentTotalValueUsd,
-    0
-  );
-
-  const totalSum = totalBondedValueUsd + totalLpValueUsd;
-
-  const weightedAPY = bondPositions.length > 0 && totalBondedRune > 0
-    ? bondPositions.reduce((sum, p) => sum + p.netAPY * p.bondAmount, 0) / totalBondedRune
-    : 0;
+  const portfolioModel = useMemo(() => buildPortfolioPageModel({
+    bondPositions,
+    lpError,
+    lpPositions,
+    runePrice,
+    runePriceHistory,
+    runePriceIsStale,
+  }), [
+    bondPositions,
+    lpError,
+    lpPositions,
+    runePrice,
+    runePriceHistory,
+    runePriceIsStale,
+  ]);
+  const {
+    effectiveLpPositions,
+    pieData,
+    runePriceChange24h,
+    runePriceChange7d,
+    totalBondedRune,
+    totalPortfolioValueUsd,
+    weightedAPY,
+  } = portfolioModel;
   const portfolioInsight = useMemo(() => buildDashboardInsightState({
     address,
     positions: bondPositions,
@@ -135,50 +179,26 @@ export default function PortfolioPage() {
     runePriceIsStale,
     runePriceUpdatedAt,
   ]);
-
-  const runePriceChange24h = (() => {
-    if (runePriceHistory.length < 25) return null;
-
-    const last = runePriceHistory[runePriceHistory.length - 1].runePriceUSD;
-    const first = runePriceHistory[runePriceHistory.length - 25].runePriceUSD;
-
-    if (!Number.isFinite(first) || first <= 0 || !Number.isFinite(last)) {
-      return null;
-    }
-
-    return ((last - first) / first) * 100;
-  })();
-
-  const runePriceChange7d = (() => {
-    if (runePriceHistory.length < 169) return null;
-
-    const first = runePriceHistory[0].runePriceUSD;
-    const last = runePriceHistory[runePriceHistory.length - 1].runePriceUSD;
-
-    if (!Number.isFinite(first) || first <= 0 || !Number.isFinite(last)) {
-      return null;
-    }
-
-    return ((last - first) / first) * 100;
-  })();
-
-  const pieData = [
-    { name: 'Bond', value: totalBondedValueUsd, fill: COLORS[0] },
-    { name: 'LP', value: totalLpValueUsd, fill: COLORS[1] },
-  ];
+  const sourceStatus = useMemo(
+    () => getPortfolioSourceStatus(apiHealth.midgard, apiHealth.thornode),
+    [apiHealth.midgard, apiHealth.thornode]
+  );
+  const bondAction = resolveThornodeGatedBondAction(portfolioInsight.actions, {
+    label: 'Prepare BOND Memo',
+    href: buildTransactionHref(address, 'bond'),
+  });
+  const BondActionIcon = bondAction.kind === 'source-confidence' ? AlertTriangle : Plus;
+  const canOfferUnbondPrep = bondAction.kind === 'bond-ready' && bondPositions.length > 0;
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 py-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div
-              key={i}
-              className="h-24 rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60 animate-pulse"
-            />
-          ))}
-        </div>
-        <div className="h-64 rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60 animate-pulse" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+        <DashboardLoadingSkeleton
+          title="Loading portfolio data"
+          detail="Waiting for bond positions, LP positions, RUNE price, and market context before showing exposure or health."
+          cards={4}
+          className="p-0"
+        />
       </div>
     );
   }
@@ -195,22 +215,37 @@ export default function PortfolioPage() {
             Unified view of your Bond and LP positions
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link href={buildTransactionHref(address, 'bond')}>
-            <Button variant="success" className="gap-2">
-              <Plus className="w-4 h-4" />
-              Bond More
-            </Button>
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Portfolio transaction actions">
+          <Link
+            href={bondAction.href}
+            className={buttonVariants({
+              variant: bondAction.kind === 'source-confidence' ? 'outline' : 'success',
+              className: 'gap-2',
+            })}
+          >
+            <BondActionIcon className="w-4 h-4" />
+            {bondAction.label}
           </Link>
-          <Link href={buildTransactionHref(address, 'unbond')}>
-            <Button variant="destructive" className="gap-2">
+          {canOfferUnbondPrep && (
+            <Link
+              href={buildTransactionHref(address, 'unbond')}
+              className={buttonVariants({ variant: 'destructive', className: 'gap-2' })}
+            >
               <Minus className="w-4 h-4" />
-              Unbond
-            </Button>
-          </Link>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-bold border border-emerald-200/60 dark:border-emerald-800/50">
-            <Sparkles className="w-3 h-3 animate-pulse" />
-            <span>Live</span>
+              Prepare UNBOND Memo
+            </Link>
+          )}
+          <div
+            role="group"
+            aria-label="Portfolio source health"
+            className={cn(
+              'flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold',
+              sourceStatus.className
+            )}
+          >
+            <span className={cn('h-2 w-2 rounded-full', sourceStatus.dotClass)} aria-hidden="true" />
+            <span>{sourceStatus.label}</span>
+            <span className="hidden font-medium opacity-80 sm:inline">{sourceStatus.detail}</span>
           </div>
           {bondPositions.length > 0 && <ExportButton bondPositions={bondPositions} />}
         </div>
@@ -221,9 +256,11 @@ export default function PortfolioPage() {
         statusLabel={portfolioInsight.statusLabel}
         diagnosis={portfolioInsight.diagnosis}
         topRisk={portfolioInsight.topRisk}
+        headingLevel={2}
         metrics={portfolioInsight.headerMetrics}
         primaryAction={portfolioInsight.primaryAction}
         eyebrow="Portfolio"
+        compactMobileMetrics
       />
 
       <ActionQueue
@@ -231,6 +268,8 @@ export default function PortfolioPage() {
         title="Next portfolio actions"
         compact
       />
+
+      <MetricStrip metrics={portfolioModel.confidenceMetrics} title="Portfolio exposure confidence" />
 
       {/* Hero Stats */}
       <PortfolioSummary
@@ -254,7 +293,7 @@ export default function PortfolioPage() {
 
         {/* Right: Asset Allocation */}
         <DashboardCard title="Asset Allocation">
-          {totalSum > 0 ? (
+          {totalPortfolioValueUsd > 0 ? (
             <>
               <ResponsiveContainer width="100%" height={280} minWidth={1} minHeight={1}>
               <PieChart>
@@ -405,8 +444,12 @@ export default function PortfolioPage() {
             <span className="text-xs font-bold uppercase font-serif italic">Heimdall&apos;s Sight</span>
           </div>
           <button
+            type="button"
+            aria-label={showIntelligence ? 'Hide Heimdall insight feed' : 'Show Heimdall insight feed'}
+            aria-expanded={showIntelligence}
+            aria-controls="portfolio-intelligence-feed"
             onClick={() => setShowIntelligence(!showIntelligence)}
-            className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+            className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:hover:bg-zinc-800 dark:hover:text-zinc-300 dark:focus-visible:ring-offset-zinc-950"
           >
             {showIntelligence ? (
               <ChevronUp className="w-4 h-4" />
@@ -416,13 +459,15 @@ export default function PortfolioPage() {
           </button>
         </div>
         {showIntelligence && (
-          <IntelligenceFeed
-            positions={bondPositions}
-            benchmarks={benchmarks}
-            allNodes={allNodes || []}
-            providerAddress={address}
-            isLoading={allNodesLoading || benchmarksLoading}
-          />
+          <div id="portfolio-intelligence-feed">
+            <IntelligenceFeed
+              positions={bondPositions}
+              benchmarks={benchmarks}
+              allNodes={allNodes || []}
+              providerAddress={address}
+              isLoading={allNodesLoading || benchmarksLoading}
+            />
+          </div>
         )}
       </DashboardCard>
     </div>

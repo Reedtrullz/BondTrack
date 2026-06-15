@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       headers: {
         ...taxReportHeaders(request),
         'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename=\"tax-report-${address.slice(0, 8)}-${startDate}-to-${endDate}.csv\"`,
+        'Content-Disposition': `attachment; filename=\"tax-worksheet-${address.slice(0, 8)}-${startDate}-to-${endDate}.csv\"`,
         'X-Heimdall-Tax-Warnings': warnings.length > 0 ? JSON.stringify(warnings) : '[]',
       },
     });

@@ -1,18 +1,6 @@
 import type { Metadata } from "next";
-import { Exo_2, Open_Sans } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
-
-
-const exo2 = Exo_2({
-  variable: "--font-exo-2",
-  subsets: ["latin"],
-});
-
-const openSans = Open_Sans({
-  variable: "--font-open-sans",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://bond.thorchain.no'),
@@ -32,7 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${openSans.variable} ${exo2.variable} min-h-full antialiased`}
+        className="min-h-full antialiased"
         suppressHydrationWarning
       >
         <a

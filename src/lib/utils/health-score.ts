@@ -8,6 +8,7 @@ export interface HealthScoreBreakdown {
   slashPenalty: number;
   atRiskPenalty: number;
   jailedPenalty: number;
+  statusPenalty: number;
   finalScore: number;
 }
 
@@ -33,6 +34,7 @@ export function calculatePortfolioHealth(positions: BondPosition[]): HealthScore
       slashPenalty: 0,
       atRiskPenalty: 0,
       jailedPenalty: 0,
+      statusPenalty: 0,
       finalScore: NETWORK.HEALTH_SCORE_RULES.startingPoints,
     };
     return { grade: 'A+', score: NETWORK.HEALTH_SCORE_RULES.startingPoints, reason: 'No positions bonded', isCritical: false, breakdown };
@@ -43,6 +45,7 @@ export function calculatePortfolioHealth(positions: BondPosition[]): HealthScore
   let slashPenalty = 0;
   let atRiskPenalty = 0;
   let jailedPenalty = 0;
+  let statusPenalty = 0;
 
   // 1. Check for Jailed Nodes (Immediate Criticality)
   const jailedNodes = positions.filter(p => p.isJailed);
@@ -71,6 +74,13 @@ export function calculatePortfolioHealth(positions: BondPosition[]): HealthScore
   atRiskPenalty = atRiskNodes.length * NETWORK.HEALTH_SCORE_RULES.atRiskPenalty;
   totalPoints -= atRiskPenalty;
 
+  const nonActiveNodes = positions.filter(p => !p.isJailed && p.status !== 'Active');
+  statusPenalty = nonActiveNodes.length * NETWORK.HEALTH_SCORE_RULES.nonActivePenalty;
+  totalPoints -= statusPenalty;
+  if (nonActiveNodes.length > 0) {
+    criticalIssues.push(`${nonActiveNodes.length} node(s) not active`);
+  }
+
   // Clamp score 0-100
   const finalScore = Math.max(0, totalPoints);
 
@@ -87,6 +97,7 @@ export function calculatePortfolioHealth(positions: BondPosition[]): HealthScore
     slashPenalty,
     atRiskPenalty,
     jailedPenalty,
+    statusPenalty,
     finalScore,
   };
 

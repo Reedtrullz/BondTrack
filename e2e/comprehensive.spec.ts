@@ -6,14 +6,14 @@ const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
 test.describe('Visual Regression - Layout', () => {
   test('homepage renders correctly', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText('Heimdall').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'THORChain operations console' })).toBeVisible();
     await expect(page.getByPlaceholder('thor1...')).toBeVisible();
   });
 
   test('dashboard portfolio page renders correctly', async ({ page }) => {
     await mockDashboardApis(page, MOCK_ADDRESS);
     await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
-    await expect(page.getByText('Total Bonded').first()).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Total Bonded summary' })).toBeVisible();
   });
 
   test('sidebar is visible on all dashboard pages', async ({ page }) => {
@@ -21,7 +21,7 @@ test.describe('Visual Regression - Layout', () => {
     const pages = ['portfolio', 'nodes', 'rewards', 'risk', 'transactions', 'lp'];
     for (const pg of pages) {
       await page.goto(`/dashboard/${pg}?address=${MOCK_ADDRESS}`);
-      await expect(page.getByText('Heimdall').first()).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Heimdall Navigation', exact: true })).toHaveAttribute('href', '/');
     }
   });
 });
@@ -38,44 +38,54 @@ test.describe('Responsive Behavior', () => {
   test('works on mobile viewport', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
-    await expect(page.getByText('Heimdall').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'THORChain operations console' })).toBeVisible();
   });
 
   test('works on tablet viewport', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.goto('/');
-    await expect(page.getByText('Heimdall').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'THORChain operations console' })).toBeVisible();
   });
 
   test('works on desktop viewport', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto('/');
-    await expect(page.getByText('Heimdall').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'THORChain operations console' })).toBeVisible();
   });
 });
 
 test.describe('API Integration', () => {
-  test('handles empty node responses gracefully', async ({ page }) => {
+  test('handles empty THORNode /nodes responses gracefully', async ({ page }) => {
     await mockDashboardApis(page, MOCK_ADDRESS);
+    await page.route('**/api/thorchain/thorchain/nodes', async (route) => {
+      await route.fulfill({ json: [] });
+    });
     await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
 
     await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-    await expect(page.getByRole('heading', { name: /Portfolio/ })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { level: 1, name: 'Portfolio', exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: 'No bonded positions detected' })).toBeVisible();
   });
 
-  test('uses the mocked THORNode health request for dashboard data', async ({ page }) => {
-    let requestCount = 0;
+  test('separates THORNode health probes from dashboard node data requests', async ({ page }) => {
+    let dataRequestCount = 0;
+    let healthProbeCount = 0;
 
     await mockDashboardApis(page, MOCK_ADDRESS);
     await page.route('**/api/thorchain/thorchain/nodes', async (route) => {
-      requestCount++;
+      if (route.request().headers()['x-heimdall-health-probe'] === 'thornode') {
+        healthProbeCount++;
+      } else {
+        dataRequestCount++;
+      }
       await route.fallback();
     });
 
     await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
 
-    await expect(page.getByRole('heading', { name: /Portfolio/ })).toBeVisible({ timeout: 15000 });
-    await expect.poll(() => requestCount, { timeout: 10000 }).toBeGreaterThanOrEqual(1);
+    await expect(page.getByRole('heading', { level: 1, name: 'Portfolio', exact: true })).toBeVisible({ timeout: 15000 });
+    await expect.poll(() => healthProbeCount, { timeout: 10000 }).toBeGreaterThanOrEqual(1);
+    await expect.poll(() => dataRequestCount, { timeout: 10000 }).toBeGreaterThanOrEqual(1);
   });
 });
 

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import TaxExport from '../tax-export';
 
@@ -58,6 +58,10 @@ describe('TaxExport', () => {
     mockUseLpPositions.mockReset();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('disables LP CSV export while historical pricing enrichment is still loading', () => {
     mockUseLpPositions.mockReturnValue({
       positions: [{
@@ -109,5 +113,33 @@ describe('TaxExport', () => {
     expect(createObjectURL).not.toHaveBeenCalled();
 
     createObjectURL.mockRestore();
+  });
+
+  it('shows an inline failure instead of blocking the dashboard when LP CSV generation fails', () => {
+    mockUseLpPositions.mockReturnValue({
+      positions: [basePosition],
+      isLoading: false,
+      isHistoricalEnrichmentLoading: false,
+      error: undefined,
+    });
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockImplementation(() => {
+      throw new Error('blob unavailable');
+    });
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    render(<TaxExport address="thor1lpaddress" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Export CSV/i }));
+
+    expect(alert).not.toHaveBeenCalled();
+    expect(consoleError).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'LP CSV export failed. No file was downloaded. Try again after source data is available.'
+    );
+
+    createObjectURL.mockRestore();
+    alert.mockRestore();
+    consoleError.mockRestore();
   });
 });

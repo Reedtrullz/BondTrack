@@ -47,7 +47,21 @@ for (const file of files) {
   importsByFile.set(file, sources);
 }
 
-const entryLike = files.filter((file) => /(?:^|\/)(page|layout|route|middleware|instrumentation|setupTests|setup)\.(ts|tsx)$/.test(relative(root, file)) || /\.test\.(ts|tsx)$/.test(file));
+const nextSpecialFileRe = /(?:^|\/)(page|layout|route|loading|error|global-error|not-found|robots|sitemap|manifest|middleware|instrumentation|setupTests|setup)\.(ts|tsx)$/;
+const intentionalPublicModules = new Set([
+  'src/components/ui/index.ts',
+  'src/lib/types/index.ts',
+  'src/test/msw/browser.ts',
+]);
+
+const entryLike = files.filter((file) => {
+  const relativePath = relative(root, file);
+  return (
+    nextSpecialFileRe.test(relativePath) ||
+    /\.test\.(ts|tsx)$/.test(file) ||
+    intentionalPublicModules.has(relativePath)
+  );
+});
 const candidates = files
   .filter((file) => !imported.has(file))
   .filter((file) => !entryLike.includes(file))

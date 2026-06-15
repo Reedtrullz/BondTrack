@@ -117,12 +117,19 @@ secrets in `NEXT_PUBLIC_*` variables; they are bundled into client-side code.
 | `NEXT_PUBLIC_APP_URL` | Canonical app URL used by CORS/server diagnostics | `https://bond.thorchain.no` |
 | `NEXT_PUBLIC_USE_MOCK_DATA` | Local/test-only mock data toggle | `false` |
 | `COINAPI_KEY` | Optional server-side CoinAPI key; never expose as `NEXT_PUBLIC_*` | unset |
+| `TRUST_PROXY_HEADERS` | Server-side rate limiting: trust a deployment proxy's overwritten `X-Real-IP` header | `false` locally; `true` in production deploy |
+| `TRUST_X_FORWARDED_FOR` | Server-side rate limiting: also trust `X-Forwarded-For`; enable only when the full proxy chain sanitizes it | `false` |
+| `TRUST_CLOUDFLARE_HEADERS` | Server-side rate limiting: trust `CF-Connecting-IP` when directly behind Cloudflare | `false` |
+| `TRUST_VERCEL_PROXY_HEADERS` | Server-side rate limiting: trust Vercel forwarded IP headers outside the Vercel runtime | `false` |
 | `VERSION` | Runtime app version; Ansible sets this to the immutable deployed image tag | `sha-<short>` |
 
 `NEXT_PUBLIC_*` variables are build-time public configuration: Docker/CI passes
 them as `--build-arg` so browser JavaScript is baked deterministically. Runtime
 Ansible or Compose entries with the same names are for server-side rendering and
 diagnostics only; they do **not** rewrite an already-built client bundle.
+Proxy trust variables only affect server-side best-effort rate-limit identity.
+Leave forwarding headers untrusted unless the deployment proxy overwrites or
+sanitizes them.
 
 ## THORChain Data Conventions
 
@@ -290,7 +297,7 @@ After deployment, verify:
 - LP valuation clearly labels `current-only` or degraded pricing when historical data is unavailable.
 - Notification prompts stay non-blocking, and notification settings immediately affect live in-app alerts.
 - Portfolio/node quick actions preserve the intended BOND or UNBOND transaction mode.
-- Transaction preview shows wallet-estimated fee copy, memo copy feedback, and clear UNBOND memo semantics.
+- Transaction preview shows wallet/network-confirmed fee copy, memo copy feedback, and clear UNBOND memo semantics.
 - Rewards controls, tax export, changelog search, filters, and entry buttons all produce visible results.
 
 ## Contributing

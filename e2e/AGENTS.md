@@ -35,6 +35,8 @@ e2e/
 
 **API failures**: Same-origin `/api/*` 4xx/5xx responses fail tests by default. Use the `allowApiErrors([...])` fixture only in tests that intentionally assert error UI, and keep the allowlist path-specific.
 
+**Selectors**: Prefer semantic locators (`getByRole`, `getByLabel`, `getByPlaceholder`) scoped to the named region, landmark, card, table, tab panel, or toast under test. For duplicate text, first narrow the surface with a role/label/test id or `filter({ has: ... })`, then assert exact text within that scope. If the UI has no stable user-facing anchor, add an accessible name or a focused `data-testid` to the product surface instead of relying on broad page-level matches.
+
 ## COMMANDS
 ```bash
 npm run e2e       # Run all Playwright tests
@@ -46,5 +48,7 @@ npm run e2e:debug # Debug mode
 - Do not rely on `waitForTimeout` for state assertions — prefer explicit locators
 - Do not skip wallet mocks in CI — tests run headless without real extensions
 - Do not use fragile XPath locators — use semantic text/role locators
-- Use `.first()` when text locators match multiple elements
-- Use `{ exact: true }` for heading matches to avoid partial matches
+- Prefer semantic selectors that reflect the public read-only UI: `getByRole(..., { name })`, `getByLabel(...)`, and locators scoped through named regions, tab panels, menus, dialogs, or dashboard panels
+- Do not use broad `.first()`, `.nth()`, or `.last()` to silence duplicate text/role matches. Narrow by accessible role/name/level, `{ exact: true }`, a scoped `getByLabel(...)` parent, or `filter({ hasText })` first
+- `.first()`/`.nth()`/`.last()` are allowed only inside a scoped repeated collection when ordering is the behavior under test; leave an `e2e-selector-order-ok: <reason>` comment explaining the exception. Do not bypass this with computed access such as `locator['first']()`
+- Use `{ exact: true }` for page/title headings and compact repeated labels/buttons when partial matches could pass against duplicate or concatenated UI copy

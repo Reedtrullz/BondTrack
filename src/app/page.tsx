@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AddressInput } from '@/components/shared/address-input';
 import { RecentAddresses } from '@/components/shared/recent-addresses';
-import { Eye, Activity, TrendingUp, Zap, Globe, Lock, Wallet } from 'lucide-react';
+import { Database, Eye, Lock, RadioTower, ShieldCheck, WalletCards } from 'lucide-react';
 import { readDashboardAddress, writeDashboardAddress } from '@/lib/storage/keys';
 import { isValidTHORChainAddress } from '@/lib/utils/address-validation';
 import { useWatchlist } from '@/lib/hooks/use-watchlist';
@@ -29,98 +29,117 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col flex-1 items-center justify-center relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,158,11,0.08),transparent_50%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,rgba(6,182,212,0.03)_100%)]" />
-      
-      <main className="relative z-10 flex flex-1 w-full max-w-4xl flex-col items-center justify-center py-20 px-4 sm:px-8">
-        <div className="text-center mb-10 animate-fade-in-up">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500/80 to-amber-600/80 mb-6 shadow-xl shadow-amber-500/20 border border-amber-500/20">
-            <Eye className="w-10 h-10 text-amber-500" />
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 font-serif italic uppercase">
-            Heimdall
-          </h1>
-          <div className="text-sm font-bold uppercase text-amber-600 dark:text-amber-400 mb-3">
-            THORChain Dashboard
-          </div>
-          <p className="text-lg text-zinc-600 dark:text-zinc-400 max-w-lg mx-auto">
-            Monitor your bond provider positions with real-time health monitoring, rewards tracking, and risk analysis for the decentralized web.
-          </p>
-        </div>
+    <div className="min-h-screen bg-zinc-50 text-zinc-950 dark:bg-zinc-950 dark:text-zinc-50">
+      <main
+        id="main"
+        className="mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center px-4 py-8 sm:px-6 lg:px-8"
+      >
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)] lg:items-start">
+          <section className="space-y-6">
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-3 rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-amber-700 shadow-sm dark:border-amber-900/60 dark:bg-zinc-900 dark:text-amber-300">
+                <Eye className="h-4 w-4" aria-hidden="true" />
+                Heimdall
+              </div>
+              <div className="space-y-3">
+                <h1 className="max-w-3xl text-3xl font-bold leading-tight text-zinc-950 dark:text-zinc-50 sm:text-4xl">
+                  THORChain operations console
+                </h1>
+                <p className="max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400 sm:text-base">
+                  Enter a bond provider address, then inspect node risk, rewards,
+                  source freshness, and transaction readiness from one read-only dashboard.
+                </p>
+              </div>
+            </div>
 
-        <div className="w-full max-w-lg mb-8 animate-fade-in-up stagger-1">
-          <AddressInput onAddressSubmit={handleAddressSubmit} />
-        </div>
+            <section
+              aria-label="Address lookup"
+              className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5"
+            >
+              <div className="mb-4 flex flex-col gap-1">
+                <h2 className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">
+                  Start with a bond provider address
+                </h2>
+                <p className="text-sm leading-5 text-zinc-500 dark:text-zinc-400">
+                  Heimdall opens directly to the command center after a valid THORChain
+                  address or THORName resolves.
+                </p>
+              </div>
+              <AddressInput onAddressSubmit={handleAddressSubmit} />
+            </section>
 
-        <div className="w-full max-w-lg mb-12 animate-fade-in-up stagger-2">
-          <RecentAddresses />
-        </div>
+            <section
+              aria-label="Recent dashboard addresses"
+              className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5"
+            >
+              <RecentAddresses />
+            </section>
+          </section>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-3xl w-full animate-fade-in-up stagger-3">
-          <FeatureCard
-            icon={<Activity className="w-5 h-5 text-emerald-500" />}
-            title="Node Health"
-            description="Slash points, jail status, real-time monitoring"
-            color="emerald"
-          />
-          <FeatureCard
-            icon={<TrendingUp className="w-5 h-5 text-amber-500" />}
-            title="Earnings"
-            description="APY tracking, yield projections"
-            color="amber"
-          />
-          <FeatureCard
-            icon={<Zap className="w-5 h-5 text-cyan-500" />}
-            title="Risk Alerts"
-            description="Churn-out, unbond windows"
-            color="cyan"
-          />
-          <FeatureCard
-            icon={<Wallet className="w-5 h-5 text-purple-500" />}
-            title="Transactions"
-            description="Bond, unbond, track history"
-            color="purple"
-          />
-        </div>
+          <aside
+            aria-label="Heimdall trust boundaries"
+            className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+          >
+            <div className="mb-4">
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold uppercase text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
+                <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                Read-only by default
+              </div>
+              <h2 className="mt-3 text-lg font-semibold text-zinc-950 dark:text-zinc-50">
+                Trust boundaries
+              </h2>
+              <p className="mt-1 text-sm leading-5 text-zinc-500 dark:text-zinc-400">
+                Know what Heimdall stores, what it reads, and where wallet authority stays.
+              </p>
+            </div>
 
-        <div className="mt-16 flex flex-wrap items-center justify-center gap-6 text-xs text-zinc-500 animate-fade-in-up stagger-4">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Live Network Data</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Lock className="w-3 h-3" />
-            <span>Non-custodial</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Globe className="w-3 h-3" />
-            <span>THORChain Mainnet</span>
-          </div>
+            <div className="space-y-3">
+              <TrustBoundary
+                icon={<Database className="h-4 w-4" aria-hidden="true" />}
+                title="Public on-chain data"
+                detail="Address-bound dashboard data comes from THORNode and Midgard public endpoints."
+              />
+              <TrustBoundary
+                icon={<Lock className="h-4 w-4" aria-hidden="true" />}
+                title="Stored locally"
+                detail="Recent addresses and dismissed alerts stay in this browser."
+              />
+              <TrustBoundary
+                icon={<WalletCards className="h-4 w-4" aria-hidden="true" />}
+                title="Wallet confirms transactions"
+                detail="BOND and UNBOND payloads require wallet preview and confirmation before broadcast."
+              />
+              <TrustBoundary
+                icon={<RadioTower className="h-4 w-4" aria-hidden="true" />}
+                title="Source-aware dashboard"
+                detail="Operational pages surface degraded or stale source state before detailed metrics."
+              />
+            </div>
+          </aside>
         </div>
       </main>
     </div>
   );
 }
 
-function FeatureCard({ icon, title, description, color }: {
+function TrustBoundary({
+  icon,
+  title,
+  detail,
+}: {
   icon: React.ReactNode;
   title: string;
-  description: string;
-  color: 'emerald' | 'amber' | 'cyan' | 'purple';
+  detail: string;
 }) {
-  const colors = {
-    emerald: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50',
-    amber: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50',
-    cyan: 'bg-cyan-50 dark:bg-cyan-950/30 border-cyan-200 dark:border-cyan-800/50',
-    purple: 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800/50',
-  };
-  
   return (
-    <div className={`p-4 rounded-xl border ${colors[color]} bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm transition-all duration-300 group`}>
-      <div className="mb-2">{icon}</div>
-      <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">{title}</h3>
-      <p className="text-xs text-zinc-500 mt-0.5">{description}</p>
+    <div className="flex gap-3 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <h3 className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">{title}</h3>
+        <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">{detail}</p>
+      </div>
     </div>
   );
 }

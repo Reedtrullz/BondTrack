@@ -4,15 +4,69 @@ import { AlertTriangle, Shield, Server, Info, PlusCircle, MinusCircle } from 'lu
 import { calculatePortfolioHealth, getGradeColor } from '@/lib/utils/health-score';
 import { useState } from 'react';
 import Link from 'next/link';
+import { formatBasisPoints, formatRuneDisplayNumber } from '@/lib/utils/formatters';
+import { getCandidateBondSourceSafety, type CandidateBondSourceSafety } from '@/lib/dashboard/candidate-bond-source-safety';
+import { isUrgentNodeException } from '@/lib/dashboard/nodes-context';
 
 interface NodeStatusCardProps {
   position: BondPosition;
   address?: string | null;
+  sourceSafety?: CandidateBondSourceSafety;
 }
 
-export function NodeStatusCard({ position, address }: NodeStatusCardProps) {
+const DEFAULT_SOURCE_SAFETY = getCandidateBondSourceSafety('unknown');
+
+function isUsableNodeMetric(value: number): boolean {
+  return Number.isFinite(value) && value >= 0;
+}
+
+function formatNodeNumber(value: number): string {
+  return isUsableNodeMetric(value) ? value.toLocaleString() : '--';
+}
+
+export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURCE_SAFETY }: NodeStatusCardProps) {
   const health = calculatePortfolioHealth([position]);
   const [isHovered, setIsHovered] = useState(false);
+  const hasHighSlash = isUsableNodeMetric(position.slashPoints) && position.slashPoints > 100;
+  const requiresBondReview = isUrgentNodeException(position);
+  const buildTransactionHref = (action: 'bond' | 'unbond') => {
+    const params = new URLSearchParams();
+
+    if (address?.trim()) {
+      params.set('address', address);
+    }
+
+    params.set('node', position.nodeAddress);
+    params.set('action', action);
+
+    return `/dashboard/transactions?${params.toString()}`;
+  };
+  const buildRiskHref = (hash?: string) => {
+    const params = new URLSearchParams();
+
+    if (address?.trim()) {
+      params.set('address', address);
+    }
+
+    params.set('node', position.nodeAddress);
+
+    return `/dashboard/risk?${params.toString()}${hash ? `#${hash}` : ''}`;
+  };
+  const bondReviewAction = !sourceSafety.canPrepareBond
+    ? {
+        detail: sourceSafety.detail,
+        href: buildRiskHref('risk-source-confidence'),
+        label: 'Review source confidence',
+        statusLabel: sourceSafety.statusLabel,
+      }
+    : requiresBondReview
+      ? {
+          detail: 'This node is flagged in the urgent exception set. Review jail, slash, churn, and yield-guard context before preparing a BOND memo.',
+          href: buildRiskHref(),
+          label: 'Review risk first',
+          statusLabel: 'Risk review required',
+        }
+      : null;
 
   return (
     <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm space-y-3 relative group hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-md hover:shadow-emerald-500/10 transition-all">
@@ -48,17 +102,19 @@ export function NodeStatusCard({ position, address }: NodeStatusCardProps) {
         <div>
           <div className="text-xs text-zinc-500">Total Bond</div>
           <div className="font-medium text-zinc-900 dark:text-zinc-100">
-            {position.totalBond.toLocaleString(undefined, { maximumFractionDigits: 0 })} RUNE
+            {isUsableNodeMetric(position.totalBond) ? `${formatRuneDisplayNumber(position.totalBond, 0)} RUNE` : '--'}
           </div>
         </div>
         <div>
           <div className="text-xs text-zinc-500">Operator Fee</div>
-          <div className="font-medium text-zinc-900 dark:text-zinc-100">{position.operatorFeeFormatted}</div>
+          <div className="font-medium text-zinc-900 dark:text-zinc-100">
+            {isUsableNodeMetric(position.operatorFee) ? formatBasisPoints(position.operatorFee) : '--'}
+          </div>
         </div>
         <div>
           <div className="text-xs text-zinc-500">Slash Points</div>
-          <div className={cn('font-medium', position.slashPoints > 100 ? 'text-red-500' : 'text-zinc-900 dark:text-zinc-100')}>
-            {position.slashPoints.toLocaleString()}
+          <div className={cn('font-medium', hasHighSlash ? 'text-red-500' : 'text-zinc-900 dark:text-zinc-100')}>
+            {formatNodeNumber(position.slashPoints)}
           </div>
         </div>
         <div>
@@ -67,22 +123,40 @@ export function NodeStatusCard({ position, address }: NodeStatusCardProps) {
         </div>
       </div>
 
-      {/* Quick Actions - only visible on hover to keep UI clean */}
-      <div className="flex items-center gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Link 
-          href={`/dashboard/transactions?address=${address}&node=${position.nodeAddress}&action=bond&amount=10000`}
-          className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded text-[10px] font-bold uppercase hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
-        >
-          <PlusCircle className="w-3 h-3" />
-          Bond 10k
-        </Link>
-        <Link 
-          href={`/dashboard/transactions?address=${address}&node=${position.nodeAddress}&action=unbond`}
-          className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded text-[10px] font-bold uppercase hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
-        >
-          <MinusCircle className="w-3 h-3" />
-          Unbond
-        </Link>
+      {/* Transaction prep actions */}
+      <div className="grid grid-cols-1 gap-2 border-t border-zinc-100 pt-2 dark:border-zinc-800 sm:grid-cols-2">
+        {bondReviewAction ? (
+          <Link
+            href={bondReviewAction.href}
+            className="inline-flex min-h-10 min-w-0 items-center justify-center gap-1 rounded border border-amber-200 bg-amber-50 px-2 py-2 text-center text-[11px] font-bold uppercase leading-tight text-amber-800 transition-colors hover:bg-amber-100 dark:border-amber-900/60 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40"
+          >
+            <AlertTriangle className="h-3 w-3 shrink-0" />
+            <span>{bondReviewAction.label}</span>
+          </Link>
+        ) : (
+          <Link
+            href={buildTransactionHref('bond')}
+            className="inline-flex min-h-10 min-w-0 items-center justify-center gap-1 rounded bg-emerald-50 px-2 py-2 text-center text-[11px] font-bold uppercase leading-tight text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+          >
+            <PlusCircle className="h-3 w-3 shrink-0" />
+            Prepare BOND Memo
+          </Link>
+        )}
+        {sourceSafety.canPrepareBond && (
+          <Link
+            href={buildTransactionHref('unbond')}
+            className="inline-flex min-h-10 min-w-0 items-center justify-center gap-1 rounded bg-amber-50 px-2 py-2 text-center text-[11px] font-bold uppercase leading-tight text-amber-700 transition-colors hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40"
+          >
+            <MinusCircle className="h-3 w-3 shrink-0" />
+            Prepare UNBOND Memo
+          </Link>
+        )}
+        {bondReviewAction && (
+          <p className="text-xs leading-5 text-zinc-600 dark:text-zinc-400 sm:col-span-2">
+            <span className="font-semibold text-zinc-800 dark:text-zinc-200">{bondReviewAction.statusLabel}: </span>
+            {bondReviewAction.detail}
+          </p>
+        )}
       </div>
 
       {position.isJailed && position.jailReason && (
@@ -99,7 +173,7 @@ export function NodeStatusCard({ position, address }: NodeStatusCardProps) {
         </div>
       )}
 
-      {position.slashPoints > 100 && (
+      {hasHighSlash && (
         <div className="flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded text-xs text-orange-600 dark:text-orange-400">
           <Server className="w-3.5 h-3.5 shrink-0" />
           <span>High slash points ({position.slashPoints.toLocaleString()})</span>

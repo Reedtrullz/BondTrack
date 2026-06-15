@@ -1,11 +1,12 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { LoadingSkeleton } from '@/components/shared/loading-skeleton';
-import { AlertToast } from '@/components/alerts/alert-toast';
+import { AddressRequiredState } from '@/components/dashboard/address-required-state';
+import { AlertReviewTrigger, AlertToast, NotificationPermissionNudge } from '@/components/alerts/alert-toast';
 import { AlertProvider, useAlertsContext } from '@/lib/hooks/use-alerts';
 import { ApiHealthProvider } from '@/lib/hooks/use-api-health';
 import { useBondPositionAlerts } from '@/lib/hooks/use-bond-position-alerts';
@@ -14,9 +15,7 @@ import { WalletProvider } from '@/lib/hooks/use-wallet';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useProtocolVersion } from '@/lib/hooks/use-protocol-version';
 import { UpgradeAlertBanner } from '@/components/dashboard/upgrade-alert-banner';
-import Link from 'next/link';
-import { Home } from 'lucide-react';
-import { clearLegacyDashboardAddressKeys, readDashboardAddress, removeDashboardAddress, STORAGE_KEYS, writeDashboardAddress } from '@/lib/storage/keys';
+import { clearLegacyDashboardAddressKeys, readDashboardAddress, writeDashboardAddress } from '@/lib/storage/keys';
 import { isValidTHORChainAddress } from '@/lib/utils/address-validation';
 
 function readSavedAddress() {
@@ -49,17 +48,42 @@ function DashboardContentInner({ children }: { children: ReactNode }) {
     checkStatusChange,
   } = useAlertsContext();
   const { addAddress } = useWatchlist();
-  const { currentVersion, latestVersion, hasUpgrade } = useProtocolVersion();
   const [savedAddress, setSavedAddress] = useState<string | null>(null);
+  const [isAlertReviewOpen, setIsAlertReviewOpen] = useState(false);
   const effectiveAddress = invalidUrlAddress ? null : (urlAddress ?? savedAddress);
   const isChangelogsRoute = pathname?.startsWith('/dashboard/changelogs');
+  const isNotificationSettingsRoute = pathname?.startsWith('/dashboard/settings/notifications');
   const requiresAddress = !isChangelogsRoute;
+  const shouldLoadShellData = !requiresAddress || Boolean(effectiveAddress);
+  const { currentVersion, latestVersion, hasUpgrade } = useProtocolVersion({
+    enabled: shouldLoadShellData,
+  });
+  const notificationSettingsHref = useMemo(() => {
+    if (!effectiveAddress) {
+      return '/dashboard/settings/notifications';
+    }
+
+    const params = new URLSearchParams();
+    params.set('address', effectiveAddress);
+
+    return `/dashboard/settings/notifications?${params.toString()}`;
+  }, [effectiveAddress]);
   const alertChecks = useMemo(() => ({
     triggerAlert,
     checkSlash,
     checkJail,
     checkStatusChange,
   }), [triggerAlert, checkSlash, checkJail, checkStatusChange]);
+  const handleAddressRequiredSubmit = useCallback((address: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    const targetPathname = pathname ?? '/dashboard';
+
+    params.set('address', address);
+    writeDashboardAddress(address);
+    addAddress(address);
+    setSavedAddress(address);
+    router.push(`${targetPathname}?${params.toString()}`);
+  }, [addAddress, pathname, router, searchParams]);
 
   useBondPositionAlerts(effectiveAddress, alertChecks);
 
@@ -75,13 +99,8 @@ function DashboardContentInner({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const current = localStorage.getItem(STORAGE_KEYS.dashboardAddress);
+    const current = readDashboardAddress();
     if (current) {
-      if (!isValidTHORChainAddress(current)) {
-        removeDashboardAddress();
-        setSavedAddress(null);
-        return;
-      }
       clearLegacyDashboardAddressKeys();
       if (current !== savedAddress) {
         setSavedAddress(current);
@@ -102,8 +121,11 @@ function DashboardContentInner({ children }: { children: ReactNode }) {
       if (savedAddress) {
         const params = new URLSearchParams(searchParams.toString());
         params.set('address', savedAddress);
-        router.replace(`?${params.toString()}`);
-        return;
+        const timeoutId = window.setTimeout(() => {
+          router.replace(`?${params.toString()}`);
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
       }
     }
   }, [urlAddress, router, savedAddress, searchParams]);
@@ -118,32 +140,18 @@ function DashboardContentInner({ children }: { children: ReactNode }) {
     setSavedAddress(urlAddress);
   }, [addAddress, urlAddress]);
 
+  useEffect(() => {
+    if (alerts.length === 0) {
+      setIsAlertReviewOpen(false);
+    }
+  }, [alerts.length]);
+
   if (requiresAddress && !effectiveAddress) {
     return (
-      <div className="flex min-h-screen">
-        <main className="flex-1 p-4 md:p-6 flex flex-col items-center justify-center">
-          <div className="text-center space-y-6 max-w-md">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 mb-2">
-              <Home className="w-8 h-8 text-zinc-400" />
-            </div>
-            <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-              {invalidUrlAddress ? 'Address link is invalid' : 'Enter an address to get started'}
-            </h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              {invalidUrlAddress
-                ? 'The dashboard URL contains a malformed address. Heimdall ignored that link and did not change your saved address.'
-                : 'Provide a THORChain address to view your portfolio, node health, and rewards.'}
-            </p>
-            <Link
-              href="/"
-              className="inline-flex items-center justify-center gap-2 h-10 px-5 py-2.5 rounded-lg text-sm font-semibold bg-amber-500 text-white shadow-md shadow-amber-500/25 hover:bg-amber-600 hover:shadow-xl hover:shadow-amber-500/30 transition-all duration-300"
-            >
-              <Home className="w-4 h-4" />
-              Go to Home
-            </Link>
-          </div>
-        </main>
-      </div>
+      <AddressRequiredState
+        invalidUrlAddress={invalidUrlAddress}
+        onAddressSubmit={handleAddressRequiredSubmit}
+      />
     );
   }
 
@@ -151,7 +159,35 @@ function DashboardContentInner({ children }: { children: ReactNode }) {
     <ErrorBoundary>
       <WalletProvider>
         <ApiHealthProvider>
-          <DashboardShell requireAddress={requiresAddress ? !!effectiveAddress : false}>
+          <DashboardShell
+            requireAddress={requiresAddress ? !!effectiveAddress : false}
+            alertReviewPanel={alerts.length > 0 && isAlertReviewOpen ? (
+              <AlertToast
+                alerts={alerts}
+                dashboardAddress={effectiveAddress}
+                isReviewOpen={isAlertReviewOpen}
+                onDismiss={dismissAlert}
+                onReviewOpenChange={setIsAlertReviewOpen}
+                presentation="inspector"
+                renderCollapsedTrigger={false}
+              />
+            ) : null}
+            alertReviewTrigger={alerts.length > 0 ? (
+              <AlertReviewTrigger
+                alerts={alerts}
+                isReviewOpen={isAlertReviewOpen}
+                onOpen={() => setIsAlertReviewOpen(true)}
+                variant="header"
+              />
+            ) : null}
+            notificationNudge={!isNotificationSettingsRoute ? (
+              <NotificationPermissionNudge
+                permission={permission}
+                onRequestPermission={requestPermission}
+                settingsHref={notificationSettingsHref}
+              />
+            ) : null}
+          >
             {hasUpgrade && currentVersion && (
               <UpgradeAlertBanner
                 currentVersion={currentVersion}
@@ -162,12 +198,6 @@ function DashboardContentInner({ children }: { children: ReactNode }) {
             {children}
           </DashboardShell>
         </ApiHealthProvider>
-        <AlertToast
-          alerts={alerts}
-          onDismiss={dismissAlert}
-          permission={permission}
-          onRequestPermission={requestPermission}
-        />
       </WalletProvider>
     </ErrorBoundary>
   );

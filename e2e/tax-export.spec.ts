@@ -151,7 +151,7 @@ async function setupMocks(page: Page) {
     if (url.pathname === '/api/thorchain/thorchain/constants') {
       await route.fulfill({
         json: {
-          int_64_values: { OptimalBondD: 2500000000000 },
+          int_64_values: { MaxBondProviders: 100 },
           bool_values: {},
           string_values: {},
         },
@@ -215,15 +215,38 @@ test.describe('Tax export flow', () => {
     await page.goto(`/dashboard/rewards?address=${MOCK_ADDRESS}`);
   });
 
-  test('opens the tax report modal from the export button', async ({ page }) => {
+  test('opens the tax worksheet modal from the export button', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Rewards' })).toBeVisible();
     await page.getByRole('tab', { name: 'Tax' }).click();
-    await expect(page.getByRole('heading', { name: 'Tax-ready reward export' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Export Tax Report' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Reward tax worksheet' })).toBeVisible();
+    await expect(page.getByText(/not a filing-ready tax report/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Export Worksheet CSV' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Export Tax Report' }).click();
+    await page.getByRole('button', { name: 'Export Worksheet CSV' }).click();
 
+    await expect(page.getByRole('heading', { name: 'Export tax worksheet CSV' })).toBeVisible();
+    await expect(page.getByText(/Use it for reconciliation before tax filing/i)).toBeVisible();
     await expect(page.locator('input[type="date"]')).toHaveCount(2);
     await expect(page.getByRole('button', { name: 'Download CSV' })).toBeVisible();
+  });
+
+  test('shows tax worksheet API failures inside the modal without console noise', async ({ page, allowApiErrors }) => {
+    allowApiErrors(['/api/tax-report']);
+    await page.route('**/api/tax-report', async (route) => {
+      await route.fulfill({
+        status: 503,
+        json: { error: 'Tax worksheet source unavailable' },
+      });
+    });
+
+    await page.getByRole('tab', { name: 'Tax' }).click();
+    await page.getByRole('button', { name: 'Export Worksheet CSV' }).click();
+    await page.getByLabel('Start Date').fill('2026-01-01');
+    await page.getByLabel('End Date').fill('2026-01-31');
+    await page.getByRole('button', { name: 'Download CSV' }).click();
+
+    const modalAlert = page.locator('[role="alert"]').filter({ hasText: 'Tax worksheet source unavailable' });
+    await expect(modalAlert).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Download CSV' })).toBeEnabled();
   });
 });

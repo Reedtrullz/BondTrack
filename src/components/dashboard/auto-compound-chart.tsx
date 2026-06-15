@@ -77,13 +77,18 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
   const finalEntry = projectionData[projectionData.length - 1];
   const compoundGainsRune = finalEntry ? finalEntry.activeRune - finalEntry.passiveRune : 0;
   const compoundGainsValue = viewMode === 'rune' ? compoundGainsRune : compoundGainsRune * effectivePrice;
+  const priceScenarios = [currentRunePrice, 10, 20, 50, 100].filter(
+    (price): price is number => typeof price === 'number' && Number.isFinite(price)
+  );
 
   return (
     <div className="p-8 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
         <div>
           <h3 className="text-xs font-bold text-zinc-400 uppercase mb-1">Compound Growth Forecast</h3>
-          <p className="text-sm text-zinc-500">Projected 1Y trajectory ({useHistoricalBaseline ? 'Historical Blended' : 'Current APY'})</p>
+          <p className="text-sm text-zinc-500">
+            Projected 1Y estimate ({useHistoricalBaseline ? 'historical blend' : 'current APY basis'})
+          </p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
@@ -95,13 +100,13 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
             className={cn(
               "flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all",
               useHistoricalBaseline 
-                ? "bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400"
+                ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900 text-blue-700 dark:text-blue-300"
                 : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-500"
             )}
-            title="Uses a 30-day trailing average APY for more realistic forecasting"
+            title="Uses a 180-day historical APY blend for steadier scenario estimates"
           >
             <BarChart3 className="w-3.5 h-3.5" />
-            <span>Realistic Mode</span>
+            <span>Historical blend</span>
           </button>
 
           {/* Currency Toggle */}
@@ -135,24 +140,29 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
       {/* Price Target Selector (only in USD mode) */}
       {viewMode === 'usd' && (
         <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
-          <span className="text-[10px] font-bold text-zinc-400 uppercase whitespace-nowrap mr-2">Moon Scenarios:</span>
-          {[currentRunePrice, 10, 20, 50, 100].map((price) => (
-            <button
-              type="button"
-              key={price}
-              aria-pressed={targetPrice === price || (price === currentRunePrice && targetPrice === null)}
-              onClick={() => setTargetPrice(price === currentRunePrice ? null : price as number)}
-              className={cn(
-                "px-3 py-1 rounded-lg border text-xs font-mono transition-all whitespace-nowrap",
-                (targetPrice === price || (price === currentRunePrice && targetPrice === null))
-                  ? "bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20"
-                  : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-400"
-              )}
-            >
-              ${price?.toFixed(price < 10 ? 2 : 0)}
-              {price === currentRunePrice && " (Live)"}
-            </button>
-          ))}
+          <span className="text-[10px] font-bold text-zinc-400 uppercase whitespace-nowrap mr-2">Price scenarios:</span>
+          {priceScenarios.map((price) => {
+            const isCurrentQuote = price === currentRunePrice;
+            const isSelected = targetPrice === price || (isCurrentQuote && targetPrice === null);
+
+            return (
+              <button
+                type="button"
+                key={price}
+                aria-pressed={isSelected}
+                onClick={() => setTargetPrice(isCurrentQuote ? null : price)}
+                className={cn(
+                  "px-3 py-1 rounded-lg border text-xs font-mono transition-all whitespace-nowrap",
+                  isSelected
+                    ? "bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20"
+                    : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-400"
+                )}
+              >
+                ${price.toFixed(price < 10 ? 2 : 0)}
+                {isCurrentQuote ? ' (current quote)' : null}
+              </button>
+            );
+          })}
         </div>
       )}
       
@@ -282,7 +292,7 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
             {forecastApy.toFixed(2)}%
           </div>
           <div className="text-[10px] text-emerald-600/60 mt-1 flex items-center gap-1">
-            Using {useHistoricalBaseline ? '180d average' : 'live APY'} 
+            Using {useHistoricalBaseline ? '180d historical blend' : 'current APY'}
             <Info className="w-3 h-3" />
           </div>
         </div>

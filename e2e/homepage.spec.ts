@@ -7,8 +7,20 @@ test.describe('Homepage', () => {
   });
 
   test('displays app title and description', async ({ page }) => {
-    await expect(page.getByText('Heimdall').first()).toBeVisible();
-    await expect(page.getByText('Monitor your bond provider positions')).toBeVisible();
+    const main = page.getByRole('main');
+    const lookup = page.getByRole('region', { name: 'Address lookup' });
+
+    await expect(main.getByText('Heimdall', { exact: true })).toBeVisible();
+    await expect(main.getByRole('heading', {
+      level: 1,
+      name: 'THORChain operations console',
+      exact: true,
+    })).toBeVisible();
+    await expect(lookup.getByRole('heading', {
+      level: 2,
+      name: 'Start with a bond provider address',
+      exact: true,
+    })).toBeVisible();
   });
 
   test('displays address input field', async ({ page }) => {
@@ -16,11 +28,17 @@ test.describe('Homepage', () => {
     await expect(input).toBeVisible();
   });
 
-  test('displays feature cards', async ({ page }) => {
-    await expect(page.getByText('Node Health').first()).toBeVisible();
-    await expect(page.getByText('Earnings').first()).toBeVisible();
-    await expect(page.getByText('Risk Alerts').first()).toBeVisible();
-    await expect(page.getByText('Transactions').first()).toBeVisible();
+  test('shows trust boundaries instead of marketing feature cards', async ({ page }) => {
+    const main = page.getByRole('main');
+    const trustPanel = page.getByRole('complementary', {
+      name: 'Heimdall trust boundaries',
+      exact: true,
+    });
+
+    await expect(trustPanel).toContainText('Public on-chain data');
+    await expect(trustPanel).toContainText('Stored locally');
+    await expect(trustPanel).toContainText('Wallet confirms transactions');
+    await expect(main.getByRole('heading', { name: 'Node Health', exact: true })).toHaveCount(0);
   });
 
   test('shows Lookup button', async ({ page }) => {
@@ -41,9 +59,21 @@ test.describe('Homepage', () => {
     await expect(page.getByText('Enter a valid THORChain address.')).toBeVisible();
   });
 
-  test('displays Shield icon', async ({ page }) => {
-    const icon = page.locator('svg').first();
-    await expect(icon).toBeVisible();
+  test('puts lookup before secondary context', async ({ page }) => {
+    const lookup = page.getByLabel('Address lookup');
+    const trustPanel = page.getByLabel('Heimdall trust boundaries');
+
+    await expect(lookup).toBeVisible();
+    await expect(trustPanel).toBeVisible();
+
+    const lookupBeforeTrust = await lookup.evaluate((element) => {
+      const trust = document.querySelector('[aria-label="Heimdall trust boundaries"]');
+      return Boolean(
+        trust
+        && (element.compareDocumentPosition(trust) & Node.DOCUMENT_POSITION_FOLLOWING)
+      );
+    });
+    expect(lookupBeforeTrust).toBe(true);
   });
 
   test('adds successful lookups to recent addresses', async ({ page }) => {

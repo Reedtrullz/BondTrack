@@ -14,7 +14,12 @@ const sampleChangelogs = [
       {
         type: 'bug' as const,
         title: 'Fix shipped',
-        description: 'A critical fix shipped.',
+        description: 'A critical node operator fix shipped.',
+      },
+      {
+        type: 'feature' as const,
+        title: 'LP reporting improved',
+        description: 'Liquidity provider accounting now highlights pool exposure.',
       },
     ],
   },
@@ -83,6 +88,58 @@ describe('ChangelogsPage', () => {
     });
   });
 
+  it('keeps mobile changelog filters collapsed until requested', () => {
+    render(<ChangelogsPage />);
+
+    const mobileFilterToggle = screen.getByTestId('changelog-mobile-filter-toggle');
+    const filterGroup = screen.getByTestId('changelog-type-filters');
+
+    expect(mobileFilterToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(filterGroup.className).toContain('hidden');
+    expect(filterGroup.className).toContain('flex-wrap');
+    expect(filterGroup.className).not.toContain('overflow-x-auto');
+
+    fireEvent.click(mobileFilterToggle);
+
+    expect(mobileFilterToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(filterGroup.className).not.toContain('hidden');
+    expect(filterGroup.className).toContain('flex');
+    expect(screen.getByRole('button', { name: /operator impact/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /upgrade required/i })).toBeInTheDocument();
+  });
+
+  it('derives the operational impact summary from the loaded archive', () => {
+    render(<ChangelogsPage />);
+
+    const summary = screen.getByLabelText('Changelog operational impact summary');
+
+    expect(summary).toHaveTextContent('March 2026 update');
+    expect(summary).toHaveTextContent('2 protocol updates');
+    expect(summary).toHaveTextContent('Operator impact');
+    expect(summary).toHaveTextContent('1');
+    expect(summary).not.toHaveTextContent('Latest Release');
+    expect(summary).not.toHaveTextContent('v3.16');
+  });
+
+  it('scopes the operational summary to the active impact filter', async () => {
+    render(<ChangelogsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /operator impact/i }));
+
+    const summary = screen.getByLabelText('Changelog operational impact summary');
+
+    await waitFor(() => {
+      expect(mocks.replace).toHaveBeenLastCalledWith('?type=operator-impact', { scroll: false });
+    });
+
+    expect(summary).toHaveTextContent('Filtered view');
+    expect(summary).toHaveTextContent('Operator Impact');
+    expect(summary).toHaveTextContent('1 matching update');
+    expect(summary).toHaveTextContent('narrowed to 1 of 2 archived updates');
+    expect(summary).toHaveTextContent('Operator impact');
+    expect(summary).toHaveTextContent('LP impact0');
+  });
+
   it('keeps the clicked filter active until search params catch up', async () => {
     render(<ChangelogsPage />);
 
@@ -128,6 +185,23 @@ describe('ChangelogsPage', () => {
     });
   });
 
+  it('restores saved expanded months after mount without losing the operator preference', async () => {
+    localStorage.setItem('changelogs-expanded', '["mar-2026"]');
+
+    render(<ChangelogsPage />);
+
+    const cardToggle = await screen.findByRole('button', { name: /march 2026 update/i });
+
+    await waitFor(() => {
+      const contentWrapper = cardToggle.nextElementSibling as HTMLElement;
+
+      expect(cardToggle.getAttribute('aria-expanded')).toBe('true');
+      expect(contentWrapper.className).toContain('max-h-[3000px]');
+      expect(contentWrapper.className).toContain('opacity-100');
+      expect(localStorage.getItem('changelogs-expanded')).toBe('["mar-2026"]');
+    });
+  });
+
   it('persists collapse-all by storing an empty expanded set', async () => {
     render(<ChangelogsPage />);
 
@@ -140,6 +214,34 @@ describe('ChangelogsPage', () => {
       expect(cardToggle.getAttribute('aria-expanded')).toBe('false');
       expect(localStorage.getItem('changelogs-expanded')).toBe('[]');
     });
+  });
+
+  it('keeps changelogs usable when browser storage is unavailable', async () => {
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(window, 'localStorage');
+
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new Error('localStorage denied');
+      },
+    });
+
+    try {
+      render(<ChangelogsPage />);
+
+      const cardToggle = await screen.findByRole('button', { name: /march 2026 update/i });
+      expect(cardToggle).toHaveAttribute('aria-expanded', 'true');
+
+      fireEvent.click(cardToggle);
+
+      await waitFor(() => {
+        expect(cardToggle).toHaveAttribute('aria-expanded', 'false');
+      });
+    } finally {
+      if (originalLocalStorage) {
+        Object.defineProperty(window, 'localStorage', originalLocalStorage);
+      }
+    }
   });
 
   it('offers a reset when saved expanded state is corrupted', async () => {

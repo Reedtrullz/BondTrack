@@ -42,6 +42,10 @@ describe('/api/tax-report', () => {
     expect(response.headers.get('Access-Control-Allow-Methods')).toBe('POST, OPTIONS');
     expect(response.headers.get('Cache-Control')).toBe('no-store, private');
     expect(response.headers.get('X-Heimdall-Tax-Warnings')).toBe('[]');
+    expect(response.headers.get('Content-Disposition')).toBe(
+      `attachment; filename="tax-worksheet-${address.slice(0, 8)}-2024-01-01-to-2024-12-31.csv"`
+    );
+    expect(response.headers.get('Content-Disposition')).not.toContain('tax-report');
   });
 
   it('surfaces incomplete-history warnings in response headers without changing CSV content', async () => {

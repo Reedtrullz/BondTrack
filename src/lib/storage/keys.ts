@@ -49,11 +49,27 @@ function safeRemove(storage: Storage | undefined, key: string): void {
 }
 
 function getBrowserLocalStorage(): Storage | undefined {
-  return typeof window === 'undefined' ? undefined : window.localStorage;
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
 }
 
 function getBrowserSessionStorage(): Storage | undefined {
-  return typeof window === 'undefined' ? undefined : window.sessionStorage;
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  try {
+    return window.sessionStorage;
+  } catch {
+    return undefined;
+  }
 }
 
 export function clearLegacyDashboardAddressKeys(
@@ -94,12 +110,24 @@ export function readDashboardAddress(): string | null {
   return migrateDashboardAddressStorage();
 }
 
+export function readLocalStorageValue(key: string): string | null {
+  return safeGet(getBrowserLocalStorage(), key);
+}
+
+export function writeLocalStorageValue(key: string, value: string): void {
+  safeSet(getBrowserLocalStorage(), key, value);
+}
+
+export function removeLocalStorageValue(key: string): void {
+  safeRemove(getBrowserLocalStorage(), key);
+}
+
 export function writeDashboardAddress(address: string): void {
-  safeSet(getBrowserLocalStorage(), STORAGE_KEYS.dashboardAddress, address);
+  writeLocalStorageValue(STORAGE_KEYS.dashboardAddress, address);
 }
 
 export function removeDashboardAddress(): void {
-  safeRemove(getBrowserLocalStorage(), STORAGE_KEYS.dashboardAddress);
+  removeLocalStorageValue(STORAGE_KEYS.dashboardAddress);
 }
 
 export function getInitialBondStorageKey(address: string | null): string | null {
@@ -116,4 +144,12 @@ export function getUpgradeAlertDismissedStorageKey(latestVersion: string): strin
 
 export function getThorNameReverseLookupStorageKey(address: string): string {
   return `${STORAGE_KEYS.thorNameReverseLookupPrefix}${address}`;
+}
+
+export function readThorNameReverseLookupCache(address: string): string | null {
+  return safeGet(getBrowserSessionStorage(), getThorNameReverseLookupStorageKey(address));
+}
+
+export function writeThorNameReverseLookupCache(address: string, value: string): void {
+  safeSet(getBrowserSessionStorage(), getThorNameReverseLookupStorageKey(address), value);
 }

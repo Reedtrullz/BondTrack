@@ -65,12 +65,14 @@ function WalletOption({
   icon,
   onClick,
   disabled,
+  describedBy,
 }: {
   name: string;
   testId: string;
   icon: React.ReactNode;
   onClick: () => void;
   disabled?: boolean;
+  describedBy?: string;
 }) {
   return (
     <button
@@ -78,6 +80,7 @@ function WalletOption({
       data-testid={testId}
       onClick={onClick}
       disabled={disabled}
+      aria-describedby={describedBy}
       role="menuitem"
       className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
     >
@@ -105,6 +108,8 @@ export function WalletConnect() {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = isConnected ? 'wallet-account-menu' : 'wallet-connect-menu';
+  const noWalletMessageId = 'wallet-no-provider-message';
+  const hasDetectedWallet = Boolean(availableWallets);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -256,6 +261,15 @@ export function WalletConnect() {
             </div>
           )}
 
+          {!hasDetectedWallet && (
+            <div
+              id={noWalletMessageId}
+              className="mx-3 mb-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+            >
+              No wallet provider was detected in this browser. Install or unlock Keplr, XDEFI, or Vultisig to enable connection.
+            </div>
+          )}
+
           {availableWallets === 'keplr' || !availableWallets ? (
             <div className="px-1">
               <WalletOption
@@ -265,7 +279,8 @@ export function WalletConnect() {
                 onClick={() => {
                   connect('keplr');
                 }}
-                disabled={isConnecting}
+                disabled={isConnecting || !hasDetectedWallet}
+                describedBy={!hasDetectedWallet ? noWalletMessageId : undefined}
               />
             </div>
           ) : null}
@@ -279,7 +294,8 @@ export function WalletConnect() {
                 onClick={() => {
                   connect('xdefi');
                 }}
-                disabled={isConnecting}
+                disabled={isConnecting || !hasDetectedWallet}
+                describedBy={!hasDetectedWallet ? noWalletMessageId : undefined}
               />
             </div>
           ) : null}
@@ -293,16 +309,11 @@ export function WalletConnect() {
                 onClick={() => {
                   connect('vultisig');
                 }}
-                disabled={isConnecting}
+                disabled={isConnecting || !hasDetectedWallet}
+                describedBy={!hasDetectedWallet ? noWalletMessageId : undefined}
               />
             </div>
           ) : null}
-
-          {!availableWallets && (
-            <div className="px-3 py-4 text-center text-sm text-zinc-500">
-              No wallet detected. Please install Keplr, XDEFI, or Vultisig.
-            </div>
-          )}
         </div>
       )}
     </div>

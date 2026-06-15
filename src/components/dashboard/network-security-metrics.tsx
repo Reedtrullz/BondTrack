@@ -6,6 +6,7 @@ import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { runeToNumber, formatCompactNumber } from '@/lib/utils/formatters';
 import type { BondPosition } from '@/lib/types/node';
 import { Shield, Lock, Activity, TrendingUp, TrendingDown, Minus, Wallet, Users, Zap, Coins, Clock } from 'lucide-react';
+import { getIncentivePendulumModel } from '@/lib/dashboard/risk-context';
 
 function calculateNetworkHealth(bondToPoolRatio: number): 'healthy' | 'warning' | 'critical' {
   if (bondToPoolRatio >= 1.5) return 'healthy';
@@ -58,6 +59,19 @@ function getPendulumStatus(bondToPoolRatio: number): { status: string; icon: Rea
   };
 }
 
+function parseRawRuneBond(raw: string | number | undefined): bigint {
+  try {
+    if (typeof raw === 'number') {
+      return Number.isFinite(raw) && raw > 0 ? BigInt(Math.round(raw)) : 0n;
+    }
+
+    if (!raw) return 0n;
+    return BigInt(raw);
+  } catch {
+    return 0n;
+  }
+}
+
 export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition[] }) {
   const { data: network, error, isLoading: networkLoading } = useNetworkMetrics();
   const { isLoading: constantsLoading } = useNetworkConstants();
@@ -77,7 +91,8 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
   const totalStandbyBonds = runeToNumber(network.bondMetrics?.totalStandbyBond || '0');
   const totalBonds = totalActiveBonds + totalStandbyBonds;
   const totalLiquidity = runeToNumber(network.totalPooledRune || '0');
-  const bondToPoolRatio = totalLiquidity > 0 ? totalBonds / totalLiquidity : 0;
+  const incentivePendulum = getIncentivePendulumModel({ totalBonds, totalLiquidity });
+  const bondToPoolRatio = incentivePendulum.bondToPoolRatio;
   const healthStatus = calculateNetworkHealth(bondToPoolRatio);
   const pendulum = getPendulumStatus(bondToPoolRatio);
 
@@ -88,8 +103,8 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
   // Get effective security bond (bottom 2/3 of active nodes)
   const activeNodes = nodes?.filter(n => n.status === 'Active') ?? [];
   const sortedByBond = [...activeNodes].sort((a, b) => {
-    const bondA = BigInt(a.total_bond || '0');
-    const bondB = BigInt(b.total_bond || '0');
+    const bondA = parseRawRuneBond(a.total_bond);
+    const bondB = parseRawRuneBond(b.total_bond);
     return bondA > bondB ? -1 : bondA < bondB ? 1 : 0;
   });
   const effectiveCount = Math.floor(sortedByBond.length * 0.667);
@@ -97,13 +112,7 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
     return sum + runeToNumber(n.total_bond);
   }, 0);
 
-  // THORChain incentive pendulum: actual reward split formula
-  // When bond > liquidity: nodeShare = 1 - 1/(bondToPool + 1)
-  // When bond <= liquidity: nodeShare = bondToPool / (bondToPool + 1)
-  const nodeShareFraction = bondToPoolRatio > 1
-    ? 1 - 1 / (bondToPoolRatio + 1)
-    : bondToPoolRatio / (bondToPoolRatio + 1);
-  const nodeSharePercent = nodeShareFraction * 100;
+  const nodeSharePercent = incentivePendulum.nodeShare;
 
   // Block rewards (per block)
   const bondReward = runeToNumber(network.blockRewards?.bondReward || '0');

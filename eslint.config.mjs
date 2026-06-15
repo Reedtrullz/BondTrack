@@ -17,6 +17,28 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "off",
     },
   },
+  {
+    files: [
+      "e2e/**/*.ts",
+      "e2e/**/*.tsx",
+      "e2e/**/*.js",
+      "e2e/**/*.jsx",
+    ],
+    rules: {
+      "no-restricted-imports": ["error", {
+        paths: [{
+          name: "@playwright/test",
+          message: "Import test and expect from ./fixtures so same-origin /api failures fail closed.",
+        }],
+      }],
+    },
+  },
+  {
+    files: ["e2e/fixtures.ts"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

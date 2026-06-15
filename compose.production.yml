@@ -28,6 +28,10 @@ services:
       - THORNODE_API_URL=https://gateway.liquify.com/chain/thorchain_api/thorchain
       - MIDGARD_API_URL=https://gateway.liquify.com/chain/thorchain_midgard
       - MIDGARD_FALLBACK_URL=https://midgard.thorchain.network
+      # Trust only the Caddy-overwritten X-Real-IP header by default. Leave
+      # TRUST_X_FORWARDED_FOR=false unless the full proxy chain sanitizes it.
+      - TRUST_PROXY_HEADERS=true
+      - TRUST_X_FORWARDED_FOR=false
     healthcheck:
       test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
       interval: 30s

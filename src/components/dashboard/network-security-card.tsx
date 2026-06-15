@@ -45,7 +45,10 @@ export function NetworkSecurityCard({ ratio, activeRatio, health, status }: Netw
   const progress = ratio > 0 ? Math.min(ratio * NETWORK.PROGRESS_BAR_MULTIPLIER, 100) : 0;
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+    <section
+      aria-label="Network security bond-to-pool gauge"
+      className="rounded-2xl border border-zinc-200 bg-white/90 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80"
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
@@ -63,7 +66,7 @@ export function NetworkSecurityCard({ ratio, activeRatio, health, status }: Netw
 
       <div className="mt-6 flex items-end justify-between gap-4">
         <div>
-          <div className={cn('text-4xl font-semibold', styles.ratio)}>
+          <div aria-label="Bond-to-pool ratio" className={cn('text-4xl font-semibold', styles.ratio)}>
             {ratio > 0 ? `${ratio.toFixed(2)}x` : '--'}
           </div>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
@@ -71,8 +74,8 @@ export function NetworkSecurityCard({ ratio, activeRatio, health, status }: Netw
           </p>
         </div>
         <div className="text-right text-xs text-zinc-500 dark:text-zinc-400">
-          <div className="font-medium text-zinc-700 dark:text-zinc-300">Live network</div>
-          <div>updated from Midgard</div>
+          <div className="font-medium text-zinc-700 dark:text-zinc-300">Midgard reading</div>
+          <div>freshness shown in source status</div>
           {typeof activeRatio === 'number' && activeRatio > 0 && (
             <div className="mt-1">
               <div className="font-medium text-zinc-700 dark:text-zinc-300">{activeRatio.toFixed(2)}x</div>
@@ -91,6 +94,6 @@ export function NetworkSecurityCard({ ratio, activeRatio, health, status }: Netw
           <div className={cn('h-full rounded-full transition-all', styles.bar)} style={{ width: `${progress}%` }} />
         </div>
       </div>
-    </div>
+    </section>
   );
 }

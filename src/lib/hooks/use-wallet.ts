@@ -3,7 +3,7 @@
 import { createContext, createElement, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import '@/lib/types/wallet';
-import { STORAGE_KEYS } from '@/lib/storage/keys';
+import { readLocalStorageValue, removeLocalStorageValue, STORAGE_KEYS, writeLocalStorageValue } from '@/lib/storage/keys';
 import { THORCHAIN_MAINNET_CHAIN_ID } from '@/lib/thorchain';
 
 export type WalletType = 'keplr' | 'xdefi' | 'vultisig' | null;
@@ -203,7 +203,7 @@ export function useWallet() {
 
     const wallet = detectWallet();
     if (wallet && !state.isConnected) {
-      const stored = localStorage.getItem(STORAGE_KEYS.walletConnected);
+      const stored = readLocalStorageValue(STORAGE_KEYS.walletConnected);
       if (stored === wallet) {
         connectRef.current(wallet);
       }
@@ -212,9 +212,9 @@ export function useWallet() {
 
   useEffect(() => {
     if (state.isConnected && state.walletType) {
-      localStorage.setItem(STORAGE_KEYS.walletConnected, state.walletType);
+      writeLocalStorageValue(STORAGE_KEYS.walletConnected, state.walletType);
     } else {
-      localStorage.removeItem(STORAGE_KEYS.walletConnected);
+      removeLocalStorageValue(STORAGE_KEYS.walletConnected);
     }
   }, [state.isConnected, state.walletType]);
 

@@ -1,6 +1,6 @@
 # Utils — Utility Functions
 
-**15 files** — pure functions for formatting, calculations, health scoring, LP analytics, and export.
+**13 files** — pure functions for formatting, calculations, health scoring, LP analytics, and export.
 
 ## FILES
 
@@ -12,13 +12,11 @@
 | `bond-optimizer.ts` | Optimization suggestions | `analyzeBondOptimization`, `OptimizationSuggestion` |
 | `bond-export.ts` | Bond position export helpers | Bond CSV formatting |
 | `health-score.ts` | Portfolio health | `calculatePortfolioHealth`, `getGradeColor`, `HealthGrade` |
-| `portfolio-alerts.ts` | Alert generation | `generateActionableAlerts`, `ActionableAlert` |
+| `portfolio-alerts.ts` | Portfolio alert generation | `generatePortfolioAlerts`, `PortfolioAlert` |
 | `fee-calculations.ts` | Fee impact | `calculateFeeImpact`, `calculateNetEarnings` |
 | `il-calculator.ts` | Impermanent Loss | `calculateIL`, `calculateILUSD` — XYK formula-based |
 | `lp-analytics.ts` | LP position analytics | LP valuation helpers, performance calculations |
-| `pool.ts` | Pool data utilities | Pool-specific helpers |
 | `tax-export.ts` | Tax reporting | `generateTaxReport`, `exportToCSV` — FIFO cost basis for bond + LP income |
-| `export.ts` | CSV export | `exportPositionsToCSV` |
 
 ## CONVENTIONS
 

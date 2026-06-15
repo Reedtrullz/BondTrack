@@ -33,9 +33,13 @@ function pickCurrentVersion(nodes: NodeRaw[] | undefined): string | null {
   return activeNode?.version ?? nodes[0]?.version ?? null;
 }
 
-export function useProtocolVersion() {
+interface UseProtocolVersionOptions {
+  enabled?: boolean;
+}
+
+export function useProtocolVersion({ enabled = true }: UseProtocolVersionOptions = {}) {
   const { data, error, isLoading } = useSWR<NodeRaw[]>(
-    'protocol-version',
+    enabled ? 'protocol-version' : null,
     () => getAllNodes(),
     {
       refreshInterval: 60_000,
@@ -51,6 +55,6 @@ export function useProtocolVersion() {
     currentVersion,
     latestVersion,
     hasUpgrade,
-    isLoading: isLoading && !error,
+    isLoading: enabled && isLoading && !error,
   };
 }

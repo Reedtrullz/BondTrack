@@ -6,10 +6,10 @@ test.describe("Portfolio Page", () => {
   test.beforeEach(async ({ page }) => {
     // Mock all Midgard API endpoints
     await page.route("**/api/midgard/**", async (route) => {
-      const url = route.request().url();
+      const url = new URL(route.request().url());
       
       // Mock bonds endpoint (used by getBondDetails)
-      if (url.includes("/bonds/")) {
+      if (url.pathname.startsWith("/api/midgard/v2/bonds/")) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -28,7 +28,7 @@ test.describe("Portfolio Page", () => {
       }
       
       // Mock member endpoint  
-      if (url.includes("/member/")) {
+      if (url.pathname === `/api/midgard/v2/member/${MOCK_ADDRESS}`) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -41,7 +41,7 @@ test.describe("Portfolio Page", () => {
       }
       
       // Mock earnings endpoint
-      if (url.includes("/history/earnings")) {
+      if (url.pathname === "/api/midgard/v2/history/earnings") {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -53,7 +53,7 @@ test.describe("Portfolio Page", () => {
         return;
       }
 
-      if (url.includes("/history/rune")) {
+      if (url.pathname === "/api/midgard/v2/history/rune") {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -77,7 +77,7 @@ test.describe("Portfolio Page", () => {
       }
       
       // Mock network endpoint
-      if (url.includes("/network")) {
+      if (url.pathname === "/api/midgard/v2/network") {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -97,7 +97,7 @@ test.describe("Portfolio Page", () => {
       }
       
       // Mock health endpoint
-      if (url.includes("/health")) {
+      if (url.pathname === "/api/midgard/v2/health") {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -108,7 +108,7 @@ test.describe("Portfolio Page", () => {
         return;
       }
 
-      if (url.includes("/thorname/rlookup/")) {
+      if (url.pathname.startsWith("/api/midgard/v2/thorname/rlookup/")) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -118,7 +118,7 @@ test.describe("Portfolio Page", () => {
       }
       
       // Mock pools endpoint
-      if (url.includes("/pools")) {
+      if (url.pathname === "/api/midgard/v2/pools") {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -128,7 +128,7 @@ test.describe("Portfolio Page", () => {
       }
       
       // Mock actions endpoint
-      if (url.includes("/actions")) {
+      if (url.pathname === "/api/midgard/v2/actions") {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -140,12 +140,23 @@ test.describe("Portfolio Page", () => {
       await route.fulfill({
         status: 404,
         contentType: "application/json",
-        body: JSON.stringify({ error: `Unhandled Midgard mock: ${new URL(url).pathname}` })
+        body: JSON.stringify({ error: `Unhandled Midgard mock: ${url.pathname}` })
       });
     });
 
     // Mock CoinAPI/RUNE price
     await page.route("**/api/coinapi/**", async (route) => {
+      const url = new URL(route.request().url());
+
+      if (url.pathname !== "/api/coinapi/rune-price") {
+        await route.fulfill({
+          status: 404,
+          contentType: "application/json",
+          body: JSON.stringify({ error: `Unhandled CoinAPI mock: ${url.pathname}` })
+        });
+        return;
+      }
+
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -155,9 +166,9 @@ test.describe("Portfolio Page", () => {
 
     // Mock THORNode API
     await page.route("**/api/thorchain/**", async (route) => {
-      const url = route.request().url();
+      const url = new URL(route.request().url());
       
-      if (url.includes("/nodes")) {
+      if (url.pathname === "/api/thorchain/thorchain/nodes") {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -166,12 +177,12 @@ test.describe("Portfolio Page", () => {
         return;
       }
 
-      if (url.includes("/constants")) {
+      if (url.pathname === "/api/thorchain/thorchain/constants") {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
           body: JSON.stringify({
-            int_64_values: { OptimalBondD: 2500000000000 },
+            int_64_values: { MaxBondProviders: 100 },
             bool_values: {},
             string_values: {}
           })
@@ -182,7 +193,7 @@ test.describe("Portfolio Page", () => {
       await route.fulfill({
         status: 404,
         contentType: "application/json",
-        body: JSON.stringify({ error: `Unhandled THORChain mock: ${new URL(url).pathname}` })
+        body: JSON.stringify({ error: `Unhandled THORChain mock: ${url.pathname}` })
       });
     });
 
@@ -190,11 +201,32 @@ test.describe("Portfolio Page", () => {
   });
 
   test("displays portfolio summary", async ({ page }) => {
-    // Wait for the page to load with mocked data
-    await expect(page.getByText("Total Bonded").first()).toBeVisible({ timeout: 10000 });
+    const totalBondedSummary = page.getByRole("group", { name: "Total Bonded summary" });
+
+    await expect(totalBondedSummary).toBeVisible({ timeout: 10000 });
+    await expect(totalBondedSummary).toContainText("Total Bonded");
+    await expect(totalBondedSummary).toContainText(/\u16B10.00/);
   });
   
   test("displays bond positions section", async ({ page }) => {
-    await expect(page.getByText("Bond Positions").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "No Bonded Positions", exact: true })).toBeVisible();
+  });
+
+  test("keeps simulator diagnosis and assumptions before raw inputs", async ({ page }) => {
+    await page.goto(`/dashboard/simulator?address=${MOCK_ADDRESS}`);
+
+    const diagnosis = page.getByLabel("Simulator scenario diagnosis");
+    await expect(diagnosis).toContainText("Rewards-only projection", { timeout: 10000 });
+    await expect(diagnosis).toContainText("Verify node risk before bonding");
+    await expect(page.getByLabel("Simulation assumptions")).toContainText("Risk coverage");
+
+    const diagnosisBeforeInput = await diagnosis.evaluate((element) => {
+      const firstInput = document.querySelector("#simulator-bond-amount");
+      return Boolean(
+        firstInput
+        && (element.compareDocumentPosition(firstInput) & Node.DOCUMENT_POSITION_FOLLOWING)
+      );
+    });
+    expect(diagnosisBeforeInput).toBe(true);
   });
 });

@@ -46,4 +46,18 @@ describe('node candidate sorting', () => {
 
     expect(sorted.map((node) => node.node_address)).toEqual(['thor1strong', 'thor1watch']);
   });
+
+  it('keeps malformed numeric sort values from ranking as best candidates', () => {
+    const slashSorted = sortNodeCandidates([
+      candidate({ node_address: 'thor1unknownslash', slash_points: Number.NaN, candidateScore: { score: 90 } }),
+      candidate({ node_address: 'thor1clean', slash_points: 0, candidateScore: { score: 40 } }),
+    ], 'slash', 'asc');
+    const apySorted = sortNodeCandidates([
+      candidate({ node_address: 'thor1unknownapy', adjustedAPY: Number.NaN, candidateScore: { score: 90 } }),
+      candidate({ node_address: 'thor1knownapy', adjustedAPY: 12, candidateScore: { score: 40 } }),
+    ], 'apy', 'desc');
+
+    expect(slashSorted.map((node) => node.node_address)).toEqual(['thor1clean', 'thor1unknownslash']);
+    expect(apySorted.map((node) => node.node_address)).toEqual(['thor1knownapy', 'thor1unknownapy']);
+  });
 });

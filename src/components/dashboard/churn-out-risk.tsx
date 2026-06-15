@@ -54,7 +54,7 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
   }, [positions, rankings]);
 
   const atRiskNodes = nodesWithRank.filter((n) => n.isAtRisk);
-  const safeNodes = nodesWithRank.filter((n) => !n.isAtRisk);
+  const outsideBandNodes = nodesWithRank.filter((n) => !n.isAtRisk);
   const isLoading = rankings.length === 0 && positions.length > 0;
 
   if (error || showError) {
@@ -138,8 +138,8 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
           <div className="text-xs text-red-600 dark:text-red-400">At Risk</div>
         </div>
         <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-900/20 text-center">
-          <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{safeNodes.length}</div>
-          <div className="text-xs text-emerald-600 dark:text-emerald-400">Safe</div>
+          <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{outsideBandNodes.length}</div>
+          <div className="text-xs text-emerald-600 dark:text-emerald-400">Outside Band</div>
         </div>
         <div className="p-2 rounded bg-zinc-100 dark:bg-zinc-800 text-center">
           <div className="text-lg font-bold text-zinc-600 dark:text-zinc-400">{nodesWithRank.length}</div>
@@ -148,7 +148,7 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
       </div>
 
       <div className="text-xs text-zinc-500 mb-3">
-        Your active nodes sorted by bond • Bottom 33% flagged as at risk for churn-out
+        Your active nodes sorted by bond • Bottom 33% are treated as the churn-risk band
       </div>
 
       <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -175,8 +175,8 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
 
       <div className="mt-3 text-xs text-zinc-500">
         {atRiskNodes.length > 0
-          ? `${atRiskNodes.length} of your nodes at risk of churn-out`
-          : `All your active nodes are safe`}
+          ? `${atRiskNodes.length} active node${atRiskNodes.length === 1 ? ' is' : 's are'} in the churn-risk band.`
+          : 'No active nodes are in the churn-risk band right now.'}
       </div>
     </div>
   );

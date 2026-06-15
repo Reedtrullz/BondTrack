@@ -1,10 +1,19 @@
 import useSWR from 'swr';
-import { getAllNodes, getNetworkConstants, type NodeRaw } from '@/lib/api/thornode';
+import { getAllNodes, type NodeRaw } from '@/lib/api/thornode';
 import { getHealth } from '@/lib/api/midgard';
 import { extractBondPositions, type BondPosition, type YieldGuardFlag } from '@/lib/types/node';
 import { NETWORK } from '@/lib/config';
 import { runeToNumber } from '@/lib/utils/formatters';
 import { MOCK_BOND_POSITIONS, isDevelopmentMode } from '../mock-data';
+
+function getMockCurrentAward(position: { netAPY: number }): string {
+  const apyDecimal = position.netAPY > 1 ? position.netAPY / 100 : position.netAPY;
+  return String(apyDecimal);
+}
+
+export function __getMockCurrentAwardForTests(position: { netAPY: number }): string {
+  return getMockCurrentAward(position);
+}
 
 function buildMockNodes(address: string | null): NodeRaw[] {
   const bondAddress = address ?? 'thor1mockbondaddress000000000000000000000000';
@@ -34,7 +43,7 @@ function buildMockNodes(address: string | null): NodeRaw[] {
       version: 'v1.0.0',
       slash_points: position.slashPoints,
       jail: {},
-      current_award: String(BigInt(totalBond) / BigInt(10)),
+      current_award: getMockCurrentAward(position),
       observe_chains: null,
       preflight_status: { status: 'ready', reason: '', code: 0 },
       maintenance: false,
@@ -45,8 +54,7 @@ function buildMockNodes(address: string | null): NodeRaw[] {
 
 function getYieldGuardFlags(
   positions: BondPosition[],
-  allNodes: NodeRaw[],
-  optimalBond: number | null
+  allNodes: NodeRaw[]
 ): Map<string, YieldGuardFlag[]> {
   const flags = new Map<string, YieldGuardFlag[]>();
   if (positions.length === 0 || allNodes.length === 0) return flags;
@@ -64,9 +72,6 @@ function getYieldGuardFlags(
     if (!node || node.status !== 'Active') continue;
 
     const totalBond = runeToNumber(node.total_bond);
-    if (optimalBond && totalBond >= optimalBond) {
-      nodeFlags.push('overbonded');
-    }
     if (node.slash_points >= maxSlash && maxSlash > 0) {
       nodeFlags.push('highest_slash');
     }
@@ -90,10 +95,11 @@ function getYieldGuardFlags(
 
 export function useBondPositions(address: string | null) {
   const useMockData = isDevelopmentMode();
-  const mockNodes = useMockData ? buildMockNodes(address) : null;
+  const shouldFetchLiveData = Boolean(address) && !useMockData;
+  const mockNodes = useMockData && address ? buildMockNodes(address) : null;
 
   const { data: nodes, error, isLoading, mutate } = useSWR<NodeRaw[]>(
-    useMockData ? null : 'nodes',
+    shouldFetchLiveData ? 'nodes' : null,
     () => getAllNodes(),
     {
       refreshInterval: NETWORK.REFRESH_INTERVALS.bondPositions,
@@ -101,14 +107,8 @@ export function useBondPositions(address: string | null) {
     }
   );
 
-  const { data: constants } = useSWR(
-    useMockData ? null : address ? 'network-constants' : null,
-    () => getNetworkConstants(),
-    { revalidateOnFocus: false, refreshInterval: NETWORK.REFRESH_INTERVALS.price }
-  );
-
   const { data: healthData } = useSWR(
-    useMockData ? null : 'health',
+    shouldFetchLiveData ? 'health' : null,
     () => getHealth(),
     { refreshInterval: NETWORK.REFRESH_INTERVALS.health }
   );
@@ -121,14 +121,8 @@ export function useBondPositions(address: string | null) {
     ? extractBondPositions(useMockData ? mockNodes! : nodes!, address, currentBlockHeight)
     : [];
 
-  const optimalBond = useMockData
-    ? runeToNumber('1000000000')
-    : constants?.int_64_values?.OptimalBondD
-      ? runeToNumber(String(constants.int_64_values.OptimalBondD))
-      : null;
-
   const allNodes = useMockData ? mockNodes ?? [] : nodes ?? [];
-  const yieldGuardFlags = getYieldGuardFlags(positions, allNodes, optimalBond);
+  const yieldGuardFlags = getYieldGuardFlags(positions, allNodes);
 
   const positionsWithFlags = positions.map((pos) => ({
     ...pos,
@@ -137,7 +131,7 @@ export function useBondPositions(address: string | null) {
 
   return {
     positions: positionsWithFlags,
-    isLoading: useMockData ? false : isLoading,
+    isLoading: shouldFetchLiveData ? isLoading : false,
     error: useMockData ? undefined : error,
     mutate,
   };

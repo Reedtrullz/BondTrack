@@ -14,9 +14,22 @@ interface NetworkAverages {
   activeNodeCount: number;
 }
 
+function isPositiveFinite(value: number): boolean {
+  return Number.isFinite(value) && value > 0;
+}
+
 function ComparisonIndicator({ userValue, avgValue, format }: { userValue: number; avgValue: number; format: (v: number) => string }) {
+  if (!Number.isFinite(userValue) || !isPositiveFinite(avgValue)) {
+    return (
+      <span className="inline-flex items-center gap-1 text-zinc-500 text-xs">
+        <Minus className="w-3 h-3" />
+        Comparison unavailable
+      </span>
+    );
+  }
+
   const diff = userValue - avgValue;
-  const percentDiff = avgValue !== 0 ? ((diff / avgValue) * 100) : 0;
+  const percentDiff = (diff / avgValue) * 100;
 
   if (diff === 0) {
     return (
@@ -63,12 +76,50 @@ export function NetworkComparisonTable({ address }: { address: string | null }) 
   if (!networkAverages || positions.length === 0) return null;
 
   const formatRune = (v: number) => formatRuneDisplayNumber(v, 2);
+  const formatAverageRune = (v: number) => isPositiveFinite(v) ? `${formatRune(v)} RUNE` : '--';
 
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Network Comparison</h2>
         <p className="text-sm text-zinc-500">Your nodes vs network averages ({networkAverages.activeNodeCount} active nodes)</p>
+      </div>
+      <div className="grid gap-3 md:hidden" aria-label="Mobile network comparison summary">
+        {positions.map((pos) => (
+          <article
+            key={pos.nodeAddress}
+            className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+          >
+            <div className="mb-3 font-mono text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              {pos.nodeAddress.slice(0, 12)}...{pos.nodeAddress.slice(-8)}
+            </div>
+            <dl className="space-y-3 text-sm">
+              <div className="flex items-start justify-between gap-4">
+                <dt className="text-zinc-500 dark:text-zinc-400">Node total bond</dt>
+                <dd className="text-right font-mono font-medium text-zinc-900 dark:text-zinc-100">
+                  <div>{formatRune(pos.totalBond)} RUNE</div>
+                  <div className="text-xs font-normal text-zinc-500">Your bond: {formatRune(pos.bondAmount)} RUNE</div>
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <dt className="text-zinc-500 dark:text-zinc-400">Network average</dt>
+                <dd className="text-right font-mono font-medium text-zinc-900 dark:text-zinc-100">
+                  {formatAverageRune(networkAverages.avgBond)}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-4 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+                <dt className="text-zinc-500 dark:text-zinc-400">Difference</dt>
+                <dd className="text-right">
+                  <ComparisonIndicator
+                    userValue={pos.totalBond}
+                    avgValue={networkAverages.avgBond}
+                    format={(v) => `${formatRune(v)} RUNE`}
+                  />
+                </dd>
+              </div>
+            </dl>
+          </article>
+        ))}
       </div>
       <div className="hidden md:block overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
         <table className="w-full text-sm min-w-[500px]">
@@ -94,7 +145,7 @@ export function NetworkComparisonTable({ address }: { address: string | null }) 
                     <div>{formatRune(pos.totalBond)} RUNE</div>
                     <div className="text-xs text-zinc-500">Your bond: {formatRune(pos.bondAmount)} RUNE</div>
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-zinc-500">{formatRune(networkAverages.avgBond)} RUNE</td>
+                  <td className="px-4 py-3 text-right font-mono text-zinc-500">{formatAverageRune(networkAverages.avgBond)}</td>
                   <td className="px-4 py-3 text-right">
                     <ComparisonIndicator userValue={pos.totalBond} avgValue={networkAverages.avgBond} format={(v) => `${formatRune(v)} RUNE`} />
                   </td>

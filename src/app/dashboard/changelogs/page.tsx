@@ -1,10 +1,16 @@
 'use client';
 
 import { useChangelogs, getTypeLabel, getTypeIcon, getTypeBadgeStyle } from '@/lib/hooks/use-changelogs';
-import { Search, ChevronDown, X, SearchX, Link as LinkIcon, ScrollText, Eye } from 'lucide-react';
+import { AlertTriangle, ChevronDown, Coins, PauseCircle, Search, SearchX, ShieldAlert, X, Link as LinkIcon, ScrollText } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { STORAGE_KEYS } from '@/lib/storage/keys';
+import {
+  readLocalStorageValue,
+  removeLocalStorageValue,
+  STORAGE_KEYS,
+  writeLocalStorageValue,
+} from '@/lib/storage/keys';
 import {
   buildChangelogQuery,
   extractYears,
@@ -13,6 +19,7 @@ import {
   matchesFilter,
   parseTypeFilter,
 } from './filters';
+import { buildChangelogOperationalSummary } from './summary';
 
 const STORAGE_KEY = STORAGE_KEYS.changelogsExpanded;
 const ENTRY_STORAGE_KEY = STORAGE_KEYS.changelogsExpandedEntries;
@@ -45,6 +52,22 @@ function HighlightText({ text, highlight }: { text: string; highlight: string })
         )
       )}
     </>
+  );
+}
+
+function ImpactCount({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
+  return (
+    <div className="min-h-20 rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+      <div className="flex items-center justify-between gap-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+        <span>{label}</span>
+        <span className={value > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-400'}>
+          {icon}
+        </span>
+      </div>
+      <div className="mt-2 font-mono text-2xl font-bold leading-none text-zinc-950 dark:text-zinc-50">
+        {value}
+      </div>
+    </div>
   );
 }
 
@@ -84,6 +107,7 @@ export default function ChangelogsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const summaryRef = useRef<HTMLElement>(null);
   const yearRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
   const urlSearchQuery = searchParams.get('q') || '';
@@ -91,26 +115,11 @@ export default function ChangelogsPage() {
 
   const [searchBuffer, setSearchBuffer] = useState(urlSearchQuery);
   const [typeFilter, setTypeFilter] = useState<FilterType>(urlTypeFilter);
-  const [hasResolvedExpandedPreference, setHasResolvedExpandedPreference] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem(STORAGE_KEY) !== null;
-  });
-  const [expandedStateError, setExpandedStateError] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    const savedExp = localStorage.getItem(STORAGE_KEY);
-    const savedEntries = localStorage.getItem(ENTRY_STORAGE_KEY);
-    return (savedExp !== null && parseStoredExpandedIds(savedExp) === null)
-      || (savedEntries !== null && parseStoredExpandedEntries(savedEntries) === null);
-  });
-
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
-    if (typeof window === 'undefined') return new Set();
-
-    const savedExp = localStorage.getItem(STORAGE_KEY);
-    const parsed = parseStoredExpandedIds(savedExp);
-    return new Set(parsed ?? []);
-  });
+  const [hasResolvedExpandedPreference, setHasResolvedExpandedPreference] = useState(false);
+  const [expandedStateError, setExpandedStateError] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [expandedEntryIds, setExpandedEntryIds] = useState<Record<string, string[]>>({});
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // Sync search buffer with URL when URL changes externally (e.g., back navigation)
   useEffect(() => {
@@ -121,20 +130,32 @@ export default function ChangelogsPage() {
     setTypeFilter(urlTypeFilter);
   }, [urlTypeFilter]);
 
-  // Handle local state initialization on mount
+  // Handle local state initialization after mount to keep hydration deterministic.
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedEntries = localStorage.getItem(ENTRY_STORAGE_KEY);
-      if (savedEntries) {
-        const parsed = parseStoredExpandedEntries(savedEntries);
-        if (parsed) {
-          setExpandedEntryIds(parsed);
-        } else {
-          setExpandedStateError(true);
-        }
-      }
+    if (hasResolvedExpandedPreference || changelogs.length === 0) {
+      return;
     }
-  }, []);
+
+    const allIds = changelogs.map(c => c.id);
+
+    if (typeof window === 'undefined') {
+      setExpandedIds(new Set(allIds));
+      setHasResolvedExpandedPreference(true);
+      return;
+    }
+
+    const savedExp = readLocalStorageValue(STORAGE_KEY);
+    const savedEntries = readLocalStorageValue(ENTRY_STORAGE_KEY);
+    const parsedExpandedIds = parseStoredExpandedIds(savedExp);
+    const parsedExpandedEntries = parseStoredExpandedEntries(savedEntries);
+    const hasExpandedStateError = (savedExp !== null && parsedExpandedIds === null)
+      || (savedEntries !== null && parsedExpandedEntries === null);
+
+    setExpandedStateError(hasExpandedStateError);
+    setExpandedIds(new Set(parsedExpandedIds ?? allIds));
+    setExpandedEntryIds(parsedExpandedEntries ?? {});
+    setHasResolvedExpandedPreference(true);
+  }, [changelogs, hasResolvedExpandedPreference]);
 
   const toggleEntryExpand = useCallback((changelogId: string, entryIndex: number) => {
     setExpandedEntryIds(prev => {
@@ -148,25 +169,19 @@ export default function ChangelogsPage() {
 
       const next = { ...prev, [changelogId]: nextEntries };
       if (typeof window !== 'undefined') {
-        localStorage.setItem(ENTRY_STORAGE_KEY, JSON.stringify(next));
+        writeLocalStorageValue(ENTRY_STORAGE_KEY, JSON.stringify(next));
       }
       return next;
     });
   }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && hasResolvedExpandedPreference) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...expandedIds]));
-    }
-  }, [expandedIds, hasResolvedExpandedPreference]);
-
-  useEffect(() => {
-    if (hasResolvedExpandedPreference || changelogs.length === 0) {
+    if (typeof window === 'undefined' || !hasResolvedExpandedPreference) {
       return;
     }
-    setExpandedIds(new Set(changelogs.map(c => c.id)));
-    setHasResolvedExpandedPreference(true);
-  }, [changelogs, hasResolvedExpandedPreference]);
+
+    writeLocalStorageValue(STORAGE_KEY, JSON.stringify([...expandedIds]));
+  }, [expandedIds, hasResolvedExpandedPreference]);
 
   const years = useMemo(() => extractYears(changelogs), [changelogs]);
   
@@ -185,7 +200,31 @@ export default function ChangelogsPage() {
     return filteredChangelogs.reduce((acc, item) => acc + item.content.length, 0);
   }, [filteredChangelogs]);
 
-  const totalMonths = useMemo(() => changelogs.length, [changelogs]);
+  const archiveSummary = useMemo(
+    () => buildChangelogOperationalSummary(changelogs),
+    [changelogs]
+  );
+  const activeFilterOption = useMemo(() => (
+    FILTER_OPTIONS.find((option) => option.value === typeFilter) ?? FILTER_OPTIONS[0]
+  ), [typeFilter]);
+  const filteredSummary = useMemo(
+    () => buildChangelogOperationalSummary(filteredChangelogs),
+    [filteredChangelogs]
+  );
+  const trimmedSearch = searchBuffer.trim();
+  const hasActiveFilters = Boolean(trimmedSearch || typeFilter !== 'all');
+  const operationalSummary = hasActiveFilters ? filteredSummary : archiveSummary;
+  const activeScopeLabel = hasActiveFilters ? 'Filtered view' : 'Latest in archive';
+  const activeScopeDescription = hasActiveFilters
+    ? [
+        typeFilter === 'all' ? 'All impact types' : activeFilterOption.label,
+        trimmedSearch ? `matching "${trimmedSearch}"` : null,
+      ].filter(Boolean).join(' · ')
+    : 'Latest in archive';
+  const archiveTotalEntries = archiveSummary.totalEntries;
+  const updateNoun = hasActiveFilters
+    ? (operationalSummary.totalEntries === 1 ? 'matching update' : 'matching updates')
+    : (operationalSummary.totalEntries === 1 ? 'protocol update' : 'protocol updates');
   
   const typeBreakdown = useMemo(() => {
     const breakdown: Record<string, number> = { update: 0, adr: 0, chain: 0, feature: 0, bug: 0 };
@@ -217,6 +256,12 @@ export default function ChangelogsPage() {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, []);
+
+  const scrollSummaryIntoView = useCallback(() => {
+    window.setTimeout(() => {
+      summaryRef.current?.scrollIntoView?.({ behavior: 'auto', block: 'start' });
+    }, 0);
+  }, []);
   
   const clearFilters = useCallback(() => {
     const currentParams = new URLSearchParams(window.location.search);
@@ -224,7 +269,8 @@ export default function ChangelogsPage() {
     setSearchBuffer('');
     setTypeFilter('all');
     router.replace(nextUrl, { scroll: false });
-  }, [router]);
+    scrollSummaryIntoView();
+  }, [router, scrollSummaryIntoView]);
 
   const updateSearchQuery = useCallback((nextSearchQuery: string) => {
     setSearchBuffer(nextSearchQuery);
@@ -238,7 +284,8 @@ export default function ChangelogsPage() {
     const currentParams = new URLSearchParams(window.location.search);
     const nextUrl = buildChangelogQuery(currentParams, searchBuffer, nextTypeFilter);
     router.replace(nextUrl, { scroll: false });
-  }, [router, searchBuffer]);
+    scrollSummaryIntoView();
+  }, [router, searchBuffer, scrollSummaryIntoView]);
 
   const resetExpandedState = useCallback(() => {
     const allIds = new Set(changelogs.map((item) => item.id));
@@ -247,8 +294,8 @@ export default function ChangelogsPage() {
     setExpandedStateError(false);
     setHasResolvedExpandedPreference(true);
     if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...allIds]));
-      localStorage.removeItem(ENTRY_STORAGE_KEY);
+      writeLocalStorageValue(STORAGE_KEY, JSON.stringify([...allIds]));
+      removeLocalStorageValue(ENTRY_STORAGE_KEY);
     }
   }, [changelogs]);
 
@@ -270,16 +317,15 @@ export default function ChangelogsPage() {
           setSearchBuffer('');
           setTypeFilter('all');
           router.replace(nextUrl, { scroll: false });
+          scrollSummaryIntoView();
         }
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [router, searchBuffer, typeFilter]);
+  }, [router, scrollSummaryIntoView, searchBuffer, typeFilter]);
   
-  const hasActiveFilters = searchBuffer.trim() || typeFilter !== 'all';
-
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 space-y-6 bg-white dark:bg-zinc-950">
@@ -310,35 +356,51 @@ export default function ChangelogsPage() {
         </div>
       </div>
 
-      {/* Chronicle Wisdom (Stats) */}
-      <div
-        className="relative mb-6 overflow-hidden rounded-xl border border-amber-200/80 bg-amber-50/80 p-4 dark:border-amber-500/20 dark:bg-amber-500/5 shadow-inner"
+      <section
+        ref={summaryRef}
+        aria-label="Changelog operational impact summary"
+        className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80"
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/5 to-transparent" />
-        <div className="relative flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-zinc-900 dark:bg-zinc-800 text-amber-500">
-              <Eye className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase text-zinc-500 dark:text-zinc-400">Update Statistics</p>
-              <p className="text-lg font-bold text-zinc-900 dark:text-white">
-                {changelogs.reduce((a, c) => a + c.content.length, 0)} protocol updates across {totalMonths} months
-              </p>
-            </div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase text-zinc-500 dark:text-zinc-400">{activeScopeLabel}</p>
+            <h2 className="mt-1 text-lg font-bold leading-tight text-zinc-950 dark:text-zinc-50">
+              {operationalSummary.latestTitle}
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              {activeScopeDescription} · {operationalSummary.latestDate} · {operationalSummary.totalEntries} {updateNoun} across {operationalSummary.totalMonths} {operationalSummary.totalMonths === 1 ? 'month' : 'months'}
+            </p>
+            <p className="mt-2 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+              Data source: static TCC Cross-Chain Updates archive bundled with Heimdall. {hasActiveFilters
+                ? `This view is narrowed to ${operationalSummary.totalEntries} of ${archiveTotalEntries} archived updates; clear filters to restore the full timeline.`
+                : 'Use filters to isolate operator, LP, halt, or upgrade impact before reading the full timeline.'}
+            </p>
           </div>
-          <div className="hidden sm:flex items-center gap-6 text-right">
-            <div>
-              <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase">Latest Release</p>
-              <p className="text-sm font-bold text-amber-600 dark:text-amber-500">v3.16</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase">Established</p>
-              <p className="text-sm font-bold text-zinc-900 dark:text-white">Aug 2022</p>
-            </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[28rem]">
+            <ImpactCount
+              icon={<ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />}
+              label="Operator impact"
+              value={operationalSummary.impactCounts.operatorImpact}
+            />
+            <ImpactCount
+              icon={<Coins className="h-3.5 w-3.5" aria-hidden="true" />}
+              label="LP impact"
+              value={operationalSummary.impactCounts.lpImpact}
+            />
+            <ImpactCount
+              icon={<PauseCircle className="h-3.5 w-3.5" aria-hidden="true" />}
+              label="Chain halt"
+              value={operationalSummary.impactCounts.chainHalt}
+            />
+            <ImpactCount
+              icon={<AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />}
+              label="Upgrade required"
+              value={operationalSummary.impactCounts.upgradeRequired}
+            />
           </div>
         </div>
-      </div>
+      </section>
 
       {expandedStateError && (
         <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between" role="status">
@@ -376,8 +438,34 @@ export default function ChangelogsPage() {
             </button>
           )}
         </div>
+
+        <button
+          type="button"
+          aria-label={mobileFiltersOpen ? 'Hide changelog filters' : 'Show changelog filters'}
+          aria-expanded={mobileFiltersOpen}
+          aria-controls="changelog-filter-controls"
+          data-testid="changelog-mobile-filter-toggle"
+          onClick={() => setMobileFiltersOpen((isOpen) => !isOpen)}
+          className="flex min-h-11 w-full items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-left text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800 sm:hidden"
+        >
+          <span>
+            Filters
+            <span className="ml-2 font-normal text-zinc-500 dark:text-zinc-400">
+              {activeFilterOption.value === 'all' ? 'All updates' : activeFilterOption.label}
+            </span>
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 transition-transform ${mobileFiltersOpen ? 'rotate-180' : ''}`}
+            aria-hidden="true"
+          />
+        </button>
         
-        <div className="flex flex-wrap gap-2">
+        <div
+          id="changelog-filter-controls"
+          data-testid="changelog-type-filters"
+          className={`${mobileFiltersOpen ? 'flex' : 'hidden'} flex-wrap gap-2 sm:flex`}
+          aria-label="Changelog filters"
+        >
           {FILTER_OPTIONS.map((option) => {
             const isActive = typeFilter === option.value;
             const typeCount = typeBreakdown[option.value as keyof typeof typeBreakdown] ?? 0;
@@ -388,7 +476,7 @@ export default function ChangelogsPage() {
                 key={option.value}
                 type="button"
                 onClick={() => updateTypeFilter(option.value)}
-                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                className={`flex max-w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all sm:gap-2 sm:px-4 sm:py-2 sm:text-sm ${
                   isActive
                     ? 'text-black'
                     : 'border border-zinc-200 bg-white text-zinc-600 hover:text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:text-white'
@@ -397,15 +485,24 @@ export default function ChangelogsPage() {
                   backgroundColor: isActive ? TC.blue : 'transparent',
                 }}
                 aria-pressed={isActive}
+                aria-label={option.label}
               >
                 {option.icon}
-                {option.label}
+                {option.shortLabel ? (
+                  <>
+                    <span className="whitespace-nowrap sm:hidden" aria-hidden="true">{option.shortLabel}</span>
+                    <span className="hidden whitespace-nowrap sm:inline" aria-hidden="true">{option.label}</span>
+                  </>
+                ) : (
+                  <span className="whitespace-nowrap" aria-hidden="true">{option.label}</span>
+                )}
                 {hasCount && (
                   <span 
-                    className="rounded-full px-1.5 py-0.5 text-xs text-zinc-700 dark:text-zinc-300"
+                    className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] text-zinc-700 dark:text-zinc-300 sm:text-xs"
                     style={{ 
                       backgroundColor: isActive ? 'rgba(0,0,0,0.2)' : 'rgba(113,113,122,0.12)',
                     }}
+                    aria-hidden="true"
                   >
                     {typeCount}
                   </span>
@@ -434,9 +531,13 @@ export default function ChangelogsPage() {
       {/* Year Quick Nav */}
       {years.length > 1 && (
         <div
-          className="sticky top-0 z-10 -mx-4 border-b border-zinc-200 bg-white/90 px-4 py-3 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/90 sm:-mx-6 sm:px-6"
+          className={`${mobileFiltersOpen ? 'block' : 'hidden'} sticky top-0 z-10 -mx-4 border-b border-zinc-200 bg-white/90 px-4 py-3 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/90 sm:-mx-6 sm:block sm:px-6`}
         >
-          <div className="flex flex-wrap gap-2">
+          <div
+            data-testid="changelog-year-filters"
+            className="flex flex-wrap gap-2"
+            aria-label="Changelog year navigation"
+          >
             {years.map((year) => (
               <button
                 type="button"
@@ -539,7 +640,7 @@ export default function ChangelogsPage() {
                         </div>
                         
                         {!isExpanded && (
-                          <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                          <div className="flex flex-wrap gap-1.5">
                             {Array.from(new Set(item.content.map(e => e.type))).map(type => {
                               const count = item.content.filter(e => e.type === type).length;
                               return (

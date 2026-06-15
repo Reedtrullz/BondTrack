@@ -1,3 +1,4 @@
+import { isIP } from 'node:net';
 import { NextRequest } from 'next/server';
 
 interface RateLimitEntry {
@@ -41,39 +42,56 @@ export interface RateLimitResult {
   resetAt: number;
 }
 
-// Simple IP validation — rejects obviously spoofed values. Trust still comes from
-// the deployment proxy that sets these headers; client-supplied spoofed headers
-// can only be treated as best effort here.
-function isValidIp(value: string): boolean {
-  const trimmed = value.trim();
-  const ipv4Parts = trimmed.split('.');
-  if (ipv4Parts.length === 4 && ipv4Parts.every((part) => /^\d{1,3}$/.test(part))) {
-    return ipv4Parts.every((part) => Number(part) >= 0 && Number(part) <= 255);
-  }
+function envFlag(name: string): boolean {
+  const value = process.env[name]?.trim().toLowerCase();
+  return value === '1' || value === 'true' || value === 'yes' || value === 'on';
+}
 
-  // IPv6: allow only hex/colon patterns with at least one colon.
-  return trimmed.includes(':') && /^[0-9a-fA-F:]+$/.test(trimmed);
+function firstValidIp(value: string | null): string | null {
+  const first = value?.split(',')[0]?.trim();
+  if (!first) return null;
+
+  return isIP(first) === 0 ? null : first;
+}
+
+function shouldTrustVercelHeaders(): boolean {
+  return Boolean(process.env.VERCEL) || envFlag('TRUST_VERCEL_PROXY_HEADERS');
+}
+
+function shouldTrustCloudflareHeaders(): boolean {
+  return envFlag('TRUST_CLOUDFLARE_HEADERS');
+}
+
+function shouldTrustProxyHeaders(): boolean {
+  return envFlag('TRUST_PROXY_HEADERS');
+}
+
+function shouldTrustForwardedForHeader(): boolean {
+  return shouldTrustProxyHeaders() && envFlag('TRUST_X_FORWARDED_FOR');
 }
 
 export function getClientIp(request: NextRequest): string {
-  // Prefer Vercel's trusted header in production
-  const vercelIp = request.headers.get('x-vercel-forwarded-for');
-  if (vercelIp) {
-    const first = vercelIp.split(',')[0].trim();
-    if (isValidIp(first)) return first;
+  if (shouldTrustVercelHeaders()) {
+    const vercelIp = firstValidIp(request.headers.get('x-vercel-forwarded-for'));
+    if (vercelIp) return vercelIp;
   }
 
-  const forwardedFor = request.headers.get('x-forwarded-for');
-  if (forwardedFor) {
-    const first = forwardedFor.split(',')[0].trim();
-    if (isValidIp(first)) return first;
+  if (shouldTrustCloudflareHeaders()) {
+    const cfIp = firstValidIp(request.headers.get('cf-connecting-ip'));
+    if (cfIp) return cfIp;
   }
 
-  const realIp = request.headers.get('x-real-ip');
-  if (realIp && isValidIp(realIp)) return realIp;
+  if (shouldTrustProxyHeaders()) {
+    // Heimdall's VPS Caddy config overwrites X-Real-IP with {remote_host}.
+    const realIp = firstValidIp(request.headers.get('x-real-ip'));
+    if (realIp) return realIp;
 
-  const cfIp = request.headers.get('cf-connecting-ip');
-  if (cfIp && isValidIp(cfIp)) return cfIp;
+    // X-Forwarded-For is only safe when the whole proxy chain sanitizes it.
+    if (shouldTrustForwardedForHeader()) {
+      const forwardedFor = firstValidIp(request.headers.get('x-forwarded-for'));
+      if (forwardedFor) return forwardedFor;
+    }
+  }
 
   return 'unknown';
 }
@@ -87,15 +105,19 @@ export function checkRateLimit(
   const entry = rateLimitStore.get(identifier);
 
   if (!entry || entry.resetAt < now) {
-    cleanupExpiredEntries(now);
-    // Enforce store size limit before adding new entries
     if (!entry && rateLimitStore.size >= RATE_LIMIT_MAX_ENTRIES) {
-      return {
-        allowed: false,
-        remaining: 0,
-        resetAt: now + windowMs,
-      };
+      cleanupExpiredEntries(now);
+
+      // Enforce store size limit before adding new entries.
+      if (rateLimitStore.size >= RATE_LIMIT_MAX_ENTRIES) {
+        return {
+          allowed: false,
+          remaining: 0,
+          resetAt: now + windowMs,
+        };
+      }
     }
+
     // First request or window expired
     const resetAt = now + windowMs;
     rateLimitStore.set(identifier, { count: 1, resetAt });

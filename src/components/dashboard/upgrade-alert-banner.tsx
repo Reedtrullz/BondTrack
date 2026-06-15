@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getUpgradeAlertDismissedStorageKey } from '@/lib/storage/keys';
+import { getUpgradeAlertDismissedStorageKey, readLocalStorageValue, writeLocalStorageValue } from '@/lib/storage/keys';
 
 interface UpgradeAlertBannerProps {
   currentVersion: string;
@@ -22,7 +22,7 @@ export function UpgradeAlertBanner({ currentVersion, latestVersion, onDismiss }:
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const dismissed = localStorage.getItem(getDismissKey(latestVersion)) === 'true';
+    const dismissed = readLocalStorageValue(getDismissKey(latestVersion)) === 'true';
     setIsVisible(!dismissed);
   }, [latestVersion]);
 
@@ -32,7 +32,7 @@ export function UpgradeAlertBanner({ currentVersion, latestVersion, onDismiss }:
 
   const dismiss = () => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem(getDismissKey(latestVersion), 'true');
+      writeLocalStorageValue(getDismissKey(latestVersion), 'true');
     }
 
     setIsVisible(false);

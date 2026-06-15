@@ -1,6 +1,6 @@
 # SWR Hooks — Data Fetching Layer
 
-**24 hooks** — all follow `useSWR<T>(key, fetcher, options)` pattern. Return `{ data, isLoading, error }` plus derived values.
+**27 hooks** — all follow `useSWR<T>(key, fetcher, options)` pattern. Return `{ data, isLoading, error }` plus derived values.
 
 ## WHERE TO LOOK
 | Need | File |
@@ -8,8 +8,7 @@
 | Bond position data | `use-bond-positions.ts` — `BondPosition[]` with `yieldGuardFlags` |
 | Bond history | `use-bond-history.ts` — `history` + `bondActions` from Midgard |
 | Earnings/rewards | `use-earnings.ts` — `EarningsHistoryRaw` from Midgard |
-| RUNE price (Midgard) | `use-rune-price.ts` — current USD price |
-| RUNE price (CoinAPI) | `use-coinapi-price.ts` — historical price lookups |
+| RUNE price (Midgard) | `use-rune-price.ts` — current and historical USD price |
 | Historical APY | `use-historical-apy.ts` — APY time series |
 | Network params | `use-network-constants.ts` — `int_64_values` from `/constants` |
 | Saved addresses | `use-watchlist.ts` — localStorage persistence |

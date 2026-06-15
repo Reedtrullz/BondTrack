@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Calculator, TrendingUp, Coins, BarChart3, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Calculator, TrendingUp, Coins, BarChart3, ShieldCheck, AlertTriangle, Info } from 'lucide-react';
 import { NETWORK } from '@/lib/config';
-import { formatRuneAmount, formatCompactNumber } from '@/lib/utils/formatters';
+import { buildBondSimulatorInsight } from '@/lib/dashboard/bond-simulator-context';
+import { formatRuneFromNumber, formatCompactNumber } from '@/lib/utils/formatters';
 import { getGradeColor, type HealthGrade } from '@/lib/utils/health-score';
+import { InsightHeader } from './insight-header';
+import { MetricStrip } from './metric-strip';
 import type { BondPosition } from '@/lib/types/node';
 
 interface SimulationResult {
@@ -135,21 +138,40 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
   const impactPreview = useMemo(() => {
     if (!currentPositions || bondAmount <= 0) return null;
 
-    const newTotalBond = currentPositions.reduce((sum, p) => sum + p.bondAmount, 0) + bondAmount;
-    // Simplified: just show the new total and estimated APY change
-    const currentAPY = currentPositions.length > 0
-      ? currentPositions.reduce((sum, p) => sum + p.netAPY * p.bondAmount, 0) / currentPositions.reduce((sum, p) => sum + p.bondAmount, 0)
-      : 0;
+    const currentTotalBond = currentPositions.reduce((sum, p) => sum + p.bondAmount, 0);
+    const newTotalBond = currentTotalBond + bondAmount;
+    const currentAPY = currentTotalBond > 0
+      ? currentPositions.reduce((sum, p) => sum + p.netAPY * p.bondAmount, 0) / currentTotalBond
+      : null;
 
     return {
       newTotalBond,
-      estimatedAPYChange: result ? result.apy - currentAPY : 0,
+      estimatedAPYChange: result && currentAPY !== null ? result.apy - currentAPY : null,
       projectedHealth: 'B' as HealthGrade, // Simplified
     };
   }, [currentPositions, bondAmount, result]);
 
   const minBond = NETWORK.MINIMUM_BOND_RUNE / 1e8;
   const isBelowMin = bondAmount > 0 && bondAmount < minBond;
+  const currentBondRune = useMemo(
+    () => currentPositions?.reduce((sum, position) => sum + position.bondAmount, 0) ?? 0,
+    [currentPositions]
+  );
+  const simulatorInsight = useMemo(() => buildBondSimulatorInsight({
+    bondAmountRune: bondAmount,
+    currentBondRune,
+    lockDays: lockDaysNum,
+    networkApyPercent: networkApyNum,
+    operatorFeeBps: operatorFeeNum,
+    hasResult: Boolean(result),
+  }), [
+    bondAmount,
+    currentBondRune,
+    lockDaysNum,
+    networkApyNum,
+    operatorFeeNum,
+    result,
+  ]);
 
   const applyPreset = (preset: PresetType) => {
     const p = PRESETS[preset];
@@ -167,6 +189,35 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
         <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
           Bond Simulator
         </h3>
+      </div>
+
+      <InsightHeader
+        severity={simulatorInsight.severity}
+        statusLabel={simulatorInsight.statusLabel}
+        diagnosis={simulatorInsight.diagnosis}
+        topRisk={simulatorInsight.topRisk}
+        headingLevel={2}
+        metrics={simulatorInsight.headerMetrics}
+        primaryAction={simulatorInsight.primaryAction}
+        eyebrow="Simulator scenario"
+        compactMobileMetrics
+      />
+
+      <div id="simulator-assumptions">
+        <MetricStrip metrics={simulatorInsight.assumptionMetrics} title="Simulation assumptions" />
+      </div>
+
+      <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
+        <div className="flex items-start gap-3">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+          <div className="space-y-1">
+            <p className="font-semibold">Scenario estimates, not guarantees</p>
+            <p className="text-xs leading-5 text-amber-900/80 dark:text-amber-100/80">
+              Uses simple APY math from the values below. It does not model slashing, jail,
+              churn-out, RUNE price changes, reward volatility, or compounding.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Presets */}
@@ -194,10 +245,11 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
       </div>
 
       {/* Inputs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div id="simulator-inputs" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
-          <label className="block text-xs text-zinc-500 mb-1.5">Bond Amount (RUNE)</label>
+          <label htmlFor="simulator-bond-amount" className="block text-xs text-zinc-500 mb-1.5">Bond Amount (RUNE)</label>
           <input
+            id="simulator-bond-amount"
             type="number"
             value={bondInput}
             onChange={(e) => { setBondInput(e.target.value); setSelectedPreset(null); }}
@@ -214,8 +266,9 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
         </div>
 
         <div>
-          <label className="block text-xs text-zinc-500 mb-1.5">Lock Period (days)</label>
+          <label htmlFor="simulator-lock-days" className="block text-xs text-zinc-500 mb-1.5">Lock Period (days)</label>
           <input
+            id="simulator-lock-days"
             type="number"
             value={lockDays}
             onChange={(e) => { setLockDays(e.target.value); setSelectedPreset(null); }}
@@ -227,8 +280,9 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
         </div>
 
         <div>
-          <label className="block text-xs text-zinc-500 mb-1.5">Est. Network APY (%)</label>
+          <label htmlFor="simulator-network-apy" className="block text-xs text-zinc-500 mb-1.5">Est. Network APY (%)</label>
           <input
+            id="simulator-network-apy"
             type="number"
             value={networkApy}
             onChange={(e) => { setNetworkApy(e.target.value); setSelectedPreset(null); }}
@@ -241,8 +295,9 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
         </div>
 
         <div>
-          <label className="block text-xs text-zinc-500 mb-1.5">Operator Fee (bps)</label>
+          <label htmlFor="simulator-operator-fee" className="block text-xs text-zinc-500 mb-1.5">Operator Fee (bps)</label>
           <input
+            id="simulator-operator-fee"
             type="number"
             value={operatorFee}
             onChange={(e) => { setOperatorFee(e.target.value); setSelectedPreset(null); }}
@@ -261,17 +316,17 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <ResultCard
               icon={<Coins className="w-4 h-4" />}
-              label="Daily Reward"
+              label="Est. Daily Reward"
               value={`${formatReward(result.dailyReward)} RUNE`}
             />
             <ResultCard
               icon={<TrendingUp className="w-4 h-4" />}
-              label="Per Churn"
+              label="Est. Per Churn"
               value={`${formatReward(result.perChurnReward)} RUNE`}
             />
             <ResultCard
               icon={<BarChart3 className="w-4 h-4" />}
-              label="Total Reward"
+              label="Est. Total Reward"
               value={`${formatReward(result.totalReward)} RUNE`}
             />
             <ResultCard
@@ -295,11 +350,14 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
           {/* Projection table */}
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
+              <caption className="sr-only">
+                Estimated rewards by period using simple APY math from the current simulator inputs
+              </caption>
               <thead>
                 <tr className="text-zinc-500 border-b border-zinc-200 dark:border-zinc-700">
                   <th className="text-left py-2 font-medium">Period</th>
-                  <th className="text-right py-2 font-medium">Rewards</th>
-                  <th className="text-right py-2 font-medium">Total</th>
+                  <th className="text-right py-2 font-medium">Est. Rewards</th>
+                  <th className="text-right py-2 font-medium">Projected Total</th>
                 </tr>
               </thead>
               <tbody className="font-mono text-zinc-900 dark:text-zinc-100">
@@ -325,18 +383,21 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
                 <div>
                   <p className="text-xs text-zinc-500">New Total Bonded</p>
                   <p className="font-mono font-semibold text-zinc-900 dark:text-zinc-100">
-                    {formatRuneAmount(impactPreview.newTotalBond)}
+                    {formatRuneFromNumber(impactPreview.newTotalBond)}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-zinc-500">Est. APY Change</p>
                   <p className={`font-mono font-semibold ${
-                    impactPreview.estimatedAPYChange >= 0
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-red-600 dark:text-red-400'
+                    impactPreview.estimatedAPYChange === null
+                      ? 'text-zinc-600 dark:text-zinc-400'
+                      : impactPreview.estimatedAPYChange >= 0
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-red-600 dark:text-red-400'
                   }`}>
-                    {impactPreview.estimatedAPYChange >= 0 ? '+' : ''}
-                    {impactPreview.estimatedAPYChange.toFixed(2)}%
+                    {impactPreview.estimatedAPYChange === null
+                      ? 'First bonded baseline'
+                      : `${impactPreview.estimatedAPYChange >= 0 ? '+' : ''}${impactPreview.estimatedAPYChange.toFixed(2)}%`}
                   </p>
                 </div>
                 <div>

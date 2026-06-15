@@ -1,5 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mutate } from 'swr';
 
 import { getThorNameReverseLookupStorageKey } from '@/lib/storage/keys';
 import { DashboardShell, getSourceFreshnessLabel } from './dashboard-shell';
@@ -10,6 +11,15 @@ const mocks = vi.hoisted(() => ({
   walletAddress: null as string | null,
   walletBalance: null as number | null,
   useWalletBalance: vi.fn(),
+  apiHealth: {
+    midgard: 'healthy',
+    thornode: 'healthy',
+    lastChecked: new Date('2026-06-12T10:00:00Z'),
+    lastSuccessful: {
+      midgard: new Date('2026-06-12T10:00:00Z'),
+      thornode: new Date('2026-06-12T10:00:00Z'),
+    },
+  },
 }));
 
 vi.mock('next/navigation', () => ({
@@ -44,15 +54,7 @@ vi.mock('@/components/dashboard/churn-countdown', () => ({
 }));
 
 vi.mock('@/lib/hooks/use-api-health', () => ({
-  useApiHealthContext: () => ({
-    midgard: 'healthy',
-    thornode: 'healthy',
-    lastChecked: new Date('2026-06-12T10:00:00Z'),
-    lastSuccessful: {
-      midgard: new Date('2026-06-12T10:00:00Z'),
-      thornode: new Date('2026-06-12T10:00:00Z'),
-    },
-  }),
+  useApiHealthContext: () => mocks.apiHealth,
 }));
 
 vi.mock('@/lib/hooks/use-wallet', () => ({
@@ -75,6 +77,15 @@ describe('DashboardShell', () => {
     vi.clearAllMocks();
     mocks.walletAddress = null;
     mocks.walletBalance = null;
+    mocks.apiHealth = {
+      midgard: 'healthy',
+      thornode: 'healthy',
+      lastChecked: new Date('2026-06-12T10:00:00Z'),
+      lastSuccessful: {
+        midgard: new Date('2026-06-12T10:00:00Z'),
+        thornode: new Date('2026-06-12T10:00:00Z'),
+      },
+    };
     sessionStorage.clear();
   });
 
@@ -101,6 +112,34 @@ describe('DashboardShell', () => {
     expect(screen.getByText('thor1qqq...qqqq')).toBeInTheDocument();
     expect(consoleError).not.toHaveBeenCalled();
     consoleError.mockRestore();
+  });
+
+  it('keeps rendering when THORName session storage is unavailable', async () => {
+    const originalSessionStorage = Object.getOwnPropertyDescriptor(window, 'sessionStorage');
+    mocks.reverseLookup.mockResolvedValueOnce({ entry: { name: 'operator' } });
+
+    Object.defineProperty(window, 'sessionStorage', {
+      configurable: true,
+      get() {
+        throw new Error('sessionStorage denied');
+      },
+    });
+
+    try {
+      render(
+        <DashboardShell>
+          <div>Dashboard content</div>
+        </DashboardShell>
+      );
+
+      await screen.findByText('Dashboard content');
+      await waitFor(() => expect(mocks.reverseLookup).toHaveBeenCalledWith(mocks.address));
+      expect(await screen.findByText('operator')).toBeInTheDocument();
+    } finally {
+      if (originalSessionStorage) {
+        Object.defineProperty(window, 'sessionStorage', originalSessionStorage);
+      }
+    }
   });
 
   it('reports Midgard and THORNode freshness independently', () => {
@@ -140,6 +179,101 @@ describe('DashboardShell', () => {
       new Date('2026-06-12T10:05:00Z'),
       now
     )).toBe('Midgard 0s ago · THORNode pending');
+  });
+
+  it('does not label a currently degraded source as synced because it succeeded earlier', async () => {
+    mocks.apiHealth = {
+      midgard: 'healthy',
+      thornode: 'degraded',
+      lastChecked: new Date('2026-06-12T10:05:00Z'),
+      lastSuccessful: {
+        midgard: new Date('2026-06-12T10:04:50Z'),
+        thornode: new Date('2026-06-12T10:00:00Z'),
+      },
+    };
+    mocks.reverseLookup.mockResolvedValueOnce({ entry: null });
+
+    render(
+      <DashboardShell>
+        <div>Dashboard content</div>
+      </DashboardShell>
+    );
+
+    await screen.findByText('Dashboard content');
+
+    expect(screen.getByTestId('source-freshness-compact')).toHaveTextContent('Sources degraded');
+    expect(screen.getByTestId('source-freshness-full')).toHaveTextContent('THORNode degraded');
+    expect(screen.getByTestId('source-freshness-full')).not.toHaveTextContent('Sources synced');
+  });
+
+  it('refreshes static and address-bound dashboard data keys together', async () => {
+    mocks.reverseLookup.mockResolvedValueOnce({ entry: null });
+
+    render(
+      <DashboardShell>
+        <div>Dashboard content</div>
+      </DashboardShell>
+    );
+
+    await screen.findByText('Dashboard content');
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh dashboard data' }));
+
+    expect(mutate).toHaveBeenCalledWith(expect.any(Function), undefined, { revalidate: true });
+
+    const refreshPredicate = vi.mocked(mutate).mock.calls[0][0] as (key: unknown) => boolean;
+    expect(refreshPredicate('nodes')).toBe(true);
+    expect(refreshPredicate(['rune-price-history', 'day', 30])).toBe(true);
+    expect(refreshPredicate(['bond-details', mocks.address])).toBe(true);
+    expect(refreshPredicate(['lp-current', mocks.address])).toBe(true);
+    expect(refreshPredicate(['lp-historical', mocks.address, 'pool-signature'])).toBe(true);
+    expect(refreshPredicate(['transaction-history', mocks.address])).toBe(true);
+    expect(refreshPredicate(['unrelated-feed', mocks.address])).toBe(false);
+  });
+
+  it('keeps verbose source and churn controls out of constrained header widths', async () => {
+    mocks.reverseLookup.mockResolvedValueOnce({ entry: null });
+
+    render(
+      <DashboardShell>
+        <div>Dashboard content</div>
+      </DashboardShell>
+    );
+
+    await screen.findByText('Dashboard content');
+
+    expect(screen.getByTestId('source-freshness-compact').className).toContain('xl:hidden');
+    expect(screen.getByTestId('source-freshness-full').className).toContain('hidden xl:flex');
+    expect(screen.getByTestId('churn-header-action').className).toContain('hidden xl:inline-flex');
+  });
+
+  it('renders the alert review trigger as a header action', async () => {
+    mocks.reverseLookup.mockResolvedValueOnce({ entry: null });
+
+    render(
+      <DashboardShell alertReviewTrigger={<button type="button" data-testid="header-alert-trigger">2 alerts</button>}>
+        <div>Dashboard content</div>
+      </DashboardShell>
+    );
+
+    await screen.findByText('Dashboard content');
+
+    expect(screen.getByTestId('header-alert-trigger')).toBeVisible();
+  });
+
+  it('renders alert review as a secondary inspection panel when provided', async () => {
+    mocks.reverseLookup.mockResolvedValueOnce({ entry: null });
+
+    render(
+      <DashboardShell alertReviewPanel={<section data-testid="alert-review-panel">Alert review panel</section>}>
+        <div>Dashboard content</div>
+      </DashboardShell>
+    );
+
+    await screen.findByText('Dashboard content');
+
+    const panel = screen.getByTestId('alert-review-panel');
+    expect(panel).toBeVisible();
+    expect(panel.parentElement).toHaveClass('lg:order-2');
   });
 
   it('shows the connected wallet balance instead of querying the watched dashboard address', async () => {

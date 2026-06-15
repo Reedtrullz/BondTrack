@@ -228,6 +228,28 @@ describe('/api/midgard proxy', () => {
     expect(secondCall).toContain('midgard.thorchain.network');
   });
 
+  it('normalizes THORName reverse lookup misses as an empty successful result', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    mockFetch
+      .mockResolvedValueOnce({ ok: false, status: 404 } as unknown as Response)
+      .mockResolvedValueOnce({ ok: false, status: 404 } as unknown as Response);
+
+    const request = createRequest('v2/thorname/rlookup/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq', {
+      origin: 'https://bond.thorchain.no',
+    });
+    const response = await GET(request, {
+      params: Promise.resolve({
+        path: ['v2', 'thorname', 'rlookup', 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq'],
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ entry: null });
+    expectProxySuccessHeaders(response);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it('does not expose upstream base URLs or detail arrays when all upstreams fail', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     mockFetch

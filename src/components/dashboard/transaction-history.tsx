@@ -2,58 +2,172 @@
 
 import { useEffect, useState } from 'react';
 import { useTransactionHistory } from '@/lib/hooks/use-transaction-history';
-import { ExternalLink } from 'lucide-react';
+import { formatRuneDisplayNumber } from '@/lib/utils/formatters';
+import { isValidTHORChainAddress } from '@/lib/utils/address-validation';
+import { Database, ExternalLink } from 'lucide-react';
 
 interface TransactionHistoryProps {
   address: string | null;
 }
 
+function formatHistoryRuneAmount(amount: number): string {
+  return `${formatRuneDisplayNumber(amount, 2)} RUNE`;
+}
+
+function formatTransactionTimestamp(tx: { timestamp: Date; timestampKnown: boolean }): string {
+  if (!tx.timestampKnown) {
+    return 'Unknown';
+  }
+
+  return `${tx.timestamp.toLocaleDateString()} ${tx.timestamp.toLocaleTimeString()}`;
+}
+
+function formatLoadedAt(loadedAt: Date | null): string {
+  if (!loadedAt) {
+    return 'Waiting for source';
+  }
+
+  return `Loaded ${loadedAt.toLocaleTimeString()}`;
+}
+
+function TransactionHistorySource({
+  transactionCount,
+  loadedAt,
+  historyLimit,
+}: {
+  transactionCount: number;
+  loadedAt: Date | null;
+  historyLimit: number;
+}) {
+  const actionLabel = transactionCount === 1
+    ? '1 matching BOND/UNBOND action rendered.'
+    : transactionCount > 1
+      ? `${transactionCount} matching BOND/UNBOND actions rendered.`
+      : 'No matching recent actions returned.';
+
+  return (
+    <section
+      aria-label="Transaction history source"
+      className="rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-3 text-sky-950 dark:border-sky-900/60 dark:bg-sky-950/20 dark:text-sky-100"
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 gap-2">
+          <Database className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Midgard actions</p>
+            <p className="mt-1 text-xs leading-5 opacity-85">
+              Shows up to {historyLimit} recent Midgard actions and filters to BOND/UNBOND. Empty results do not prove older history is absent.
+            </p>
+          </div>
+        </div>
+        <span className="shrink-0 rounded-full border border-current/20 bg-white/70 px-2 py-1 text-xs font-semibold dark:bg-zinc-950/30">
+          {formatLoadedAt(loadedAt)}
+        </span>
+      </div>
+      <p className="mt-2 text-xs font-medium opacity-90">{actionLabel}</p>
+    </section>
+  );
+}
+
+const historyAddressInputId = 'transaction-history-address';
+const historyAddressHelpId = 'transaction-history-address-help';
+const historyAddressErrorId = 'transaction-history-address-error';
+
 export function TransactionHistory({ address }: TransactionHistoryProps) {
   const [selectedAddress, setSelectedAddress] = useState<string>(address || '');
   const [inputAddress, setInputAddress] = useState<string>(address || '');
+  const [addressError, setAddressError] = useState<string>('');
 
   // Sync state with prop changes
   useEffect(() => {
-    setSelectedAddress(address || '');
-    setInputAddress(address || '');
+    const nextAddress = address || '';
+    setSelectedAddress(nextAddress);
+    setInputAddress(nextAddress);
+    setAddressError(nextAddress && !isValidTHORChainAddress(nextAddress)
+      ? 'Enter a valid THORChain address before loading history.'
+      : '');
   }, [address]);
 
-  const { transactions, isLoading, error } = useTransactionHistory(selectedAddress || null);
+  const selectedAddressIsValid = selectedAddress ? isValidTHORChainAddress(selectedAddress) : false;
+  const { transactions, isLoading, error, loadedAt, historyLimit } = useTransactionHistory(selectedAddressIsValid ? selectedAddress : null);
+  const showSourceContext = selectedAddressIsValid && !isLoading && !error && loadedAt !== null;
 
-  const handleSearch = () => {
-    if (inputAddress.trim()) {
-      setSelectedAddress(inputAddress.trim());
+  const handleSearch = (event?: React.FormEvent) => {
+    event?.preventDefault();
+    const nextAddress = inputAddress.trim();
+    if (!nextAddress) {
+      return;
     }
-  };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
+    if (!isValidTHORChainAddress(nextAddress)) {
+      setAddressError('Enter a valid THORChain address before loading history.');
+      return;
     }
+
+    setAddressError('');
+    setSelectedAddress(nextAddress);
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          value={inputAddress}
-          onChange={(e) => setInputAddress(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Enter THORChain address"
-          className="flex-1 px-3 py-2 text-sm border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-        />
+      <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row sm:items-start">
+        <div className="flex-1">
+          <label htmlFor={historyAddressInputId} className="sr-only">Transaction history address</label>
+          <input
+            id={historyAddressInputId}
+            type="text"
+            value={inputAddress}
+            onChange={(e) => {
+              setInputAddress(e.target.value);
+              if (addressError) {
+                setAddressError('');
+              }
+            }}
+            placeholder="Enter THORChain address"
+            aria-invalid={Boolean(addressError)}
+            aria-describedby={addressError ? `${historyAddressHelpId} ${historyAddressErrorId}` : historyAddressHelpId}
+            autoComplete="off"
+            className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 ${
+              addressError ? 'border-red-500' : 'border-zinc-200 dark:border-zinc-800'
+            }`}
+          />
+          <p id={historyAddressHelpId} className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Paste the THORChain address whose BOND/UNBOND history you want to inspect.
+          </p>
+          <p
+            id={historyAddressErrorId}
+            role={addressError ? 'alert' : undefined}
+            aria-live="polite"
+            className="mt-1 min-h-5 text-xs text-red-500"
+          >
+            {addressError}
+          </p>
+        </div>
         <button
-          onClick={handleSearch}
-          className="px-4 py-2 text-sm font-medium text-white bg-zinc-900 dark:bg-zinc-100 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200"
+          type="submit"
+          disabled={!inputAddress.trim()}
+          aria-label="Search transaction history"
+          className="px-4 py-2 text-sm font-medium text-white bg-zinc-900 dark:bg-zinc-100 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-400 disabled:text-zinc-100 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400"
         >
           Search
         </button>
-      </div>
+      </form>
+
+      {showSourceContext ? (
+        <TransactionHistorySource
+          transactionCount={transactions.length}
+          loadedAt={loadedAt}
+          historyLimit={historyLimit}
+        />
+      ) : null}
 
       {!selectedAddress ? (
         <div className="text-center py-8 text-zinc-500">
           Enter a THORChain address to view transaction history
+        </div>
+      ) : !selectedAddressIsValid ? (
+        <div className="text-center py-8 text-zinc-500">
+          Enter a valid THORChain address to load bond and unbond history.
         </div>
       ) : isLoading ? (
         <div className="text-center py-8 text-zinc-500">Loading transactions...</div>
@@ -66,7 +180,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
         </div>
       ) : transactions.length === 0 ? (
         <div className="text-center py-8 text-zinc-500">
-          No BOND/UNBOND transactions found for this address
+          No recent BOND/UNBOND actions returned by Midgard for this address
         </div>
       ) : (
         <>
@@ -98,7 +212,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
                 <div>
                 <div className="text-xs text-zinc-500">Amount</div>
                 <div className="font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                  {tx.amount.toFixed(2)}
+                  {formatHistoryRuneAmount(tx.amount)}
                 </div>
               </div>
               <div>
@@ -112,7 +226,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
               <div>
                 <div className="text-xs text-zinc-500">Date</div>
                 <div className="text-xs text-zinc-600 dark:text-zinc-400">
-                  {tx.timestamp.toLocaleDateString()} {tx.timestamp.toLocaleTimeString()}
+                  {formatTransactionTimestamp(tx)}
                 </div>
               </div>
               <div>
@@ -160,7 +274,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
                     </span>
                   </td>
                   <td className="px-3 py-3 text-right font-mono text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
-                    {tx.amount.toFixed(2)}
+                    {formatHistoryRuneAmount(tx.amount)}
                   </td>
                   <td className="px-3 py-3 font-mono text-xs text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
                     {tx.nodeAddress.length > 20
@@ -168,7 +282,7 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
                       : tx.nodeAddress}
                   </td>
                   <td className="px-3 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
-                    {tx.timestamp.toLocaleDateString()} {tx.timestamp.toLocaleTimeString()}
+                    {formatTransactionTimestamp(tx)}
                   </td>
                   <td className="px-3 py-3 font-mono text-xs text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
                     <a

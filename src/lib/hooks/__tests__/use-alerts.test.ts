@@ -76,6 +76,35 @@ describe('useAlerts', () => {
     expect(localStorage.getItem(STORAGE_KEY)).toContain('thor1nodeb');
   });
 
+  it('keeps live alerts usable when browser storage is unavailable', () => {
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new Error('localStorage denied');
+      },
+    });
+
+    try {
+      const { result } = renderHook(() => useAlerts());
+
+      act(() => {
+        result.current.triggerAlert('JAIL', 'thor1nodea', 'jail alert');
+      });
+
+      expect(result.current.alerts).toHaveLength(1);
+      expect(result.current.alerts[0]).toMatchObject({ message: 'jail alert' });
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+      if (originalLocalStorage) {
+        Object.defineProperty(window, 'localStorage', originalLocalStorage);
+      }
+    }
+  });
+
   it('only emits jail alerts for a transition after a previous snapshot exists', () => {
     const { result } = renderHook(() => useAlerts());
     const jailed = makePosition({
@@ -123,5 +152,37 @@ describe('useAlerts', () => {
       message: 'jail still enabled',
     });
     expect(localStorage.getItem(STORAGE_KEY)).toContain('"slashAlerts":false');
+  });
+
+  it('keeps dismissed alerts in local history and can restore them', () => {
+    const { result } = renderHook(() => useAlerts());
+
+    act(() => {
+      result.current.triggerAlert('SLASH_INCREASE', 'thor1nodea', 'first slash');
+      result.current.triggerAlert('JAIL', 'thor1nodeb', 'jail alert');
+    });
+
+    const dismissedId = result.current.alerts[0].id;
+
+    act(() => {
+      result.current.dismissAlert(dismissedId);
+    });
+
+    expect(result.current.alerts).toHaveLength(1);
+    expect(result.current.alertHistory).toHaveLength(2);
+    expect(result.current.alertHistory.find((alert) => alert.id === dismissedId)).toMatchObject({
+      dismissed: true,
+      message: 'jail alert',
+    });
+
+    act(() => {
+      result.current.restoreAlert(dismissedId);
+    });
+
+    expect(result.current.alerts).toHaveLength(2);
+    expect(result.current.alertHistory.find((alert) => alert.id === dismissedId)).toMatchObject({
+      dismissed: false,
+      message: 'jail alert',
+    });
   });
 });

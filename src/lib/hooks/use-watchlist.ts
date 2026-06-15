@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { STORAGE_KEYS } from '@/lib/storage/keys';
+import { readLocalStorageValue, STORAGE_KEYS, writeLocalStorageValue } from '@/lib/storage/keys';
 import { isValidTHORChainAddress } from '@/lib/utils/address-validation';
 
 const STORAGE_KEY = STORAGE_KEYS.watchlist;
@@ -18,13 +18,13 @@ function sanitizeAddresses(data: unknown): string[] {
 function getInitialAddresses(): string[] {
   if (typeof window === 'undefined') return [];
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = readLocalStorageValue(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       return sanitizeAddresses(parsed);
     }
-  } catch (error) {
-    console.error('Storage error while loading watchlist addresses:', error);
+  } catch {
+    // Corrupt or unavailable storage should not block the in-memory watchlist.
   }
   return [];
 }
@@ -40,9 +40,9 @@ export function useWatchlist() {
 
   const saveToStorage = useCallback((newAddresses: string[]) => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newAddresses));
-    } catch (error) {
-      console.error('Storage error while saving watchlist addresses:', error);
+      writeLocalStorageValue(STORAGE_KEY, JSON.stringify(newAddresses));
+    } catch {
+      // Corrupt or unavailable storage should not block the in-memory watchlist.
     }
   }, []);
 
