@@ -653,7 +653,7 @@ function FocusedNodeContext({
               </p>
               <p className="mt-1 text-sm opacity-85">{riskDecision.detail}</p>
             </div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:w-48 lg:grid-cols-1">
+            <div className="order-first grid grid-cols-1 gap-2 sm:grid-cols-2 lg:order-none lg:w-48 lg:grid-cols-1">
               <a
                 href={riskDecision.href}
                 className={cn(
@@ -841,7 +841,7 @@ function FocusedNodeContext({
           </p>
           <p className="mt-1 text-sm opacity-85">{decision.detail}</p>
         </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:w-48 lg:grid-cols-1">
+        <div className="order-first grid grid-cols-1 gap-2 sm:grid-cols-2 lg:order-none lg:w-48 lg:grid-cols-1">
           <button
             type="button"
             onClick={onReviewDetails}

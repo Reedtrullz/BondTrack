@@ -368,6 +368,7 @@ test.describe('Risk dashboard', () => {
         details: rectFor('[data-testid="focused-risk-metric-details"]'),
         inlineEvidence: rectFor('[data-testid="focused-risk-inline-evidence"]'),
         focusedContext: rectFor('[data-testid="focused-risk-context"]'),
+        primaryLink: rectFor('[data-testid="focused-risk-primary-link"]'),
         overflowing,
         viewportHeight: window.innerHeight,
       };
@@ -377,12 +378,14 @@ test.describe('Risk dashboard', () => {
     expect(closedLayout.action).not.toBeNull();
     expect(closedLayout.inlineEvidence).not.toBeNull();
     expect(closedLayout.details).not.toBeNull();
+    expect(closedLayout.primaryLink).not.toBeNull();
+    expect(closedLayout.primaryLink!.top).toBeLessThanOrEqual(closedLayout.action!.top);
     expect(closedLayout.action!.top).toBeLessThanOrEqual(closedLayout.inlineEvidence!.top);
     expect(closedLayout.inlineEvidence!.top).toBeLessThan(closedLayout.details!.top);
+    expect(closedLayout.primaryLink!.top).toBeLessThan(closedLayout.viewportHeight);
+    expect(closedLayout.primaryLink!.bottom).toBeLessThan(closedLayout.viewportHeight);
     expect(closedLayout.action!.top).toBeLessThan(closedLayout.viewportHeight);
-    expect(closedLayout.action!.bottom).toBeLessThan(closedLayout.viewportHeight);
     expect(closedLayout.inlineEvidence!.top).toBeLessThan(closedLayout.viewportHeight);
-    expect(closedLayout.inlineEvidence!.bottom).toBeLessThan(closedLayout.viewportHeight);
     expect(closedLayout.overflowing).toEqual([]);
 
     await metricDetails.locator('summary').click();
@@ -439,6 +442,7 @@ test.describe('Risk dashboard', () => {
         sourceConfidence: box('section[aria-label="Source confidence"]'),
         focusedContext: box('section[aria-label="Focused node risk context"]'),
         focusedAction: box('[data-testid="focused-bonded-primary-action"]'),
+        focusedButton: box('[data-testid="focused-bonded-primary-button"]'),
         focusedEvidence: box('[data-testid="focused-bonded-inline-evidence"]'),
         focusedDetails: box('[data-testid="focused-bonded-metric-details"]'),
         overflowing: Array.from(document.querySelectorAll('body *'))
@@ -455,18 +459,20 @@ test.describe('Risk dashboard', () => {
     expect(layout.sourceConfidence).not.toBeNull();
     expect(layout.focusedContext).not.toBeNull();
     expect(layout.focusedAction).not.toBeNull();
+    expect(layout.focusedButton).not.toBeNull();
     expect(layout.focusedEvidence).not.toBeNull();
     expect(layout.focusedDetails).not.toBeNull();
     expect(layout.diagnosis!.top).toBeLessThan(layout.sourceConfidence!.top);
     expect(layout.sourceConfidence!.top).toBeLessThan(layout.focusedContext!.top);
+    expect(layout.focusedButton!.top).toBeLessThanOrEqual(layout.focusedAction!.top);
     expect(layout.focusedAction!.top).toBeLessThanOrEqual(layout.focusedEvidence!.top);
     expect(layout.focusedEvidence!.top).toBeLessThan(layout.focusedDetails!.top);
     expect(layout.diagnosis!.bottom).toBeLessThan(layout.viewportHeight);
     expect(layout.sourceConfidence!.top).toBeLessThan(layout.viewportHeight);
+    expect(layout.focusedButton!.top).toBeLessThan(layout.viewportHeight);
+    expect(layout.focusedButton!.bottom).toBeLessThan(layout.viewportHeight);
     expect(layout.focusedAction!.top).toBeLessThan(layout.viewportHeight);
-    expect(layout.focusedAction!.bottom).toBeLessThan(layout.viewportHeight);
     expect(layout.focusedEvidence!.top).toBeLessThan(layout.viewportHeight);
-    expect(layout.focusedEvidence!.bottom).toBeLessThan(layout.viewportHeight);
     expect(layout.overflowing).toEqual([]);
   });
 });
