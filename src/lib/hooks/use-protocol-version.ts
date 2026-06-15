@@ -1,7 +1,11 @@
 import { useMemo } from 'react';
 import useSWR from 'swr';
-import { getAllNodes, type NodeRaw } from '@/lib/api/thornode';
-import { LATEST_THORNODE_VERSION } from '@/lib/config';
+import { getAllNodes, getThorchainVersion, type NodeRaw, type ThorchainVersionRaw } from '@/lib/api/thornode';
+
+interface ProtocolVersionPayload {
+  nodes?: NodeRaw[];
+  networkVersion: ThorchainVersionRaw | null;
+}
 
 function parseVersion(version: string | null | undefined): number[] | null {
   if (!version) return null;
@@ -33,23 +37,47 @@ function pickCurrentVersion(nodes: NodeRaw[] | undefined): string | null {
   return activeNode?.version ?? nodes[0]?.version ?? null;
 }
 
+function normalizeVersion(version: string | null | undefined): string | null {
+  return parseVersion(version) ? version?.trim() ?? null : null;
+}
+
+function pickLatestVersion(networkVersion: ThorchainVersionRaw | null): string | null {
+  return (
+    normalizeVersion(networkVersion?.next) ??
+    normalizeVersion(networkVersion?.current) ??
+    normalizeVersion(networkVersion?.querier)
+  );
+}
+
+async function fetchProtocolVersionPayload(): Promise<ProtocolVersionPayload> {
+  const [nodesResult, versionResult] = await Promise.allSettled([
+    getAllNodes(),
+    getThorchainVersion({ cache: 'no-store', retry: false }),
+  ]);
+
+  return {
+    nodes: nodesResult.status === 'fulfilled' ? nodesResult.value : undefined,
+    networkVersion: versionResult.status === 'fulfilled' ? versionResult.value : null,
+  };
+}
+
 interface UseProtocolVersionOptions {
   enabled?: boolean;
 }
 
 export function useProtocolVersion({ enabled = true }: UseProtocolVersionOptions = {}) {
-  const { data, error, isLoading } = useSWR<NodeRaw[]>(
+  const { data, error, isLoading } = useSWR<ProtocolVersionPayload>(
     enabled ? 'protocol-version' : null,
-    () => getAllNodes(),
+    fetchProtocolVersionPayload,
     {
       refreshInterval: 60_000,
       errorRetryInterval: 10_000,
     }
   );
 
-  const currentVersion = useMemo(() => pickCurrentVersion(data), [data]);
-  const latestVersion = LATEST_THORNODE_VERSION;
-  const hasUpgrade = Boolean(currentVersion) && isVersionOlder(currentVersion ?? '', latestVersion);
+  const currentVersion = useMemo(() => pickCurrentVersion(data?.nodes), [data?.nodes]);
+  const latestVersion = useMemo(() => pickLatestVersion(data?.networkVersion ?? null), [data?.networkVersion]);
+  const hasUpgrade = Boolean(currentVersion && latestVersion) && isVersionOlder(currentVersion ?? '', latestVersion ?? '');
 
   return {
     currentVersion,

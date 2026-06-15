@@ -55,6 +55,22 @@ function groupItems(items: ActionItem[]): Array<[InsightSeverity, ActionItem[]]>
     .filter(([, entries]) => entries.length > 0);
 }
 
+function getMobileActionLabel(actionLabel: string, item: ActionItem): string {
+  if (item.id.startsWith('source:') || /source confidence/i.test(actionLabel)) {
+    return 'Review source';
+  }
+
+  if (/risk|slash|churn|jail/i.test(actionLabel)) {
+    return 'Review risk';
+  }
+
+  if (/node/i.test(actionLabel)) {
+    return 'Inspect node';
+  }
+
+  return actionLabel;
+}
+
 export function ActionQueue({
   items,
   now = new Date(),
@@ -111,7 +127,7 @@ export function ActionQueue({
                 </div>
                 {entries.map((item) => {
                   const actionLabel = item.primaryAction ?? 'Inspect';
-                  const mobileActionLabel = actionLabel.split(' ')[0] || actionLabel;
+                  const mobileActionLabel = getMobileActionLabel(actionLabel, item);
                   const keepImpactVisible = mobileCompact && item.id.startsWith('source:');
 
                   return (

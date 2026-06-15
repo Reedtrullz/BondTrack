@@ -38,6 +38,7 @@ test.describe('Dashboard command center', () => {
       'href',
       `/dashboard/transactions?address=${DEFAULT_DASHBOARD_ADDRESS}&action=bond`
     );
+    await expect(nextTransaction.getByRole('link', { name: 'Open UNBOND' })).toBeVisible();
   });
 
   test('does not nest buttons inside command-center links', async ({ page }) => {
@@ -112,6 +113,7 @@ test.describe('Dashboard command center', () => {
       `/dashboard?address=${DEFAULT_DASHBOARD_ADDRESS}#source-confidence`
     );
     await expect(nextTransaction.getByRole('link', { name: 'Open BOND' })).toHaveCount(0);
+    await expect(nextTransaction.getByRole('link', { name: 'Open UNBOND' })).toHaveCount(0);
     await expect(page.getByLabel('Critical actions')).toContainText('THORNode is degraded');
   });
 
@@ -703,12 +705,13 @@ test.describe('Dashboard command center', () => {
     await page.setViewportSize({ width: 390, height: 740 });
     await page.goto(`/dashboard?address=${DEFAULT_DASHBOARD_ADDRESS}`);
 
+    const sourceConfidence = page.getByRole('region', { name: 'Source confidence' });
     await expect(page.getByLabel('Command center diagnosis')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Critical actions' })).toBeVisible();
-    await expect(page.getByLabel('Source confidence')).toBeVisible();
-    await expect(page.getByLabel('Source confidence')).toContainText('Data source confidence');
-    await expect(page.getByLabel('Source confidence')).toContainText(/Fresh|Unknown|Degraded|Stale/);
-    await expect(page.getByLabel('Source confidence')).not.toContainText('Live data confidence');
+    await expect(sourceConfidence).toBeVisible();
+    await expect(sourceConfidence).toContainText('Data source confidence');
+    await expect(sourceConfidence).toContainText(/Fresh|Unknown|Degraded|Stale/);
+    await expect(sourceConfidence).not.toContainText('Live data confidence');
 
     const layout = await page.evaluate(() => {
       const box = (element: Element | null) => {

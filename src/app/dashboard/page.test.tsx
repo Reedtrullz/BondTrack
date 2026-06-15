@@ -1,6 +1,7 @@
 import { render, screen, within } from '@/test/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import DashboardPage from './page';
+import type { BondPosition } from '@/lib/types/node';
 
 const mockUseBondPositions = vi.fn();
 const mockUseLpPositions = vi.fn();
@@ -8,6 +9,22 @@ const mockUseNetworkMetrics = vi.fn();
 const mockUseRunePriceHistory = vi.fn();
 const mockUseBondHistory = vi.fn();
 const mockUseApiHealthContext = vi.fn();
+const mockBondPosition: BondPosition = {
+  nodeAddress: 'thor1commandnode0000000000000000000000000000',
+  nodeOperatorAddress: 'thor1operator0000000000000000000000000000000',
+  bondAmount: 10_000,
+  bondSharePercent: 100,
+  status: 'Active',
+  operatorFee: 500,
+  operatorFeeFormatted: '5.0%',
+  netAPY: 12,
+  totalBond: 10_000,
+  slashPoints: 0,
+  isJailed: false,
+  jailReleaseHeight: 0,
+  version: '3.19.0',
+  requestedToLeave: false,
+};
 
 const mocks = vi.hoisted(() => ({
   searchParams: { current: new URLSearchParams('address=thor1commandaddress') },
@@ -112,6 +129,26 @@ describe('DashboardPage', () => {
       'href',
       '/dashboard/transactions?address=thor1commandaddress&action=bond'
     );
+    expect(within(nextTransaction).queryByRole('link', { name: 'Open UNBOND' })).not.toBeInTheDocument();
+  });
+
+  it('offers UNBOND from the command center only with a bonded position and fresh THORNode confidence', () => {
+    mockUseBondPositions.mockReturnValue({
+      positions: [mockBondPosition],
+      isLoading: false,
+    });
+
+    render(<DashboardPage />);
+
+    const nextTransaction = screen.getByRole('region', { name: 'Next transaction' });
+    expect(within(nextTransaction).getByRole('link', { name: 'Open BOND' })).toHaveAttribute(
+      'href',
+      '/dashboard/transactions?address=thor1commandaddress&action=bond'
+    );
+    expect(within(nextTransaction).getByRole('link', { name: 'Open UNBOND' })).toHaveAttribute(
+      'href',
+      '/dashboard/transactions?address=thor1commandaddress&action=unbond'
+    );
   });
 
   it.each(['degraded', 'down', 'unknown'] as const)('routes generic BOND entry to source confidence when THORNode is %s', (thornode) => {
@@ -141,6 +178,32 @@ describe('DashboardPage', () => {
       '/dashboard?address=thor1commandaddress#source-confidence'
     );
     expect(within(nextTransaction).queryByRole('link', { name: 'Open BOND' })).not.toBeInTheDocument();
+    expect(within(nextTransaction).queryByRole('link', { name: 'Open UNBOND' })).not.toBeInTheDocument();
+  });
+
+  it('hides command-center UNBOND when a bonded position exists but THORNode confidence is degraded', () => {
+    mockUseBondPositions.mockReturnValue({
+      positions: [mockBondPosition],
+      isLoading: false,
+    });
+    mockUseApiHealthContext.mockReturnValue({
+      midgard: 'healthy',
+      thornode: 'degraded',
+      lastChecked: new Date('2026-06-13T00:00:00.000Z'),
+      lastSuccessful: {
+        midgard: new Date('2026-06-13T00:00:00.000Z'),
+        thornode: new Date('2026-06-12T23:00:00.000Z'),
+      },
+    });
+
+    render(<DashboardPage />);
+
+    const nextTransaction = screen.getByRole('region', { name: 'Next transaction' });
+    expect(within(nextTransaction).getByRole('link', { name: 'Review source confidence' })).toHaveAttribute(
+      'href',
+      '/dashboard?address=thor1commandaddress#source-confidence'
+    );
+    expect(within(nextTransaction).queryByRole('link', { name: 'Open UNBOND' })).not.toBeInTheDocument();
   });
 
   it('keeps the full-page skeleton while primary bond state is still loading under healthy THORNode', () => {

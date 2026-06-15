@@ -2,11 +2,12 @@ import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { SWRConfig } from 'swr';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getAllNodes, type NodeRaw } from '@/lib/api/thornode';
+import { getAllNodes, getThorchainVersion, type NodeRaw } from '@/lib/api/thornode';
 import { useProtocolVersion } from '../use-protocol-version';
 
 vi.mock('@/lib/api/thornode', () => ({
   getAllNodes: vi.fn(),
+  getThorchainVersion: vi.fn(),
 }));
 
 const wrapper = ({ children }: { children: React.ReactNode }) =>
@@ -47,28 +48,64 @@ function makeNode(overrides: Partial<NodeRaw> = {}): NodeRaw {
 describe('useProtocolVersion', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getThorchainVersion).mockResolvedValue({
+      current: '3.19.0',
+      next: '3.19.0',
+      querier: '3.19.0',
+    });
   });
 
   it('does not query THORNode when disabled', () => {
     const { result } = renderHook(() => useProtocolVersion({ enabled: false }), { wrapper });
 
     expect(result.current.currentVersion).toBeNull();
+    expect(result.current.latestVersion).toBeNull();
     expect(result.current.hasUpgrade).toBe(false);
     expect(result.current.isLoading).toBe(false);
     expect(getAllNodes).not.toHaveBeenCalled();
+    expect(getThorchainVersion).not.toHaveBeenCalled();
   });
 
-  it('loads the active node version when enabled', async () => {
+  it('compares the active node version against live THORNode version data', async () => {
     vi.mocked(getAllNodes).mockResolvedValueOnce([
-      makeNode({ status: 'Standby', version: '0.99.0' }),
-      makeNode({ status: 'Active', version: '1.0.0' }),
+      makeNode({ status: 'Standby', version: '3.18.0' }),
+      makeNode({ status: 'Active', version: '3.18.0' }),
     ]);
 
     const { result } = renderHook(() => useProtocolVersion(), { wrapper });
 
-    await waitFor(() => expect(result.current.currentVersion).toBe('1.0.0'));
+    await waitFor(() => expect(result.current.currentVersion).toBe('3.18.0'));
 
+    expect(result.current.latestVersion).toBe('3.19.0');
     expect(result.current.hasUpgrade).toBe(true);
     expect(getAllNodes).toHaveBeenCalledTimes(1);
+    expect(getThorchainVersion).toHaveBeenCalledWith({ cache: 'no-store', retry: false });
+  });
+
+  it('does not warn when the active node already matches the live THORNode version', async () => {
+    vi.mocked(getAllNodes).mockResolvedValueOnce([
+      makeNode({ status: 'Active', version: '3.19.0' }),
+    ]);
+
+    const { result } = renderHook(() => useProtocolVersion(), { wrapper });
+
+    await waitFor(() => expect(result.current.currentVersion).toBe('3.19.0'));
+
+    expect(result.current.latestVersion).toBe('3.19.0');
+    expect(result.current.hasUpgrade).toBe(false);
+  });
+
+  it('does not fall back to a hardcoded protocol version when THORNode version is unavailable', async () => {
+    vi.mocked(getAllNodes).mockResolvedValueOnce([
+      makeNode({ status: 'Active', version: '3.18.0' }),
+    ]);
+    vi.mocked(getThorchainVersion).mockRejectedValueOnce(new Error('version unavailable'));
+
+    const { result } = renderHook(() => useProtocolVersion(), { wrapper });
+
+    await waitFor(() => expect(result.current.currentVersion).toBe('3.18.0'));
+
+    expect(result.current.latestVersion).toBeNull();
+    expect(result.current.hasUpgrade).toBe(false);
   });
 });

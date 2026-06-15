@@ -118,7 +118,7 @@ test.describe('Node explorer', () => {
     await page.goto(`/dashboard/explorer?address=${DEFAULT_DASHBOARD_ADDRESS}`);
 
     const sortControls = page.getByTestId('explorer-sort-controls');
-    const sourceConfidence = page.getByLabel('Source confidence');
+    const sourceConfidence = page.getByRole('region', { name: 'Source confidence' });
     const decision = page.getByLabel('Discovery decision diagnosis');
     await expect(sourceConfidence).toBeVisible();
     await expect(sourceConfidence).toContainText('THORNode');

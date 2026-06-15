@@ -59,5 +59,3 @@ export const NETWORK = {
     health: 30000,
   },
 } as const;
-
-export const LATEST_THORNODE_VERSION = '1.135.0';

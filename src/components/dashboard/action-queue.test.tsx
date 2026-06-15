@@ -50,6 +50,8 @@ describe('ActionQueue', () => {
     const action = screen.getByRole('link', { name: 'Review churn risk' });
     expect(action).toHaveAttribute('href', '/dashboard/risk?address=thor1bond&node=thor1node');
     expect(action).toHaveClass('h-8', 'sm:h-9');
+    expect(screen.getByText('Review risk')).toHaveClass('sm:hidden');
+    expect(screen.getAllByText('Inspect node').some((element) => element.classList.contains('sm:hidden'))).toBe(true);
   });
 
   it('keeps the default action cards fully explanatory', () => {
@@ -82,5 +84,6 @@ describe('ActionQueue', () => {
       'href',
       '/dashboard?address=thor1bond#source-confidence'
     );
+    expect(screen.getByText('Review source')).toHaveClass('sm:hidden');
   });
 });

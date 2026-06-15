@@ -30,7 +30,7 @@ const mockNodes = [
     forced_to_leave: false,
     leave_height: 0,
     ip_address: '10.0.0.1',
-    version: '2.3.0',
+    version: '3.19.0',
     slash_points: 75,
     jail: {},
     current_award: '250000000',
@@ -63,7 +63,7 @@ const mockCandidateNode = {
   forced_to_leave: false,
   leave_height: 0,
   ip_address: '10.0.0.3',
-  version: '2.3.0',
+  version: '3.19.0',
   slash_points: 150,
   jail: {},
   current_award: '10000000000',
@@ -118,6 +118,11 @@ async function setupMocks(page: Page) {
           string_values: {},
         },
       });
+      return;
+    }
+
+    if (url.pathname === '/api/thorchain/thorchain/version') {
+      await route.fulfill({ json: { current: '3.19.0', next: '3.19.0', querier: '3.19.0' } });
       return;
     }
 
@@ -401,7 +406,7 @@ test.describe('Risk dashboard', () => {
     await page.goto(`/dashboard/risk?address=${MOCK_ADDRESS}&node=thor1noderisk123456789abcdef`);
 
     const diagnosis = page.getByLabel('Node security diagnosis');
-    const sourceConfidence = page.getByLabel('Source confidence');
+    const sourceConfidence = page.getByRole('region', { name: 'Source confidence' });
     const focusedContext = page.getByLabel('Focused node risk context');
     const primaryAction = focusedContext.getByTestId('focused-bonded-primary-action');
     const inlineEvidence = focusedContext.getByTestId('focused-bonded-inline-evidence');

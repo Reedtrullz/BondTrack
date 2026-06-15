@@ -189,6 +189,15 @@ test.describe("Portfolio Page", () => {
         });
         return;
       }
+
+      if (url.pathname === "/api/thorchain/thorchain/version") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ current: "3.19.0", next: "3.19.0", querier: "3.19.0" })
+        });
+        return;
+      }
       
       await route.fulfill({
         status: 404,

@@ -92,6 +92,7 @@ export default function DashboardPage() {
       : '/dashboard/transactions?action=bond',
   });
   const bondEntryVariant = bondEntryAction.kind === 'source-confidence' ? 'outline' : 'success';
+  const canOfferUnbondEntry = bondEntryAction.kind === 'bond-ready' && positions.length > 0;
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6">
@@ -183,7 +184,7 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-lg font-bold text-zinc-950 dark:text-zinc-50">Next transaction</h2>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Composer-first access for BOND and UNBOND work.
+                Composer-first access for source-checked bond work.
               </p>
             </div>
             <Wallet className="h-5 w-5 text-zinc-400" aria-hidden="true" />
@@ -205,12 +206,14 @@ export default function DashboardPage() {
               >
                 {bondEntryAction.label}
               </Link>
-              <Link
-                href={address ? `/dashboard/transactions?address=${encodeURIComponent(address)}&action=unbond` : '/dashboard/transactions?action=unbond'}
-                className={buttonVariants({ variant: 'outline', size: 'sm' })}
-              >
-                Open UNBOND
-              </Link>
+              {canOfferUnbondEntry && (
+                <Link
+                  href={address ? `/dashboard/transactions?address=${encodeURIComponent(address)}&action=unbond` : '/dashboard/transactions?action=unbond'}
+                  className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                >
+                  Open UNBOND
+                </Link>
+              )}
             </div>
           </div>
         </DashboardCard>

@@ -93,6 +93,16 @@ export const test = base.extend<{
   page: async ({ page, apiErrorAllowlist }, run, testInfo) => {
     const failures: string[] = [];
 
+    await page.route('**/api/thorchain/thorchain/version', async (route) => {
+      await route.fulfill({
+        json: {
+          current: '3.19.0',
+          next: '3.19.0',
+          querier: '3.19.0',
+        },
+      });
+    });
+
     page.on('pageerror', (error) => {
       failures.push(`pageerror: ${error.stack ?? error.message}`);
     });

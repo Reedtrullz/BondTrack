@@ -188,7 +188,7 @@ function DashboardContentInner({ children }: { children: ReactNode }) {
               />
             ) : null}
           >
-            {hasUpgrade && currentVersion && (
+            {hasUpgrade && currentVersion && latestVersion && (
               <UpgradeAlertBanner
                 currentVersion={currentVersion}
                 latestVersion={latestVersion}

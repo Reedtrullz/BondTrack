@@ -33,7 +33,7 @@ const mockNodes: NodeRaw[] = [
     forced_to_leave: false,
     leave_height: 0,
     ip_address: '10.0.0.1',
-    version: '2.3.0',
+    version: '3.19.0',
     slash_points: 0,
     jail: {},
     current_award: '250000000',
@@ -72,7 +72,7 @@ const mockNodes: NodeRaw[] = [
     forced_to_leave: false,
     leave_height: 12500000,
     ip_address: '10.0.0.2',
-    version: '2.3.0',
+    version: '3.19.0',
     slash_points: 5,
     jail: {},
     current_award: '180000000',
@@ -111,7 +111,7 @@ const mockNodes: NodeRaw[] = [
     forced_to_leave: false,
     leave_height: 0,
     ip_address: '10.0.0.3',
-    version: '2.2.0',
+    version: '3.18.0',
     slash_points: 50,
     jail: {
       release_height: 12400000,
@@ -148,7 +148,7 @@ const mockConstants: NetworkConstantsRaw = {
     'DefaultPoolStatus': 'enabled',
     'EventThrottle': '1s',
     'MaxSwapsPerBlock': '100',
-    'Version': '2.3.0',
+    'Version': '3.19.0',
   },
 };
 
@@ -170,6 +170,14 @@ export const thornodeHandlers = [
 
   http.get('/thorchain/constants', () => {
     return HttpResponse.json<NetworkConstantsRaw>(mockConstants);
+  }),
+
+  http.get('/thorchain/version', () => {
+    return HttpResponse.json({
+      current: '3.19.0',
+      next: '3.19.0',
+      querier: '3.19.0',
+    });
   }),
 
   http.get('/cosmos/bank/balances/:address', ({ params }) => {

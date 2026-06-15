@@ -67,6 +67,11 @@ async function setupWalletPageApiMocks(page: Page) {
       return;
     }
 
+    if (url.pathname === '/api/thorchain/thorchain/version') {
+      await route.fulfill({ json: { current: '3.19.0', next: '3.19.0', querier: '3.19.0' } });
+      return;
+    }
+
     if (url.pathname.startsWith('/api/thorchain/cosmos/bank/v1beta1/balances/')) {
       await route.fulfill({ json: { balances: [], pagination: { next_key: null, total: '0' } } });
       return;

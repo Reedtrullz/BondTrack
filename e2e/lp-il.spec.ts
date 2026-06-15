@@ -240,6 +240,11 @@ async function setupMocks(page: Page, scenario: LpMockScenario = 'historical') {
       return;
     }
 
+    if (url.pathname === '/api/thorchain/thorchain/version') {
+      await route.fulfill({ json: { current: '3.19.0', next: '3.19.0', querier: '3.19.0' } });
+      return;
+    }
+
     const liquidityProviderPath = url.pathname.match(
       /^\/api\/thorchain\/thorchain\/pool\/([^/]+)\/liquidity_provider\/[^/]+$/
     );

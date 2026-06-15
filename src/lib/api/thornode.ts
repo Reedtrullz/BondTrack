@@ -53,6 +53,12 @@ export interface SupplyRaw {
   total: number;
 }
 
+export interface ThorchainVersionRaw {
+  current?: string;
+  next?: string;
+  querier?: string;
+}
+
 export async function getAllNodes(init?: ApiRequestInit): Promise<NodeRaw[]> {
   return fetchThornode<NodeRaw[]>('/thorchain/nodes', init);
 }
@@ -67,6 +73,10 @@ export async function getNetworkConstants(init?: RequestInit): Promise<NetworkCo
 
 export async function getSupply(): Promise<SupplyRaw> {
   return fetchThornode<SupplyRaw>('/thorchain/supply');
+}
+
+export async function getThorchainVersion(init?: ApiRequestInit): Promise<ThorchainVersionRaw> {
+  return fetchThornode<ThorchainVersionRaw>('/thorchain/version', init);
 }
 
 export interface LiquidityProviderRaw {

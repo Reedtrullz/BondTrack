@@ -37,6 +37,11 @@ async function setupTransactionApiMocks(page: Page) {
       return;
     }
 
+    if (url.pathname === '/api/thorchain/thorchain/version') {
+      await route.fulfill({ json: { current: '3.19.0', next: '3.19.0', querier: '3.19.0' } });
+      return;
+    }
+
     if (url.pathname.startsWith('/api/thorchain/cosmos/bank/v1beta1/balances/')) {
       await route.fulfill({ json: { balances: [{ denom: 'rune', amount: '125000000000' }] } });
       return;
@@ -166,7 +171,7 @@ test.describe('Transaction Composer', () => {
     await page.reload();
 
     const preflight = page.getByLabel('Transaction safety preflight');
-    const sourceConfidence = page.getByLabel('Source confidence');
+    const sourceConfidence = page.getByRole('region', { name: 'Source confidence' });
     await expect(preflight).toBeVisible();
     await expect(sourceConfidence).toBeVisible();
     await expect(page.getByLabel('Transaction composer')).toBeVisible();

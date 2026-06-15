@@ -27,7 +27,7 @@ const mockNodes = [
     forced_to_leave: false,
     leave_height: 0,
     ip_address: '10.0.0.1',
-    version: '2.3.0',
+    version: '3.19.0',
     slash_points: 0,
     jail: {},
     current_award: '250000000',
@@ -156,6 +156,11 @@ async function setupMocks(page: Page) {
           string_values: {},
         },
       });
+      return;
+    }
+
+    if (url.pathname === '/api/thorchain/thorchain/version') {
+      await route.fulfill({ json: { current: '3.19.0', next: '3.19.0', querier: '3.19.0' } });
       return;
     }
 
