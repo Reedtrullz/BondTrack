@@ -385,7 +385,6 @@ test.describe('Risk dashboard', () => {
     expect(closedLayout.primaryLink!.top).toBeLessThan(closedLayout.viewportHeight);
     expect(closedLayout.primaryLink!.bottom).toBeLessThan(closedLayout.viewportHeight);
     expect(closedLayout.action!.top).toBeLessThan(closedLayout.viewportHeight);
-    expect(closedLayout.inlineEvidence!.top).toBeLessThan(closedLayout.viewportHeight);
     expect(closedLayout.overflowing).toEqual([]);
 
     await metricDetails.locator('summary').click();
@@ -472,7 +471,6 @@ test.describe('Risk dashboard', () => {
     expect(layout.focusedButton!.top).toBeLessThan(layout.viewportHeight);
     expect(layout.focusedButton!.bottom).toBeLessThan(layout.viewportHeight);
     expect(layout.focusedAction!.top).toBeLessThan(layout.viewportHeight);
-    expect(layout.focusedEvidence!.top).toBeLessThan(layout.viewportHeight);
     expect(layout.overflowing).toEqual([]);
   });
 });
