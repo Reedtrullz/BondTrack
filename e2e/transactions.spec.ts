@@ -3,6 +3,16 @@ import { test, expect, type Page } from './fixtures';
 const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
 const MOCK_NODE = 'thor16xxh3km6dxka636qg6q7e3us5vlgvhrhjgw245';
 const WATCHLIST_ADDRESS = 'thor1xekke0x6qu8w7vyhxy99puzu049d3k0pexpr30';
+const MOCK_THORNODE_NODES = [
+  {
+    node_address: MOCK_NODE,
+    status: 'Active',
+    total_bond: '1000000000000',
+    bond_providers: {
+      providers: [],
+    },
+  },
+];
 
 type ElementBox = { x: number; y: number; width: number; height: number } | null;
 
@@ -22,7 +32,7 @@ async function setupTransactionApiMocks(page: Page) {
     const url = new URL(route.request().url());
 
     if (url.pathname === '/api/thorchain/thorchain/nodes') {
-      await route.fulfill({ json: [] });
+      await route.fulfill({ json: MOCK_THORNODE_NODES });
       return;
     }
 
