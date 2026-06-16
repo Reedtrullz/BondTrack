@@ -234,12 +234,12 @@ describe('/api/midgard proxy', () => {
       .mockResolvedValueOnce({ ok: false, status: 404 } as unknown as Response)
       .mockResolvedValueOnce({ ok: false, status: 404 } as unknown as Response);
 
-    const request = createRequest('v2/thorname/rlookup/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq', {
+    const request = createRequest('v2/thorname/rlookup/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz', {
       origin: 'https://bond.thorchain.no',
     });
     const response = await GET(request, {
       params: Promise.resolve({
-        path: ['v2', 'thorname', 'rlookup', 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq'],
+        path: ['v2', 'thorname', 'rlookup', 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz'],
       }),
     });
 

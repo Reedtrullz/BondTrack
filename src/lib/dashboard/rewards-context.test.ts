@@ -32,6 +32,10 @@ function history(overrides: Partial<BondHistory> = {}): BondHistory {
     firstBondDate: new Date('2026-01-01T00:00:00.000Z'),
     initialBond: 25_000,
     lastBondDate: new Date('2026-01-01T00:00:00.000Z'),
+    actionLimit: 50,
+    loadedActionCount: 12,
+    totalActionCount: 12,
+    isPartial: false,
     ...overrides,
   };
 }
@@ -144,5 +148,25 @@ describe('buildRewardsPageModel', () => {
       expect.objectContaining({ id: 'tax-export', value: 'Ready', detail: 'FIFO worksheet rows from bond history', severity: 'healthy' }),
     ]));
     expect(model.primaryConfidenceIssue).toBeUndefined();
+  });
+
+  it('warns when reward history is only a partial recent action window', () => {
+    const model = buildRewardsPageModel({
+      actionsError: undefined,
+      bondHistory: history({ loadedActionCount: 50, totalActionCount: 76, isPartial: true }),
+      isLoadingActions: false,
+      networkBondingAPY: '0.20',
+      positions: [position()],
+      runePrice: 0.6,
+      runePriceIsStale: false,
+    });
+
+    expect(model.confidenceMetrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'reward-history', value: 'Partial', detail: 'Recent 50 actions only', severity: 'warning' }),
+    ]));
+    expect(model.primaryConfidenceIssue).toEqual(expect.objectContaining({
+      id: 'reward-history',
+      value: 'Partial',
+    }));
   });
 });

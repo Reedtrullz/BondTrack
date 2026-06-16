@@ -10,8 +10,8 @@ vi.mock('@/lib/api/midgard');
 const wrapper = ({ children }: { children: React.ReactNode }) =>
   React.createElement(SWRConfig, { value: { provider: () => new Map() } }, children);
 
-const ADDRESS_ONE = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
-const ADDRESS_TWO = 'thor1p8s3zh0h7gnxqck0z2pxhfh93l3r4kr9uk9rzd';
+const ADDRESS_ONE = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz';
+const ADDRESS_TWO = 'thor1pc8qurswpc8qurswpc8qurswpc8qurswmv23u6';
 const HISTORY_ADDRESS = 'thor1xekke0x6qu8w7vyhxy99puzu049d3k0pexpr30';
 const HISTORY_NODE = 'thor1zfy2dm8urvwzc6shcmfpewdxamf8v35zq593ev';
 

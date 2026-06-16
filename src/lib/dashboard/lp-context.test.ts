@@ -44,6 +44,8 @@ function lpPosition(overrides: Partial<LpPosition> = {}): LpPosition {
     runePending: '0',
     runeWithdrawable: '5500000000',
     runeWithdrawn: '0',
+    redeemQuoteSource: 'thornode',
+    claimableTrusted: true,
     volume24h: '900000000',
     ...overrides,
   };
@@ -106,6 +108,40 @@ describe('buildLpPageModel', () => {
     expect(model.primaryConfidenceIssue).toEqual(expect.objectContaining({
       id: 'current-only-lp-values',
       value: '1',
+    }));
+  });
+
+  it('flags LP current value when redeem quotes are derived instead of THORNode-confirmed', () => {
+    const model = buildLpPageModel({
+      isHistoricalEnrichmentLoading: false,
+      isLoading: false,
+      positions: [
+        lpPosition({
+          redeemQuoteSource: 'derived',
+          claimableTrusted: false,
+        }),
+      ],
+      runePriceFreshness: {
+        ageMs: 1_000,
+        isStale: false,
+        staleAfterMs: 129_600_000,
+        updatedAt: new Date('2026-06-12T10:00:00.000Z'),
+        updatedAtTimestampSeconds: 1781258400,
+      },
+    });
+
+    expect(model.untrustedRedeemCount).toBe(1);
+    expect(model.totalValueDetail).toBe('Current value includes all pools; 1 LP redeem quote is not THORNode-confirmed');
+    expect(model.confidenceMetrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'lp-redeem-quotes',
+        value: 'Degraded',
+        detail: '1 derived position redeem quote',
+        severity: 'warning',
+      }),
+    ]));
+    expect(model.primaryConfidenceIssue).toEqual(expect.objectContaining({
+      id: 'lp-redeem-quotes',
     }));
   });
 

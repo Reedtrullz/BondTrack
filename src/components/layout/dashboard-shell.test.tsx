@@ -6,7 +6,7 @@ import { getThorNameReverseLookupStorageKey } from '@/lib/storage/keys';
 import { DashboardShell, getSourceFreshnessLabel } from './dashboard-shell';
 
 const mocks = vi.hoisted(() => ({
-  address: 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq',
+  address: 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz',
   reverseLookup: vi.fn(),
   walletAddress: null as string | null,
   walletBalance: null as number | null,
@@ -109,7 +109,7 @@ describe('DashboardShell', () => {
       expect(sessionStorage.getItem(getThorNameReverseLookupStorageKey(mocks.address))).toBe('__none__');
     });
 
-    expect(screen.getByText('thor1qqq...qqqq')).toBeInTheDocument();
+    expect(screen.getByText('thor1qqq...eyjz')).toBeInTheDocument();
     expect(consoleError).not.toHaveBeenCalled();
     consoleError.mockRestore();
   });

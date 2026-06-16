@@ -28,7 +28,7 @@ vi.mock('@cosmjs/stargate', () => ({
   },
 }));
 
-const NODE_ADDRESS = 'thor16xxh3km6dxka636qg6q7e3us5vlgvhrhjgw245';
+const NODE_ADDRESS = 'thor1qyqszqgpqyqszqgpqyqszqgpqyqszqgp55c9cr';
 const PROVIDER_ADDRESS = 'thor158qequwhhnggm4ch4psv55yqpxsugf67n62dy2';
 const SIGNER_ADDRESS = PROVIDER_ADDRESS;
 

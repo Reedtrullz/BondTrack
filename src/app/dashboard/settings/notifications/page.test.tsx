@@ -8,7 +8,7 @@ vi.mock('@/lib/hooks/use-alerts', () => ({
 }));
 
 vi.mock('next/navigation', () => ({
-  useSearchParams: () => new URLSearchParams('address=thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq'),
+  useSearchParams: () => new URLSearchParams('address=thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz'),
 }));
 
 const mockUseAlertsContext = vi.mocked(useAlertsContext);
@@ -91,7 +91,7 @@ describe('NotificationPreferences', () => {
     expect(jailAlert.compareDocumentPosition(slashAlert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(inspectRiskLinks[0]).toHaveAttribute(
       'href',
-      '/dashboard/risk?address=thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq&node=thor1nodehistorydismissed000000000000000'
+      '/dashboard/risk?address=thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz&node=thor1nodehistorydismissed000000000000000'
     );
 
     fireEvent.click(historyScope.getByRole('button', { name: 'Show again' }));

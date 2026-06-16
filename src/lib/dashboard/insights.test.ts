@@ -90,6 +90,8 @@ function lpPosition(overrides: Partial<LpPosition> = {}): LpPosition {
     asset2DepositedValue: '1',
     runeWithdrawable: '100',
     asset2Withdrawable: '1',
+    redeemQuoteSource: 'thornode',
+    claimableTrusted: true,
     currentRunePriceUsd: 1,
     currentAssetPriceUsd: 100,
     entryRunePriceUsd: null,
@@ -599,6 +601,33 @@ describe('dashboard insights', () => {
       expect.objectContaining({
         id: 'lp:estimated-pricing',
         severity: 'warning',
+      }),
+    ]));
+  });
+
+  it('adds an LP confidence action when redeem quotes are not THORNode-confirmed', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth(),
+      positions: [bondPosition()],
+      lpPositions: [
+        lpPosition({
+          redeemQuoteSource: 'derived',
+          claimableTrusted: false,
+        }),
+      ],
+      runePriceUpdatedAt: NOW,
+    });
+
+    expect(state.severity).toBe('warning');
+    expect(state.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'lp:redeem-quotes-degraded',
+        severity: 'warning',
+        source: 'LP',
+        primaryAction: 'Review LP confidence',
+        impact: 'Do not treat estimated withdrawable amounts as claimable before acting on an LP position.',
       }),
     ]));
   });

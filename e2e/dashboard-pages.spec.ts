@@ -1,6 +1,6 @@
 import { test, expect } from "./fixtures";
 
-const MOCK_ADDRESS = "thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq";
+const MOCK_ADDRESS = "thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz";
 
 test.describe("Portfolio Page", () => {
   test.beforeEach(async ({ page }) => {

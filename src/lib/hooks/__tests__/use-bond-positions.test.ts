@@ -145,6 +145,18 @@ describe('useBondPositions', () => {
     expect(result.current.positions).toEqual([]);
   });
 
+  it('withholds jail-sensitive positions until Midgard health provides current block height', async () => {
+    vi.mocked(thornode.getAllNodes).mockResolvedValueOnce(mockNodes as unknown as thornode.NodeRaw[]);
+    vi.mocked(midgard.getHealth).mockResolvedValueOnce({} as never);
+
+    const { result } = renderHook(() => useBondPositions('thor1user123456789abcdef'), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.positions).toEqual([]);
+    expect(result.current.error).toBeUndefined();
+  });
+
   // NEW TEST: Verify per-node APY uses node.current_award
   it('calculates per-node APY using node.current_award', async () => {
     vi.mocked(thornode.getAllNodes).mockResolvedValueOnce(mockNodes as unknown as thornode.NodeRaw[]);

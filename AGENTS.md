@@ -123,12 +123,12 @@ deploy story — see [Reedtrullz/inebotten-discord](https://github.com/Reedtrull
 ```
 Heimdall/
 ├── src/
-│   ├── app/                    # Next.js App Router (16 routes + 8 API proxies)
-│   │   ├── api/                # Server-side proxies: thorchain, midgard, coingecko, coinapi, health, pools, address, tax-report
-│   │   ├── dashboard/          # 12 sub-routes: portfolio, overview, nodes, rewards, risk, transactions, lp, simulator, explorer, changelogs, settings
+│   ├── app/                    # Next.js App Router (16 pages + 9 API routes)
+│   │   ├── api/                # Server-side proxies/checks: thorchain, midgard, coingecko, coinapi, health, ready, pools, address, tax-report
+│   │   ├── dashboard/          # 11 areas + settings/notifications: portfolio, overview, nodes, rewards, risk, transactions, lp, simulator, explorer, changelogs, settings
 │   │   └── learn/              # Educational content + dynamic [slug] articles
 │   ├── components/
-│   │   ├── dashboard/          # 40 domain widgets (charts, tables, monitors, tx tools)
+│   │   ├── dashboard/          # 37 domain widgets (charts, tables, monitors, tx tools)
 │   │   ├── layout/             # Shell, sidebar, theme toggle, bifrost status
 │   │   ├── shared/             # Reusable atoms: DashboardCard, StatusBadge, Skeleton, etc.
 │   │   ├── ui/                 # shadcn/Radix primitives: Button, Card, Tabs, Tooltip, etc.
@@ -136,7 +136,7 @@ Heimdall/
 │   │   └── alerts/             # Alert toast
 │   ├── lib/
 │   │   ├── api/                # THORNode + Midgard + CoinAPI + CoinGecko clients
-│   │   ├── hooks/              # 24 SWR data hooks
+│   │   ├── hooks/              # 27 SWR data hooks
 │   │   ├── transactions/       # BOND/UNBOND signing + memo helpers
 │   │   ├── types/              # Domain types: node, lp, wallet
 │   │   ├── utils/              # Formatters, calculations, health score, IL, tax export
@@ -144,7 +144,7 @@ Heimdall/
 │   │   ├── utils.ts            # cn() class merge helper
 │   │   └── mock-data.ts        # Dev/test mock data toggle
 │   └── test/                   # MSW server + handlers + test utilities
-├── e2e/                        # 12 Playwright specs
+├── e2e/                        # 20 Playwright specs
 └── docs/                       # Living docs + archived audits
 ```
 
@@ -180,7 +180,7 @@ Each major directory has its own AGENTS.md with domain-specific conventions:
 - `src/components/shared/AGENTS.md` — Reusable atoms
 - `src/components/ui/AGENTS.md` — shadcn/Radix primitives
 - `src/lib/api/AGENTS.md` — API client layer + proxy rules
-- `src/lib/hooks/AGENTS.md` — 24 SWR hooks
+- `src/lib/hooks/AGENTS.md` — 27 SWR hooks
 - `src/lib/transactions/AGENTS.md` — BOND/UNBOND signing
 - `src/lib/utils/AGENTS.md` — Formatters + calculations
 - `src/test/AGENTS.md` — Test infrastructure + MSW

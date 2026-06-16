@@ -2,7 +2,7 @@ import React from 'react';
 import useSWR from 'swr';
 import { getMemberDetails, getPools, getRunePriceHistory, getHistoricalRunePrice, getPoolHistoryAtTimestamp, MemberDetailsRaw, PoolDetailRaw, PoolHistoryEntry } from '../api/midgard';
 import { getLiquidityProvider, LiquidityProviderRaw } from '../api/thornode';
-import { LpPoolStatus, LpPosition, LpPricingSource } from '../types/lp';
+import { LpPoolStatus, LpPosition, LpPricingSource, LpRedeemQuoteSource } from '../types/lp';
 import { calculateLpWithdrawableAmounts, formatPnlDisplay, calculateAssetPriceFromPoolDepth } from '../utils/calculations';
 import { normalizeApy } from '../utils/fee-calculations';
 import { rawRuneToDisplayNumber } from '../utils/formatters';
@@ -167,6 +167,7 @@ interface CurrentLpDataWithThorNode {
   memberDetails: MemberDetailsRaw;
   pools: PoolDetailRaw[];
   thorNodeLpData: Map<string, LiquidityProviderRaw>;
+  thorNodeLpFailures: Set<string>;
   runePriceUSD: number;
   runePriceFreshness: MidgardFreshness;
 }
@@ -288,6 +289,7 @@ export const useLpPositions = (address: string | null) => {
       }
 
       const thorNodeLpData = new Map<string, LiquidityProviderRaw>();
+      const thorNodeLpFailures = new Set<string>();
       const memberPools = memberDetails?.pools || [];
       
       const poolPromises = memberPools.map(async (pool, index) => {
@@ -295,15 +297,18 @@ export const useLpPositions = (address: string | null) => {
           const lpData = await getLiquidityProvider(pool.pool, addr);
           if (lpData) {
             thorNodeLpData.set(pool.pool, lpData);
+          } else {
+            thorNodeLpFailures.add(pool.pool);
           }
-          setLoadingProgress(((index + 1) / memberPools.length) * 100);
         } catch {
-          // Continue without THORNode data for this pool
+          thorNodeLpFailures.add(pool.pool);
+        } finally {
+          setLoadingProgress(((index + 1) / memberPools.length) * 100);
         }
       });
       await Promise.allSettled(poolPromises);
 
-      return { memberDetails, pools, thorNodeLpData, runePriceUSD, runePriceFreshness };
+      return { memberDetails, pools, thorNodeLpData, thorNodeLpFailures, runePriceUSD, runePriceFreshness };
     },
     {
       refreshInterval: 30000,
@@ -330,6 +335,11 @@ export const useLpPositions = (address: string | null) => {
     const runePending = parseBigInt(poolRaw.runePending);
     const asset2Pending = parseBigInt(poolRaw.assetPending);
     const thorNodeLp = data?.thorNodeLpData?.get(poolRaw.pool);
+    const ownershipPercent = deriveOwnershipPercent(poolRaw.liquidityUnits, poolData?.liquidityUnits);
+    const canDeriveRedeemQuote = ownershipPercent > 0
+      && parseBigInt(poolData?.runeDepth) > 0n
+      && parseBigInt(poolData?.assetDepth) > 0n
+      && parseBigInt(poolData?.liquidityUnits) > 0n;
 
     let withdrawable: {
       runeWithdrawable: string;
@@ -337,6 +347,7 @@ export const useLpPositions = (address: string | null) => {
       runeDeposited: string;
       asset2Deposited: string;
     };
+    let redeemQuoteSource: LpRedeemQuoteSource;
 
     if (thorNodeLp) {
       withdrawable = {
@@ -345,6 +356,7 @@ export const useLpPositions = (address: string | null) => {
         runeDeposited: thorNodeLp.rune_deposit_value,
         asset2Deposited: thorNodeLp.asset_deposit_value,
       };
+      redeemQuoteSource = 'thornode';
     } else {
       withdrawable = calculateLpWithdrawableAmounts(
         poolRaw.runeDeposit,
@@ -355,8 +367,9 @@ export const useLpPositions = (address: string | null) => {
         poolRaw.runeWithdrawn,
         poolRaw.assetAdded,
         poolRaw.assetWithdrawn,
-        deriveOwnershipPercent(poolRaw.liquidityUnits, poolData?.liquidityUnits)
+        ownershipPercent
       );
+      redeemQuoteSource = canDeriveRedeemQuote ? 'derived' : 'unavailable';
     }
 
     const assetSymbol = getLpAssetSymbol(poolRaw.pool);
@@ -437,13 +450,15 @@ export const useLpPositions = (address: string | null) => {
         return normalizeApy(poolData?.annualPercentageRate);
       })(),
       poolStatus,
-      ownershipPercent: deriveOwnershipPercent(poolRaw.liquidityUnits, poolData?.liquidityUnits),
+      ownershipPercent,
       hasPending: runePending > 0n || asset2Pending > 0n,
 
       runeDepositedValue: withdrawable.runeDeposited,
       asset2DepositedValue: withdrawable.asset2Deposited,
       runeWithdrawable: withdrawable.runeWithdrawable,
       asset2Withdrawable: withdrawable.asset2Withdrawable,
+      redeemQuoteSource,
+      claimableTrusted: redeemQuoteSource === 'thornode',
       currentRunePriceUsd,
       currentAssetPriceUsd,
       entryRunePriceUsd,

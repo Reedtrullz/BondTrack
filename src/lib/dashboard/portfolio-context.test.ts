@@ -67,6 +67,8 @@ function lp(overrides: Partial<LpPosition> = {}): LpPosition {
     runePending: '0',
     runeWithdrawable: '0',
     runeWithdrawn: '0',
+    redeemQuoteSource: 'thornode',
+    claimableTrusted: true,
     volume24h: '0',
     ...overrides,
   };
@@ -127,6 +129,33 @@ describe('buildPortfolioPageModel', () => {
         id: 'lp-valuation',
         value: 'Degraded',
         detail: 'LP value excluded from totals',
+        severity: 'warning',
+      }),
+    ]));
+  });
+
+  it('keeps LP valuation partial when current value uses non-canonical redeem quotes', () => {
+    const model = buildPortfolioPageModel({
+      bondPositions: [bond({ bondAmount: 100, netAPY: 12 })],
+      lpError: undefined,
+      lpPositions: [
+        lp({
+          currentTotalValueUsd: 900,
+          redeemQuoteSource: 'derived',
+          claimableTrusted: false,
+        }),
+      ],
+      runePrice: 3,
+      runePriceHistory: [],
+      runePriceIsStale: false,
+    });
+
+    expect(model.totalLpValueUsd).toBe(900);
+    expect(model.confidenceMetrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'lp-valuation',
+        value: 'Partial',
+        detail: '1 LP value not THORNode-confirmed',
         severity: 'warning',
       }),
     ]));

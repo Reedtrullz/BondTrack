@@ -30,7 +30,7 @@ export interface KeplrInterface {
 }
 
 export interface XdefiThorchainInterface {
-  request: (args: { method: string; params?: unknown[] }) => Promise<string>;
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
 }
 
 export interface VultisigThorchainInterface {

@@ -94,6 +94,6 @@ test.describe('Homepage', () => {
     await page.goto('/');
 
     await expect(page.getByText('Recent Addresses', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'thor1qqq...qqqq', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'thor1qqq...eyjz', exact: true })).toBeVisible();
   });
 });

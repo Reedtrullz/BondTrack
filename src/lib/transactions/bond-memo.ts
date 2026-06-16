@@ -1,4 +1,5 @@
 import type { BondPosition } from '@/lib/types/node';
+import { isValidTHORChainMainnetAddress } from '@/lib/utils/address-validation';
 
 export interface ValidationResult {
   valid: boolean;
@@ -8,8 +9,6 @@ export interface ValidationResult {
 const RUNE_BASE = 100_000_000n;
 const RUNE_DECIMALS = 8;
 const MIN_BOND_BASE_UNITS = RUNE_BASE;
-const THOR_ADDRESS_PATTERN = /^thor1[ac-hj-np-z02-9]{38,}$/;
-
 export function parseRuneAmountToBaseUnits(amount: string): string | null {
   const trimmed = amount.trim();
   if (!/^(?:0|[1-9]\d*)(?:\.\d{1,8})?$/.test(trimmed)) {
@@ -27,7 +26,7 @@ export function parseRuneAmountToBaseUnits(amount: string): string | null {
 
 export function validateThorAddress(address: string, label = 'THORChain address'): ValidationResult {
   const trimmed = address.trim().toLowerCase();
-  if (!THOR_ADDRESS_PATTERN.test(trimmed)) {
+  if (!isValidTHORChainMainnetAddress(trimmed)) {
     return { valid: false, error: `${label === 'THORChain address' ? 'Invalid THORChain address format' : `${label} must be a valid THORChain address`}` };
   }
   return { valid: true };

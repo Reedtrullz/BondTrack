@@ -61,7 +61,7 @@ describe('SourceFreshnessPanel', () => {
     );
 
     const summary = screen.getByLabelText('Source confidence');
-    expect(summary).toHaveTextContent('2 degraded');
+    expect(summary).toHaveTextContent('1 degraded · 1 stale');
     expect(summary).toHaveTextContent('Degraded');
     expect(summary).toHaveTextContent('Stale');
   });

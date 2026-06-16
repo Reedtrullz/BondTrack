@@ -1,7 +1,7 @@
 import { test, expect, type Page } from './fixtures';
 
-const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
-const MOCK_NODE = 'thor16xxh3km6dxka636qg6q7e3us5vlgvhrhjgw245';
+const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz';
+const MOCK_NODE = 'thor1qyqszqgpqyqszqgpqyqszqgpqyqszqgp55c9cr';
 const WATCHLIST_ADDRESS = 'thor1xekke0x6qu8w7vyhxy99puzu049d3k0pexpr30';
 const MOCK_THORNODE_NODES = [
   {
@@ -11,6 +11,7 @@ const MOCK_THORNODE_NODES = [
     bond_providers: {
       providers: [],
     },
+    slash_points: 0,
   },
 ];
 

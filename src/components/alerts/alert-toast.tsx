@@ -7,6 +7,7 @@ import type { Alert, AlertType } from '@/lib/hooks/use-alerts';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { STORAGE_KEYS } from '@/lib/storage/keys';
+import { buildNodeRiskHref } from '@/lib/dashboard/hrefs';
 
 interface AlertToastProps {
   alerts: Alert[];
@@ -101,16 +102,6 @@ function formatTimestamp(timestamp: number): string {
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
   return new Date(timestamp).toLocaleDateString();
-}
-
-function buildAlertRiskHref(dashboardAddress: string | null | undefined, nodeAddress: string): string {
-  const params = new URLSearchParams();
-  if (dashboardAddress) {
-    params.set('address', dashboardAddress);
-  }
-  params.set('node', nodeAddress);
-
-  return `/dashboard/risk?${params.toString()}`;
 }
 
 export function AlertReviewTrigger({
@@ -366,7 +357,7 @@ export function AlertToast({
                   {formatTimestamp(alert.timestamp)}
                 </p>
                 <Link
-                  href={buildAlertRiskHref(dashboardAddress, alert.nodeAddress)}
+                  href={buildNodeRiskHref(dashboardAddress, alert.nodeAddress)}
                   className={`mt-2 w-fit items-center gap-1.5 rounded-md border border-black/10 bg-white/70 px-2.5 py-1 text-xs font-semibold text-zinc-800 transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-50 dark:border-white/10 dark:bg-zinc-950/50 dark:text-zinc-100 dark:hover:bg-zinc-900 dark:focus-visible:ring-offset-zinc-950 ${
                     isReviewOpen ? 'inline-flex' : 'hidden'
                   }`}

@@ -18,6 +18,7 @@ export interface LpPageModel {
   totalPnlUsd: number;
   totalValueDetail: string;
   trustedHistoricalCount: number;
+  untrustedRedeemCount: number;
 }
 
 interface BuildLpPageModelInput {
@@ -82,6 +83,54 @@ function getRunePriceConfidence({
   };
 }
 
+function getRedeemQuoteConfidence({
+  derivedCount,
+  hasLpPositions,
+  isLoading,
+  unavailableCount,
+}: {
+  derivedCount: number;
+  hasLpPositions: boolean;
+  isLoading: boolean;
+  unavailableCount: number;
+}): Pick<MetricStripItem, 'detail' | 'severity' | 'value'> {
+  const untrustedCount = derivedCount + unavailableCount;
+
+  if (isLoading) {
+    return {
+      value: 'Pending',
+      detail: 'Waiting for THORNode quotes',
+      severity: 'info',
+    };
+  }
+
+  if (!hasLpPositions) {
+    return {
+      value: 'Not used',
+      detail: 'No LP positions',
+      severity: 'info',
+    };
+  }
+
+  if (untrustedCount > 0) {
+    const derivedLabel = formatPositionCount(derivedCount, 'derived');
+    const unavailableLabel = formatPositionCount(unavailableCount, 'missing');
+    const detail = joinLabels([derivedLabel, unavailableLabel]);
+
+    return {
+      value: 'Degraded',
+      detail: `${detail} redeem quote${untrustedCount === 1 ? '' : 's'}`,
+      severity: 'warning',
+    };
+  }
+
+  return {
+    value: 'Confirmed',
+    detail: 'THORNode redeem quotes',
+    severity: 'healthy',
+  };
+}
+
 function getPrimaryLpConfidenceIssue(metrics: MetricStripItem[]): MetricStripItem | undefined {
   const urgentIssue = metrics.find((metric) => metric.severity === 'critical' || metric.severity === 'warning');
   if (urgentIssue) return urgentIssue;
@@ -100,6 +149,9 @@ export function buildLpPageModel({
   const trustedHistoricalPositions = safePositions.filter((position) => position.pricingSource === 'historical');
   const estimatedPositions = safePositions.filter((position) => position.pricingSource === 'estimated');
   const currentOnlyPositions = safePositions.filter((position) => position.pricingSource === 'current-only');
+  const derivedRedeemPositions = safePositions.filter((position) => position.redeemQuoteSource === 'derived');
+  const unavailableRedeemPositions = safePositions.filter((position) => position.redeemQuoteSource === 'unavailable');
+  const untrustedRedeemCount = derivedRedeemPositions.length + unavailableRedeemPositions.length;
   const totalStats = trustedHistoricalPositions.reduce(
     (acc, position) => {
       acc.totalPnl += position.netProfitLossUsd ?? 0;
@@ -130,7 +182,12 @@ export function buildLpPageModel({
   const confidenceReviewVerb = untrustedPositionCount === 1 ? 'needs' : 'need';
   const aggregatePerformanceExclusion = untrustedPositionLabel ? `${untrustedPositionLabel} excluded` : null;
   const hasLpPositions = safePositions.length > 0;
-  const totalValueDetail = untrustedPositionLabel
+  const redeemConfidenceLabel = untrustedRedeemCount > 0
+    ? `${untrustedRedeemCount} LP redeem quote${untrustedRedeemCount === 1 ? ' is' : 's are'} not THORNode-confirmed`
+    : null;
+  const totalValueDetail = redeemConfidenceLabel
+    ? `Current value includes all pools; ${redeemConfidenceLabel}`
+    : untrustedPositionLabel
     ? `Current value includes all pools; ${untrustedPositionLabel} ${confidenceReviewVerb} confidence review`
     : runePriceFreshness?.isStale
       ? 'Current value uses a stale RUNE price'
@@ -154,6 +211,16 @@ export function buildLpPageModel({
   const showPricingWarning = !showHistoricalEnrichmentNotice && currentOnlyPositions.length > 0;
   const showEstimatedWarning = estimatedPositions.length > 0;
   const confidenceMetrics: MetricStripItem[] = [
+    {
+      id: 'lp-redeem-quotes',
+      label: 'Redeem quotes',
+      ...getRedeemQuoteConfidence({
+        derivedCount: derivedRedeemPositions.length,
+        hasLpPositions,
+        isLoading,
+        unavailableCount: unavailableRedeemPositions.length,
+      }),
+    },
     {
       id: 'trusted-lp-values',
       label: 'Trusted values',
@@ -201,5 +268,6 @@ export function buildLpPageModel({
     totalPnlUsd: totalStats.totalPnl,
     totalValueDetail,
     trustedHistoricalCount: trustedHistoricalPositions.length,
+    untrustedRedeemCount,
   };
 }

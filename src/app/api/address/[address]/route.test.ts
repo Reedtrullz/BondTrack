@@ -16,7 +16,7 @@ vi.mock('@/lib/api/rate-limit', () => ({
 const mockGetActions = vi.mocked(getActions);
 const mockGetBondDetails = vi.mocked(getBondDetails);
 
-const address = 'thor1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const address = 'thor1qyqszqgpqyqszqgpqyqszqgpqyqszqgp55c9cr';
 
 function midgardDate(date: string): string {
   const seconds = Math.floor(new Date(`${date}T00:00:00.000Z`).getTime() / 1000);

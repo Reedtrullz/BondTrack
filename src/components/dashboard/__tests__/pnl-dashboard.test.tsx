@@ -154,6 +154,31 @@ describe('PnLDashboard', () => {
     ).toBeTruthy();
   });
 
+  it('labels partial action history as a recent baseline, not trusted full history', () => {
+    render(
+      <PnLDashboard
+        positions={positions}
+        currentRunePrice={2}
+        entryRunePrice={1.25}
+        address="addr-a"
+        bondHistory={{
+          initialBond: 10,
+          currentBond: 30,
+          bondGrowth: 20,
+          firstBondDate: new Date('2024-01-01T00:00:00.000Z'),
+          actionLimit: 50,
+          loadedActionCount: 50,
+          totalActionCount: 76,
+          isPartial: true,
+        }}
+      />
+    );
+
+    const basis = screen.getByLabelText('PnL calculation basis');
+    expect(basis).toHaveTextContent('Initial bond: recent action history');
+    expect(basis).toHaveTextContent('Baseline is partial: Midgard returned the most recent 50 BOND/UNBOND actions out of 76.');
+  });
+
   it('labels manual baseline override fields with calculation impact', async () => {
     render(
       <PnLDashboard

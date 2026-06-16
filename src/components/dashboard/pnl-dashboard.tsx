@@ -31,6 +31,10 @@ interface PnLDashboardProps {
     currentBond: number;
     bondGrowth: number;
     firstBondDate?: Date | null;
+    actionLimit?: number;
+    isPartial?: boolean;
+    loadedActionCount?: number;
+    totalActionCount?: number | null;
   } | null;
   actionsError?: { message?: string } | null;
   isLoadingActions?: boolean;
@@ -172,6 +176,7 @@ export function PnLDashboard({
 
   const hasManualInitialBond = manualInitialBond !== null;
   const hasActionInitialBond = (bondHistory?.initialBond ?? 0) > 0;
+  const hasPartialActionHistory = bondHistory?.isPartial === true;
   const hasHistoricalInitialBond = hasManualInitialBond || hasActionInitialBond;
   const effectiveInitialBond = manualInitialBond ?? (hasActionInitialBond ? bondHistory?.initialBond ?? 0 : 0);
   
@@ -228,7 +233,9 @@ export function PnLDashboard({
   const initialBondSource = manualInitialBond !== null
     ? 'manual override'
     : hasActionInitialBond
-      ? 'action history'
+      ? hasPartialActionHistory
+        ? 'recent action history'
+        : 'action history'
       : isLoadingActions
         ? 'loading action history'
         : actionsError
@@ -287,6 +294,12 @@ export function PnLDashboard({
             <span className="font-semibold text-zinc-800 dark:text-zinc-100">Current price:</span> {currentPriceSource}
           </span>
         </div>
+        {hasPartialActionHistory ? (
+          <p className="mt-2 border-t border-amber-200/70 pt-2 text-amber-700 dark:border-amber-900/50 dark:text-amber-300">
+            Baseline is partial: Midgard returned the most recent {bondHistory?.loadedActionCount ?? bondHistory?.actionLimit ?? 50} BOND/UNBOND actions
+            {typeof bondHistory?.totalActionCount === 'number' ? ` out of ${bondHistory.totalActionCount}` : ''}. Set a manual initial bond if older actions matter for this PnL view.
+          </p>
+        ) : null}
       </section>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4" aria-label="PnL return cards">

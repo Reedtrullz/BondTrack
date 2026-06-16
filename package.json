@@ -14,6 +14,7 @@
     "prepare:standalone": "rm -rf .next/standalone/public .next/standalone/.next/static && mkdir -p .next/standalone/.next && cp -R public .next/standalone/public && cp -R .next/static .next/standalone/.next/static",
     "start": "npm run start:standalone",
     "start:standalone": "npm run prepare:standalone && node .next/standalone/server.js",
+    "check:native-prebuild-pins": "node scripts/check-native-prebuild-pins.mjs",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

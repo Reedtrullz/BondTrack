@@ -2,9 +2,11 @@ import Link from 'next/link';
 import { AlertTriangle, ArrowRight, Check, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NodeRaw } from '@/lib/api/thornode';
-import { formatPercent, formatRuneDisplayNumber } from '@/lib/utils/formatters';
+import { formatRuneDisplayNumber } from '@/lib/utils/formatters';
 import type { NodeCandidateScore } from '@/lib/dashboard/node-candidate-score';
 import { getCandidateBondSourceSafety, type CandidateBondSourceSafety } from '@/lib/dashboard/candidate-bond-source-safety';
+import { buildBondMemoHref, buildDashboardHref, buildNodeRiskHref } from '@/lib/dashboard/hrefs';
+import { formatDashboardNumber, formatDashboardPercent, isUsableDashboardMetric } from '@/lib/dashboard/metrics';
 import { CandidateScoreEvidence } from './candidate-score-evidence';
 
 export type NodeExplorerCandidate = NodeRaw & {
@@ -83,7 +85,7 @@ function getCandidateRecommendation(
 }
 
 function isUsableCandidateNumber(value: number): boolean {
-  return Number.isFinite(value) && value >= 0;
+  return isUsableDashboardMetric(value);
 }
 
 function formatCandidateRune(value: number): string {
@@ -91,11 +93,11 @@ function formatCandidateRune(value: number): string {
 }
 
 function formatCandidatePercent(value: number): string {
-  return isUsableCandidateNumber(value) ? formatPercent(value) : '--';
+  return formatDashboardPercent(value);
 }
 
 function formatCandidateNumber(value: number): string {
-  return isUsableCandidateNumber(value) ? value.toLocaleString() : '--';
+  return formatDashboardNumber(value);
 }
 
 function getApyTone(adjustedAPY: number): string {
@@ -127,24 +129,6 @@ export function NodeExplorer({
     return positions.some(p => p.nodeAddress === nodeAddress);
   };
 
-  const buildBondPrepHref = (nodeAddress: string) => {
-    const params = new URLSearchParams();
-    if (userAddress) {
-      params.set('address', userAddress);
-    }
-    params.set('action', 'bond');
-    params.set('node', nodeAddress);
-    return `/dashboard/transactions?${params.toString()}`;
-  };
-
-  const buildNodeHref = (path: string, nodeAddress: string) => {
-    const params = new URLSearchParams();
-    if (userAddress) {
-      params.set('address', userAddress);
-    }
-    params.set('node', nodeAddress);
-    return `${path}?${params.toString()}`;
-  };
   const validApyValues = nodes
     .map((node) => node.adjustedAPY)
     .filter(isUsableCandidateNumber);
@@ -176,8 +160,11 @@ export function NodeExplorer({
           const reviewActionClass = isAvoid
             ? 'border-red-200 bg-red-50 text-red-800 hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-950/50'
             : 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100 dark:hover:bg-amber-950/50';
-          const nodeDetailsHref = buildNodeHref('/dashboard/nodes', node.node_address);
-          const nodeRiskHref = buildNodeHref('/dashboard/risk', node.node_address);
+          const nodeDetailsHref = buildDashboardHref('/dashboard/nodes', {
+            address: userAddress,
+            params: { node: node.node_address },
+          });
+          const nodeRiskHref = buildNodeRiskHref(userAddress, node.node_address);
           const fallbackActionHref = sourceBlockedForDirectBond ? sourceConfidenceHref : nodeRiskHref;
           const fallbackActionLabel = sourceBlockedForDirectBond ? 'Review source confidence' : reviewActionLabel;
           const recommendation = getCandidateRecommendation(node, sourceSafety);
@@ -324,7 +311,7 @@ export function NodeExplorer({
               <div className="grid grid-cols-1 gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800 sm:grid-cols-[minmax(0,1fr)_auto]">
                 {canPrepareBond ? (
                   <Link
-                    href={buildBondPrepHref(node.node_address)}
+                    href={buildBondMemoHref(userAddress, node.node_address, 'bond')}
                     className={cn('inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-center text-sm font-medium transition', bondActionClass)}
                   >
                     <Plus className="h-3.5 w-3.5 shrink-0" />

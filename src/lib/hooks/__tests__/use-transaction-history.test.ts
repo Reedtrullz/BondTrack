@@ -12,7 +12,7 @@ vi.mock('@/lib/api/midgard', () => ({
 const wrapper = ({ children }: { children: React.ReactNode }) =>
   React.createElement(SWRConfig, { value: { provider: () => new Map() } }, children);
 
-const ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
+const ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz';
 
 describe('useTransactionHistory', () => {
   beforeEach(() => {

@@ -33,10 +33,18 @@ function expectNoStoreReadyHeaders(response: Response) {
 }
 
 describe('/api/ready', () => {
+  const usableNodes = [{
+    node_address: 'thor1healthprobe0000000000000000000000000',
+    status: 'Active',
+    total_bond: '100000000',
+    bond_providers: { providers: [] },
+    slash_points: 0,
+  }];
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getHealth).mockResolvedValue({ lastThorNode: { height: 123 } });
-    vi.mocked(getAllNodes).mockResolvedValue([]);
+    vi.mocked(getAllNodes).mockResolvedValue(usableNodes as never);
   });
 
   it('returns ready when Midgard and THORNode checks pass', async () => {
@@ -70,6 +78,20 @@ describe('/api/ready', () => {
     });
     expect(body.checks.midgard.status).toBe('ready');
     expectNoStoreReadyHeaders(response);
+  });
+
+  it('returns degraded when THORNode resolves without usable node records', async () => {
+    vi.mocked(getAllNodes).mockResolvedValueOnce([]);
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.status).toBe('degraded');
+    expect(body.checks.thornode).toMatchObject({
+      status: 'degraded',
+      detail: 'THORNode readiness probe returned no usable node records',
+    });
   });
 
   it('returns no-store headers on rate-limit and OPTIONS responses', async () => {

@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useWallet } from '../use-wallet';
 
+const VALID_WALLET_ADDRESS = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
+const VALID_XDEFI_ADDRESS = 'thor1qvpsxqcrqvpsxqcrqvpsxqcrqvpsxqcryqlpe5';
+const VALID_VULTISIG_ADDRESS = 'thor1qszqgpqyqszqgpqyqszqgpqyqszqgpqyyscy7g';
+
 describe('useWallet', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -11,6 +15,8 @@ describe('useWallet', () => {
   afterEach(() => {
 delete (window as unknown as Record<string, unknown>).keplr;
 delete (window as unknown as Record<string, unknown>).xfi;
+delete (window as unknown as Record<string, unknown>).vultisig;
+delete (window as unknown as Record<string, unknown>).thorchain;
   });
 
   it('returns initial disconnected state', () => {
@@ -75,11 +81,10 @@ delete (window as unknown as Record<string, unknown>).xfi;
   });
 
   it('connects with Keplr wallet', async () => {
-    const mockAddress = 'thor1test123456789abcdef';
     (window as unknown as Record<string, unknown>).keplr = {
       enable: vi.fn().mockResolvedValue(undefined),
       getChainId: vi.fn().mockResolvedValue('thorchain-1'),
-      getKey: vi.fn().mockResolvedValue({ bech32Address: mockAddress }),
+      getKey: vi.fn().mockResolvedValue({ bech32Address: VALID_WALLET_ADDRESS }),
     };
 
     const { result } = renderHook(() => useWallet());
@@ -89,15 +94,14 @@ delete (window as unknown as Record<string, unknown>).xfi;
     });
 
     await waitFor(() => expect(result.current.isConnected).toBe(true));
-    expect(result.current.address).toBe(mockAddress);
+    expect(result.current.address).toBe(VALID_WALLET_ADDRESS);
     expect(result.current.walletType).toBe('keplr');
   });
 
   it('connects with XDEFI wallet', async () => {
-    const mockAddress = 'thor1xdefi123456789abcdef';
     (window as unknown as Record<string, unknown>).xfi = {
       thorchain: {
-        request: vi.fn().mockResolvedValue(mockAddress),
+        request: vi.fn().mockResolvedValue({ address: VALID_XDEFI_ADDRESS }),
       },
     };
 
@@ -108,16 +112,50 @@ delete (window as unknown as Record<string, unknown>).xfi;
     });
 
     await waitFor(() => expect(result.current.isConnected).toBe(true));
-    expect(result.current.address).toBe(mockAddress);
+    expect(result.current.address).toBe(VALID_XDEFI_ADDRESS);
     expect(result.current.walletType).toBe('xdefi');
   });
 
+  it('rejects wallet addresses that fail THORChain checksum validation', async () => {
+    (window as unknown as Record<string, unknown>).xfi = {
+      thorchain: {
+        request: vi.fn().mockResolvedValue('thor1xdefi123456789abcdef'),
+      },
+    };
+
+    const { result } = renderHook(() => useWallet());
+
+    await act(async () => {
+      await result.current.connect('xdefi');
+    });
+
+    await waitFor(() => expect(result.current.error).toBe('XDEFI returned an invalid THORChain mainnet address'));
+    expect(result.current.isConnected).toBe(false);
+  });
+
+  it('connects with Vultisig wallet from account-shaped results', async () => {
+    (window as unknown as Record<string, unknown>).vultisig = {
+      thorchain: {
+        request: vi.fn().mockResolvedValue({ accounts: [{ address: VALID_VULTISIG_ADDRESS }] }),
+      },
+    };
+
+    const { result } = renderHook(() => useWallet());
+
+    await act(async () => {
+      await result.current.connect('vultisig');
+    });
+
+    await waitFor(() => expect(result.current.isConnected).toBe(true));
+    expect(result.current.address).toBe(VALID_VULTISIG_ADDRESS);
+    expect(result.current.walletType).toBe('vultisig');
+  });
+
   it('disconnects and clears state', async () => {
-    const mockAddress = 'thor1test123456789abcdef';
     (window as unknown as Record<string, unknown>).keplr = {
       enable: vi.fn().mockResolvedValue(undefined),
       getChainId: vi.fn().mockResolvedValue('thorchain-1'),
-      getKey: vi.fn().mockResolvedValue({ bech32Address: mockAddress }),
+      getKey: vi.fn().mockResolvedValue({ bech32Address: VALID_WALLET_ADDRESS }),
     };
 
     const { result } = renderHook(() => useWallet());
@@ -137,11 +175,10 @@ delete (window as unknown as Record<string, unknown>).xfi;
   });
 
   it('handles network mismatch', async () => {
-    const mockAddress = 'thor1test123456789abcdef';
     (window as unknown as Record<string, unknown>).keplr = {
       enable: vi.fn().mockResolvedValue(undefined),
       getChainId: vi.fn().mockResolvedValue('thorchain-stagenet-v2'),
-      getKey: vi.fn().mockResolvedValue({ bech32Address: mockAddress }),
+      getKey: vi.fn().mockResolvedValue({ bech32Address: VALID_WALLET_ADDRESS }),
     };
 
     const { result } = renderHook(() => useWallet());

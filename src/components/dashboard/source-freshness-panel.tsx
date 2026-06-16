@@ -46,13 +46,15 @@ export function SourceFreshnessPanel({
   compact = false,
 }: SourceFreshnessPanelProps) {
   if (compact) {
-    const degradedCount = sources.filter((source) => source.status === 'degraded' || source.status === 'stale').length;
+    const staleCount = sources.filter((source) => source.status === 'stale').length;
+    const degradedCount = sources.filter((source) => source.status === 'degraded').length;
     const unknownCount = sources.filter((source) => source.status === 'unknown').length;
-    const summaryLabel = degradedCount > 0
-      ? `${degradedCount} degraded`
-      : unknownCount > 0
-        ? `${unknownCount} unknown`
-        : 'All fresh';
+    const issueLabels = [
+      degradedCount > 0 ? `${degradedCount} degraded` : null,
+      staleCount > 0 ? `${staleCount} stale` : null,
+      unknownCount > 0 ? `${unknownCount} unknown` : null,
+    ].filter((label): label is string => Boolean(label));
+    const summaryLabel = issueLabels.length > 0 ? issueLabels.join(' · ') : 'All fresh';
 
     return (
       <section

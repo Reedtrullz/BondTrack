@@ -1,7 +1,7 @@
 import { test, expect, type Page } from './fixtures';
 import { mockDashboardApis } from './helpers/dashboard-api-mocks';
 
-const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
+const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz';
 
 function sidebarLink(page: Page, label: string) {
   return page.getByRole('link', { name: `Navigate to ${label} page` });

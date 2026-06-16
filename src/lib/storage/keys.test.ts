@@ -18,10 +18,10 @@ import {
   writeThorNameReverseLookupCache,
 } from './keys';
 
-const validCanonicalAddress = `thor1${'q'.repeat(38)}`;
-const validLegacyAddress = `thor1${'p'.repeat(38)}`;
-const validOlderLocalAddress = `thor1${'r'.repeat(38)}`;
-const validSessionAddress = `thor1${'s'.repeat(38)}`;
+const validCanonicalAddress = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz';
+const validLegacyAddress = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
+const validOlderLocalAddress = 'thor1pg9q5zs2pg9q5zs2pg9q5zs2pg9q5zs22ct3ss';
+const validSessionAddress = 'thor1pv9skzctpv9skzctpv9skzctpv9skzcttg2s63';
 
 function createMemoryStorage(): Storage {
   const store = new Map<string, string>();

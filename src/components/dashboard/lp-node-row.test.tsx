@@ -29,6 +29,8 @@ const basePosition = {
   asset2DepositedValue: '250000000',
   runeWithdrawable: '5500000000',
   asset2Withdrawable: '275000000',
+  redeemQuoteSource: 'thornode' as const,
+  claimableTrusted: true,
   currentRunePriceUsd: 0.48,
   currentAssetPriceUsd: 1.8644,
   entryRunePriceUsd: null,
@@ -61,10 +63,29 @@ describe('LpNodeRow', () => {
     expect(screen.getByText((_content, element) => element?.textContent === 'RUNE: ᚱ50.00')).toBeInTheDocument();
     expect(screen.getByText('ATOM: 2.50')).toBeInTheDocument();
     expect(screen.getByText('Historical entry unavailable')).toBeInTheDocument();
+    expect(screen.getByText('THORNode quote')).toBeInTheDocument();
     expect(screen.queryByText(/LP yield/)).not.toBeInTheDocument();
     expect(screen.queryByText('ASSET: 2.50')).not.toBeInTheDocument();
     expect(screen.getByText('Pending add')).toBeInTheDocument();
     expect(screen.getByText('Staged')).toBeInTheDocument();
+  });
+
+  it('marks derived withdrawable amounts as estimated in table rows', () => {
+    render(
+      <table>
+        <tbody>
+          <LpNodeRow
+            position={{
+              ...basePosition,
+              redeemQuoteSource: 'derived',
+              claimableTrusted: false,
+            }}
+          />
+        </tbody>
+      </table>
+    );
+
+    expect(screen.getByText('Estimated from pool share')).toBeInTheDocument();
   });
 
   it('labels estimated entry pricing in table rows instead of presenting it as historical', () => {

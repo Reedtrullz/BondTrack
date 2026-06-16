@@ -1,6 +1,7 @@
 import useSWR from 'swr';
 import { getBondDetails, getActions, type BondDetailsRaw, type ActionsResponseRaw } from '@/lib/api/midgard';
 import { runeToNumber } from '@/lib/utils/formatters';
+import { NETWORK } from '@/lib/config';
 
 export interface BondHistory {
   initialBond: number;
@@ -9,6 +10,10 @@ export interface BondHistory {
   firstBondAmount: number;
   firstBondDate: Date | null;
   lastBondDate: Date | null;
+  actionLimit: number;
+  loadedActionCount: number;
+  totalActionCount: number | null;
+  isPartial: boolean;
 }
 
 interface BondAction {
@@ -26,7 +31,7 @@ export function useBondHistory(address: string | null) {
 
   const { data: actions, isLoading: isLoadingActions, error: actionsError } = useSWR<ActionsResponseRaw>(
     address ? ['actions-bond-v2', address] : null,
-    () => getActions(address!, 50, 'bond,unbond', 'type'),
+    () => getActions(address!, NETWORK.MAX_ACTIONS_LIMIT, 'bond,unbond', 'type'),
     { refreshInterval: 60_000 }
   );
 
@@ -85,6 +90,16 @@ export function useBondHistory(address: string | null) {
     .filter((a): a is BondAction => a !== null)
     .sort((a, b) => a.date.getTime() - b.date.getTime()) || [];
 
+  const actionLimit = NETWORK.MAX_ACTIONS_LIMIT;
+  const loadedActionCount = actions?.actions?.length ?? 0;
+  const parsedTotalActionCount = actions?.count !== undefined ? Number(actions.count) : Number.NaN;
+  const totalActionCount = Number.isFinite(parsedTotalActionCount) && parsedTotalActionCount >= 0
+    ? parsedTotalActionCount
+    : null;
+  const isPartial = loadedActionCount >= actionLimit || (
+    totalActionCount !== null && loadedActionCount < totalActionCount
+  );
+
   const history: BondHistory | null = address && !error
     ? (() => {
         const initialBond = bondActions.reduce((sum, a) => {
@@ -101,6 +116,10 @@ export function useBondHistory(address: string | null) {
           firstBondAmount: bondActionsList.length > 0 ? bondActionsList[0].amount : 0,
           firstBondDate: bondActions.length > 0 ? bondActions[0].date : null,
           lastBondDate: bondActions.length > 0 ? bondActions[bondActions.length - 1].date : null,
+          actionLimit,
+          loadedActionCount,
+          totalActionCount,
+          isPartial,
         };
       })()
     : null;

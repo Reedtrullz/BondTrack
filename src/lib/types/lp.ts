@@ -1,5 +1,6 @@
 export type LpPoolStatus = 'available' | 'staged' | 'suspended' | 'unknown';
 export type LpPricingSource = 'historical' | 'current-only' | 'estimated';
+export type LpRedeemQuoteSource = 'thornode' | 'derived' | 'unavailable';
 
 export interface LpPosition {
   address: string;
@@ -28,6 +29,8 @@ export interface LpPosition {
   asset2DepositedValue: string;
   runeWithdrawable: string;
   asset2Withdrawable: string;
+  redeemQuoteSource: LpRedeemQuoteSource;
+  claimableTrusted: boolean;
   currentRunePriceUsd: number;
   currentAssetPriceUsd: number;
   entryRunePriceUsd: number | null;

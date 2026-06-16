@@ -1,6 +1,37 @@
 import { NETWORK } from '../config';
 import { rawRuneToDisplayNumber } from './formatters';
 
+type CurrentAwardUnit = 'annualized-decimal-apy' | 'base-rune-per-churn' | 'unknown';
+
+interface ParsedCurrentAward {
+  unit: CurrentAwardUnit;
+  value: number;
+}
+
+function parseCurrentAward(currentAward: string): ParsedCurrentAward {
+  const trimmed = currentAward.trim();
+  if (trimmed === '') return { unit: 'unknown', value: Number.NaN };
+
+  const numericValue = Number(trimmed);
+  if (!Number.isFinite(numericValue) || numericValue < 0) {
+    return { unit: 'unknown', value: Number.NaN };
+  }
+
+  if (numericValue === 0) {
+    return { unit: 'annualized-decimal-apy', value: 0 };
+  }
+
+  if (/^\d+\.\d+$/.test(trimmed) && numericValue <= 5) {
+    return { unit: 'annualized-decimal-apy', value: numericValue };
+  }
+
+  if (/^\d+$/.test(trimmed) && numericValue >= 10_000_000) {
+    return { unit: 'base-rune-per-churn', value: rawRuneToDisplayNumber(trimmed) };
+  }
+
+  return { unit: 'unknown', value: Number.NaN };
+}
+
 /**
  * Calculate a bond provider's share of a node's total bond.
  */
@@ -21,35 +52,24 @@ export function calculateAPY(
   operatorFeeBps: number,
   bondAmount: string
 ): number {
-  // current_award can be:
-  // 1. Decimal APY: '0.6334' (63.34% APY) → use parseFloat()
-  // 2. 1e8 units: '250000000' (250 RUNE per churn) → use BigInt / 1e8
-  // Detection: small values (< 1e7) are decimal APY; large values are 1e8 units
-  let award: number;
-  const numericValue = Number(currentAward);
-  if (Number.isFinite(numericValue) && numericValue < 1e7) {
-    // Decimal APY (already annualized)
-    award = numericValue || 0;
-  } else {
-    // 1e8 units - convert to RUNE
-    award = rawRuneToDisplayNumber(currentAward);
-  }
+  const award = parseCurrentAward(currentAward);
+  if (award.unit === 'unknown') return Number.NaN;
   
   const bond = rawRuneToDisplayNumber(bondAmount);
   if (bond === 0) return 0;
 
   const operatorFeeDecimal = operatorFeeBps / 10000;
   
-  if (Number.isFinite(numericValue) && numericValue < 1e7) {
+  if (award.unit === 'annualized-decimal-apy') {
     // Decimal APY - already annualized, just adjust for share/fee
-    const adjustedAPY = award * (bondSharePercent / 100) * (1 - operatorFeeDecimal);
+    const adjustedAPY = award.value * (bondSharePercent / 100) * (1 - operatorFeeDecimal);
     return adjustedAPY * 100; // Convert to percentage
-  } else {
-    // 1e8 units - annualize by churns per year
-    const perChurnReward = award * (bondSharePercent / 100) * (1 - operatorFeeDecimal);
-    const annualReward = perChurnReward * NETWORK.CHURNS_PER_YEAR;
-    return (annualReward / bond) * 100;
   }
+
+  // 1e8 units - annualize by churns per year
+  const perChurnReward = award.value * (bondSharePercent / 100) * (1 - operatorFeeDecimal);
+  const annualReward = perChurnReward * NETWORK.CHURNS_PER_YEAR;
+  return (annualReward / bond) * 100;
 }
 
 /**

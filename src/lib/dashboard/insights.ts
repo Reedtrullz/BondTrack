@@ -372,10 +372,25 @@ function getSourceActionImpact(source: SourceFreshness): string {
 }
 
 function buildLpActions(address: string | null, positions: LpPosition[], now: Date): ActionItem[] {
+  const untrustedRedeemCount = positions.filter((position) => !position.claimableTrusted).length;
   const estimatedCount = positions.filter((position) => position.pricingSource === 'estimated').length;
   const currentOnlyCount = positions.filter((position) => position.pricingSource === 'current-only').length;
 
   const actions: ActionItem[] = [];
+  if (untrustedRedeemCount > 0) {
+    actions.push({
+      id: 'lp:redeem-quotes-degraded',
+      severity: 'warning',
+      source: 'LP',
+      title: `${untrustedRedeemCount} LP redeem quote${untrustedRedeemCount === 1 ? '' : 's'} not THORNode-confirmed`,
+      detail: 'Current value is visible, but withdrawable amounts are estimated until THORNode confirms the LP redeem quote.',
+      impact: 'Do not treat estimated withdrawable amounts as claimable before acting on an LP position.',
+      href: buildHref('/dashboard/lp', address),
+      lastSeen: now,
+      primaryAction: 'Review LP confidence',
+    });
+  }
+
   if (currentOnlyCount > 0) {
     actions.push({
       id: 'lp:current-only-pricing',

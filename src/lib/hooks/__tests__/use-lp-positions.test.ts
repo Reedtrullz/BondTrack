@@ -4,6 +4,7 @@ import { SWRConfig } from 'swr';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { __clearLpHistoricalCachesForTests, useLpPositions } from '../use-lp-positions';
 import * as midgard from '../../api/midgard';
+import * as thornode from '../../api/thornode';
 
 vi.mock('../../api/midgard');
 vi.mock('../../api/thornode', () => ({ getLiquidityProvider: vi.fn().mockResolvedValue(null) }));
@@ -66,6 +67,7 @@ describe('useLpPositions', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     __clearLpHistoricalCachesForTests();
+    vi.mocked(thornode.getLiquidityProvider).mockResolvedValue(null as never);
     vi.mocked(midgard.getRunePriceHistory).mockResolvedValue({
       intervals: [{
         startTime: '1776902400',
@@ -130,6 +132,8 @@ describe('useLpPositions', () => {
       entryRunePriceUsd: null,
       entryAssetPriceUsd: null,
       pricingSource: 'current-only',
+      redeemQuoteSource: 'derived',
+      claimableTrusted: false,
       depositedTotalValueUsd: null,
       netProfitLoss: 'Current value only',
       netProfitLossUsd: null,
@@ -139,6 +143,65 @@ describe('useLpPositions', () => {
       impermanentLossPercent: null,
     });
     expect(result.current.positions[0].currentTotalValueUsd).toBeCloseTo(240, 6);
+  });
+
+  it('marks fallback LP redeem values as estimated when THORNode redeem lookup fails', async () => {
+    vi.mocked(midgard.getMemberDetails).mockResolvedValueOnce({
+      pools: [{
+        ...successfulMemberDetails.pools[0],
+        liquidityUnits: '250',
+        dateFirstAdded: '1700000000',
+      }],
+    } as never);
+    vi.mocked(midgard.getPools).mockResolvedValueOnce([
+      {
+        ...successfulPools[0],
+        liquidityUnits: '1000',
+        runeDepth: '250000000000',
+        assetDepth: '500000000000',
+      },
+    ] as never);
+    vi.mocked(thornode.getLiquidityProvider).mockRejectedValueOnce(new Error('API error: 502 Bad Gateway'));
+
+    const { result } = renderHook(() => useLpPositions('thor1redeemfail'), { wrapper });
+
+    await waitFor(() => expect(result.current.state).toBe('ready'));
+
+    expect(result.current.positions[0]).toMatchObject({
+      redeemQuoteSource: 'derived',
+      claimableTrusted: false,
+      runeWithdrawable: '62500000000',
+      asset2Withdrawable: '125000000000',
+    });
+  });
+
+  it('uses trusted claimable values when THORNode returns the canonical redeem quote', async () => {
+    vi.mocked(midgard.getMemberDetails).mockResolvedValueOnce(successfulMemberDetails as never);
+    vi.mocked(midgard.getPools).mockResolvedValueOnce(successfulPools as never);
+    vi.mocked(thornode.getLiquidityProvider).mockResolvedValueOnce({
+      rune_address: 'thor1member',
+      asset_address: 'bc1member',
+      rune_deposit_value: '5000000000',
+      asset_deposit_value: '250000000',
+      rune_redeem_value: '5250000000',
+      asset_redeem_value: '260000000',
+      units: '100',
+      pending_rune: '0',
+      pending_asset: '0',
+      last_add_height: 123,
+      last_withdraw_height: 0,
+    } as never);
+
+    const { result } = renderHook(() => useLpPositions('thor1redeemok'), { wrapper });
+
+    await waitFor(() => expect(result.current.state).toBe('ready'));
+
+    expect(result.current.positions[0]).toMatchObject({
+      redeemQuoteSource: 'thornode',
+      claimableTrusted: true,
+      runeWithdrawable: '5250000000',
+      asset2Withdrawable: '260000000',
+    });
   });
 
   it('normalizes nanosecond member timestamps before historical lookup and keeps historical pricing when coverage resolves', async () => {

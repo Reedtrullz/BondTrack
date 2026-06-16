@@ -33,6 +33,8 @@ const basePosition = {
   asset2DepositedValue: '250000000',
   runeWithdrawable: '5500000000',
   asset2Withdrawable: '275000000',
+  redeemQuoteSource: 'thornode' as const,
+  claimableTrusted: true,
   currentRunePriceUsd: 0.48,
   currentAssetPriceUsd: 1.92,
   entryRunePriceUsd: 0.45,
@@ -140,7 +142,7 @@ describe('LpDashboardPage', () => {
     const confidence = screen.getByLabelText('LP data confidence');
     expect(emptyHeading.compareDocumentPosition(confidence) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(confidence).getByText('RUNE price')).toBeInTheDocument();
-    expect(within(confidence).getByText('Not used')).toBeInTheDocument();
+    expect(within(confidence).getAllByText('Not used').length).toBeGreaterThanOrEqual(1);
     expect(within(confidence).getByText('No LP values')).toBeInTheDocument();
     expect(within(confidence).queryByText('Fresh')).not.toBeInTheDocument();
   });
@@ -164,7 +166,7 @@ describe('LpDashboardPage', () => {
     const confidence = screen.getByLabelText('LP data confidence');
     expect(loadingHeading.compareDocumentPosition(confidence) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(confidence).getByText('RUNE price')).toBeInTheDocument();
-    expect(within(confidence).getByText('Pending')).toBeInTheDocument();
+    expect(within(confidence).getAllByText('Pending').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows a missing-address prompt when no address query param is present', async () => {
@@ -305,6 +307,31 @@ describe('LpDashboardPage', () => {
     expect(within(confidence).getByText('Current-only')).toBeInTheDocument();
     expect(within(confidence).getByText('History unavailable')).toBeInTheDocument();
     expect(screen.getAllByText('Incomplete').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('prioritizes degraded redeem quote confidence before LP position detail', async () => {
+    mockUseLpPositions.mockReturnValue({
+      positions: [{
+        ...basePosition,
+        redeemQuoteSource: 'derived',
+        claimableTrusted: false,
+      }],
+      isLoading: false,
+      state: 'ready',
+      error: undefined,
+      retry: vi.fn(),
+      runePriceFreshness: freshRunePrice,
+    });
+
+    render(<LpDashboardPage />);
+
+    const diagnosis = await screen.findByLabelText('LP performance diagnosis');
+    expect(within(diagnosis).getByRole('heading', { name: 'Redeem quotes: Degraded' })).toBeInTheDocument();
+    expect(within(diagnosis).getByText(/treat withdrawable amounts as estimated/i)).toBeInTheDocument();
+    expect(within(diagnosis).getByRole('button', { name: 'Review LP confidence' })).toBeInTheDocument();
+    const confidence = screen.getByLabelText('LP data confidence');
+    expect(within(confidence).getByText('Redeem quotes')).toBeInTheDocument();
+    expect(within(confidence).getByText('1 derived position redeem quote')).toBeInTheDocument();
   });
 
   it('explains which LP positions are excluded from aggregate performance', async () => {

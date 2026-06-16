@@ -1,6 +1,6 @@
 import { expect, test, type Page } from './fixtures';
 
-const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
+const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz';
 const MOCK_SECONDARY_ADDRESS = 'thor1otherprovider123456789abcdef';
 
 const mockNodes = [
@@ -254,7 +254,7 @@ async function setupMocks(page: Page, options: { nodeStatus?: string; thornodeNo
       return;
     }
 
-    if (url.pathname === '/api/midgard/v2/bonds/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq') {
+    if (url.pathname === '/api/midgard/v2/bonds/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz') {
       await route.fulfill({
         json: {
           address: MOCK_ADDRESS,
@@ -270,7 +270,7 @@ async function setupMocks(page: Page, options: { nodeStatus?: string; thornodeNo
       return;
     }
 
-    if (url.pathname === '/api/midgard/v2/member/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq') {
+    if (url.pathname === '/api/midgard/v2/member/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz') {
       await route.fulfill({ json: mockMemberDetails });
       return;
     }

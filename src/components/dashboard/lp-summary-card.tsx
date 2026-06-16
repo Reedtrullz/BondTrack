@@ -36,6 +36,17 @@ function getImpermanentLossTone(value: number | null | undefined): string {
   return 'text-zinc-600 dark:text-zinc-400';
 }
 
+function getRedeemQuoteDetail(position: LpPosition): string {
+  switch (position.redeemQuoteSource) {
+    case 'thornode':
+      return 'THORNode redeem quote';
+    case 'derived':
+      return 'Derived from pool share; not THORNode-confirmed';
+    case 'unavailable':
+      return 'THORNode redeem unavailable';
+  }
+}
+
 export const LpSummaryCard: React.FC<{
   position: LpPosition;
   isHistoricalEnrichmentLoading?: boolean;
@@ -43,6 +54,11 @@ export const LpSummaryCard: React.FC<{
   const pnlTone = getSignedTone(position.netProfitLossUsd);
   const ilTone = getImpermanentLossTone(position.impermanentLossPercent);
   const isPositionHistoricalEnriching = isHistoricalEnrichmentLoading && position.pricingSource === 'current-only';
+  const redeemLabel = position.claimableTrusted ? 'Claimable' : 'Estimated withdrawable';
+  const redeemValueTone = position.claimableTrusted
+    ? 'text-[var(--color-success)]'
+    : 'text-amber-600 dark:text-amber-300';
+  const redeemQuoteDetail = getRedeemQuoteDetail(position);
 
   // Calculate Time in Pool
   const [timeInPool] = useState(() => {
@@ -122,14 +138,16 @@ export const LpSummaryCard: React.FC<{
           valueClassName={pnlTone}
         />
         <MetricCard 
-          label="Claimable RUNE" 
+          label={`${redeemLabel} RUNE`}
           value={formatRuneAmount(position.runeWithdrawable)} 
-          valueClassName="text-[var(--color-success)]"
+          detail={redeemQuoteDetail}
+          valueClassName={redeemValueTone}
         />
         <MetricCard 
-          label={`Claimable ${position.assetSymbol}`} 
+          label={`${redeemLabel} ${position.assetSymbol}`}
           value={formatAmount(position.asset2Withdrawable)} 
-          valueClassName="text-[var(--color-success)]"
+          detail={redeemQuoteDetail}
+          valueClassName={redeemValueTone}
         />
         <MetricCard
           label="Impermanent Loss"

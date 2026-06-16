@@ -5,15 +5,11 @@ import { calculateJailBlocksRemaining, estimateNextChurn } from '@/lib/utils/cal
 import { StatusBadge } from '@/components/shared/status-badge';
 import { AlertTriangle, Clock, CheckCircle } from 'lucide-react';
 import { BondPosition } from '@/lib/types/node';
+import { NETWORK } from '@/lib/config';
+import { getSlashSeverity } from '@/lib/dashboard/slash-severity';
 
 interface SlashMonitorProps {
   positions: BondPosition[];
-}
-
-function getSlashSeverity(slashPoints: number): { level: 'ok' | 'warning' | 'critical'; label: string; color: string } {
-  if (slashPoints >= 200) return { level: 'critical', label: 'Critical', color: 'text-red-600 dark:text-red-400' };
-  if (slashPoints >= 50) return { level: 'warning', label: 'Warning', color: 'text-orange-600 dark:text-orange-400' };
-  return { level: 'ok', label: 'OK', color: 'text-emerald-600 dark:text-emerald-400' };
 }
 
 function formatTimeRemaining(blocks: number): string {
@@ -43,8 +39,8 @@ export function SlashMonitor({ positions }: SlashMonitorProps) {
     }))
     .sort((a, b) => b.slashPoints - a.slashPoints);
 
-  const criticalNodes = slashNodes.filter(n => n.slashPoints >= 200);
-  const warningNodes = slashNodes.filter(n => n.slashPoints >= 50 && n.slashPoints < 200);
+  const criticalNodes = slashNodes.filter(n => n.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical);
+  const warningNodes = slashNodes.filter(n => n.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning && n.slashPoints < NETWORK.SLASH_POINT_THRESHOLDS.critical);
   const jailedNodes = slashNodes.filter(n => n.isJailed);
   const nextChurn = estimateNextChurn(currentBlockHeight);
 
@@ -107,10 +103,10 @@ export function SlashMonitor({ positions }: SlashMonitorProps) {
                         <span>{formatTimeRemaining(jailBlocksRemaining)}</span>
                       </div>
                     )}
-                    <span className={`font-medium ${severity.color}`}>
+                    <span className={`font-medium ${severity.className}`}>
                       {node.slashPoints.toLocaleString()}
                     </span>
-                    <span className={`text-xs ${severity.color}`}>{severity.label}</span>
+                    <span className={`text-xs ${severity.className}`}>{severity.label}</span>
                   </div>
                 </div>
               );
@@ -118,7 +114,7 @@ export function SlashMonitor({ positions }: SlashMonitorProps) {
           </div>
 
           <div className="mt-3 text-xs text-zinc-500">
-            Severity: OK (0-49), Warning (50-199), Critical (200+)
+            Severity: OK (0-{NETWORK.SLASH_POINT_THRESHOLDS.warning - 1}), Warning ({NETWORK.SLASH_POINT_THRESHOLDS.warning}-{NETWORK.SLASH_POINT_THRESHOLDS.critical - 1}), Critical ({NETWORK.SLASH_POINT_THRESHOLDS.critical}+)
           </div>
         </>
       )}

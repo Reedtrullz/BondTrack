@@ -24,6 +24,8 @@ function getLpIssueDiagnosis(issue: MetricStripItem, totalValue: string): string
   const issueDetail = issue.detail ?? 'Review source confidence before acting';
 
   switch (issue.id) {
+    case 'lp-redeem-quotes':
+      return `${issue.value} LP redeem quote confidence. ${issue.detail ?? 'THORNode redeem quotes are not confirmed'}. Total LP value is ${totalValue}; treat withdrawable amounts as estimated until THORNode confirms them.`;
     case 'current-only-lp-values':
       return `${issue.value} current-only LP position${issue.value === '1' ? '' : 's'} ${issueDetail.toLowerCase()}. Total LP value is ${totalValue}, but aggregate P/L and LP vs HODL exclude positions without historical entry pricing.`;
     case 'estimated-lp-values':
@@ -83,21 +85,21 @@ export default function LpPage() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between sm:mb-8">
         <div>
           <Link
             href={address ? `/dashboard?address=${address}` : '/dashboard'}
-            className="mb-2 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-[var(--color-primary)] dark:text-zinc-400"
+            className="mb-1 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-[var(--color-primary)] dark:text-zinc-400 sm:mb-2"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
           </Link>
-          <h1 className="font-display text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+          <h1 className="font-display text-2xl font-bold text-zinc-900 dark:text-zinc-100 sm:text-3xl">
             LP Positions
           </h1>
-          <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400 sm:text-base">
             Manage liquidity positions, calculate impermanent loss, and download position snapshots
           </p>
         </div>
@@ -148,7 +150,7 @@ export default function LpPage() {
         </>
       ) : positions && positions.length > 0 ? (
         <>
-          <div className="mb-6">
+          <div className="mb-4 sm:mb-6">
             <InsightHeader
               severity={lpHeaderSeverity}
               statusLabel={lpStatusLabel}
@@ -175,7 +177,7 @@ export default function LpPage() {
               compactMobileMetrics
             />
           </div>
-          <div className="mb-6">
+          <div className="mb-4 sm:mb-6">
             {confidenceStrip}
           </div>
 

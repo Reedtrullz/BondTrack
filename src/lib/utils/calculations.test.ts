@@ -20,4 +20,10 @@ describe('calculateAPY', () => {
 
     expect(apy).toBeCloseTo(1, 4);
   });
+
+  it('returns unknown when current_award units are ambiguous', () => {
+    expect(calculateAPY(100, '9999999', 0, '146000000000')).toBeNaN();
+    expect(calculateAPY(100, '1', 0, '146000000000')).toBeNaN();
+    expect(calculateAPY(100, 'not-an-award', 0, '146000000000')).toBeNaN();
+  });
 });

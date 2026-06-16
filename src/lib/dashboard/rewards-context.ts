@@ -101,6 +101,10 @@ function hasBondActionHistory(bondHistory?: BondHistory | null): boolean {
   );
 }
 
+function hasPartialBondActionHistory(bondHistory?: BondHistory | null): boolean {
+  return bondHistory?.isPartial === true;
+}
+
 function getPrimaryConfidenceIssue(metrics: MetricStripItem[]): MetricStripItem | undefined {
   return metrics.find((metric) => metric.severity === 'critical' || metric.severity === 'warning');
 }
@@ -118,6 +122,7 @@ export function buildRewardsPageModel({
   const weightedApy = calculateWeightedApy(positions, networkApy ?? 0);
   const hasNodeApy = positions.some((position) => Number.isFinite(position.netAPY) && position.netAPY > 0);
   const hasHistory = hasBondActionHistory(bondHistory);
+  const hasPartialHistory = hasPartialBondActionHistory(bondHistory);
   const rewardHistoryMetric: MetricStripItem = isLoadingActions
     ? {
         id: 'reward-history',
@@ -134,6 +139,14 @@ export function buildRewardsPageModel({
           detail: 'Using current bond baseline',
           severity: 'warning',
         }
+      : hasHistory && hasPartialHistory
+        ? {
+            id: 'reward-history',
+            label: 'Reward history',
+            value: 'Partial',
+            detail: `Recent ${bondHistory?.loadedActionCount ?? bondHistory?.actionLimit ?? 50} actions only`,
+            severity: 'warning',
+          }
       : hasHistory
         ? {
             id: 'reward-history',

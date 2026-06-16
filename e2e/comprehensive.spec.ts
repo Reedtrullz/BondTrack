@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures';
 import { mockDashboardApis } from './helpers/dashboard-api-mocks';
 
-const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
+const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz';
 
 test.describe('Visual Regression - Layout', () => {
   test('homepage renders correctly', async ({ page }) => {

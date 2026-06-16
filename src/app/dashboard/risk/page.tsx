@@ -30,9 +30,11 @@ import { useState } from 'react';
 import { generatePortfolioAlerts } from '@/lib/utils/portfolio-alerts';
 import { cn } from '@/lib/utils';
 import { calculateNetworkSecurityState, estimateNextChurn } from '@/lib/utils/calculations';
-import { runeToNumber, formatBasisPoints, formatCompactNumber, formatPercent, formatRuneDisplayNumber, formatRuneFromNumber } from '@/lib/utils/formatters';
+import { runeToNumber, formatBasisPoints, formatCompactNumber, formatRuneFromNumber } from '@/lib/utils/formatters';
 import { NETWORK } from '@/lib/config';
 import { buildDashboardInsightState, type ActionItem } from '@/lib/dashboard/insights';
+import { buildBondMemoHref, buildDashboardHref } from '@/lib/dashboard/hrefs';
+import { formatDashboardNumber, formatDashboardPercent, formatDashboardRune, isUsableDashboardMetric } from '@/lib/dashboard/metrics';
 import { getCandidateBondSourceSafety, type CandidateBondSourceSafety } from '@/lib/dashboard/candidate-bond-source-safety';
 import {
   getIncentivePendulumModel,
@@ -57,36 +59,23 @@ function formatRuneCompact(value: number): string {
 }
 
 function isUsableRiskMetric(value: number): boolean {
-  return Number.isFinite(value) && value >= 0;
+  return isUsableDashboardMetric(value);
 }
 
 function formatRiskPercent(value: number): string {
-  return isUsableRiskMetric(value) ? formatPercent(value) : '--';
+  return formatDashboardPercent(value);
 }
 
 function formatRiskRune(value: number): string {
-  return isUsableRiskMetric(value) && value > 0 ? `ᚱ${formatRuneDisplayNumber(value)}` : '--';
+  return formatDashboardRune(value);
 }
 
 function formatRiskNumber(value: number): string {
-  return isUsableRiskMetric(value) ? value.toLocaleString() : '--';
+  return formatDashboardNumber(value);
 }
 
 function formatNodeAddress(nodeAddress: string): string {
   return `${nodeAddress.slice(0, 12)}...${nodeAddress.slice(-6)}`;
-}
-
-function buildDashboardHref(path: string, address: string | null, nodeAddress?: string): string {
-  const params = new URLSearchParams();
-  if (address) {
-    params.set('address', address);
-  }
-  if (nodeAddress) {
-    params.set('node', nodeAddress);
-  }
-
-  const query = params.toString();
-  return query ? `${path}?${query}` : path;
 }
 
 function getActionNodeAddress(action: ActionItem): string | null {
@@ -101,17 +90,6 @@ function getNonFocusedRiskActions(actions: ActionItem[], focusedNodeAddress: str
   if (!focusedNodeAddress) return actions;
 
   return actions.filter((action) => getActionNodeAddress(action) !== focusedNodeAddress);
-}
-
-function buildBondPrepHref(address: string | null, nodeAddress: string): string {
-  const params = new URLSearchParams();
-  if (address) {
-    params.set('address', address);
-  }
-  params.set('action', 'bond');
-  params.set('node', nodeAddress);
-
-  return `/dashboard/transactions?${params.toString()}`;
 }
 
 function getFocusedRiskCapacitySummary(candidateContext: CandidateRiskContext): string {
@@ -157,7 +135,7 @@ function getFocusedCandidateRiskDecision({
 
     return {
       detail: 'Watched address is already listed as a provider and the candidate score is strong.',
-      href: buildBondPrepHref(address, nodeAddress),
+      href: buildBondMemoHref(address, nodeAddress, 'bond'),
       label: 'Prepare BOND memo',
       linkLabel: 'Prepare BOND memo',
       tone: 'ready' as const,
@@ -568,7 +546,10 @@ function FocusedNodeContext({
 
   if (focusedContext.kind === 'candidate') {
       const { candidateContext, node: focusedCandidate } = focusedContext;
-      const explorerHref = buildDashboardHref('/dashboard/explorer', address, focusedCandidate.node_address);
+      const explorerHref = buildDashboardHref('/dashboard/explorer', {
+        address,
+        params: { node: focusedCandidate.node_address },
+      });
       const qualityTone = candidateContext.candidateScore.quality === 'Avoid'
         ? 'text-red-700 dark:text-red-300'
         : candidateContext.candidateScore.quality === 'Watch'

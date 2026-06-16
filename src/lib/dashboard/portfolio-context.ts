@@ -38,6 +38,10 @@ const LP_ALLOCATION_COLOR = '#f59e0b';
 function calculateWeightedApy(positions: BondPosition[], totalBondedRune: number): number {
   if (positions.length === 0 || totalBondedRune <= 0) return 0;
 
+  if (positions.some((position) => !Number.isFinite(position.netAPY))) {
+    return Number.NaN;
+  }
+
   return positions.reduce((sum, position) => (
     sum + position.netAPY * position.bondAmount
   ), 0) / totalBondedRune;
@@ -112,6 +116,69 @@ function getAllocationLabel(totalBondedValueUsd: number, totalLpValueUsd: number
   };
 }
 
+function getLpValuationMetric(lpDataUnavailable: boolean, lpPositions: LpPosition[]): MetricStripItem {
+  if (lpDataUnavailable) {
+    return {
+      id: 'lp-valuation',
+      label: 'LP valuation',
+      value: 'Degraded',
+      detail: 'LP value excluded from totals',
+      severity: 'warning',
+    };
+  }
+
+  if (lpPositions.length === 0) {
+    return {
+      id: 'lp-valuation',
+      label: 'LP valuation',
+      value: 'None found',
+      detail: 'No LP positions included',
+      severity: 'info',
+    };
+  }
+
+  const untrustedRedeemCount = lpPositions.filter((position) => !position.claimableTrusted).length;
+  if (untrustedRedeemCount > 0) {
+    return {
+      id: 'lp-valuation',
+      label: 'LP valuation',
+      value: 'Partial',
+      detail: `${untrustedRedeemCount} LP value${untrustedRedeemCount === 1 ? '' : 's'} not THORNode-confirmed`,
+      severity: 'warning',
+    };
+  }
+
+  const currentOnlyCount = lpPositions.filter((position) => position.pricingSource === 'current-only').length;
+  if (currentOnlyCount > 0) {
+    return {
+      id: 'lp-valuation',
+      label: 'LP valuation',
+      value: 'Partial',
+      detail: `${currentOnlyCount} LP performance baseline${currentOnlyCount === 1 ? '' : 's'} missing`,
+      severity: 'warning',
+    };
+  }
+
+  const estimatedCount = lpPositions.filter((position) => position.pricingSource === 'estimated').length;
+  if (estimatedCount > 0) {
+    return {
+      id: 'lp-valuation',
+      label: 'LP valuation',
+      value: 'Estimated',
+      detail: `${estimatedCount} LP position${estimatedCount === 1 ? '' : 's'} excluded from aggregate P/L`,
+      severity: 'info',
+    };
+  }
+
+  return {
+    id: 'lp-valuation',
+    label: 'LP valuation',
+    value: 'Ready',
+    detail: `${lpPositions.length} LP position${lpPositions.length === 1 ? '' : 's'} included`,
+    severity: 'healthy',
+  };
+}
+
 function buildConfidenceMetrics({
   bondPositions,
   lpDataUnavailable,
@@ -139,17 +206,7 @@ function buildConfidenceMetrics({
       detail: totalBondedRune > 0 ? `${formatRuneFromNumber(totalBondedRune)} tracked` : 'No bonded RUNE',
       severity: bondPositions.length > 0 ? 'healthy' : 'info',
     },
-    {
-      id: 'lp-valuation',
-      label: 'LP valuation',
-      value: lpDataUnavailable ? 'Degraded' : lpPositions.length > 0 ? 'Ready' : 'None found',
-      detail: lpDataUnavailable
-        ? 'LP value excluded from totals'
-        : lpPositions.length > 0
-          ? `${lpPositions.length} LP position${lpPositions.length === 1 ? '' : 's'} included`
-          : 'No LP positions included',
-      severity: lpDataUnavailable ? 'warning' : lpPositions.length > 0 ? 'healthy' : 'info',
-    },
+    getLpValuationMetric(lpDataUnavailable, lpPositions),
     {
       id: 'rune-price',
       label: 'RUNE price',

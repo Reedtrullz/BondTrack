@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import '@/lib/types/wallet';
 import { readLocalStorageValue, removeLocalStorageValue, STORAGE_KEYS, writeLocalStorageValue } from '@/lib/storage/keys';
 import { THORCHAIN_MAINNET_CHAIN_ID } from '@/lib/thorchain';
+import { normalizeTHORChainMainnetAddress } from '@/lib/utils/address-validation';
 
 export type WalletType = 'keplr' | 'xdefi' | 'vultisig' | null;
 
@@ -35,6 +36,37 @@ declare global {
   interface Window {
     vultisig?: VultisigWindow;
   }
+}
+
+function extractWalletAddress(result: unknown): string {
+  if (typeof result === 'string') return result;
+
+  if (result && typeof result === 'object') {
+    const record = result as Record<string, unknown>;
+    if (typeof record.address === 'string') return record.address;
+    if (typeof record.bech32Address === 'string') return record.bech32Address;
+
+    const accounts = record.accounts;
+    if (Array.isArray(accounts) && accounts.length > 0) {
+      const [firstAccount] = accounts;
+      if (typeof firstAccount === 'string') return firstAccount;
+      if (firstAccount && typeof firstAccount === 'object') {
+        const accountRecord = firstAccount as Record<string, unknown>;
+        if (typeof accountRecord.address === 'string') return accountRecord.address;
+        if (typeof accountRecord.bech32Address === 'string') return accountRecord.bech32Address;
+      }
+    }
+  }
+
+  throw new Error('Wallet did not return a THORChain address');
+}
+
+function validateConnectedAddress(address: string, walletType: Exclude<WalletType, null>): string {
+  const normalized = normalizeTHORChainMainnetAddress(address);
+  if (!normalized) {
+    throw new Error(`${walletType.toUpperCase()} returned an invalid THORChain mainnet address`);
+  }
+  return normalized;
 }
 
 export function useWallet() {
@@ -100,7 +132,7 @@ export function useWallet() {
       method: 'connect',
     });
 
-    const address = result as string;
+    const address = extractWalletAddress(result);
     const chainId = THORCHAIN_CHAIN_ID;
 
     return { address, chainId };
@@ -116,7 +148,7 @@ export function useWallet() {
       method: 'connect',
     });
 
-    const address = result as string;
+    const address = extractWalletAddress(result);
     const chainId = THORCHAIN_CHAIN_ID;
 
     return { address, chainId };
@@ -157,8 +189,10 @@ export function useWallet() {
         return;
       }
 
+      const address = validateConnectedAddress(result.address, walletType);
+
       setState({
-        address: result.address,
+        address,
         walletType,
         chainId: result.chainId,
         isConnected: true,

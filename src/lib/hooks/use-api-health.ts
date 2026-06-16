@@ -2,6 +2,7 @@ import { createContext, createElement, useContext, useEffect, useRef, useState, 
 import type { MutableRefObject, ReactNode } from 'react';
 import { getHealth } from '@/lib/api/midgard';
 import { getAllNodes } from '@/lib/api/thornode';
+import { assertUsableThornodeNodes } from '@/lib/api/source-validation';
 
 export type ApiHealthStatus = 'unknown' | 'healthy' | 'degraded' | 'down';
 
@@ -40,20 +41,6 @@ function updateStatusFromFailure(
     setStatus('down');
   } else {
     setStatus('degraded');
-  }
-}
-
-function hasUsableThornodeNode(value: unknown): boolean {
-  if (!value || typeof value !== 'object') return false;
-
-  const node = value as Record<string, unknown>;
-  return typeof node.node_address === 'string' && node.node_address.length > 0
-    && typeof node.status === 'string' && node.status.length > 0;
-}
-
-function assertUsableThornodeNodes(nodes: unknown): asserts nodes is unknown[] {
-  if (!Array.isArray(nodes) || !nodes.some(hasUsableThornodeNode)) {
-    throw new Error('THORNode health probe returned no usable node records');
   }
 }
 

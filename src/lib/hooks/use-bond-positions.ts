@@ -107,7 +107,7 @@ export function useBondPositions(address: string | null) {
     }
   );
 
-  const { data: healthData } = useSWR(
+  const { data: healthData, error: healthError, isLoading: healthLoading } = useSWR(
     shouldFetchLiveData ? 'health' : null,
     () => getHealth(),
     { refreshInterval: NETWORK.REFRESH_INTERVALS.health }
@@ -115,10 +115,18 @@ export function useBondPositions(address: string | null) {
 
   const currentBlockHeight = useMockData
     ? 1234567
-    : healthData?.lastThorNode?.height ?? nodes?.[0]?.active_block_height ?? 0;
+    : healthData?.lastThorNode?.height;
+  const hasTrustedCurrentHeight = useMockData || (
+    typeof currentBlockHeight === 'number' &&
+    Number.isFinite(currentBlockHeight) &&
+    currentBlockHeight > 0
+  );
+  const trustedCurrentBlockHeight = hasTrustedCurrentHeight && typeof currentBlockHeight === 'number'
+    ? currentBlockHeight
+    : null;
 
-  const positions: BondPosition[] = (useMockData ? mockNodes : nodes) && address
-    ? extractBondPositions(useMockData ? mockNodes! : nodes!, address, currentBlockHeight)
+  const positions: BondPosition[] = (useMockData ? mockNodes : nodes) && address && trustedCurrentBlockHeight !== null
+    ? extractBondPositions(useMockData ? mockNodes! : nodes!, address, trustedCurrentBlockHeight)
     : [];
 
   const allNodes = useMockData ? mockNodes ?? [] : nodes ?? [];
@@ -131,8 +139,8 @@ export function useBondPositions(address: string | null) {
 
   return {
     positions: positionsWithFlags,
-    isLoading: shouldFetchLiveData ? isLoading : false,
-    error: useMockData ? undefined : error,
+    isLoading: shouldFetchLiveData ? isLoading || healthLoading : false,
+    error: useMockData ? undefined : error || healthError,
     mutate,
   };
 }

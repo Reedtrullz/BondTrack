@@ -62,7 +62,7 @@ A professional investment command center for THORChain bond providers — monito
 - **Styling**: Tailwind CSS v4
 - **Data Fetching**: SWR
 - **Charts**: Recharts (with ResponsiveContainer fixes for clean rendering)
-- **Testing**: Vitest (190 tests / 39 files) + Playwright (62 E2E tests), all passing ✅
+- **Testing**: Vitest source tests + Playwright E2E specs across desktop and focused mobile-critical projects
 - **Icons**: lucide-react
 - **Deployment**: Ansible → VPS (GHCR, Docker, Caddy reverse proxy)
 - **Security**: Ansible Vault for sensitive variables
@@ -254,11 +254,12 @@ npx playwright show-report
 ```
 
 ### E2E Best Practices (from CI fixes)
-- Use `.first()` when text locators match multiple elements
-- Use `{ exact: true }` for heading matches to avoid partial matches
+- Prefer semantic locators scoped to the named region, landmark, card, table, tab panel, or dialog under test
+- Use `{ exact: true }` for page/title headings and compact repeated labels when partial matches could pass against duplicate UI
 - Mock API endpoints in `test.beforeEach()` for predictable tests
 - Check page headings with `getByRole('heading', { name: ... })` 
 - Avoid fragile XPath locators; use semantic text/role locators
+- Do not use broad `.first()`, `.nth()`, or `.last()` to silence duplicate matches; narrow the surface first
 - Handle missing elements gracefully (e.g., charts with `minWidth={0} minHeight={0}`)
 ## CI / CD
 

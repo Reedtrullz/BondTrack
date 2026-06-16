@@ -17,6 +17,9 @@ describe('useApiHealth', () => {
   const usableThornodeNodes = [{
     node_address: 'thor1healthprobe0000000000000000000000000',
     status: 'Active',
+    total_bond: '100000000',
+    bond_providers: { providers: [] },
+    slash_points: 0,
   }];
 
   beforeEach(() => {

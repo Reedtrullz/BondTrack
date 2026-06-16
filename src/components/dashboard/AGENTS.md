@@ -1,6 +1,6 @@
 # Dashboard Components
 
-**30 components** across 7 categories. All `'use client'`. Colocated tests + `__tests__/` grouping.
+**37 components** across 7 categories. All `'use client'`. Colocated tests + `__tests__/` grouping.
 
 ## PORTFOLIO & LP (6)
 | Component | Purpose |

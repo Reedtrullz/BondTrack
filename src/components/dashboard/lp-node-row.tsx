@@ -25,6 +25,14 @@ export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
       ? 'text-red-600 dark:text-red-400'
       : 'text-zinc-600 dark:text-zinc-400';
   const safeAddress = position.address ?? '';
+  const redeemTextColor = position.claimableTrusted
+    ? 'text-green-600 dark:text-green-400'
+    : 'text-amber-600 dark:text-amber-400';
+  const redeemSourceLabel = position.claimableTrusted
+    ? 'THORNode quote'
+    : position.redeemQuoteSource === 'derived'
+      ? 'Estimated from pool share'
+      : 'Redeem quote unavailable';
 
   return (
     <tr className="border-b border-zinc-100 bg-white transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800/50">
@@ -59,12 +67,13 @@ export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
 
       <td className="px-4 py-4">
         <div className="space-y-2">
-          <div className="font-semibold text-green-600 dark:text-green-400">
+          <div className={`font-semibold ${redeemTextColor}`}>
             RUNE: {formatRuneAmount(position.runeWithdrawable)}
           </div>
-          <div className="font-semibold text-green-600 dark:text-green-400">
+          <div className={`font-semibold ${redeemTextColor}`}>
             {position.assetSymbol}: {formatAmount(position.asset2Withdrawable)}
           </div>
+          <div className="text-[10px] text-zinc-500 dark:text-zinc-400">{redeemSourceLabel}</div>
         </div>
       </td>
 

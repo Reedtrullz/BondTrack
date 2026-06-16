@@ -37,7 +37,7 @@ describe('NodeStatusCard', () => {
 
     expect(screen.getByRole('link', { name: /Prepare BOND Memo/i })).toHaveAttribute(
       'href',
-      '/dashboard/transactions?address=thor1provider0000000000000000000000000000000&node=thor1nodestatus0000000000000000000000000000&action=bond'
+      '/dashboard/transactions?address=thor1provider0000000000000000000000000000000&action=bond&node=thor1nodestatus0000000000000000000000000000'
     );
     expect(screen.getByRole('link', { name: /Prepare BOND Memo/i })).not.toHaveAttribute(
       'href',
@@ -59,7 +59,7 @@ describe('NodeStatusCard', () => {
 
     expect(screen.getByRole('link', { name: /Prepare UNBOND Memo/i })).toHaveAttribute(
       'href',
-      '/dashboard/transactions?address=thor1provider0000000000000000000000000000000&node=thor1nodestatus0000000000000000000000000000&action=unbond'
+      '/dashboard/transactions?address=thor1provider0000000000000000000000000000000&action=unbond&node=thor1nodestatus0000000000000000000000000000'
     );
     expect(screen.queryByText(/UNBOND unavailable:/i)).not.toBeInTheDocument();
   });
@@ -69,7 +69,7 @@ describe('NodeStatusCard', () => {
 
     expect(screen.getByRole('link', { name: /Prepare BOND Memo/i })).toHaveAttribute(
       'href',
-      '/dashboard/transactions?node=thor1nodestatus0000000000000000000000000000&action=bond'
+      '/dashboard/transactions?action=bond&node=thor1nodestatus0000000000000000000000000000'
     );
     expect(screen.queryByRole('link', { name: /Prepare UNBOND Memo/i })).not.toBeInTheDocument();
   });

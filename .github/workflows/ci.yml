@@ -31,6 +31,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
       - uses: ./.github/actions/install-deps
+      - run: npm run check:native-prebuild-pins
       # Moderate+ production vulnerabilities should fail CI; omit dev deps to avoid tool noise.
       - run: npm audit --omit=dev --audit-level=moderate
       - run: npm run lint -- --max-warnings=0

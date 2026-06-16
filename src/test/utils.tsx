@@ -15,18 +15,18 @@ function renderWithProviders(
 
 export function createMockKeplr() {
   return {
-    enable: vi.fn().mockResolvedValue(['thor1mockaddress123456789']),
+    enable: vi.fn().mockResolvedValue(['thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4']),
     getKey: vi.fn().mockResolvedValue({
-      bech32Address: 'thor1mockaddress123456789',
+      bech32Address: 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4',
     }),
-    getAddresses: vi.fn().mockResolvedValue(['thor1mockaddress123456789']),
+    getAddresses: vi.fn().mockResolvedValue(['thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4']),
   };
 }
 
 export function createMockXdefi() {
   return {
     thorchain: {
-      request: vi.fn().mockResolvedValue('thor1mockaddress123456789'),
+      request: vi.fn().mockResolvedValue('thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4'),
     },
   };
 }

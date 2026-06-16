@@ -1,6 +1,6 @@
 import { expect, test, type Page } from './fixtures';
 
-const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
+const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz';
 
 const mockMemberDetails = {
   pools: [
@@ -218,7 +218,7 @@ const mockPoolHistory = {
   ],
 };
 
-type LpMockScenario = 'historical' | 'mixed-confidence' | 'empty';
+type LpMockScenario = 'historical' | 'mixed-confidence' | 'redeem-degraded' | 'empty';
 
 async function setupMocks(page: Page, scenario: LpMockScenario = 'historical') {
   await page.route('**/api/thorchain/**', async (route) => {
@@ -249,6 +249,11 @@ async function setupMocks(page: Page, scenario: LpMockScenario = 'historical') {
       /^\/api\/thorchain\/thorchain\/pool\/([^/]+)\/liquidity_provider\/[^/]+$/
     );
     if (liquidityProviderPath) {
+      if (scenario === 'redeem-degraded') {
+        await route.fulfill({ json: null });
+        return;
+      }
+
       const pool = liquidityProviderPath[1];
       await route.fulfill({
         json: {
@@ -284,7 +289,7 @@ async function setupMocks(page: Page, scenario: LpMockScenario = 'historical') {
       return;
     }
 
-    if (url.pathname === '/api/midgard/v2/member/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq') {
+    if (url.pathname === '/api/midgard/v2/member/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz') {
       await route.fulfill({
         json: scenario === 'empty'
           ? emptyMemberDetails
@@ -436,6 +441,58 @@ test.describe('LP IL dashboard', () => {
     expect(layout.confidence).not.toBeNull();
     expect(layout.empty!.top).toBeLessThan(layout.confidence!.top);
     expect(layout.empty!.top).toBeLessThan(layout.viewportHeight);
+    expect(layout.overflowing).toEqual([]);
+  });
+
+  test('keeps degraded redeem quote confidence before LP details on mobile', async ({ page }) => {
+    await setupMocks(page, 'redeem-degraded');
+    await page.setViewportSize({ width: 390, height: 740 });
+    await page.goto(`/dashboard/lp?address=${MOCK_ADDRESS}`);
+
+    const diagnosis = page.getByLabel('LP performance diagnosis');
+    const confidence = page.getByLabel('LP data confidence');
+
+    await expect(diagnosis).toContainText('Redeem quotes: Degraded');
+    await expect(diagnosis).toContainText('treat withdrawable amounts as estimated');
+    await expect(diagnosis.getByRole('button', { name: 'Review LP confidence' })).toBeVisible();
+    await expect(confidence).toContainText('Redeem quotes');
+    await expect(confidence).toContainText('1 derived position redeem quote');
+    await expect(page.getByText('Estimated withdrawable RUNE')).toBeVisible();
+    await expect(page.getByText('Claimable RUNE')).toHaveCount(0);
+
+    const layout = await page.evaluate(() => {
+      const viewportWidth = window.innerWidth;
+      const box = (selector: string) => {
+        const element = document.querySelector(selector);
+        const rect = element?.getBoundingClientRect();
+        return rect ? { top: rect.top, bottom: rect.bottom, width: rect.width } : null;
+      };
+
+      const overflowing = Array.from(document.querySelectorAll('main *'))
+        .filter((element) => {
+          const rect = element.getBoundingClientRect();
+          return rect.width > 0 && (rect.left < -1 || rect.right > viewportWidth + 1);
+        })
+        .map((element) => element.textContent?.replace(/\s+/g, ' ').trim().slice(0, 80));
+
+      return {
+        diagnosis: box('section[aria-label="LP performance diagnosis"]'),
+        confidence: box('section[aria-label="LP data confidence"]'),
+        tabs: box('[role="tablist"]'),
+        viewportHeight: window.innerHeight,
+        viewportWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        overflowing,
+      };
+    });
+
+    expect(layout.diagnosis).not.toBeNull();
+    expect(layout.confidence).not.toBeNull();
+    expect(layout.tabs).not.toBeNull();
+    expect(layout.confidence!.top).toBeGreaterThan(layout.diagnosis!.top);
+    expect(layout.confidence!.top).toBeLessThan(layout.viewportHeight);
+    expect(layout.confidence!.top).toBeLessThan(layout.tabs!.top);
+    expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
     expect(layout.overflowing).toEqual([]);
   });
 });

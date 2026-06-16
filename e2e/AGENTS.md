@@ -1,6 +1,6 @@
 # E2E Tests — Playwright
 
-Browser-level end-to-end tests for critical user flows.
+Browser-level end-to-end tests for critical user flows. The suite currently has 20 specs; keep this structure block representative rather than treating it as an exhaustive inventory.
 
 ## STRUCTURE
 ```
@@ -11,6 +11,7 @@ e2e/
 ├── dashboard-pages.spec.ts       # Page render smoke checks
 ├── portfolio.spec.ts             # Portfolio page + bond display
 ├── transactions.spec.ts          # Transaction composer flows
+├── mobile-critical.spec.ts       # Focused phone-width release smoke checks
 ├── wallet.spec.ts                # Wallet connect stubs
 ├── risk-security.spec.ts         # Risk + network security panels
 ├── lp-il.spec.ts                 # LP positions + IL calculator
@@ -19,6 +20,7 @@ e2e/
 ├── redirects.spec.ts             # Redirect/routing coverage
 ├── seo.spec.ts                   # Sitemap/robots/manifest identity checks
 └── comprehensive.spec.ts         # Visual/a11y/API edge coverage
+... plus explorer, API guard, changelog, settings, learn, LP, nodes, rewards, and other focused provider-safety specs.
 ```
 
 ## CONVENTIONS
@@ -29,7 +31,7 @@ e2e/
 
 **Base URL**: `http://localhost:3000` (production build launched via the standalone artifact: `node .next/standalone/server.js` after copying `public/` and `.next/static/` into `.next/standalone/`).
 
-**Production E2E**: Playwright boots a production build before running tests. `webServer.command` runs `npm run build` and then `npm start`; `npm start` prepares the standalone artifact's `public/` and `.next/static/` directories, then starts `node .next/standalone/server.js`. The 180s timeout accommodates the build. `PLAYWRIGHT_REUSE_SERVER=true` allows local re-runs to skip the build when a server is already running. CI leaves that unset so the build always runs fresh.
+**Production E2E**: Playwright boots a production build before running tests. `webServer.command` runs `npm run build` and then `npm start`; `npm start` prepares the standalone artifact's `public/` and `.next/static/` directories, then starts `node .next/standalone/server.js`. The 180s timeout accommodates the build. `PLAYWRIGHT_REUSE_SERVER=true` allows local re-runs to skip the build when a server is already running. CI leaves that unset so the build always runs fresh. The default config includes Desktop Chrome plus a focused `mobile-critical` project for command center, portfolio, and transaction safety coverage.
 
 **Mocking**: Most specs mock API routes inline with `page.route()` and fixture objects. Broad dashboard smoke specs can use `helpers/dashboard-api-mocks.ts`. Wallet tests use `context.addInitScript()` to inject `window.keplr`/`window.xfi` shims.
 

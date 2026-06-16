@@ -94,7 +94,9 @@ export function calculateWeightedApy(positions: BondPosition[], networkBaselineA
 
   positions.forEach(pos => {
     const bond = getBondAmount(pos);
-    const apy = pos.netAPY || baselineApyPercent;
+    const apy = Number.isFinite(pos.netAPY) && pos.netAPY > 0
+      ? pos.netAPY
+      : baselineApyPercent;
     totalBond += bond;
     weightedSum += bond * apy;
   });

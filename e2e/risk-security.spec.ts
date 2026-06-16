@@ -1,6 +1,6 @@
 import { expect, test, type Page } from './fixtures';
 
-const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
+const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz';
 const MOCK_SECONDARY_ADDRESS = 'thor1otherprovider123456789abcdef';
 const MOCK_CANDIDATE_ADDRESS = 'thor1candidateaccess123456789abcdef';
 

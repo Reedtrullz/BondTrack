@@ -8,6 +8,8 @@ const healthySource: TransactionSourceInput = {
   positionsLoading: false,
   thornodeStatus: 'healthy',
 };
+const dashboardAddress = 'thor1p5xs6rgdp5xs6rgdp5xs6rgdp5xs6rgd2gv5hv';
+const walletAddress = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
 
 function position(overrides: Partial<BondPosition> = {}): BondPosition {
   return {
@@ -76,11 +78,11 @@ describe('buildTransactionPreflightModel', () => {
   it('prioritizes wrong-network warnings over otherwise actionable UNBOND state', () => {
     const model = buildTransactionPreflightModel({
       actionParam: 'unbond',
-      dashboardAddress: 'thor1dashboardaddress000000000000000000000000',
+      dashboardAddress,
       positions: [position({ status: 'Standby' })],
       source: healthySource,
       wallet: {
-        address: 'thor1walletaddress000000000000000000000000000',
+        address: walletAddress,
         isConnected: true,
         isNetworkMismatch: true,
         networkMismatch: { actual: 'cosmoshub-4', expected: 'thorchain-1', hasMismatch: true },
@@ -102,11 +104,11 @@ describe('buildTransactionPreflightModel', () => {
   it('keeps a wrong-network connection attempt critical even when the wallet is not usable', () => {
     const model = buildTransactionPreflightModel({
       actionParam: 'bond',
-      dashboardAddress: 'thor1dashboardaddress000000000000000000000000',
+      dashboardAddress,
       positions: [],
       source: healthySource,
       wallet: {
-        address: 'thor1walletaddress000000000000000000000000000',
+        address: walletAddress,
         isConnected: false,
         isNetworkMismatch: true,
         networkMismatch: { actual: 'cosmoshub-4', expected: 'thorchain-1', hasMismatch: true },
@@ -125,7 +127,7 @@ describe('buildTransactionPreflightModel', () => {
   it('warns clearly when UNBOND has no eligible standby node', () => {
     const model = buildTransactionPreflightModel({
       actionParam: 'unbond',
-      dashboardAddress: 'thor1dashboardaddress000000000000000000000000',
+      dashboardAddress,
       positions: [position({ status: 'Active' })],
       source: healthySource,
       wallet: {
@@ -149,11 +151,11 @@ describe('buildTransactionPreflightModel', () => {
   it('marks connected eligible transactions ready while keeping wallet and dashboard addresses separate', () => {
     const model = buildTransactionPreflightModel({
       actionParam: 'unbond',
-      dashboardAddress: 'thor1dashboardaddress000000000000000000000000',
+      dashboardAddress,
       positions: [position({ status: 'Standby' })],
       source: healthySource,
       wallet: {
-        address: 'thor1walletaddress000000000000000000000000000',
+        address: walletAddress,
         isConnected: true,
         isNetworkMismatch: false,
         networkMismatch: { actual: 'thorchain-1', expected: 'thorchain-1', hasMismatch: false },
@@ -165,8 +167,8 @@ describe('buildTransactionPreflightModel', () => {
     expect(model.status).toBe('Ready to preview');
     expect(model.detail).toBe('Wallet is connected; Heimdall still shows a preview before broadcast.');
     expect(model.items).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'wallet', value: 'thor1walle...000000', detail: 'VULTISIG connected for preview.', severity: 'ready' }),
-      expect.objectContaining({ id: 'dashboard-address', value: 'thor1dashb...000000', detail: 'Used only for watched positions and history context.', severity: 'ready' }),
+      expect.objectContaining({ id: 'wallet', value: 'thor1qgpqy...9s7qn4', detail: 'VULTISIG connected for preview.', severity: 'ready' }),
+      expect.objectContaining({ id: 'dashboard-address', value: 'thor1p5xs6...2gv5hv', detail: 'Used only for watched positions and history context.', severity: 'ready' }),
       expect.objectContaining({ id: 'eligibility', value: '1 standby', detail: 'Only standby nodes can be selected for UNBOND.', severity: 'ready' }),
     ]));
   });
@@ -174,7 +176,7 @@ describe('buildTransactionPreflightModel', () => {
   it('does not mark connected BOND previews or memo copy ready while THORNode confidence is degraded', () => {
     const model = buildTransactionPreflightModel({
       actionParam: 'bond',
-      dashboardAddress: 'thor1dashboardaddress000000000000000000000000',
+      dashboardAddress,
       positions: [],
       source: {
         positionsError: false,
@@ -182,7 +184,7 @@ describe('buildTransactionPreflightModel', () => {
         thornodeStatus: 'degraded',
       },
       wallet: {
-        address: 'thor1walletaddress000000000000000000000000000',
+        address: walletAddress,
         isConnected: true,
         isNetworkMismatch: false,
         networkMismatch: { actual: 'thorchain-1', expected: 'thorchain-1', hasMismatch: false },
@@ -239,7 +241,7 @@ describe('buildTransactionPreflightModel', () => {
   ])('keeps BOND memo copy fail-closed when THORNode source is $name', ({ source, status, detail }) => {
     const model = buildTransactionPreflightModel({
       actionParam: 'bond',
-      dashboardAddress: 'thor1dashboardaddress000000000000000000000000',
+      dashboardAddress,
       positions: [],
       source,
       wallet: {
@@ -269,7 +271,7 @@ describe('buildTransactionPreflightModel', () => {
   it('treats UNBOND eligibility as unavailable when THORNode positions fail', () => {
     const model = buildTransactionPreflightModel({
       actionParam: 'unbond',
-      dashboardAddress: 'thor1dashboardaddress000000000000000000000000',
+      dashboardAddress,
       positions: [],
       source: {
         positionsError: true,
@@ -277,7 +279,7 @@ describe('buildTransactionPreflightModel', () => {
         thornodeStatus: 'degraded',
       },
       wallet: {
-        address: 'thor1walletaddress000000000000000000000000000',
+        address: walletAddress,
         isConnected: true,
         isNetworkMismatch: false,
         networkMismatch: { actual: 'thorchain-1', expected: 'thorchain-1', hasMismatch: false },

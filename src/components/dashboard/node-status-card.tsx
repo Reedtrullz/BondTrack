@@ -8,6 +8,10 @@ import { formatBasisPoints, formatRuneDisplayNumber } from '@/lib/utils/formatte
 import { getCandidateBondSourceSafety, type CandidateBondSourceSafety } from '@/lib/dashboard/candidate-bond-source-safety';
 import { isUrgentNodeException } from '@/lib/dashboard/nodes-context';
 import { canUnbondNode } from '@/lib/transactions/bond';
+import { buildBondMemoHref, buildNodeRiskHref } from '@/lib/dashboard/hrefs';
+import { formatDashboardNumber, isUsableDashboardMetric } from '@/lib/dashboard/metrics';
+import { getSlashSeverity, hasSlashReviewSignal } from '@/lib/dashboard/slash-severity';
+import { cn } from '@/lib/utils';
 
 interface NodeStatusCardProps {
   position: BondPosition;
@@ -17,59 +21,29 @@ interface NodeStatusCardProps {
 
 const DEFAULT_SOURCE_SAFETY = getCandidateBondSourceSafety('unknown');
 
-function isUsableNodeMetric(value: number): boolean {
-  return Number.isFinite(value) && value >= 0;
-}
-
-function formatNodeNumber(value: number): string {
-  return isUsableNodeMetric(value) ? value.toLocaleString() : '--';
-}
-
 export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURCE_SAFETY }: NodeStatusCardProps) {
   const health = calculatePortfolioHealth([position]);
   const scoreTooltipId = useId();
   const [isScoreTooltipOpen, setIsScoreTooltipOpen] = useState(false);
-  const hasHighSlash = isUsableNodeMetric(position.slashPoints) && position.slashPoints > 100;
+  const slashSeverity = getSlashSeverity(position.slashPoints);
+  const hasElevatedSlash = hasSlashReviewSignal(position.slashPoints);
   const requiresBondReview = isUrgentNodeException(position);
   const unbondEligibility = canUnbondNode(position);
   const canPrepareUnbond = sourceSafety.canPrepareBond && unbondEligibility.canUnbond;
   const unbondUnavailableReason = sourceSafety.canPrepareBond && !unbondEligibility.canUnbond
     ? unbondEligibility.reason ?? 'UNBOND is only available when THORChain reports this node as Standby.'
     : null;
-  const buildTransactionHref = (action: 'bond' | 'unbond') => {
-    const params = new URLSearchParams();
-
-    if (address?.trim()) {
-      params.set('address', address);
-    }
-
-    params.set('node', position.nodeAddress);
-    params.set('action', action);
-
-    return `/dashboard/transactions?${params.toString()}`;
-  };
-  const buildRiskHref = (hash?: string) => {
-    const params = new URLSearchParams();
-
-    if (address?.trim()) {
-      params.set('address', address);
-    }
-
-    params.set('node', position.nodeAddress);
-
-    return `/dashboard/risk?${params.toString()}${hash ? `#${hash}` : ''}`;
-  };
   const bondReviewAction = !sourceSafety.canPrepareBond
     ? {
         detail: sourceSafety.detail,
-        href: buildRiskHref('risk-source-confidence'),
+        href: buildNodeRiskHref(address, position.nodeAddress, 'risk-source-confidence'),
         label: 'Review source confidence',
         statusLabel: sourceSafety.statusLabel,
       }
     : requiresBondReview
       ? {
           detail: 'This node is flagged for provider review. Check jail, slash, churn, and yield-guard context before preparing a BOND memo.',
-          href: buildRiskHref(),
+          href: buildNodeRiskHref(address, position.nodeAddress),
           label: 'Review exposure first',
           statusLabel: 'Provider review required',
         }
@@ -116,19 +90,19 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
         <div>
           <div className="text-xs text-zinc-500">Total Bond</div>
           <div className="font-medium text-zinc-900 dark:text-zinc-100">
-            {isUsableNodeMetric(position.totalBond) ? `${formatRuneDisplayNumber(position.totalBond, 0)} RUNE` : '--'}
+            {isUsableDashboardMetric(position.totalBond) ? `${formatRuneDisplayNumber(position.totalBond, 0)} RUNE` : '--'}
           </div>
         </div>
         <div>
           <div className="text-xs text-zinc-500">Operator Fee</div>
           <div className="font-medium text-zinc-900 dark:text-zinc-100">
-            {isUsableNodeMetric(position.operatorFee) ? formatBasisPoints(position.operatorFee) : '--'}
+            {isUsableDashboardMetric(position.operatorFee) ? formatBasisPoints(position.operatorFee) : '--'}
           </div>
         </div>
         <div>
           <div className="text-xs text-zinc-500">Slash Points</div>
-          <div className={cn('font-medium', hasHighSlash ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-100')}>
-            {formatNodeNumber(position.slashPoints)}
+          <div className={cn('font-medium', hasElevatedSlash ? slashSeverity.className : 'text-zinc-900 dark:text-zinc-100')}>
+            {formatDashboardNumber(position.slashPoints)}
           </div>
         </div>
         <div>
@@ -149,7 +123,7 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
           </Link>
         ) : (
           <Link
-            href={buildTransactionHref('bond')}
+            href={buildBondMemoHref(address, position.nodeAddress, 'bond')}
             className="inline-flex min-h-10 min-w-0 items-center justify-center gap-1 rounded bg-emerald-50 px-2 py-2 text-center text-[11px] font-bold uppercase leading-tight text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
           >
             <PlusCircle className="h-3 w-3 shrink-0" />
@@ -158,7 +132,7 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
         )}
         {canPrepareUnbond && (
           <Link
-            href={buildTransactionHref('unbond')}
+            href={buildBondMemoHref(address, position.nodeAddress, 'unbond')}
             className="inline-flex min-h-10 min-w-0 items-center justify-center gap-1 rounded bg-amber-50 px-2 py-2 text-center text-[11px] font-bold uppercase leading-tight text-amber-700 transition-colors hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40"
           >
             <MinusCircle className="h-3 w-3 shrink-0" />
@@ -193,16 +167,12 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
         </div>
       )}
 
-      {hasHighSlash && (
+      {hasElevatedSlash && (
         <div className="flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded text-xs text-orange-600 dark:text-orange-400">
           <Server className="w-3.5 h-3.5 shrink-0" />
-          <span>High slash exposure ({position.slashPoints.toLocaleString()} points)</span>
+          <span>{slashSeverity.label} slash exposure ({position.slashPoints.toLocaleString()} points)</span>
         </div>
       )}
     </div>
   );
-}
-
-function cn(...classes: (string | false | undefined)[]) {
-  return classes.filter(Boolean).join(' ');
 }

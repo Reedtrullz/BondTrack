@@ -29,6 +29,8 @@ function makePosition(partial: Partial<LpPosition>): LpPosition {
     asset2DepositedValue: '0',
     runeWithdrawable: '0',
     asset2Withdrawable: '0',
+    redeemQuoteSource: 'thornode',
+    claimableTrusted: true,
     currentRunePriceUsd: 0,
     currentAssetPriceUsd: 0,
     entryRunePriceUsd: null,

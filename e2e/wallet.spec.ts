@@ -1,6 +1,6 @@
 import { test, expect, type Page } from './fixtures';
 
-const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
+const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz';
 
 async function setupWalletPageApiMocks(page: Page) {
   await page.route('**/api/midgard/**', async (route) => {
@@ -31,7 +31,7 @@ async function setupWalletPageApiMocks(page: Page) {
       return;
     }
 
-    if (url.pathname === '/api/midgard/v2/member/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq') {
+    if (url.pathname === '/api/midgard/v2/member/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz') {
       await route.fulfill({ json: { pools: [], runeAddress: MOCK_ADDRESS } });
       return;
     }
@@ -169,7 +169,7 @@ test.describe('Wallet Connection', () => {
   });
 
   test('connects successfully with mocked Keplr', async ({ page, context }) => {
-    const mockAddress = 'thor1mockaddress123456789abcdefghijk';
+    const mockAddress = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
     await context.addInitScript((address) => {
       (window as unknown as Record<string, unknown>).keplr = {
         enable: async () => {},
@@ -182,11 +182,11 @@ test.describe('Wallet Connection', () => {
     await openWalletMenu(page);
     await chooseWallet(page, 'keplr');
 
-    await expect(page.getByTestId('wallet-account-menu-button')).toHaveAccessibleName(/Keplr wallet thor1m.*hijk/);
+    await expect(page.getByTestId('wallet-account-menu-button')).toHaveAccessibleName(/Keplr wallet thor1q.*7qn4/);
   });
 
   test('disconnect clears connection state', async ({ page, context }) => {
-    const mockAddress = 'thor1mockaddress123456789abcdefghijk';
+    const mockAddress = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
     await context.addInitScript((address) => {
       (window as unknown as Record<string, unknown>).keplr = {
         enable: async () => {},
@@ -210,7 +210,7 @@ test.describe('Wallet Connection', () => {
   });
 
   test('connects successfully with mocked XDEFI', async ({ page, context }) => {
-    const mockAddress = 'thor1mockaddress123456789abcdefghijk';
+    const mockAddress = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
     await context.addInitScript((address) => {
       (window as unknown as Record<string, unknown>).xfi = {
         thorchain: {
@@ -226,11 +226,11 @@ test.describe('Wallet Connection', () => {
     await openWalletMenu(page);
     await chooseWallet(page, 'xdefi');
 
-    await expect(page.getByTestId('wallet-account-menu-button')).toHaveAccessibleName(/XDEFI wallet thor1m.*hijk/);
+    await expect(page.getByTestId('wallet-account-menu-button')).toHaveAccessibleName(/XDEFI wallet thor1q.*7qn4/);
   });
 
   test('connects successfully with mocked Vultisig', async ({ page, context }) => {
-    const mockAddress = 'thor1mockaddress123456789abcdefghijk';
+    const mockAddress = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
     await context.addInitScript((address) => {
       (window as unknown as Record<string, unknown>).vultisig = {
         thorchain: {
@@ -246,11 +246,11 @@ test.describe('Wallet Connection', () => {
     await openWalletMenu(page);
     await chooseWallet(page, 'vultisig');
 
-    await expect(page.getByTestId('wallet-account-menu-button')).toHaveAccessibleName(/Vultisig wallet thor1m.*hijk/);
+    await expect(page.getByTestId('wallet-account-menu-button')).toHaveAccessibleName(/Vultisig wallet thor1q.*7qn4/);
   });
 
   test('shows correct wallet name when connected with Keplr', async ({ page, context }) => {
-    const mockAddress = 'thor1mockaddress123456789abcdefghijk';
+    const mockAddress = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
     await context.addInitScript((address) => {
       (window as unknown as Record<string, unknown>).keplr = {
         enable: async () => {},
@@ -268,7 +268,7 @@ test.describe('Wallet Connection', () => {
   });
 
   test('shows correct wallet name when connected with XDEFI', async ({ page, context }) => {
-    const mockAddress = 'thor1mockaddress123456789abcdefghijk';
+    const mockAddress = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
     await context.addInitScript((address) => {
       (window as unknown as Record<string, unknown>).xfi = {
         thorchain: {
@@ -289,7 +289,7 @@ test.describe('Wallet Connection', () => {
   });
 
   test('shows correct wallet name when connected with Vultisig', async ({ page, context }) => {
-    const mockAddress = 'thor1mockaddress123456789abcdefghijk';
+    const mockAddress = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
     await context.addInitScript((address) => {
       (window as unknown as Record<string, unknown>).vultisig = {
         thorchain: {

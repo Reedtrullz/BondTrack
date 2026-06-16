@@ -1,6 +1,6 @@
 import type { Page } from '../fixtures';
 
-export const DEFAULT_DASHBOARD_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
+export const DEFAULT_DASHBOARD_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz';
 
 const mockNodes = [
   {

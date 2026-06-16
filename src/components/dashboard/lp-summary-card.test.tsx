@@ -29,6 +29,8 @@ const basePosition = {
   asset2DepositedValue: '250000000',
   runeWithdrawable: '7341195037498',
   asset2Withdrawable: '1930780800838',
+  redeemQuoteSource: 'thornode' as const,
+  claimableTrusted: true,
   currentRunePriceUsd: 0.4885,
   currentAssetPriceUsd: 1.8644,
   entryRunePriceUsd: 0.49,
@@ -54,6 +56,8 @@ describe('LpSummaryCard', () => {
     expect(screen.getByText('ATOM Deposited')).toBeInTheDocument();
     expect(screen.getByText('Current Value')).toBeInTheDocument();
     expect(screen.getByText('Net P/L')).toBeInTheDocument();
+    expect(screen.getByText('Claimable RUNE')).toBeInTheDocument();
+    expect(screen.getAllByText('THORNode redeem quote').length).toBe(2);
     expect(screen.queryByText('24H Volume')).not.toBeInTheDocument();
     expect(screen.queryByText('Pool Depth')).not.toBeInTheDocument();
     expect(screen.getByText('Available')).toBeInTheDocument();
@@ -117,5 +121,22 @@ describe('LpSummaryCard', () => {
     expect(screen.getByText('Awaiting historical entry pricing')).toBeInTheDocument();
     expect(screen.queryByText('Historical entry unavailable')).not.toBeInTheDocument();
     expect(screen.queryByText('Requires historical entry pricing')).not.toBeInTheDocument();
+  });
+
+  it('does not call locally derived redeem values claimable', () => {
+    render(
+      <LpSummaryCard
+        position={{
+          ...basePosition,
+          redeemQuoteSource: 'derived',
+          claimableTrusted: false,
+        }}
+      />
+    );
+
+    expect(screen.getByText('Estimated withdrawable RUNE')).toBeInTheDocument();
+    expect(screen.getByText('Estimated withdrawable ATOM')).toBeInTheDocument();
+    expect(screen.getAllByText('Derived from pool share; not THORNode-confirmed')).toHaveLength(2);
+    expect(screen.queryByText('Claimable RUNE')).not.toBeInTheDocument();
   });
 });

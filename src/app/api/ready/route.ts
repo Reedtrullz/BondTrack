@@ -3,6 +3,7 @@ import { noStorePrivateHeaders } from '@/lib/api/cors';
 import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
 import { getHealth } from '@/lib/api/midgard';
 import { getAllNodes } from '@/lib/api/thornode';
+import { assertUsableThornodeNodes } from '@/lib/api/source-validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,8 @@ async function runCheck(name: 'midgard' | 'thornode'): Promise<ReadyCheck> {
     if (name === 'midgard') {
       await getHealth(READINESS_FETCH_INIT);
     } else {
-      await getAllNodes(READINESS_FETCH_INIT);
+      const nodes = await getAllNodes(READINESS_FETCH_INIT);
+      assertUsableThornodeNodes(nodes);
     }
 
     return {

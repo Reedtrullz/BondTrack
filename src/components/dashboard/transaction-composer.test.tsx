@@ -9,7 +9,7 @@ import type { TransactionSourceSafety } from '@/lib/dashboard/transaction-prefli
 const mocks = vi.hoisted(() => ({
   searchParams: new URLSearchParams(),
   wallet: {
-    address: 'thor1walletaddress000000000000000000000000000' as string | null,
+    address: 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4' as string | null,
     walletType: 'keplr' as 'keplr' | 'xdefi' | 'vultisig' | null,
     chainId: 'thorchain-1',
     isConnected: true,
@@ -32,9 +32,9 @@ const transactionMocks = vi.hoisted(() => ({
   executeUnbondTransaction: vi.fn(),
 }));
 
-const NODE_ADDRESS = 'thor16xxh3km6dxka636qg6q7e3us5vlgvhrhjgw245';
+const NODE_ADDRESS = 'thor1qyqszqgpqyqszqgpqyqszqgpqyqszqgp55c9cr';
 const PROVIDER_ADDRESS = 'thor158qequwhhnggm4ch4psv55yqpxsugf67n62dy2';
-const WALLET_ADDRESS = 'thor1walletaddress000000000000000000000000000';
+const WALLET_ADDRESS = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
 const degradedSourceSafety: TransactionSourceSafety = {
   canCopyBondMemo: false,
   canCopyUnbondMemo: false,

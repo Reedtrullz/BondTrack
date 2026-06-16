@@ -4,7 +4,19 @@ import { useWatchlist } from '../use-watchlist';
 
 const STORAGE_KEY = 'heimdall-watchlist';
 
-const createAddress = (char: string) => `thor1${char.repeat(39)}`;
+const TEST_ADDRESSES: Record<string, string> = {
+  a: 'thor1qyqszqgpqyqszqgpqyqszqgpqyqszqgp55c9cr',
+  p: 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4',
+  c: 'thor1qvpsxqcrqvpsxqcrqvpsxqcrqvpsxqcryqlpe5',
+  d: 'thor1qszqgpqyqszqgpqyqszqgpqyqszqgpqyyscy7g',
+  e: 'thor1q5zs2pg9q5zs2pg9q5zs2pg9q5zs2pg99qe95f',
+  f: 'thor1qcrqvpsxqcrqvpsxqcrqvpsxqcrqvpsx5ylqll',
+  g: 'thor1qurswpc8qurswpc8qurswpc8qurswpc8457p47',
+  h: 'thor1pqyqszqgpqyqszqgpqyqszqgpqyqszqg6vv438',
+  z: 'thor1pyysjzgfpyysjzgfpyysjzgfpyysjzgfmud5mx',
+};
+
+const createAddress = (key: string) => TEST_ADDRESSES[key];
 
 const STORED_ADDRESSES = [createAddress('a'), createAddress('p')];
 const NEW_ADDRESS = createAddress('c');
