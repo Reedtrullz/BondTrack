@@ -7,6 +7,7 @@ import {
   generateBondMemo,
   generateUnbondMemo,
   parseRuneAmountToBaseUnits,
+  validateTransactionIntent,
   validateBondAmount,
   validateBondMemoOptions,
   validateThorAddress,
@@ -135,6 +136,13 @@ describe('transaction memo and amount helpers', () => {
     expect(generateUnbondMemo(node, '10')).toBe(`UNBOND:${node}:1000000000`);
   });
 
+  it('canonicalizes valid uppercase THORChain addresses in generated memos', () => {
+    expect(generateBondMemo(NODE_ADDRESS.toUpperCase(), PROVIDER_ADDRESS.toUpperCase(), '1000')).toBe(
+      `BOND:${NODE_ADDRESS}:${PROVIDER_ADDRESS}:1000`
+    );
+    expect(generateUnbondMemo(NODE_ADDRESS.toUpperCase(), '10')).toBe(`UNBOND:${NODE_ADDRESS}:1000000000`);
+  });
+
   it('validates bond amounts with strict decimal parsing', () => {
     expect(validateBondAmount('1').valid).toBe(true);
     expect(validateBondAmount('1.00000001').valid).toBe(true);
@@ -150,6 +158,52 @@ describe('transaction memo and amount helpers', () => {
     expect(validateThorAddress('thor158qequwhhnggm4ch4psv55yqpxsugf67n62dy2').valid).toBe(true);
     expect(validateThorAddress('thor1bad')).toEqual({ valid: false, error: 'Invalid THORChain address format' });
     expect(validateThorAddress('cosmos158qequwhhnggm4ch4psv55yqpxsugf67n62dy2').valid).toBe(false);
+  });
+
+  it('rejects tampered BOND and UNBOND transaction intents before wallet adapters run', () => {
+    expect(validateTransactionIntent({
+      type: 'BOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '2',
+      memo: `UNBOND:${NODE_ADDRESS}:200000000`,
+      signerAddress: SIGNER_ADDRESS,
+    })).toEqual({
+      valid: false,
+      error: 'BOND form state does not match the generated memo type',
+    });
+
+    expect(validateTransactionIntent({
+      type: 'BOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '2',
+      memo: `BOND:${PROVIDER_ADDRESS}`,
+      signerAddress: SIGNER_ADDRESS,
+    })).toEqual({
+      valid: false,
+      error: 'BOND memo node does not match the selected node address',
+    });
+
+    expect(validateTransactionIntent({
+      type: 'BOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '2',
+      memo: `BOND:${NODE_ADDRESS}:${PROVIDER_ADDRESS}:10001`,
+      signerAddress: SIGNER_ADDRESS,
+    })).toEqual({
+      valid: false,
+      error: 'Operator fee must be between 0 and 10000 basis points',
+    });
+
+    expect(validateTransactionIntent({
+      type: 'UNBOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '10',
+      memo: `UNBOND:${NODE_ADDRESS}:1`,
+      signerAddress: SIGNER_ADDRESS,
+    })).toEqual({
+      valid: false,
+      error: 'UNBOND memo amount does not match the requested amount',
+    });
   });
 });
 
@@ -228,6 +282,110 @@ describe('wallet adapter transaction payloads', () => {
     );
   });
 
+  it('rejects Keplr chain drift before connecting a signer', async () => {
+    window.keplr = {
+      enable: vi.fn().mockResolvedValue(undefined),
+      getChainId: vi.fn().mockResolvedValue('cosmoshub-4'),
+      getKey: vi.fn().mockResolvedValue({ bech32Address: SIGNER_ADDRESS }),
+      getOfflineSigner: vi.fn().mockReturnValue({ getAccounts: vi.fn() }),
+    };
+
+    await expect(executeBondTransaction({
+      type: 'BOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '2',
+      memo: generateBondMemo(NODE_ADDRESS),
+      walletType: 'keplr',
+    }, SIGNER_ADDRESS)).resolves.toEqual({
+      success: false,
+      error: 'Keplr is not connected to THORChain mainnet',
+    });
+
+    expect(stargateMocks.connectWithSigner).not.toHaveBeenCalled();
+    expect(stargateMocks.signAndBroadcast).not.toHaveBeenCalled();
+  });
+
+  it('rejects Keplr signer drift before broadcast', async () => {
+    window.keplr = {
+      enable: vi.fn().mockResolvedValue(undefined),
+      getChainId: vi.fn().mockResolvedValue('thorchain-1'),
+      getKey: vi.fn().mockResolvedValue({ bech32Address: NODE_ADDRESS }),
+      getOfflineSigner: vi.fn().mockReturnValue({ getAccounts: vi.fn() }),
+    };
+
+    await expect(executeBondTransaction({
+      type: 'BOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '2',
+      memo: generateBondMemo(NODE_ADDRESS),
+      walletType: 'keplr',
+    }, SIGNER_ADDRESS)).resolves.toEqual({
+      success: false,
+      error: 'Keplr signer changed before broadcast. Reconnect the wallet and review again.',
+    });
+
+    expect(stargateMocks.connectWithSigner).not.toHaveBeenCalled();
+    expect(stargateMocks.signAndBroadcast).not.toHaveBeenCalled();
+  });
+
+  it('rejects function/type mismatches before wallet adapters run', async () => {
+    const request = vi.fn();
+    window.xfi = { thorchain: { request } };
+
+    await expect(executeBondTransaction({
+      type: 'UNBOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '10',
+      memo: generateUnbondMemo(NODE_ADDRESS, '10'),
+      walletType: 'xdefi',
+    }, SIGNER_ADDRESS)).resolves.toEqual({
+      success: false,
+      error: 'Bond transaction must use a BOND intent',
+    });
+
+    await expect(executeUnbondTransaction({
+      type: 'BOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '10',
+      memo: generateBondMemo(NODE_ADDRESS),
+      walletType: 'xdefi',
+    }, SIGNER_ADDRESS)).resolves.toEqual({
+      success: false,
+      error: 'Unbond transaction must use an UNBOND intent',
+    });
+
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it('rejects tampered memo and invalid signer values before browser wallets run', async () => {
+    const request = vi.fn().mockResolvedValue('xdefi-hash');
+    window.xfi = { thorchain: { request } };
+
+    await expect(executeBondTransaction({
+      type: 'BOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '3.25',
+      memo: `BOND:${PROVIDER_ADDRESS}`,
+      walletType: 'xdefi',
+    }, SIGNER_ADDRESS)).resolves.toEqual({
+      success: false,
+      error: 'BOND memo node does not match the selected node address',
+    });
+
+    await expect(executeBondTransaction({
+      type: 'BOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '3.25',
+      memo: generateBondMemo(NODE_ADDRESS),
+      walletType: 'xdefi',
+    }, 'not-a-thor-address')).resolves.toEqual({
+      success: false,
+      error: 'Connected wallet must expose a valid THORChain mainnet address',
+    });
+
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it('sends XDEFI BOND and UNBOND deposit payloads with fail-closed mocked methods', async () => {
     const request = vi.fn(async ({ method }: { method: string }) => {
       if (method === 'sendTransaction') return 'xdefi-hash';
@@ -258,6 +416,36 @@ describe('wallet adapter transaction payloads', () => {
     expect(request).toHaveBeenNthCalledWith(2, {
       method: 'sendTransaction',
       params: [{ type: 'UNBOND', to: NODE_ADDRESS, memo: `UNBOND:${NODE_ADDRESS}:1000000000`, amount: '0', asset: 'rune' }],
+    });
+  });
+
+  it('rejects non-string browser-wallet transaction hashes', async () => {
+    const xdefiRequest = vi.fn().mockResolvedValue({ txHash: 'not-a-string' });
+    window.xfi = { thorchain: { request: xdefiRequest } };
+
+    await expect(executeBondTransaction({
+      type: 'BOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '3.25',
+      memo: generateBondMemo(NODE_ADDRESS),
+      walletType: 'xdefi',
+    }, SIGNER_ADDRESS)).resolves.toEqual({
+      success: false,
+      error: 'XDEFI returned an invalid transaction hash',
+    });
+
+    const vultisigRequest = vi.fn().mockResolvedValue('');
+    window.vultisig = { thorchain: { request: vultisigRequest } };
+
+    await expect(executeBondTransaction({
+      type: 'BOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '3.25',
+      memo: generateBondMemo(NODE_ADDRESS),
+      walletType: 'vultisig',
+    }, SIGNER_ADDRESS)).resolves.toEqual({
+      success: false,
+      error: 'Vultisig returned an invalid transaction hash',
     });
   });
 

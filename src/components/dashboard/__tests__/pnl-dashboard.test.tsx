@@ -154,7 +154,7 @@ describe('PnLDashboard', () => {
     ).toBeTruthy();
   });
 
-  it('labels partial action history as a recent baseline, not trusted full history', () => {
+  it('withholds auto return calculations when action history is partial', () => {
     render(
       <PnLDashboard
         positions={positions}
@@ -175,8 +175,48 @@ describe('PnLDashboard', () => {
     );
 
     const basis = screen.getByLabelText('PnL calculation basis');
-    expect(basis).toHaveTextContent('Initial bond: recent action history');
+    expect(basis).toHaveTextContent('Initial bond: partial action history');
     expect(basis).toHaveTextContent('Baseline is partial: Midgard returned the most recent 50 BOND/UNBOND actions out of 76.');
+    expect(basis).toHaveTextContent('Auto return cards are withheld until full history loads or you set a manual initial bond.');
+    expect(screen.getByText('Current Bond')).toBeInTheDocument();
+    expect(screen.getByText('30.00')).toBeInTheDocument();
+    expect(screen.getAllByText('N/A').length).toBeGreaterThanOrEqual(4);
+    expect(screen.getAllByText('Set manual baseline for partial history').length).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByText('$47.50')).not.toBeInTheDocument();
+  });
+
+  it('uses a manual baseline override even when action history is partial', async () => {
+    localStorage.setItem('heimdall-initial-bond-addr-a', '5');
+
+    render(
+      <PnLDashboard
+        positions={positions}
+        currentRunePrice={2}
+        entryRunePrice={1.25}
+        address="addr-a"
+        bondHistory={{
+          initialBond: 10,
+          currentBond: 30,
+          bondGrowth: 20,
+          firstBondDate: new Date('2024-01-01T00:00:00.000Z'),
+          actionLimit: 50,
+          loadedActionCount: 50,
+          totalActionCount: 76,
+          isPartial: true,
+        }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('5.00')).toBeInTheDocument();
+    });
+
+    const basis = screen.getByLabelText('PnL calculation basis');
+    expect(basis).toHaveTextContent('Initial bond: manual override');
+    expect(basis).toHaveTextContent('Manual initial bond is overriding partial history for this view.');
+    expect(screen.getByText('$6.25 (manual)')).toBeInTheDocument();
+    expect(screen.getByText('$3.75')).toBeInTheDocument();
+    expect(screen.getByText('$53.75')).toBeInTheDocument();
   });
 
   it('labels manual baseline override fields with calculation impact', async () => {

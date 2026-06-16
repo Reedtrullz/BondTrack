@@ -76,7 +76,8 @@ export default function RewardsPage() {
   const { price: runePrice, isStale: runePriceIsStale, updatedAt: runePriceUpdatedAt } = useRunePrice();
   const { data: networkData } = useNetworkMetrics();
   const { history: bondHistory, isLoading: isLoadingActions, error: actionsError } = useBondHistory(address);
-  const { price: entryRunePrice } = useHistoricalRunePrice(bondHistory?.firstBondDate || null);
+  const trustedFirstBondDate = bondHistory?.isPartial ? null : bondHistory?.firstBondDate ?? null;
+  const { price: entryRunePrice } = useHistoricalRunePrice(trustedFirstBondDate);
   const apiHealth = useApiHealthContext();
 
   const [mounted, setMounted] = useState(false);

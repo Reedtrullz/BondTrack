@@ -144,7 +144,7 @@ export function buildRewardsPageModel({
             id: 'reward-history',
             label: 'Reward history',
             value: 'Partial',
-            detail: `Recent ${bondHistory?.loadedActionCount ?? bondHistory?.actionLimit ?? 50} actions only`,
+            detail: `Loaded ${bondHistory?.loadedActionCount ?? bondHistory?.actionLimit ?? 50}${typeof bondHistory?.totalActionCount === 'number' ? ` of ${bondHistory.totalActionCount}` : ''}; auto returns need full history or manual baseline`,
             severity: 'warning',
           }
       : hasHistory
@@ -178,6 +178,14 @@ export function buildRewardsPageModel({
           detail: 'Worksheet may include history warnings',
           severity: 'warning',
         }
+      : hasHistory && hasPartialHistory
+        ? {
+            id: 'tax-export',
+            label: 'Tax worksheet',
+            value: 'Review',
+            detail: 'Visible history is partial; export may include history warnings',
+            severity: 'warning',
+          }
       : hasHistory
         ? {
             id: 'tax-export',

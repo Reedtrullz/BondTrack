@@ -162,7 +162,18 @@ describe('buildRewardsPageModel', () => {
     });
 
     expect(model.confidenceMetrics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'reward-history', value: 'Partial', detail: 'Recent 50 actions only', severity: 'warning' }),
+      expect.objectContaining({
+        id: 'reward-history',
+        value: 'Partial',
+        detail: 'Loaded 50 of 76; auto returns need full history or manual baseline',
+        severity: 'warning',
+      }),
+      expect.objectContaining({
+        id: 'tax-export',
+        value: 'Review',
+        detail: 'Visible history is partial; export may include history warnings',
+        severity: 'warning',
+      }),
     ]));
     expect(model.primaryConfidenceIssue).toEqual(expect.objectContaining({
       id: 'reward-history',

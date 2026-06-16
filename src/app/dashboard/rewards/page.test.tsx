@@ -277,6 +277,37 @@ describe('RewardsPage', () => {
     expect(within(confidence).getByText('Worksheet may include history warnings')).toBeVisible();
   });
 
+  it('does not derive historical entry price from partial reward history', async () => {
+    const partialFirstDate = new Date('2025-01-01T00:00:00.000Z');
+    mockUseBondHistory.mockReturnValue({
+      history: {
+        initialBond: 25_000,
+        currentBond: 100_000,
+        bondGrowth: 75_000,
+        firstBondAmount: 25_000,
+        firstBondDate: partialFirstDate,
+        lastBondDate: new Date('2026-01-01T00:00:00.000Z'),
+        actionLimit: 50,
+        loadedActionCount: 50,
+        totalActionCount: 76,
+        isPartial: true,
+      },
+      isLoading: false,
+      error: undefined,
+    });
+
+    render(<RewardsPage />);
+
+    const confidence = await screen.findByLabelText('Rewards data confidence');
+    expect(mockUseHistoricalRunePrice).toHaveBeenCalledWith(null);
+    expect(mockUseHistoricalRunePrice).not.toHaveBeenCalledWith(partialFirstDate);
+    expect(within(confidence).getByText('Partial')).toBeVisible();
+    expect(within(confidence).getByText('Loaded 50 of 76; auto returns need full history or manual baseline')).toBeVisible();
+    expect(within(confidence).getByText('Tax worksheet')).toBeVisible();
+    expect(within(confidence).getByText('Review')).toBeVisible();
+    expect(within(confidence).getByText('Visible history is partial; export may include history warnings')).toBeVisible();
+  });
+
   it('keeps node-level APY forecast available when network fallback APY is unavailable', async () => {
     mockUseNetworkMetrics.mockReturnValue({
       data: {},

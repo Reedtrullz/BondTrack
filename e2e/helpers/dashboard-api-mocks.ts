@@ -165,10 +165,43 @@ const mockPoolHistory = {
   ],
 };
 
+function buildMockBondActions(count: number, address: string) {
+  return Array.from({ length: count }, (_, index) => ({
+    type: 'bond',
+    date: `${1_700_000_000_000_000_000n + BigInt(index)}`,
+    height: String(15_000_000 + index),
+    pools: [],
+    memo: 'BOND:thor1nodemocked123456789abcdef',
+    status: 'success',
+    tx: {
+      type: 'bond',
+      address,
+      coins: [{ asset: 'THOR.RUNE', amount: '100000000' }],
+      txID: `MOCKBOND${index}`,
+      chain: 'THOR',
+      fromAddress: address,
+    },
+    in: [
+      {
+        address,
+        coins: [{ asset: 'THOR.RUNE', amount: '100000000' }],
+        txID: `MOCKBOND${index}`,
+      },
+    ],
+    metadata: {
+      bond: {
+        memo: 'BOND:thor1nodemocked123456789abcdef',
+        nodeAddress: 'thor1nodemocked123456789abcdef',
+      },
+    },
+  }));
+}
+
 interface MockDashboardApisOptions {
   extraNodes?: Partial<(typeof mockNodes)[number]>[];
   withBondPosition?: boolean;
   primaryNodeOverrides?: Partial<(typeof mockNodes)[number]>;
+  partialBondActions?: boolean;
   runeHistoryNowMs?: number;
   midgardHealthStatus?: number;
   thornodeHealthProbeStatus?: number;
@@ -375,6 +408,17 @@ export async function mockDashboardApis(
     }
 
     if (url.pathname === '/api/midgard/v2/actions') {
+      if (options.partialBondActions) {
+        const offset = Number(url.searchParams.get('offset') ?? '0');
+        await route.fulfill({
+          json: {
+            actions: offset === 0 ? buildMockBondActions(50, address) : [],
+            count: '76',
+          },
+        });
+        return;
+      }
+
       await route.fulfill({ json: { actions: [], count: '0' } });
       return;
     }

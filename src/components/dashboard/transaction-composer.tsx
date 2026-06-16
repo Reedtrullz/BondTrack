@@ -42,13 +42,13 @@ const CONNECT_WALLET_MESSAGE = 'Connect a wallet when you are ready to preview a
 const WALLET_REQUIRED_LABEL = 'Wallet required';
 const STALE_PREVIEW_MESSAGE = 'Transaction details changed after preview opened. Review the form again before broadcasting.';
 const DEFAULT_SOURCE_SAFETY: TransactionSourceSafety = {
-  canCopyBondMemo: true,
-  canCopyUnbondMemo: true,
-  canPreview: true,
-  detail: 'THORNode positions are available for node status and unbond eligibility checks.',
-  itemSeverity: 'ready',
-  status: 'Source verified',
-  value: 'THORNode fresh',
+  canCopyBondMemo: false,
+  canCopyUnbondMemo: false,
+  canPreview: false,
+  detail: 'Transaction source confidence was not provided. Reload the transactions page before copying, previewing, or broadcasting.',
+  itemSeverity: 'warning',
+  status: 'Source confidence required',
+  value: 'Awaiting THORNode check',
 };
 
 interface TransactionComposerProps {

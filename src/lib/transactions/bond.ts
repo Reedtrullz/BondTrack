@@ -5,10 +5,8 @@ import '@/lib/types/wallet';
 import { ENDPOINTS } from '../config';
 import { THORCHAIN_MAINNET_CHAIN_ID } from '@/lib/thorchain';
 import {
-  parseRuneAmountToBaseUnits,
-  validateThorAddress,
-  validateBondAmount,
-  validateUnbondAmount,
+  validateTransactionIntent,
+  type CanonicalTransactionIntent,
   type ValidationResult,
 } from './bond-memo';
 import {
@@ -18,7 +16,7 @@ import {
   THORCHAIN_MSG_DEPOSIT_TYPE_URL,
 } from './thorchain-msg-deposit';
 
-export { validateThorAddress, validateBondAmount, validateUnbondAmount, validateBondMemoOptions, canUnbondNode, generateBondMemo, generateUnbondMemo, parseRuneAmountToBaseUnits, type ValidationResult } from './bond-memo';
+export { validateThorAddress, validateBondAmount, validateUnbondAmount, validateBondMemoOptions, validateTransactionIntent, canUnbondNode, generateBondMemo, generateUnbondMemo, parseRuneAmountToBaseUnits, type CanonicalTransactionIntent, type ValidationResult } from './bond-memo';
 
 export interface TransactionResult {
   success: boolean;
@@ -42,15 +40,20 @@ export async function executeBondTransaction(
   params: TransactionParams,
   signerAddress: string
 ): Promise<TransactionResult> {
-  const validation = validateTransactionParams(params);
+  if (params.type !== 'BOND') {
+    return { success: false, error: 'Bond transaction must use a BOND intent' };
+  }
+
+  const validation = validateTransactionParams(params, signerAddress);
   if (!validation.valid) return { success: false, error: validation.error };
+  if (!validation.intent) return { success: false, error: 'Transaction intent could not be verified' };
 
   if (params.walletType === 'keplr') {
-    return executeWithKeplr(params, signerAddress);
+    return executeWithKeplr(validation.intent);
   } else if (params.walletType === 'xdefi') {
-    return executeWithXdefi(params);
+    return executeWithXdefi(validation.intent);
   } else {
-    return executeWithVultisig(params, signerAddress);
+    return executeWithVultisig(validation.intent);
   }
 }
 
@@ -58,41 +61,38 @@ export async function executeUnbondTransaction(
   params: TransactionParams,
   signerAddress: string
 ): Promise<TransactionResult> {
-  const validation = validateTransactionParams(params);
+  if (params.type !== 'UNBOND') {
+    return { success: false, error: 'Unbond transaction must use an UNBOND intent' };
+  }
+
+  const validation = validateTransactionParams(params, signerAddress);
   if (!validation.valid) return { success: false, error: validation.error };
+  if (!validation.intent) return { success: false, error: 'Transaction intent could not be verified' };
 
   if (params.walletType === 'keplr') {
-    return executeWithKeplr(params, signerAddress);
+    return executeWithKeplr(validation.intent);
   } else if (params.walletType === 'xdefi') {
-    return executeWithXdefi(params);
+    return executeWithXdefi(validation.intent);
   } else {
-    return executeWithVultisig(params, signerAddress);
+    return executeWithVultisig(validation.intent);
   }
 }
 
-function validateTransactionParams(params: TransactionParams): ValidationResult {
-  const nodeValidation = validateThorAddress(params.nodeAddress, 'Node address');
-  if (!nodeValidation.valid) return nodeValidation;
-
-  const amountValidation = params.type === 'BOND'
-    ? validateBondAmount(params.amount)
-    : validateUnbondAmount(params.amount);
-  if (!amountValidation.valid) return amountValidation;
-
-  return { valid: true };
-}
-
-function getWalletDepositAmountBaseUnits(params: TransactionParams): string {
-  if (params.type === 'UNBOND') {
-    return '0';
-  }
-
-  return parseRuneAmountToBaseUnits(params.amount) ?? '0';
+function validateTransactionParams(
+  params: TransactionParams,
+  signerAddress: string
+): ValidationResult & { intent?: CanonicalTransactionIntent } {
+  return validateTransactionIntent({
+    type: params.type,
+    nodeAddress: params.nodeAddress,
+    amount: params.amount,
+    memo: params.memo,
+    signerAddress,
+  });
 }
 
 async function executeWithKeplr(
-  params: TransactionParams,
-  signerAddress: string
+  intent: CanonicalTransactionIntent
 ): Promise<TransactionResult> {
   try {
     if (!window.keplr) {
@@ -102,6 +102,17 @@ async function executeWithKeplr(
     const { SigningStargateClient } = await import('@cosmjs/stargate');
 
     await window.keplr.enable(THORCHAIN_CHAIN_ID);
+
+    const chainId = await window.keplr.getChainId(THORCHAIN_CHAIN_ID);
+    if (chainId !== THORCHAIN_CHAIN_ID) {
+      return { success: false, error: 'Keplr is not connected to THORChain mainnet' };
+    }
+
+    const key = await window.keplr.getKey(THORCHAIN_CHAIN_ID);
+    if (key.bech32Address.trim().toLowerCase() !== intent.signerAddress) {
+      return { success: false, error: 'Keplr signer changed before broadcast. Reconnect the wallet and review again.' };
+    }
+
     const offlineSigner = window.keplr.getOfflineSigner(THORCHAIN_CHAIN_ID);
 
     const client = await SigningStargateClient.connectWithSigner(
@@ -118,17 +129,17 @@ async function executeWithKeplr(
     const messages = [{
       typeUrl: THORCHAIN_MSG_DEPOSIT_TYPE_URL,
       value: createRuneDepositMessage(
-        signerAddress,
-        params.memo,
-        getWalletDepositAmountBaseUnits(params)
+        intent.signerAddress,
+        intent.memo,
+        intent.walletDepositAmountBaseUnits
       ),
     }];
 
     const result = await client.signAndBroadcast(
-      signerAddress,
+      intent.signerAddress,
       messages,
       fee,
-      params.memo
+      intent.memo
     );
 
     if (typeof result.code === 'number' && result.code !== 0) {
@@ -151,7 +162,7 @@ async function executeWithKeplr(
 }
 
 async function executeWithXdefi(
-  params: TransactionParams
+  intent: CanonicalTransactionIntent
 ): Promise<TransactionResult> {
   try {
     if (!window.xfi?.thorchain) {
@@ -159,10 +170,10 @@ async function executeWithXdefi(
     }
 
     const depositMsg = {
-      type: params.type,
-      to: params.nodeAddress,
-      memo: params.memo,
-      amount: getWalletDepositAmountBaseUnits(params),
+      type: intent.type,
+      to: intent.nodeAddress,
+      memo: intent.memo,
+      amount: intent.walletDepositAmountBaseUnits,
       asset: 'rune',
     };
 
@@ -171,9 +182,13 @@ async function executeWithXdefi(
       params: [depositMsg],
     });
 
+    if (typeof txHash !== 'string' || txHash.trim().length === 0) {
+      return { success: false, error: 'XDEFI returned an invalid transaction hash' };
+    }
+
     return {
       success: true,
-      txHash: txHash as string,
+      txHash,
     };
   } catch (error) {
     return {
@@ -184,8 +199,7 @@ async function executeWithXdefi(
 }
 
 async function executeWithVultisig(
-  params: TransactionParams,
-  signerAddress: string
+  intent: CanonicalTransactionIntent
 ): Promise<TransactionResult> {
   try {
     const vultisigProvider = window.vultisig?.thorchain || window.thorchain;
@@ -194,12 +208,12 @@ async function executeWithVultisig(
     }
 
     const depositParams = {
-      type: params.type,
-      to: params.nodeAddress,
-      memo: params.memo,
-      amount: getWalletDepositAmountBaseUnits(params),
+      type: intent.type,
+      to: intent.nodeAddress,
+      memo: intent.memo,
+      amount: intent.walletDepositAmountBaseUnits,
       asset: 'rune',
-      from_address: signerAddress,
+      from_address: intent.signerAddress,
     };
 
     const txHash = await vultisigProvider.request({
@@ -207,9 +221,13 @@ async function executeWithVultisig(
       params: [depositParams],
     });
 
+    if (typeof txHash !== 'string' || txHash.trim().length === 0) {
+      return { success: false, error: 'Vultisig returned an invalid transaction hash' };
+    }
+
     return {
       success: true,
-      txHash: txHash as string,
+      txHash,
     };
   } catch (error) {
     return {

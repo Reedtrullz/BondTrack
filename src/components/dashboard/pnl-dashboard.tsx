@@ -177,8 +177,9 @@ export function PnLDashboard({
   const hasManualInitialBond = manualInitialBond !== null;
   const hasActionInitialBond = (bondHistory?.initialBond ?? 0) > 0;
   const hasPartialActionHistory = bondHistory?.isPartial === true;
-  const hasHistoricalInitialBond = hasManualInitialBond || hasActionInitialBond;
-  const effectiveInitialBond = manualInitialBond ?? (hasActionInitialBond ? bondHistory?.initialBond ?? 0 : 0);
+  const hasTrustedActionInitialBond = hasActionInitialBond && !hasPartialActionHistory;
+  const hasHistoricalInitialBond = hasManualInitialBond || hasTrustedActionInitialBond;
+  const effectiveInitialBond = manualInitialBond ?? (hasTrustedActionInitialBond ? bondHistory?.initialBond ?? 0 : 0);
   
   const currentRunePriceValue = parsePositivePrice(currentRunePrice);
   const earningsHistoryEntryPrice = parsePositivePrice(earningsHistory?.intervals?.[0]?.runePriceUSD);
@@ -229,12 +230,14 @@ export function PnLDashboard({
     ? 'Loading action history'
     : actionsError
       ? 'History unavailable; set manually'
+      : hasPartialActionHistory
+        ? 'Set manual baseline for partial history'
       : 'Set initial bond to track';
   const initialBondSource = manualInitialBond !== null
     ? 'manual override'
     : hasActionInitialBond
       ? hasPartialActionHistory
-        ? 'recent action history'
+        ? 'partial action history'
         : 'action history'
       : isLoadingActions
         ? 'loading action history'
@@ -297,7 +300,9 @@ export function PnLDashboard({
         {hasPartialActionHistory ? (
           <p className="mt-2 border-t border-amber-200/70 pt-2 text-amber-700 dark:border-amber-900/50 dark:text-amber-300">
             Baseline is partial: Midgard returned the most recent {bondHistory?.loadedActionCount ?? bondHistory?.actionLimit ?? 50} BOND/UNBOND actions
-            {typeof bondHistory?.totalActionCount === 'number' ? ` out of ${bondHistory.totalActionCount}` : ''}. Set a manual initial bond if older actions matter for this PnL view.
+            {typeof bondHistory?.totalActionCount === 'number' ? ` out of ${bondHistory.totalActionCount}` : ''}. {hasManualInitialBond
+              ? 'Manual initial bond is overriding partial history for this view.'
+              : 'Auto return cards are withheld until full history loads or you set a manual initial bond.'}
           </p>
         ) : null}
       </section>

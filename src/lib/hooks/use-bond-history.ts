@@ -1,7 +1,16 @@
 import useSWR from 'swr';
-import { getBondDetails, getActions, type BondDetailsRaw, type ActionsResponseRaw } from '@/lib/api/midgard';
+import {
+  getBondDetails,
+  getActions,
+  type BondDetailsRaw,
+  type ActionRaw,
+} from '@/lib/api/midgard';
 import { runeToNumber } from '@/lib/utils/formatters';
 import { NETWORK } from '@/lib/config';
+
+const BOND_HISTORY_ACTION_TYPES = 'bond,unbond,leave';
+const BOND_HISTORY_QUERY_PARAM = 'txType';
+const BOND_HISTORY_ACTION_CAP = 1000;
 
 export interface BondHistory {
   initialBond: number;
@@ -16,10 +25,66 @@ export interface BondHistory {
   isPartial: boolean;
 }
 
+interface BondActionsResponse {
+  actions: ActionRaw[];
+  actionLimit: number;
+  loadedActionCount: number;
+  totalActionCount: number | null;
+  isPartial: boolean;
+}
+
 interface BondAction {
   type: 'BOND' | 'UNBOND';
   amount: number;
   date: Date;
+}
+
+async function getPaginatedBondActions(address: string): Promise<BondActionsResponse> {
+  const pageSize = NETWORK.MAX_ACTIONS_LIMIT;
+  const actionLimit = BOND_HISTORY_ACTION_CAP;
+  const actions: ActionRaw[] = [];
+  let totalActionCount: number | null = null;
+  let reachedEnd = false;
+
+  for (let offset = 0; offset < actionLimit; offset += pageSize) {
+    const page = await getActions(
+      address,
+      pageSize,
+      BOND_HISTORY_ACTION_TYPES,
+      BOND_HISTORY_QUERY_PARAM,
+      offset
+    );
+    const pageActions = page.actions ?? [];
+
+    if (totalActionCount === null) {
+      const parsedCount = Number(page.count);
+      totalActionCount = Number.isFinite(parsedCount) && parsedCount >= 0 ? parsedCount : null;
+    }
+
+    actions.push(...pageActions.slice(0, Math.max(0, actionLimit - actions.length)));
+
+    if (
+      pageActions.length < pageSize ||
+      pageActions.length === 0 ||
+      (totalActionCount !== null && actions.length >= totalActionCount)
+    ) {
+      reachedEnd = true;
+      break;
+    }
+  }
+
+  const loadedActionCount = actions.length;
+  const isPartial = totalActionCount !== null
+    ? loadedActionCount < totalActionCount
+    : !reachedEnd;
+
+  return {
+    actions,
+    actionLimit,
+    loadedActionCount,
+    totalActionCount,
+    isPartial,
+  };
 }
 
 export function useBondHistory(address: string | null) {
@@ -29,9 +94,9 @@ export function useBondHistory(address: string | null) {
     { refreshInterval: 60_000 }
   );
 
-  const { data: actions, isLoading: isLoadingActions, error: actionsError } = useSWR<ActionsResponseRaw>(
+  const { data: actions, isLoading: isLoadingActions, error: actionsError } = useSWR<BondActionsResponse>(
     address ? ['actions-bond-v2', address] : null,
-    () => getActions(address!, NETWORK.MAX_ACTIONS_LIMIT, 'bond,unbond', 'type'),
+    () => getPaginatedBondActions(address!),
     { refreshInterval: 60_000 }
   );
 
@@ -90,15 +155,10 @@ export function useBondHistory(address: string | null) {
     .filter((a): a is BondAction => a !== null)
     .sort((a, b) => a.date.getTime() - b.date.getTime()) || [];
 
-  const actionLimit = NETWORK.MAX_ACTIONS_LIMIT;
+  const actionLimit = actions?.actionLimit ?? BOND_HISTORY_ACTION_CAP;
   const loadedActionCount = actions?.actions?.length ?? 0;
-  const parsedTotalActionCount = actions?.count !== undefined ? Number(actions.count) : Number.NaN;
-  const totalActionCount = Number.isFinite(parsedTotalActionCount) && parsedTotalActionCount >= 0
-    ? parsedTotalActionCount
-    : null;
-  const isPartial = loadedActionCount >= actionLimit || (
-    totalActionCount !== null && loadedActionCount < totalActionCount
-  );
+  const totalActionCount = actions?.totalActionCount ?? null;
+  const isPartial = actions?.isPartial ?? false;
 
   const history: BondHistory | null = address && !error
     ? (() => {

@@ -142,6 +142,29 @@ test.describe('Transaction Composer', () => {
     await expect(page.getByRole('button', { name: 'UNBOND', exact: true })).toBeVisible();
   });
 
+  test('keeps malformed transaction deep links out of memo copy and review', async ({ page }) => {
+    await page.goto(`/dashboard/transactions?address=${MOCK_ADDRESS}&action=bond&node=bad-node&amount=2`);
+
+    const bondComposer = page.getByLabel('Transaction composer');
+    await expect(bondComposer.locator('code')).toHaveText('Enter a valid node address before copying a BOND memo.');
+    await expect(bondComposer.locator('code')).not.toContainText('BOND:bad-node');
+    await expect(bondComposer.getByRole('button', { name: 'Copy', exact: true })).toBeDisabled();
+    await expect(bondComposer.getByRole('button', { name: 'Copy Memo', exact: true })).toBeDisabled();
+    await expect(bondComposer.getByRole('button', { name: 'Wallet required', exact: true })).toBeDisabled();
+    await expect(bondComposer.getByRole('button', { name: 'Review Transaction', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: 'Confirm Transaction' })).toHaveCount(0);
+
+    await page.goto(`/dashboard/transactions?address=${MOCK_ADDRESS}&action=unbond&node=${MOCK_NODE}&amount=not-a-number`);
+
+    const unbondComposer = page.getByLabel('Transaction composer');
+    await expect(unbondComposer.locator('code')).toHaveText('Select an eligible standby node and valid amount before copying an UNBOND memo.');
+    await expect(unbondComposer.locator('code')).not.toContainText('UNBOND:');
+    await expect(unbondComposer.getByRole('button', { name: 'Copy Memo', exact: true })).toBeDisabled();
+    await expect(unbondComposer.getByRole('button', { name: 'Wallet required', exact: true })).toBeDisabled();
+    await expect(unbondComposer.getByRole('button', { name: 'Review Transaction', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: 'Confirm Transaction' })).toHaveCount(0);
+  });
+
   test('shows transaction safety preflight before the composer', async ({ page }) => {
     const preflight = page.getByLabel('Transaction safety preflight');
 

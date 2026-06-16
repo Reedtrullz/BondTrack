@@ -109,4 +109,54 @@ test.describe('Mobile critical release path', () => {
     expect(layout.composer!.top).toBeLessThan(layout.viewportHeight);
     expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
   });
+
+  test('keeps rewards confidence and partial-baseline warning visible before return decisions on mobile', async ({ page }) => {
+    await mockDashboardApis(page, DEFAULT_DASHBOARD_ADDRESS, { partialBondActions: true });
+    await page.goto(`/dashboard/rewards?address=${DEFAULT_DASHBOARD_ADDRESS}`);
+
+    const diagnosis = page.getByLabel('Rewards diagnosis');
+    const confidence = page.getByLabel('Rewards data confidence');
+    const basis = page.getByLabel('PnL calculation basis');
+    const cards = page.getByLabel('PnL return cards');
+
+    await expect(diagnosis).toBeVisible();
+    await expect(confidence).toBeVisible();
+    await expect(confidence).toContainText('Partial');
+    await expect(confidence).toContainText('Loaded 50 of 76; auto returns need full history or manual baseline');
+    await expect(confidence).toContainText('Tax worksheet');
+    await expect(confidence).toContainText('Review');
+    await expect(basis).toBeVisible();
+    await expect(basis).toContainText('Initial bond: partial action history');
+    await expect(basis).toContainText('Auto return cards are withheld until full history loads or you set a manual initial bond.');
+    await expect(cards).toContainText('Total Return');
+    await expect(cards).toContainText('N/A');
+
+    const layout = await page.evaluate(() => {
+      const box = (selector: string) => {
+        const element = document.querySelector(selector);
+        const rect = element?.getBoundingClientRect();
+        return rect ? { top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height } : null;
+      };
+
+      return {
+        viewportHeight: window.innerHeight,
+        viewportWidth: window.innerWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        diagnosis: box('section[aria-label="Rewards diagnosis"]'),
+        confidence: box('section[aria-label="Rewards data confidence"]'),
+        tabs: box('[role="tablist"]'),
+        basis: box('section[aria-label="PnL calculation basis"]'),
+      };
+    });
+
+    expect(layout.diagnosis).not.toBeNull();
+    expect(layout.confidence).not.toBeNull();
+    expect(layout.tabs).not.toBeNull();
+    expect(layout.basis).not.toBeNull();
+    expect(layout.confidence!.top).toBeGreaterThan(layout.diagnosis!.top);
+    expect(layout.confidence!.top).toBeLessThan(layout.viewportHeight);
+    expect(layout.tabs!.top).toBeGreaterThan(layout.confidence!.top);
+    expect(layout.basis!.top).toBeGreaterThan(layout.tabs!.top);
+    expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
+  });
 });

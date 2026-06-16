@@ -44,6 +44,15 @@ const degradedSourceSafety: TransactionSourceSafety = {
   status: 'Source confidence degraded',
   value: 'THORNode degraded',
 };
+const freshSourceSafety: TransactionSourceSafety = {
+  canCopyBondMemo: true,
+  canCopyUnbondMemo: true,
+  canPreview: true,
+  detail: 'THORNode positions are available for node status and unbond eligibility checks.',
+  itemSeverity: 'ready',
+  status: 'Source verified',
+  value: 'THORNode fresh',
+};
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => ({
@@ -108,8 +117,23 @@ afterEach(() => {
 });
 
 describe('TransactionComposer BOND advanced validation', () => {
-  it('does not show validation errors before the operator edits the composer', () => {
+  it('fails closed when transaction source safety is not provided', () => {
     render(<TransactionComposer positions={[]} />);
+
+    changeInput('Node Address', NODE_ADDRESS);
+    changeInput('Bond Amount', '2');
+
+    expect(screen.getByText('THORNode source confidence must be fresh before copying a BOND memo.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy Memo' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Review Transaction' })).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Transaction source confidence was not provided. Reload the transactions page before copying, previewing, or broadcasting.'
+    );
+    expect(transactionMocks.executeBondTransaction).not.toHaveBeenCalled();
+  });
+
+  it('does not show validation errors before the operator edits the composer', () => {
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     expect(screen.getByLabelText('Node Address')).toHaveAttribute('aria-invalid', 'false');
     expect(screen.getByLabelText('Bond Amount')).toHaveAttribute('aria-invalid', 'false');
@@ -118,7 +142,7 @@ describe('TransactionComposer BOND advanced validation', () => {
   });
 
   it('keeps incomplete BOND memos out of the copy path', () => {
-    render(<TransactionComposer positions={[]} />);
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     expect(screen.getByText('Enter a valid node address before copying a BOND memo.')).toBeInTheDocument();
     expect(screen.getByText('Bond payload minimum:')).toBeInTheDocument();
@@ -134,7 +158,7 @@ describe('TransactionComposer BOND advanced validation', () => {
   it('describes UNBOND as a zero-transfer deposit payload with memo amount semantics', async () => {
     const user = userEvent.setup();
 
-    render(<TransactionComposer positions={[standbyPosition]} />);
+    render(<TransactionComposer positions={[standbyPosition]} sourceSafety={freshSourceSafety} />);
 
     await user.click(screen.getByRole('button', { name: 'UNBOND' }));
 
@@ -147,7 +171,7 @@ describe('TransactionComposer BOND advanced validation', () => {
   it('prefills a BOND deep link before operator interaction', () => {
     mocks.searchParams = new URLSearchParams(`action=bond&node=${NODE_ADDRESS}&amount=2`);
 
-    render(<TransactionComposer positions={[]} />);
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     expect(screen.getByRole('button', { name: 'BOND' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByLabelText('Node Address')).toHaveValue(NODE_ADDRESS);
@@ -159,7 +183,7 @@ describe('TransactionComposer BOND advanced validation', () => {
   it('prefills an UNBOND deep link with memo amount semantics before operator interaction', () => {
     mocks.searchParams = new URLSearchParams(`action=unbond&node=${NODE_ADDRESS}&amount=10`);
 
-    render(<TransactionComposer positions={[standbyPosition]} />);
+    render(<TransactionComposer positions={[standbyPosition]} sourceSafety={freshSourceSafety} />);
 
     expect(screen.getByRole('button', { name: 'UNBOND' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByLabelText('Node Address')).toHaveValue(NODE_ADDRESS);
@@ -169,7 +193,7 @@ describe('TransactionComposer BOND advanced validation', () => {
   });
 
   it('enables memo copy only after the BOND memo itself is valid', async () => {
-    render(<TransactionComposer positions={[]} />);
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     changeInput('Node Address', NODE_ADDRESS);
 
@@ -186,7 +210,7 @@ describe('TransactionComposer BOND advanced validation', () => {
       clipboard: { writeText },
     });
 
-    render(<TransactionComposer positions={[]} />);
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     changeInput('Node Address', NODE_ADDRESS);
     await user.click(screen.getByRole('button', { name: 'Copy Memo' }));
@@ -207,7 +231,7 @@ describe('TransactionComposer BOND advanced validation', () => {
       },
     });
 
-    render(<TransactionComposer positions={[]} />);
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     changeInput('Node Address', NODE_ADDRESS);
     await user.click(screen.getByRole('button', { name: 'Copy Memo' }));
@@ -218,7 +242,7 @@ describe('TransactionComposer BOND advanced validation', () => {
   });
 
   it('does not show untouched bond amount errors after only the node address changes', async () => {
-    render(<TransactionComposer positions={[]} />);
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     changeInput('Node Address', NODE_ADDRESS);
 
@@ -230,7 +254,7 @@ describe('TransactionComposer BOND advanced validation', () => {
   it('shows field validation after the operator edits invalid values', async () => {
     const user = userEvent.setup();
 
-    render(<TransactionComposer positions={[]} />);
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     await user.type(screen.getByLabelText('Node Address'), 'bad-node');
     await user.type(screen.getByLabelText('Bond Amount'), '0');
@@ -243,7 +267,7 @@ describe('TransactionComposer BOND advanced validation', () => {
   it('blocks signing and surfaces validation when operator fee is entered without provider', async () => {
     const user = userEvent.setup();
 
-    render(<TransactionComposer positions={[]} />);
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     changeInput('Node Address', NODE_ADDRESS);
     changeInput('Bond Amount', '2');
@@ -258,7 +282,7 @@ describe('TransactionComposer BOND advanced validation', () => {
   it('preserves malformed operator fee input so validation can reject it', async () => {
     const user = userEvent.setup();
 
-    render(<TransactionComposer positions={[]} />);
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     changeInput('Node Address', NODE_ADDRESS);
     changeInput('Bond Amount', '2');
@@ -274,7 +298,7 @@ describe('TransactionComposer BOND advanced validation', () => {
   it('submits a connected Keplr BOND payload after preview confirmation', async () => {
     const user = userEvent.setup();
 
-    render(<TransactionComposer positions={[]} />);
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     changeInput('Node Address', NODE_ADDRESS);
     changeInput('Bond Amount', '2');
@@ -299,7 +323,7 @@ describe('TransactionComposer BOND advanced validation', () => {
     mocks.wallet.walletType = null;
     mocks.wallet.isConnected = false;
 
-    render(<TransactionComposer positions={[]} />);
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     changeInput('Node Address', NODE_ADDRESS);
     changeInput('Bond Amount', '2');
@@ -323,7 +347,7 @@ describe('TransactionComposer BOND advanced validation', () => {
       actual: 'cosmoshub-4',
     };
 
-    render(<TransactionComposer positions={[]} />);
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     changeInput('Node Address', NODE_ADDRESS);
     changeInput('Bond Amount', '2');
@@ -345,7 +369,7 @@ describe('TransactionComposer BOND advanced validation', () => {
       actual: 'cosmoshub-4',
     };
 
-    render(<TransactionComposer positions={[]} />);
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     changeInput('Node Address', NODE_ADDRESS);
     changeInput('Bond Amount', '2');
@@ -362,7 +386,7 @@ describe('TransactionComposer BOND advanced validation', () => {
 
   it('does not broadcast when wallet network drifts after preview opens', async () => {
     const user = userEvent.setup();
-    const { rerender } = render(<TransactionComposer positions={[]} />);
+    const { rerender } = render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     changeInput('Node Address', NODE_ADDRESS);
     changeInput('Bond Amount', '2');
@@ -376,7 +400,7 @@ describe('TransactionComposer BOND advanced validation', () => {
       expected: 'thorchain-1',
       actual: 'cosmoshub-4',
     };
-    rerender(<TransactionComposer positions={[]} />);
+    rerender(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     expect(screen.getByRole('button', { name: 'Confirm & Broadcast' })).toBeDisabled();
     expect(transactionMocks.executeBondTransaction).not.toHaveBeenCalled();
@@ -431,7 +455,7 @@ describe('TransactionComposer BOND advanced validation', () => {
     const user = userEvent.setup();
     mocks.wallet.walletType = 'xdefi';
 
-    render(<TransactionComposer positions={[]} />);
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
     changeInput('Node Address', NODE_ADDRESS);
     changeInput('Bond Amount', '3.25');
@@ -454,7 +478,7 @@ describe('TransactionComposer BOND advanced validation', () => {
     const user = userEvent.setup();
     mocks.wallet.walletType = 'vultisig';
 
-    render(<TransactionComposer positions={[standbyPosition]} />);
+    render(<TransactionComposer positions={[standbyPosition]} sourceSafety={freshSourceSafety} />);
 
     await user.click(screen.getByRole('button', { name: 'UNBOND' }));
     changeInput('Amount to Unbond', '10');
