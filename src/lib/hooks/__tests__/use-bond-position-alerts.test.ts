@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import type { BondPosition, YieldGuardFlag } from '@/lib/types/node';
+import { getAlertPositionSnapshotStorageKey } from '@/lib/storage/keys';
 import { useBondPositionAlerts } from '../use-bond-position-alerts';
 import { useBondPositions } from '../use-bond-positions';
 
@@ -141,5 +142,51 @@ describe('useBondPositionAlerts', () => {
     expect(checks.checkJail).not.toHaveBeenCalled();
     expect(checks.checkStatusChange).not.toHaveBeenCalled();
     expect(checks.triggerAlert).not.toHaveBeenCalled();
+  });
+
+  it('compares against the persisted snapshot after a reload', async () => {
+    const checks = makeChecks();
+    const snapshotKey = getAlertPositionSnapshotStorageKey(ADDRESS);
+    expect(snapshotKey).toBeTruthy();
+    localStorage.setItem(snapshotKey!, JSON.stringify({
+      updatedAt: Date.now() - 60_000,
+      positions: [makePosition({ slashPoints: 4 })],
+    }));
+
+    vi.mocked(useBondPositions).mockReturnValue({
+      positions: [makePosition({ slashPoints: 12 })],
+      isLoading: false,
+      error: undefined,
+      mutate: vi.fn(),
+    });
+
+    renderHook(() => useBondPositionAlerts(ADDRESS, checks));
+
+    await waitFor(() => {
+      expect(checks.checkSlash).toHaveBeenCalledWith(12, 4, NODE_ADDRESS);
+    });
+    expect(localStorage.getItem(snapshotKey!)).toContain('"slashPoints":12');
+  });
+
+  it('does not overwrite the persisted snapshot while source data is degraded', () => {
+    const checks = makeChecks();
+    const snapshotKey = getAlertPositionSnapshotStorageKey(ADDRESS);
+    expect(snapshotKey).toBeTruthy();
+    localStorage.setItem(snapshotKey!, JSON.stringify({
+      updatedAt: Date.now() - 60_000,
+      positions: [makePosition({ slashPoints: 4 })],
+    }));
+
+    vi.mocked(useBondPositions).mockReturnValue({
+      positions: [makePosition({ slashPoints: 99 })],
+      isLoading: false,
+      error: new Error('THORNode degraded'),
+      mutate: vi.fn(),
+    });
+
+    renderHook(() => useBondPositionAlerts(ADDRESS, checks));
+
+    expect(checks.checkSlash).not.toHaveBeenCalled();
+    expect(localStorage.getItem(snapshotKey!)).toContain('"slashPoints":4');
   });
 });

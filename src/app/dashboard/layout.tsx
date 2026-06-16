@@ -7,9 +7,8 @@ import { DashboardShell } from '@/components/layout/dashboard-shell';
 import { LoadingSkeleton } from '@/components/shared/loading-skeleton';
 import { AddressRequiredState } from '@/components/dashboard/address-required-state';
 import { AlertReviewTrigger, AlertToast, NotificationPermissionNudge } from '@/components/alerts/alert-toast';
-import { AlertProvider, useAlertsContext } from '@/lib/hooks/use-alerts';
+import { useAlertsContext } from '@/lib/hooks/use-alerts';
 import { ApiHealthProvider } from '@/lib/hooks/use-api-health';
-import { useBondPositionAlerts } from '@/lib/hooks/use-bond-position-alerts';
 import { useWatchlist } from '@/lib/hooks/use-watchlist';
 import { WalletProvider } from '@/lib/hooks/use-wallet';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
@@ -24,11 +23,7 @@ function readSavedAddress() {
 }
 
 function DashboardContent({ children }: { children: ReactNode }) {
-  return (
-    <AlertProvider>
-      <DashboardContentInner>{children}</DashboardContentInner>
-    </AlertProvider>
-  );
+  return <DashboardContentInner>{children}</DashboardContentInner>;
 }
 
 function DashboardContentInner({ children }: { children: ReactNode }) {
@@ -42,10 +37,6 @@ function DashboardContentInner({ children }: { children: ReactNode }) {
     dismissAlert,
     permission,
     requestPermission,
-    triggerAlert,
-    checkSlash,
-    checkJail,
-    checkStatusChange,
   } = useAlertsContext();
   const { addAddress } = useWatchlist();
   const [savedAddress, setSavedAddress] = useState<string | null>(null);
@@ -68,12 +59,6 @@ function DashboardContentInner({ children }: { children: ReactNode }) {
 
     return `/dashboard/settings/notifications?${params.toString()}`;
   }, [effectiveAddress]);
-  const alertChecks = useMemo(() => ({
-    triggerAlert,
-    checkSlash,
-    checkJail,
-    checkStatusChange,
-  }), [triggerAlert, checkSlash, checkJail, checkStatusChange]);
   const handleAddressRequiredSubmit = useCallback((address: string) => {
     const params = new URLSearchParams(searchParams.toString());
     const targetPathname = pathname ?? '/dashboard';
@@ -84,8 +69,6 @@ function DashboardContentInner({ children }: { children: ReactNode }) {
     setSavedAddress(address);
     router.push(`${targetPathname}?${params.toString()}`);
   }, [addAddress, pathname, router, searchParams]);
-
-  useBondPositionAlerts(effectiveAddress, alertChecks);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

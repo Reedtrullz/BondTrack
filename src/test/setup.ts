@@ -20,6 +20,8 @@ const localStorageMock = {
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 Object.defineProperty(window, 'Notification', {
+  configurable: true,
+  writable: true,
   value: {
     requestPermission: vi.fn().mockResolvedValue('granted'),
     permission: 'default',

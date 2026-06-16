@@ -557,6 +557,8 @@ test.describe('Dashboard command center', () => {
     await expect(page.getByTestId('notification-permission-nudge')).toHaveCount(0);
     await expect(page.getByText('Browser notifications blocked in this browser')).toBeVisible();
     await expect(page.getByTestId('browser-notification-blocked-guidance')).toContainText('Browser setting required');
+    await expect(page.getByTestId('browser-notification-scope')).toContainText('Open-tab delivery only');
+    await expect(page.getByTestId('background-notification-status')).toContainText('Background push is not connected');
     await expect(page.getByRole('button', { name: 'Enable browser notifications' })).toHaveCount(0);
   });
 

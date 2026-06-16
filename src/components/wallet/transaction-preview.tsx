@@ -63,9 +63,11 @@ export function TransactionPreview({
                 {data.type}
               </span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-zinc-500">Node</span>
-              <span className="font-mono text-sm">{data.nodeAddress.slice(0, 12)}...</span>
+            <div className="space-y-1 text-sm">
+              <span className="text-zinc-500">Target node</span>
+              <code className="block rounded-md border border-zinc-200 bg-white px-2 py-1 font-mono text-xs leading-relaxed text-zinc-700 break-all dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+                {data.nodeAddress}
+              </code>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-zinc-500">Requested Amount</span>

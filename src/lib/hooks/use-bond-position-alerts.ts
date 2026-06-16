@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { BondPosition } from '@/lib/types/node';
+import { getAlertPositionSnapshotStorageKey, readLocalStorageValue, writeLocalStorageValue } from '@/lib/storage/keys';
 import { useBondPositions } from './use-bond-positions';
 import type { AlertType } from './use-alerts';
 
@@ -16,11 +17,51 @@ function hasChurnRisk(position: BondPosition): boolean {
   return position.yieldGuardFlags?.includes('lowest_bond') ?? false;
 }
 
+function readStoredSnapshot(address: string): Map<string, BondPosition> | null {
+  const storageKey = getAlertPositionSnapshotStorageKey(address);
+  if (!storageKey) return null;
+
+  try {
+    const stored = readLocalStorageValue(storageKey);
+    if (!stored) return null;
+
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed?.positions)) return null;
+
+    const positions = parsed.positions.filter((position: Partial<BondPosition>) => (
+      typeof position.nodeAddress === 'string' &&
+      typeof position.status === 'string' &&
+      typeof position.slashPoints === 'number' &&
+      typeof position.isJailed === 'boolean'
+    )) as BondPosition[];
+
+    return positions.length > 0
+      ? new Map(positions.map((position) => [position.nodeAddress, position]))
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredSnapshot(address: string, positions: BondPosition[]): void {
+  const storageKey = getAlertPositionSnapshotStorageKey(address);
+  if (!storageKey) return;
+
+  try {
+    writeLocalStorageValue(storageKey, JSON.stringify({
+      updatedAt: Date.now(),
+      positions,
+    }));
+  } catch {
+    // Snapshot persistence should never block live alert checks.
+  }
+}
+
 export function useBondPositionAlerts(
   address: string | null,
   checks: BondPositionAlertChecks
 ) {
-  const { positions, isLoading } = useBondPositions(address);
+  const { positions, isLoading, error } = useBondPositions(address);
   const previousPositionsRef = useRef<Map<string, BondPosition> | null>(null);
   const previousAddressRef = useRef<string | null>(null);
 
@@ -31,14 +72,19 @@ export function useBondPositionAlerts(
       return;
     }
 
-    if (isLoading) return;
+    if (isLoading || error) return;
 
     const currentPositions = new Map(positions.map((position) => [position.nodeAddress, position]));
-    const previousPositions = previousPositionsRef.current;
+    let previousPositions = previousPositionsRef.current;
 
-    if (previousAddressRef.current !== address || !previousPositions) {
+    if (previousAddressRef.current !== address) {
       previousAddressRef.current = address;
+      previousPositions = readStoredSnapshot(address);
+    }
+
+    if (!previousPositions) {
       previousPositionsRef.current = currentPositions;
+      writeStoredSnapshot(address, positions);
       return;
     }
 
@@ -60,5 +106,6 @@ export function useBondPositionAlerts(
     }
 
     previousPositionsRef.current = currentPositions;
-  }, [address, checks, isLoading, positions]);
+    writeStoredSnapshot(address, positions);
+  }, [address, checks, error, isLoading, positions]);
 }

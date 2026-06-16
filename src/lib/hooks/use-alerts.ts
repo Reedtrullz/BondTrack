@@ -33,9 +33,13 @@ const DEFAULT_ALERT_PREFERENCES: AlertPreferences = {
   statusAlerts: true,
 };
 
-function getStoredAlertState(): { alerts: Alert[]; preferences: AlertPreferences } {
+function getStoredAlertState(): {
+  alerts: Alert[];
+  preferences: AlertPreferences;
+  lastAlertTime: Record<string, number>;
+} {
   if (typeof window === 'undefined') {
-    return { alerts: [], preferences: DEFAULT_ALERT_PREFERENCES };
+    return { alerts: [], preferences: DEFAULT_ALERT_PREFERENCES, lastAlertTime: {} };
   }
 
   try {
@@ -47,13 +51,33 @@ function getStoredAlertState(): { alerts: Alert[]; preferences: AlertPreferences
         preferences: parsed.preferences
           ? { ...DEFAULT_ALERT_PREFERENCES, ...parsed.preferences }
           : DEFAULT_ALERT_PREFERENCES,
+        lastAlertTime: parsed.lastAlertTime && typeof parsed.lastAlertTime === 'object'
+          ? parsed.lastAlertTime
+          : {},
       };
     }
   } catch {
     // Corrupt or unavailable storage should not block in-memory alerts.
   }
 
-  return { alerts: [], preferences: DEFAULT_ALERT_PREFERENCES };
+  return { alerts: [], preferences: DEFAULT_ALERT_PREFERENCES, lastAlertTime: {} };
+}
+
+function persistAlertRateLimit(rateLimitKey: string, timestamp: number): void {
+  const stored = getStoredAlertState();
+
+  try {
+    writeLocalStorageValue(STORAGE_KEY, JSON.stringify({
+      alerts: stored.alerts,
+      preferences: stored.preferences,
+      lastAlertTime: {
+        ...stored.lastAlertTime,
+        [rateLimitKey]: timestamp,
+      },
+    }));
+  } catch {
+    // Storage may be unavailable in private mode; in-memory rate limiting still applies.
+  }
 }
 
 function getCurrentPermission(): NotificationPermission {
@@ -74,6 +98,7 @@ export function useAlerts() {
     const stored = getStoredAlertState();
     setAlerts(stored.alerts);
     setPreferences(stored.preferences);
+    lastAlertTime.current = stored.lastAlertTime;
     setPermission(getCurrentPermission());
     setHasLoadedStorage(true);
   }, []);
@@ -84,7 +109,7 @@ export function useAlerts() {
     }
 
     try {
-      writeLocalStorageValue(STORAGE_KEY, JSON.stringify({ alerts, preferences }));
+      writeLocalStorageValue(STORAGE_KEY, JSON.stringify({ alerts, preferences, lastAlertTime: lastAlertTime.current }));
     } catch {
       // Corrupt or unavailable storage should not block in-memory alerts.
     }
@@ -105,7 +130,10 @@ export function useAlerts() {
   }, []);
 
   const isRateLimited = useCallback((key: string): boolean => {
-    const lastTime = lastAlertTime.current[key] || 0;
+    const storedLastTime = getStoredAlertState().lastAlertTime[key] || 0;
+    const lastTime = Math.max(lastAlertTime.current[key] || 0, storedLastTime);
+    lastAlertTime.current[key] = lastTime;
+
     return Date.now() - lastTime < RATE_LIMIT_MS;
   }, []);
 
@@ -124,14 +152,16 @@ export function useAlerts() {
 
     if (!preferences[preferenceKey as keyof AlertPreferences]) return;
 
-    lastAlertTime.current[rateLimitKey] = Date.now();
+    const now = Date.now();
+    lastAlertTime.current[rateLimitKey] = now;
+    persistAlertRateLimit(rateLimitKey, now);
 
     const alert: Alert = {
-      id: `${type}-${nodeAddress}-${Date.now()}`,
+      id: `${type}-${nodeAddress}-${now}`,
       type,
       nodeAddress,
       message,
-      timestamp: Date.now(),
+      timestamp: now,
       dismissed: false,
     };
 

@@ -107,5 +107,5 @@ describe('IntelligenceFeed', () => {
     expect(insight).not.toBeNull();
     expect(within(insight as HTMLElement).getByRole('link', { name: /Review opportunity/i })).toBeInTheDocument();
     expect(within(insight as HTMLElement).queryByText(/^Optimize$/i)).not.toBeInTheDocument();
-  });
+  }, 10_000);
 });

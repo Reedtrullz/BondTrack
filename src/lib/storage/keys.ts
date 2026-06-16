@@ -5,6 +5,7 @@ export const STORAGE_KEYS = {
   watchlist: 'heimdall-watchlist',
   walletConnected: 'wallet-connected',
   alerts: 'heimdall-alerts',
+  alertPositionSnapshotPrefix: 'heimdall-alert-position-snapshot-',
   pendingTransactions: 'heimdall-pending-txs',
   notificationPromptDismissed: 'heimdall-notification-prompt-dismissed',
   upgradeAlertDismissedPrefix: 'dismissed_upgrade_v',
@@ -14,6 +15,8 @@ export const STORAGE_KEYS = {
   initialBondPrefix: 'heimdall-initial-bond-',
   entryPricePrefix: 'heimdall-entry-price-',
 } as const;
+
+export const DASHBOARD_ADDRESS_CHANGED_EVENT = 'heimdall:dashboard-address-changed';
 
 export const LEGACY_STORAGE_KEYS = {
   dashboardAddressLocal: ['heimdall-last-address', 'thornode-watcher-last-address'] as const,
@@ -72,6 +75,18 @@ function getBrowserSessionStorage(): Storage | undefined {
   }
 }
 
+function dispatchDashboardAddressChanged(address: string | null): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.dispatchEvent(new CustomEvent(DASHBOARD_ADDRESS_CHANGED_EVENT, { detail: { address } }));
+  } catch {
+    // Address persistence must keep working even if a locked-down browser blocks events.
+  }
+}
+
 export function clearLegacyDashboardAddressKeys(
   localStorageRef: Storage | undefined = getBrowserLocalStorage(),
   sessionStorageRef: Storage | undefined = getBrowserSessionStorage()
@@ -124,14 +139,20 @@ export function removeLocalStorageValue(key: string): void {
 
 export function writeDashboardAddress(address: string): void {
   writeLocalStorageValue(STORAGE_KEYS.dashboardAddress, address);
+  dispatchDashboardAddressChanged(address);
 }
 
 export function removeDashboardAddress(): void {
   removeLocalStorageValue(STORAGE_KEYS.dashboardAddress);
+  dispatchDashboardAddressChanged(null);
 }
 
 export function getInitialBondStorageKey(address: string | null): string | null {
   return address ? `${STORAGE_KEYS.initialBondPrefix}${address}` : null;
+}
+
+export function getAlertPositionSnapshotStorageKey(address: string | null): string | null {
+  return address ? `${STORAGE_KEYS.alertPositionSnapshotPrefix}${address}` : null;
 }
 
 export function getEntryPriceStorageKey(address: string | null): string | null {

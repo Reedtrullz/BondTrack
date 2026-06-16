@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
+import { AlertRuntime } from "@/components/alerts/alert-runtime";
+import { AlertProvider } from "@/lib/hooks/use-alerts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -30,7 +32,10 @@ export default function RootLayout({
           Skip to main content
         </a>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
+          <AlertProvider>
+            <AlertRuntime />
+            {children}
+          </AlertProvider>
         </ThemeProvider>
       </body>
     </html>

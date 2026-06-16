@@ -76,6 +76,39 @@ describe('useAlerts', () => {
     expect(localStorage.getItem(STORAGE_KEY)).toContain('thor1nodeb');
   });
 
+  it('uses persisted rate limits to avoid duplicate alerts after reloads', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      alerts: [],
+      preferences: {
+        slashAlerts: true,
+        jailAlerts: true,
+        churnAlerts: true,
+        statusAlerts: true,
+      },
+      lastAlertTime: {
+        'JAIL:thor1nodea': Date.now(),
+      },
+    }));
+
+    const { result } = renderHook(() => useAlerts());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      result.current.triggerAlert('JAIL', 'thor1nodea', 'duplicate jail');
+      result.current.triggerAlert('JAIL', 'thor1nodeb', 'different node jail');
+    });
+
+    expect(result.current.alerts).toHaveLength(1);
+    expect(result.current.alerts[0]).toMatchObject({
+      type: 'JAIL',
+      nodeAddress: 'thor1nodeb',
+      message: 'different node jail',
+    });
+  });
+
   it('keeps live alerts usable when browser storage is unavailable', () => {
     const originalLocalStorage = Object.getOwnPropertyDescriptor(window, 'localStorage');
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -103,6 +136,41 @@ describe('useAlerts', () => {
         Object.defineProperty(window, 'localStorage', originalLocalStorage);
       }
     }
+  });
+
+  it('emits a system browser notification when permission is granted in a live session', async () => {
+    const browserNotification = vi.fn();
+
+    Object.defineProperty(window, 'Notification', {
+      configurable: true,
+      writable: true,
+      value: class {
+        static permission: NotificationPermission = 'granted';
+        static requestPermission = vi.fn().mockResolvedValue('granted');
+
+        constructor(title: string, options?: NotificationOptions) {
+          browserNotification(title, options);
+        }
+      },
+    });
+
+    const { result } = renderHook(() => useAlerts());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.permission).toBe('granted');
+
+    act(() => {
+      result.current.triggerAlert('JAIL', 'thor1nodebrowser', 'Node thor1nodebrowser has been jailed');
+    });
+
+    expect(result.current.alerts).toHaveLength(1);
+    expect(browserNotification).toHaveBeenCalledWith('Heimdall Alert', {
+      body: 'Node thor1nodebrowser has been jailed',
+      icon: '/favicon.ico',
+    });
   });
 
   it('only emits jail alerts for a transition after a previous snapshot exists', () => {

@@ -547,6 +547,8 @@ test.describe('Transaction Composer', () => {
     await page.getByLabel('Bond Amount').fill('10');
     await page.getByRole('button', { name: 'Review Transaction' }).click();
 
+    await expect(page.getByText('Target node', { exact: true })).toBeVisible();
+    await expect(page.getByText(MOCK_NODE, { exact: true })).toBeVisible();
     await expect(page.getByText('Network Fee', { exact: true })).toBeVisible();
     await expect(page.getByText('Confirmed by wallet/network before broadcast')).toBeVisible();
     await expect(page.getByText('THORChain deposit transaction')).toBeVisible();

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Activity, AlertCircle, AlertTriangle, Bell, Info, Mail, Monitor, RotateCcw, Send, ShieldAlert, Trash2 } from 'lucide-react';
+import { Activity, AlertCircle, AlertTriangle, Bell, Info, Mail, Monitor, RotateCcw, Send, ShieldAlert, Trash2, WifiOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -307,6 +307,22 @@ export default function NotificationPreferences() {
         </div>
       </div>
 
+      <div
+        className="mb-8 rounded-xl border border-zinc-200 bg-white/80 p-4 text-sm text-zinc-700 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-300"
+        data-testid="background-notification-status"
+      >
+        <div className="flex gap-3">
+          <WifiOff className="mt-0.5 h-5 w-5 shrink-0 text-zinc-500" aria-hidden="true" />
+          <div className="space-y-1">
+            <p className="font-semibold text-zinc-900 dark:text-zinc-100">Background push is not connected.</p>
+            <p>
+              Heimdall does not yet keep a remote push subscription for this address. If all Heimdall tabs are closed,
+              status changes are checked only when you reopen Heimdall; they are not delivered at the moment they happen.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="border-zinc-200 bg-white/80 shadow-md backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80">
           <CardHeader>
@@ -317,9 +333,21 @@ export default function NotificationPreferences() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Alert preferences are saved automatically in this browser via local storage. In-app alerts work without a
-              permission prompt; system browser notifications require permission.
+              Alert preferences are saved automatically in this browser. Heimdall checks your saved address while any
+              Heimdall tab is open; system browser notifications require permission.
             </p>
+            <div
+              className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200"
+              data-testid="browser-notification-scope"
+              role="note"
+            >
+              <p className="font-semibold">Open-tab delivery only</p>
+              <p className="mt-1">
+                Desktop browser notifications can usually fire from an open Heimdall tab while you view another tab or
+                app, though background throttling can delay checks. Closed-tab or instant after-update delivery needs
+                server-side Web Push and is not active yet.
+              </p>
+            </div>
             <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
               {permissionLabel(renderedPermission)}
             </div>
@@ -331,7 +359,8 @@ export default function NotificationPreferences() {
               >
                 <p className="font-semibold">Browser setting required</p>
                 <p className="mt-1">
-                  Allow notifications for this site in your browser settings. In-app alerts still work and stay in this browser.
+                  Allow notifications for this site in your browser settings. In-app alerts still work while a Heimdall
+                  tab is open.
                 </p>
               </div>
             ) : (

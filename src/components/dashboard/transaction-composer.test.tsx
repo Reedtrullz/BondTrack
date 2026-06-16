@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -279,6 +279,9 @@ describe('TransactionComposer BOND advanced validation', () => {
     changeInput('Node Address', NODE_ADDRESS);
     changeInput('Bond Amount', '2');
     await user.click(screen.getByRole('button', { name: 'Review Transaction' }));
+    const dialog = screen.getByRole('dialog', { name: 'Confirm Transaction' });
+    expect(within(dialog).getByText('Target node')).toBeInTheDocument();
+    expect(within(dialog).getByText(NODE_ADDRESS)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Confirm & Broadcast' }));
 
     expect(transactionMocks.executeBondTransaction).toHaveBeenCalledWith({

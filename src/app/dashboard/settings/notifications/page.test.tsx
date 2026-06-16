@@ -124,9 +124,26 @@ describe('NotificationPreferences', () => {
     expect(await screen.findByText('Browser notifications blocked in this browser')).toBeInTheDocument();
     expect(screen.getByTestId('browser-notification-blocked-guidance')).toHaveTextContent('Browser setting required');
     expect(screen.getByTestId('browser-notification-blocked-guidance')).toHaveTextContent(
-      'In-app alerts still work and stay in this browser.'
+      'In-app alerts still work while a Heimdall tab is open.'
     );
     expect(screen.queryByRole('button', { name: 'Enable browser notifications' })).not.toBeInTheDocument();
     expect(requestPermission).not.toHaveBeenCalled();
+  });
+
+  it('is explicit that local browser alerts are open-tab only', async () => {
+    mockUseAlertsContext.mockReturnValue(mockAlertContext() as ReturnType<typeof useAlertsContext>);
+
+    render(<NotificationPreferences />);
+
+    expect(await screen.findByTestId('browser-notification-scope')).toHaveTextContent('Open-tab delivery only');
+    expect(screen.getByTestId('browser-notification-scope')).toHaveTextContent(
+      'background throttling can delay checks.'
+    );
+    expect(screen.getByTestId('background-notification-status')).toHaveTextContent(
+      'Background push is not connected.'
+    );
+    expect(screen.getByTestId('background-notification-status')).toHaveTextContent(
+      'status changes are checked only when you reopen Heimdall; they are not delivered at the moment they happen.'
+    );
   });
 });
