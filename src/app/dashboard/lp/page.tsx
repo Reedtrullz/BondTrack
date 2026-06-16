@@ -99,7 +99,7 @@ export default function LpPage() {
           <h1 className="font-display text-2xl font-bold text-zinc-900 dark:text-zinc-100 sm:text-3xl">
             LP Positions
           </h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400 sm:text-base">
+          <p className="mt-1 hidden text-sm text-zinc-500 dark:text-zinc-400 sm:block sm:text-base">
             Manage liquidity positions, calculate impermanent loss, and download position snapshots
           </p>
         </div>

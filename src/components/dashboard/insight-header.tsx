@@ -104,7 +104,7 @@ export function InsightHeader({
           <Heading className={cn('font-bold leading-tight text-zinc-950 dark:text-zinc-50 sm:mt-4 sm:text-3xl', compactMobileMetrics ? 'mt-3 text-xl' : 'mt-4 text-2xl')}>
             {topRisk}
           </Heading>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+          <p className={cn('mt-2 max-w-3xl text-sm text-zinc-700 dark:text-zinc-300', compactMobileMetrics ? 'leading-5 sm:leading-6' : 'leading-6')}>
             {diagnosis}
           </p>
         </div>
@@ -127,7 +127,7 @@ export function InsightHeader({
         )}
       </div>
 
-      <div className={cn('mt-5 grid sm:grid-cols-3', compactMobileMetrics ? 'grid-cols-3 gap-2 sm:gap-3' : 'grid-cols-1 gap-3')}>
+      <div className={cn('grid sm:mt-5 sm:grid-cols-3', compactMobileMetrics ? 'mt-3 grid-cols-3 gap-2 sm:gap-3' : 'mt-5 grid-cols-1 gap-3')}>
         {metrics.map((metric) => (
           <div
             key={`${metric.label}:${metric.value}`}
