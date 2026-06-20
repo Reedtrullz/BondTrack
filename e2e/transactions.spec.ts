@@ -786,7 +786,7 @@ test.describe('Transaction Composer', () => {
 
   test('keeps mobile compact alerts off transaction action buttons', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.evaluate((address) => {
+    await page.addInitScript((address) => {
       const now = Date.now();
       localStorage.setItem('heimdall-alerts', JSON.stringify({
         alerts: [
@@ -929,7 +929,7 @@ test.describe('Transaction Composer', () => {
     expect(viewport).not.toBeNull();
     expect(dialogBox!.x).toBeGreaterThanOrEqual(16);
     expect(dialogBox!.x + dialogBox!.width).toBeLessThanOrEqual(viewport!.width - 16);
-    expect(dialog.getByRole('button', { name: 'Request Wallet Broadcast' })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Request Wallet Broadcast' })).toBeVisible();
   });
 
   test('shows zero-transfer wallet semantics in the UNBOND preview', async ({ page, context }) => {

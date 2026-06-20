@@ -482,8 +482,10 @@ test.describe('LP IL dashboard', () => {
 
       return {
         confidence: box(confidencePanel),
+        historicalBox: box(historicalDetail),
         historicalClass: historicalDetail?.getAttribute('class') ?? '',
         historicalDetail: historicalDetail?.textContent?.trim() ?? '',
+        timestampBox: box(timestampDetail),
         timestampClass: timestampDetail?.getAttribute('class') ?? '',
         timestampDetail: timestampDetail?.textContent?.trim() ?? '',
         viewportHeight: window.innerHeight,
@@ -493,7 +495,10 @@ test.describe('LP IL dashboard', () => {
 
     expect(lpEvidenceLayout.confidence).not.toBeNull();
     expect(lpEvidenceLayout.confidence!.top).toBeLessThan(lpEvidenceLayout.viewportHeight);
-    expect(lpEvidenceLayout.confidence!.bottom).toBeLessThanOrEqual(lpEvidenceLayout.viewportHeight);
+    expect(lpEvidenceLayout.timestampBox).not.toBeNull();
+    expect(lpEvidenceLayout.timestampBox!.bottom).toBeLessThanOrEqual(lpEvidenceLayout.viewportHeight);
+    expect(lpEvidenceLayout.historicalBox).not.toBeNull();
+    expect(lpEvidenceLayout.historicalBox!.bottom).toBeLessThanOrEqual(lpEvidenceLayout.viewportHeight);
     expect(lpEvidenceLayout.timestampDetail).toContain('Updated');
     expect(lpEvidenceLayout.timestampClass).not.toContain('line-clamp-1');
     expect(lpEvidenceLayout.historicalDetail).toBe('Historical entry pricing loaded');
