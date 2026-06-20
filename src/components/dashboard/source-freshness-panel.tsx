@@ -74,16 +74,16 @@ export function SourceFreshnessPanel({
     return (
       <section
         id={id}
-        className="scroll-mt-24 rounded-2xl border border-zinc-200 bg-white/90 p-2.5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80"
+        className="scroll-mt-24 rounded-2xl border border-zinc-200 bg-white/90 p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80 sm:p-2.5"
         aria-label={ariaLabel ?? 'Source checks'}
         data-variant="compact"
       >
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-2 sm:gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden="true" />
             <div className="min-w-0">
               <h2 className="text-sm font-bold text-zinc-950 dark:text-zinc-50">{title}</h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">Data source checks</p>
+              <p className="hidden text-xs text-zinc-500 dark:text-zinc-400 sm:block">Data source checks</p>
             </div>
           </div>
           <span className="shrink-0 rounded-full border border-zinc-200 px-2 py-0.5 text-[11px] font-bold text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
@@ -91,13 +91,13 @@ export function SourceFreshnessPanel({
           </span>
         </div>
 
-        <div className="mt-2 grid grid-cols-3 gap-2">
+        <div className="mt-1.5 grid grid-cols-3 gap-1.5 sm:mt-2 sm:gap-2">
           {sources.map((source) => {
             const config = statusConfig[source.status];
             return (
               <div
                 key={source.source}
-                className="min-w-0 rounded-xl border border-zinc-200 bg-zinc-50/70 p-1.5 dark:border-zinc-800 dark:bg-zinc-950/30"
+                className="min-w-0 rounded-xl border border-zinc-200 bg-zinc-50/70 p-1 dark:border-zinc-800 dark:bg-zinc-950/30 sm:p-1.5"
               >
                 <div className="truncate text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
                   {source.source}

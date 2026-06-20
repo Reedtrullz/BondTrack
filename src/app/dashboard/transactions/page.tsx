@@ -99,7 +99,7 @@ export default function TransactionsPage() {
   }, [router, searchParams]);
 
   return (
-    <div className="space-y-3 sm:space-y-5">
+    <div className="space-y-2 sm:space-y-5">
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Transactions</h1>
         <p className="hidden max-w-3xl text-sm leading-6 text-zinc-500 dark:text-zinc-400 sm:block">
@@ -110,19 +110,19 @@ export default function TransactionsPage() {
       <section
         aria-label="Transaction safety preflight"
         className={cn(
-          'rounded-2xl border p-3 shadow-sm sm:p-5',
+          'rounded-2xl border p-2 shadow-sm sm:p-5',
           preflightSeverityClass[preflight.severity]
         )}
       >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="flex min-w-0 gap-3">
-            <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-current/20 bg-white/50 dark:bg-zinc-950/30">
-              <PreflightIcon className="h-5 w-5" aria-hidden="true" />
+            <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-current/20 bg-white/50 dark:bg-zinc-950/30 sm:h-9 sm:w-9">
+              <PreflightIcon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
             </span>
             <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-wide opacity-80">Transaction preflight</p>
-              <h2 className="text-lg font-bold">{preflight.status}</h2>
-              <p className="mt-1 text-sm leading-5 opacity-90">{preflight.detail}</p>
+              <h2 className="text-base font-bold sm:text-lg">{preflight.status}</h2>
+              <p className="mt-0.5 text-sm leading-5 opacity-90 sm:mt-1">{preflight.detail}</p>
             </div>
           </div>
           <a
@@ -133,7 +133,7 @@ export default function TransactionsPage() {
           </a>
         </div>
 
-        <div className="mt-3 grid grid-cols-3 gap-1.5 sm:mt-4 sm:gap-2 xl:grid-cols-5">
+        <div className="mt-2 grid grid-cols-3 gap-1 sm:mt-4 sm:gap-2 xl:grid-cols-5">
           {preflight.items.map((item) => {
             const ItemIcon = getPreflightItemIcon(item);
 
@@ -141,7 +141,7 @@ export default function TransactionsPage() {
               <div
                 key={item.id}
                 className={cn(
-                  'min-w-0 rounded-xl border bg-white/70 p-2 dark:bg-zinc-950/30 sm:p-3',
+                  'min-w-0 rounded-xl border bg-white/70 p-1.5 dark:bg-zinc-950/30 sm:p-3',
                   preflightSeverityClass[item.severity]
                 )}
               >
@@ -149,7 +149,7 @@ export default function TransactionsPage() {
                   <ItemIcon className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden="true" />
                   <span className="min-w-0 break-words">{item.label}</span>
                 </div>
-                <div className="mt-1 break-words text-xs font-bold leading-4 sm:text-sm">{item.value}</div>
+                <div className="mt-0.5 break-words text-[11px] font-bold leading-3 sm:mt-1 sm:text-sm sm:leading-4">{item.value}</div>
                 <p className="mt-1 hidden text-xs leading-4 opacity-80 sm:block">{item.detail}</p>
               </div>
             );
@@ -165,13 +165,13 @@ export default function TransactionsPage() {
         title="Transaction source checks"
       />
       
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] lg:gap-6">
+      <div className="grid gap-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] lg:gap-6">
         <section
           id="transaction-composer"
           aria-label="Transaction composer"
-          className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4 scroll-mt-24"
+          className="scroll-mt-24 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900 sm:p-4"
         >
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-3 flex items-center justify-between gap-3 sm:mb-4">
             <h2 className="text-md font-medium text-zinc-700 dark:text-zinc-300">
               Transaction Composer
             </h2>

@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import type { InsightSeverity, MetricStripItem } from '@/lib/dashboard/insights';
 
 interface MetricStripProps {
+  compactMobileDetailIds?: string[];
   compactDetailMode?: 'actionable' | 'all';
   id?: string;
   compactMobileColumns?: 2 | 3 | 4;
@@ -40,6 +41,7 @@ function SeverityIcon({ severity }: { severity?: InsightSeverity }) {
 }
 
 export function MetricStrip({
+  compactMobileDetailIds,
   compactDetailMode = 'actionable',
   compactMobileColumns = 3,
   id,
@@ -78,8 +80,14 @@ export function MetricStrip({
       >
         {metrics.map((metric) => {
           const isActionableDetail = metric.severity === 'warning' || metric.severity === 'critical';
+          const isSelectedMobileDetail = compactMobileDetailIds?.includes(metric.id) ?? false;
           const showDetailOnCompactPhone = isFourColumnMobile && (
-            isActionableDetail || compactDetailMode === 'all'
+            isActionableDetail || isSelectedMobileDetail || (compactDetailMode === 'all' && !compactMobileDetailIds)
+          );
+          const showRegularCompactDetail = (
+            isActionableDetail ||
+            isSelectedMobileDetail ||
+            (compactDetailMode === 'all' && !compactMobileDetailIds)
           );
 
           return (
@@ -130,9 +138,9 @@ export function MetricStrip({
                       : 'hidden sm:block sm:line-clamp-none sm:text-xs sm:leading-4'
                     : null,
                   isCompactMobile && !isFourColumnMobile
-                    ? isActionableDetail || compactDetailMode === 'all'
+                    ? showRegularCompactDetail
                       ? 'text-[10px] leading-3 sm:text-xs sm:leading-4'
-                      : 'line-clamp-1 text-[10px] leading-3 sm:line-clamp-none sm:text-xs sm:leading-4'
+                      : 'hidden text-[10px] leading-3 sm:block sm:line-clamp-none sm:text-xs sm:leading-4'
                     : null,
                   !isCompactMobile ? 'leading-4' : null
                 )}

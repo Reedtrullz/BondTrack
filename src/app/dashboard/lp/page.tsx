@@ -82,6 +82,7 @@ export default function LpPage() {
   };
   const confidenceStrip = (
     <MetricStrip
+      compactMobileDetailIds={['historical-lp-values', 'lp-price-feed']}
       compactDetailMode="all"
       compactMobileColumns={3}
       id="lp-data-confidence"
@@ -92,9 +93,9 @@ export default function LpPage() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 sm:py-8 lg:px-8">
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between sm:mb-8">
+      <div className="mb-3 flex items-center justify-between sm:mb-8">
         <div>
           <Link
             href={address ? `/dashboard?address=${address}` : '/dashboard'}
