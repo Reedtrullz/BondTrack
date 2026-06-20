@@ -24,7 +24,7 @@ runs:
         # add the pinned linux-x64 package name here AND in Dockerfile.
         npm install --no-save --no-package-lock \
           lightningcss-linux-x64-gnu@1.32.0 \
-          @tailwindcss/oxide-linux-x64-gnu@4.3.0 \
+          @tailwindcss/oxide-linux-x64-gnu@4.3.1 \
           @rolldown/binding-linux-x64-gnu@1.0.3 \
           @unrs/resolver-binding-linux-x64-gnu@1.12.2 \
           @img/sharp-linux-x64@0.34.5 \
