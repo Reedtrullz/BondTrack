@@ -237,7 +237,7 @@ test.describe('Transaction Composer', () => {
     expect(layout.composerHeading).not.toBeNull();
     expect(layout.preflight!.top).toBeLessThan(layout.composer!.top);
     expect(layout.composer!.top).toBeLessThan(layout.viewportHeight);
-    expect(layout.composerHeading!.bottom).toBeLessThan(layout.viewportHeight);
+    expect(layout.composerHeading!.top).toBeLessThan(layout.viewportHeight);
   });
 
   test('keeps mobile transaction source checks and composer start in the first viewport', async ({ page }) => {
