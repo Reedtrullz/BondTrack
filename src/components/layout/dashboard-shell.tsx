@@ -130,7 +130,7 @@ function getCompactFreshnessLabel(tone: ReturnType<typeof getSourceFreshnessTone
 }
 
 function getSourceIconClass(tone: ReturnType<typeof getSourceFreshnessTone>): string {
-  if (tone === 'healthy') return 'text-emerald-500';
+  if (tone === 'healthy') return 'text-cyan-500';
   if (tone === 'demo') return 'text-sky-500';
   if (tone === 'down') return 'text-red-500';
   if (tone === 'checking') return 'text-blue-500';

@@ -124,4 +124,27 @@ describe('ActionQueue', () => {
     );
     expect(screen.queryByText('Review source')).not.toBeInTheDocument();
   });
+
+  it('renders healthy queue items as no-urgent review context instead of green approval', () => {
+    const healthyAction: ActionItem = {
+      id: 'routine:thor1node',
+      severity: 'healthy',
+      source: 'Status',
+      title: 'No current node issue visible',
+      detail: 'Current source responses do not show jail, slash, or churn-risk flags.',
+      impact: 'Keep reviewing source freshness before adding exposure.',
+      href: '/dashboard/nodes?address=thor1bond&node=thor1node',
+      lastSeen: now,
+      primaryAction: 'Inspect evidence',
+    };
+
+    render(<ActionQueue items={[healthyAction]} now={now} />);
+
+    expect(screen.getByText('No urgent review')).toBeInTheDocument();
+    expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
+
+    const sourceBadge = screen.getByText('Status').closest('span');
+    expect(sourceBadge).toHaveClass('bg-sky-100');
+    expect(sourceBadge).not.toHaveClass('bg-emerald-100');
+  });
 });

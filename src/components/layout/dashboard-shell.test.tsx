@@ -222,6 +222,26 @@ describe('DashboardShell', () => {
     expect(screen.getByTestId('source-freshness-compact')).not.toHaveTextContent('Sources synced');
   });
 
+  it('presents responding source checks as informational instead of success-green', async () => {
+    mocks.reverseLookup.mockResolvedValueOnce({ entry: null });
+
+    render(
+      <DashboardShell>
+        <div>Dashboard content</div>
+      </DashboardShell>
+    );
+
+    await screen.findByText('Dashboard content');
+
+    const compactWifiIcon = screen.getByTestId('source-freshness-compact').querySelector('svg');
+    const fullWifiIcon = screen.getByTestId('source-freshness-full').querySelector('svg');
+
+    expect(compactWifiIcon).toHaveClass('text-cyan-500');
+    expect(fullWifiIcon).toHaveClass('text-cyan-500');
+    expect(compactWifiIcon).not.toHaveClass('text-emerald-500');
+    expect(fullWifiIcon).not.toHaveClass('text-emerald-500');
+  });
+
   it('labels mock-data builds as demo data in compact source status', async () => {
     mocks.apiHealth = {
       midgard: 'mock',

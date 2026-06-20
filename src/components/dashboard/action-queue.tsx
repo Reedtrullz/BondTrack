@@ -42,10 +42,10 @@ const severityConfig: Record<InsightSeverity, {
     badge: 'bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200',
   },
   healthy: {
-    label: 'Healthy',
-    icon: <CheckCircle2 className="h-4 w-4" aria-hidden="true" />,
-    row: 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/60 dark:bg-emerald-950/20',
-    badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200',
+    label: 'No urgent review',
+    icon: <Info className="h-4 w-4" aria-hidden="true" />,
+    row: 'border-sky-200 bg-sky-50/70 dark:border-sky-900/60 dark:bg-sky-950/20',
+    badge: 'bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200',
   },
 };
 

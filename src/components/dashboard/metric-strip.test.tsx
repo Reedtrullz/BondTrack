@@ -101,4 +101,28 @@ describe('MetricStrip', () => {
     expect(screen.getByText(detail)).not.toHaveClass('line-clamp-1');
     expect(screen.getByText(detail)).not.toHaveClass('hidden');
   });
+
+  it('presents healthy supporting metrics as informational evidence, not a green all-clear', () => {
+    render(
+      <MetricStrip
+        metrics={[
+          {
+            id: 'jailed-nodes',
+            label: 'Jailed nodes',
+            value: '0',
+            detail: 'None',
+            severity: 'healthy',
+          },
+        ]}
+      />
+    );
+
+    const metricValue = screen.getByText('0');
+    const metricIcon = screen.getByText('Jailed nodes').parentElement?.querySelector('svg');
+
+    expect(metricValue).toHaveClass('text-sky-600');
+    expect(metricValue).not.toHaveClass('text-emerald-600');
+    expect(metricIcon).toHaveClass('lucide-info');
+    expect(metricIcon).not.toHaveClass('lucide-circle-check');
+  });
 });

@@ -23,13 +23,17 @@ describe('BifrostStatus', () => {
   });
 
   it('describes successful source checks as responding instead of broadly healthy', () => {
-    render(<BifrostStatus />);
+    const { container } = render(<BifrostStatus />);
 
     expect(screen.getByText('Sources responding')).toBeInTheDocument();
     expect(screen.getByText('Recent Midgard + THORNode checks responded')).toBeInTheDocument();
     expect(screen.queryByText('Recent Midgard + THORNode checks succeeded')).not.toBeInTheDocument();
     expect(screen.queryByText('Sources healthy')).not.toBeInTheDocument();
     expect(screen.queryByText('Midgard + THORNode confirmed')).not.toBeInTheDocument();
+    expect(container.innerHTML).toContain('bg-cyan-500');
+    expect(container.innerHTML).toContain('text-cyan-500/60');
+    expect(container.innerHTML).not.toContain('bg-emerald-500');
+    expect(container.innerHTML).not.toContain('text-amber-500');
   });
 
   it('describes degraded and failing checks as source-check states', () => {

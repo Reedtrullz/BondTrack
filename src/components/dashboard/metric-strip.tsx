@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { AlertTriangle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { InsightSeverity, MetricStripItem } from '@/lib/dashboard/insights';
 
@@ -21,7 +21,7 @@ const compactMobileGridClass: Record<NonNullable<MetricStripProps['compactMobile
 };
 
 const severityClass: Record<InsightSeverity, string> = {
-  healthy: 'text-emerald-600 dark:text-emerald-400',
+  healthy: 'text-sky-600 dark:text-sky-400',
   info: 'text-sky-600 dark:text-sky-400',
   warning: 'text-amber-600 dark:text-amber-400',
   critical: 'text-red-600 dark:text-red-400',
@@ -31,10 +31,7 @@ function SeverityIcon({ severity }: { severity?: InsightSeverity }) {
   if (severity === 'critical' || severity === 'warning') {
     return <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />;
   }
-  if (severity === 'healthy') {
-    return <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />;
-  }
-  if (severity === 'info') {
+  if (severity === 'healthy' || severity === 'info') {
     return <Info className="h-3.5 w-3.5" aria-hidden="true" />;
   }
   return null;

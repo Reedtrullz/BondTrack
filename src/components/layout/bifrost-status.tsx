@@ -38,7 +38,7 @@ export function BifrostStatus() {
       <div className="relative" aria-hidden="true">
         <div className={cn(
           'w-2 h-2 rounded-full transition-all duration-1000',
-          status === 'healthy' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' :
+          status === 'healthy' ? 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.45)]' :
           status === 'mock' ? 'bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.6)]' :
           status === 'degraded' || status === 'unknown' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]' :
           'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
@@ -52,7 +52,7 @@ export function BifrostStatus() {
 
       <Zap className={cn(
         'ml-auto w-3 h-3 transition-colors',
-        status === 'healthy' ? 'text-amber-500/50 group-hover:text-amber-500' : status === 'mock' ? 'text-sky-500/70' : 'text-zinc-500'
+        status === 'healthy' ? 'text-cyan-500/60 group-hover:text-cyan-500' : status === 'mock' ? 'text-sky-500/70' : 'text-zinc-500'
       )} aria-hidden="true" />
     </div>
   );
