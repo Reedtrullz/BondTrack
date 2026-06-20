@@ -40,7 +40,7 @@ const degradedSourceSafety: TransactionSourceSafety = {
   canCopyBondMemo: false,
   canCopyUnbondMemo: false,
   canPreview: false,
-  detail: 'THORNode source check is degraded. Do not copy, preview, or broadcast until the THORNode source check passes.',
+  detail: 'THORNode source check is degraded. Do not copy, preview, or broadcast until THORNode positions respond again.',
   itemSeverity: 'warning',
   status: 'Source check degraded',
   value: 'THORNode degraded',
@@ -49,10 +49,10 @@ const freshSourceSafety: TransactionSourceSafety = {
   canCopyBondMemo: true,
   canCopyUnbondMemo: true,
   canPreview: true,
-  detail: 'THORNode positions loaded for node status and unbond eligibility. Wallet still presents the final payload and fee for your approval.',
+  detail: 'THORNode positions responded for node status and unbond eligibility. Source availability is not transaction approval; wallet still presents the final payload and fee.',
   itemSeverity: 'checked',
-  status: 'Source check passed',
-  value: 'THORNode checked',
+  status: 'Source responding',
+  value: 'THORNode responding',
 };
 
 vi.mock('@/lib/hooks/use-wallet', () => ({
@@ -118,7 +118,7 @@ describe('TransactionComposer BOND advanced validation', () => {
     changeInput('Node Address', NODE_ADDRESS);
     changeInput('Bond Amount', '2');
 
-    expect(screen.getByText('THORNode source check must pass before copying a BOND memo.')).toBeInTheDocument();
+    expect(screen.getByText('THORNode positions must respond before copying a BOND memo.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy Memo' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Review Transaction' })).toBeDisabled();
     expect(screen.getByRole('status')).toHaveTextContent(
@@ -572,14 +572,14 @@ describe('TransactionComposer BOND advanced validation', () => {
     changeInput('Node Address', NODE_ADDRESS);
     changeInput('Bond Amount', '2');
 
-    expect(screen.getByText('THORNode source check must pass before copying a BOND memo.')).toBeInTheDocument();
-    expect(screen.getByText('BOND copy stays disabled until the THORNode source check passes.')).toBeInTheDocument();
+    expect(screen.getByText('THORNode positions must respond before copying a BOND memo.')).toBeInTheDocument();
+    expect(screen.getByText('BOND copy stays disabled until THORNode positions respond.')).toBeInTheDocument();
     expect(screen.queryByText(/fresh/i)).not.toBeInTheDocument();
     expect(screen.queryByText(`BOND:${NODE_ADDRESS}`)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy Memo' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Review Transaction' })).toBeDisabled();
     expect(screen.getByRole('status')).toHaveTextContent(
-      'THORNode source check is degraded. Do not copy, preview, or broadcast until the THORNode source check passes.'
+      'THORNode source check is degraded. Do not copy, preview, or broadcast until THORNode positions respond again.'
     );
 
     await user.click(screen.getByRole('button', { name: 'Copy Memo' }));
@@ -601,7 +601,7 @@ describe('TransactionComposer BOND advanced validation', () => {
     );
 
     expect(screen.getByRole('button', { name: 'UNBOND' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('THORNode source check must pass before copying an UNBOND memo.')).toBeInTheDocument();
+    expect(screen.getByText('THORNode positions must respond before copying an UNBOND memo.')).toBeInTheDocument();
     expect(screen.getByText('UNBOND copy stays disabled until THORNode can prove standby eligibility.')).toBeInTheDocument();
     expect(screen.queryByText(/fresh/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy Memo' })).toBeDisabled();

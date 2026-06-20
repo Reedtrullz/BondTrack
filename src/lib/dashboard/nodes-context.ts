@@ -3,7 +3,7 @@ import type { BondPosition } from '@/lib/types/node';
 
 export type NodesSortField = 'nodeAddress' | 'status' | 'bondAmount' | 'netAPY' | 'slashPoints' | 'operatorFee' | 'riskScore';
 export type NodesSortDirection = 'asc' | 'desc';
-export type NodeReviewStateSeverity = 'critical' | 'warning' | 'info' | 'healthy';
+export type NodeReviewStateSeverity = 'critical' | 'warning' | 'info';
 
 export interface NodeReviewState {
   label: 'Jailed' | 'High slash' | 'Slash watch' | 'Churn risk' | 'Leaving' | 'Non-active' | 'Minor slash' | 'Routine';
@@ -119,7 +119,7 @@ export function getNodeReviewState(position: BondPosition): NodeReviewState {
   return {
     detail: 'No review flag from current node status or slash data.',
     label: 'Routine',
-    severity: 'healthy',
+    severity: 'info',
   };
 }
 

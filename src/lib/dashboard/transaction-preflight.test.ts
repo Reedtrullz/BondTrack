@@ -69,14 +69,14 @@ describe('buildTransactionPreflightModel', () => {
       expect.objectContaining({ id: 'mode', value: 'BOND', detail: 'Adds RUNE with a THORChain MsgDeposit memo.', severity: 'info' }),
       expect.objectContaining({
         id: 'source',
-        value: 'THORNode checked',
-        detail: 'THORNode positions loaded for node status and unbond eligibility. Wallet still presents the final payload and fee for your approval.',
+        value: 'THORNode responding',
+        detail: 'THORNode positions responded for node status and unbond eligibility. Source availability is not transaction approval; wallet still presents the final payload and fee.',
         severity: 'checked',
       }),
       expect.objectContaining({
         id: 'wallet',
         value: 'Not connected',
-        detail: 'Required for preview and broadcast; memo copy stays local after the THORNode source check passes.',
+        detail: 'Required for preview and broadcast; memo copy stays local once THORNode positions respond.',
         severity: 'info',
       }),
       expect.objectContaining({ id: 'dashboard-address', value: 'Not selected', detail: 'No watched address is selected for context.', severity: 'warning' }),
@@ -202,9 +202,10 @@ describe('buildTransactionPreflightModel', () => {
     expect(model.detail).not.toContain('preview is available');
     expect(model.detail).not.toMatch(/wallet payload, memo, amount, and network fee match/i);
     expect(model.status).not.toBe('Ready to preview');
-    expect(model.source.status).toBe('Source check passed');
+    expect(model.source.status).toBe('Source responding');
+    expect(model.source.status).not.toBe('Source check passed');
     expect(model.source.status).not.toBe('Source verified');
-    expect(model.source.value).toBe('THORNode checked');
+    expect(model.source.value).toBe('THORNode responding');
     expect(model.source.value).not.toBe('THORNode available');
     expect(model.items).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -239,7 +240,7 @@ describe('buildTransactionPreflightModel', () => {
 
     expect(model.severity).toBe('warning');
     expect(model.status).toBe('Source check degraded');
-    expect(model.detail).toBe('THORNode source check is degraded. Do not copy, preview, or broadcast until the THORNode source check passes.');
+    expect(model.detail).toBe('THORNode source check is degraded. Do not copy, preview, or broadcast until THORNode positions respond again.');
     expect(model.detail).not.toMatch(/fresh/i);
     expect(model.source.canCopyBondMemo).toBe(false);
     expect(model.source.canPreview).toBe(false);
@@ -255,7 +256,7 @@ describe('buildTransactionPreflightModel', () => {
         id: 'eligibility',
         label: 'Node target',
         value: 'Source unavailable',
-        detail: 'THORNode source check must pass before Heimdall allows BOND memo copy, preview, or broadcast.',
+        detail: 'Current THORNode positions must respond before Heimdall allows BOND memo copy, preview, or broadcast.',
         severity: 'warning',
       }),
     ]));
@@ -272,7 +273,7 @@ describe('buildTransactionPreflightModel', () => {
       name: 'positions error',
       source: { positionsError: true, positionsLoading: false, thornodeStatus: 'healthy' as const },
       status: 'Eligibility unavailable',
-      detail: 'THORNode positions failed to load. Do not copy, preview, or broadcast until the THORNode source check passes.',
+      detail: 'THORNode positions failed to load. Do not copy, preview, or broadcast until THORNode positions respond again.',
     },
     {
       name: 'unknown',
@@ -284,7 +285,7 @@ describe('buildTransactionPreflightModel', () => {
       name: 'down',
       source: { positionsError: false, positionsLoading: false, thornodeStatus: 'down' as const },
       status: 'Source check degraded',
-      detail: 'THORNode source check is degraded. Do not copy, preview, or broadcast until the THORNode source check passes.',
+      detail: 'THORNode source check is degraded. Do not copy, preview, or broadcast until THORNode positions respond again.',
     },
     {
       name: 'mock',
@@ -322,7 +323,7 @@ describe('buildTransactionPreflightModel', () => {
         id: 'eligibility',
         label: 'Node target',
         value: 'Source unavailable',
-        detail: 'THORNode source check must pass before Heimdall allows BOND memo copy, preview, or broadcast.',
+        detail: 'Current THORNode positions must respond before Heimdall allows BOND memo copy, preview, or broadcast.',
         severity: source.positionsLoading || source.thornodeStatus === 'unknown' ? 'info' : 'warning',
       }),
     ]));
@@ -349,7 +350,7 @@ describe('buildTransactionPreflightModel', () => {
 
     expect(model.severity).toBe('warning');
     expect(model.status).toBe('Eligibility unavailable');
-    expect(model.detail).toBe('THORNode positions failed to load. Do not copy, preview, or broadcast until the THORNode source check passes.');
+    expect(model.detail).toBe('THORNode positions failed to load. Do not copy, preview, or broadcast until THORNode positions respond again.');
     expect(model.detail).not.toMatch(/fresh/i);
     expect(model.source.canCopyBondMemo).toBe(false);
     expect(model.source.canCopyUnbondMemo).toBe(false);

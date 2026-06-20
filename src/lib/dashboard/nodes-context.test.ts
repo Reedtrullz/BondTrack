@@ -63,6 +63,8 @@ describe('getNodeReviewState', () => {
     expect(getNodeReviewState(position({ status: 'Standby' })).label).toBe('Non-active');
     expect(getNodeReviewState(position({ slashPoints: NETWORK.SLASH_POINT_THRESHOLDS.warning - 1 })).label).toBe('Minor slash');
     expect(getNodeReviewState(position()).label).toBe('Routine');
+    expect(getNodeReviewState(position()).severity).toBe('info');
+    expect(getNodeReviewState(position()).severity).not.toBe('healthy');
   });
 
   it('does not expose a numeric score as the visible review label', () => {

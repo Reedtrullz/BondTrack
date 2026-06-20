@@ -126,7 +126,7 @@ function getCompactFreshnessLabel(tone: ReturnType<typeof getSourceFreshnessTone
     return 'Checking sources';
   }
 
-  return 'Sources checked';
+  return 'Sources responding';
 }
 
 function getSourceIconClass(tone: ReturnType<typeof getSourceFreshnessTone>): string {

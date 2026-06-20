@@ -204,7 +204,9 @@ test.describe('Transaction Composer', () => {
     await expect(preflight).not.toContainText('Connect only when you are ready');
     await expect(preflight).toContainText('Mode');
     await expect(preflight).toContainText('BOND');
-    await expect(preflight).toContainText('THORNode checked');
+    await expect(preflight).toContainText('THORNode responding');
+    await expect(preflight).not.toContainText('THORNode checked');
+    await expect(preflight).not.toContainText('Source check passed');
     await expect(preflight).not.toContainText('THORNode available');
     await expect(preflight).not.toContainText('Source verified');
     await expect(preflight).not.toContainText('THORNode fresh');
@@ -1104,7 +1106,7 @@ test.describe('Transaction Composer', () => {
       exact: true,
     })).toBeVisible({ timeout: 30000 });
     await expect(preflight).toContainText('Source checks');
-    await expect(preflight).toContainText('THORNode positions failed to load. Do not copy, preview, or broadcast until the THORNode source check passes.');
+    await expect(preflight).toContainText('THORNode positions failed to load. Do not copy, preview, or broadcast until THORNode positions respond again.');
     await expect(preflight).not.toContainText('Source confidence');
     await expect(preflight).not.toContainText('source confidence is fresh');
     await expect(preflight).not.toContainText('fresh source check');
@@ -1120,8 +1122,8 @@ test.describe('Transaction Composer', () => {
     await composer.getByLabel('Node Address').fill(MOCK_NODE);
     await composer.getByLabel('Bond Amount').fill('10');
 
-    await expect(composer.locator('code')).toHaveText('THORNode source check must pass before copying a BOND memo.');
-    await expect(composer.getByText('BOND copy stays disabled until the THORNode source check passes.')).toBeVisible();
+    await expect(composer.locator('code')).toHaveText('THORNode positions must respond before copying a BOND memo.');
+    await expect(composer.getByText('BOND copy stays disabled until THORNode positions respond.')).toBeVisible();
     await expect(composer).not.toContainText('source confidence must be fresh');
     await expect(composer.getByRole('button', { name: 'Copy', exact: true })).toBeDisabled();
     await expect(composer.getByRole('button', { name: 'Copy Memo', exact: true })).toBeDisabled();
@@ -1132,7 +1134,7 @@ test.describe('Transaction Composer', () => {
 
     await page.goto(`/dashboard/transactions?address=${MOCK_ADDRESS}&action=unbond&node=${MOCK_NODE}&amount=10`);
     const unbondComposer = page.getByLabel('Transaction composer');
-    await expect(unbondComposer.locator('code')).toHaveText('THORNode source check must pass before copying an UNBOND memo.');
+    await expect(unbondComposer.locator('code')).toHaveText('THORNode positions must respond before copying an UNBOND memo.');
     await expect(unbondComposer.getByText('UNBOND copy stays disabled until THORNode can prove standby eligibility.')).toBeVisible();
     await expect(unbondComposer).not.toContainText('source confidence must be fresh');
     await expect(unbondComposer.getByRole('button', { name: 'Copy Memo', exact: true })).toBeDisabled();

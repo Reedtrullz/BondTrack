@@ -207,7 +207,7 @@ describe('DashboardShell', () => {
     expect(screen.getByTestId('source-freshness-full')).not.toHaveTextContent('Sources synced');
   });
 
-  it('labels healthy compact source status as checked rather than synced', async () => {
+  it('labels healthy compact source status as responding rather than checked or synced', async () => {
     mocks.reverseLookup.mockResolvedValueOnce({ entry: null });
 
     render(
@@ -218,7 +218,8 @@ describe('DashboardShell', () => {
 
     await screen.findByText('Dashboard content');
 
-    expect(screen.getByTestId('source-freshness-compact')).toHaveTextContent('Sources checked');
+    expect(screen.getByTestId('source-freshness-compact')).toHaveTextContent('Sources responding');
+    expect(screen.getByTestId('source-freshness-compact')).not.toHaveTextContent('Sources checked');
     expect(screen.getByTestId('source-freshness-compact')).not.toHaveTextContent('Sources synced');
   });
 

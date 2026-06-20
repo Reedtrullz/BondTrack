@@ -424,10 +424,10 @@ export function TransactionComposer({
       ? !nodeValidation.valid
         ? 'Enter a valid node address before copying a BOND memo.'
         : !sourceAllowsBondMemo
-          ? 'THORNode source check must pass before copying a BOND memo.'
+          ? 'THORNode positions must respond before copying a BOND memo.'
           : 'Fix advanced BOND memo fields before copying.'
       : !sourceAllowsUnbondMemo
-        ? 'THORNode source check must pass before copying an UNBOND memo.'
+        ? 'THORNode positions must respond before copying an UNBOND memo.'
       : 'Select an eligible standby node and valid amount before copying an UNBOND memo.';
   const memoReadinessDetail = canCopyMemo
     ? mode === 'BOND'
@@ -437,7 +437,7 @@ export function TransactionComposer({
       : 'UNBOND memo can be copied for wallet review; amount is encoded in 1e8 base units.'
     : mode === 'BOND'
       ? !sourceAllowsBondMemo
-        ? 'BOND copy stays disabled until the THORNode source check passes.'
+        ? 'BOND copy stays disabled until THORNode positions respond.'
         : 'Copy stays disabled until the node address and advanced memo fields are valid.'
       : !sourceAllowsUnbondMemo
         ? 'UNBOND copy stays disabled until THORNode can prove standby eligibility.'

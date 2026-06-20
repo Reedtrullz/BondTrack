@@ -75,6 +75,12 @@ const minorSlashPosition: BondPosition = {
   yieldGuardFlags: [],
 };
 
+const routinePosition: BondPosition = {
+  ...minorSlashPosition,
+  nodeAddress: 'thor1routine0000000000000000000000000000000',
+  slashPoints: 0,
+};
+
 describe('NodesPage', () => {
   beforeEach(() => {
     mockUseBondPositions.mockReset();
@@ -195,5 +201,24 @@ describe('NodesPage', () => {
     expect(screen.getByRole('cell', { name: '49' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: /Minor slash Below provider-review threshold/i })).toBeInTheDocument();
     expect(container).not.toHaveTextContent(/Review Score/);
+  });
+
+  it('renders routine review state as informational instead of green approval', () => {
+    mockUseBondPositions.mockReturnValue({
+      positions: [routinePosition],
+      isLoading: false,
+    });
+
+    render(<NodesPage />);
+
+    const routineCell = screen.getByRole('cell', {
+      name: /Routine No review flag from current node status or slash data/i,
+    });
+    const routineBadge = within(routineCell).getByText('Routine');
+
+    expect(routineBadge).toHaveClass('border-sky-200');
+    expect(routineBadge).toHaveClass('bg-sky-50');
+    expect(routineBadge).not.toHaveClass('border-emerald-200');
+    expect(routineBadge).not.toHaveClass('bg-emerald-50');
   });
 });

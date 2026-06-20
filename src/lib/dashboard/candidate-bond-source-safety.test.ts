@@ -7,13 +7,15 @@ describe('getCandidateBondSourceSafety', () => {
     const safety = getCandidateBondSourceSafety('healthy');
 
     expect(safety.canPrepareBond).toBe(true);
-    expect(safety.statusLabel).toBe('Source check passed');
-    expect(safety.title).toBe('Source check passed');
-    expect(safety.value).toBe('THORNode checked');
+    expect(safety.statusLabel).toBe('Source responding');
+    expect(safety.title).toBe('Source responding');
+    expect(safety.value).toBe('THORNode responding');
     expect(safety.value).not.toBe('THORNode available');
     expect(safety.detail).toBe(
-      'THORNode node set loaded for candidate scoring and provider-capacity checks. Wallet still presents the final BOND memo and fee for your approval.'
+      'THORNode node set responded for candidate scoring and provider-capacity checks. Source availability is not transaction approval; wallet still presents the final BOND memo and fee.'
     );
+    expect(safety.statusLabel).not.toBe('Source check passed');
+    expect(safety.title).not.toBe('Source check passed');
     expect(safety.detail).not.toMatch(/fresh enough|verified|safe/i);
     expect(safety.statusLabel).not.toMatch(/fresh|verified|safe/i);
     expect(safety.title).not.toMatch(/fresh|verified|safe/i);
@@ -29,7 +31,7 @@ describe('getCandidateBondSourceSafety', () => {
       expect(safety.detail).not.toMatch(/memo prep|fresh enough/i);
 
       if (status === 'healthy') {
-        expect(safety.detail).toContain('Wallet still presents the final BOND memo and fee for your approval');
+        expect(safety.detail).toContain('wallet still presents the final BOND memo and fee');
         expect(safety.detail).not.toContain('Wallet still confirms');
       } else if (status === 'mock') {
         expect(safety.detail).toContain('do not review or copy BOND memos from demo data');

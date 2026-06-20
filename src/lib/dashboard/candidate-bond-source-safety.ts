@@ -14,11 +14,11 @@ export function getCandidateBondSourceSafety(thornodeStatus: ApiHealthStatus): C
   if (thornodeStatus === 'healthy') {
     return {
       canPrepareBond: true,
-      detail: 'THORNode node set loaded for candidate scoring and provider-capacity checks. Wallet still presents the final BOND memo and fee for your approval.',
+      detail: 'THORNode node set responded for candidate scoring and provider-capacity checks. Source availability is not transaction approval; wallet still presents the final BOND memo and fee.',
       severity: 'healthy',
-      statusLabel: 'Source check passed',
-      title: 'Source check passed',
-      value: 'THORNode checked',
+      statusLabel: 'Source responding',
+      title: 'Source responding',
+      value: 'THORNode responding',
     };
   }
 

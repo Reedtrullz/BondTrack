@@ -27,7 +27,8 @@ test.describe('Mobile critical release path', () => {
     const actions = page.getByRole('region', { name: 'Provider review queue' });
     const compactSourceStatus = page.getByTestId('source-freshness-compact');
 
-    await expect(compactSourceStatus).toContainText('Sources checked');
+    await expect(compactSourceStatus).toContainText('Sources responding');
+    await expect(compactSourceStatus).not.toContainText('Sources checked');
     await expect(compactSourceStatus).not.toContainText('Sources synced');
     await expect(diagnosis).toBeVisible();
     await expect(sourceConfidence).toBeVisible();

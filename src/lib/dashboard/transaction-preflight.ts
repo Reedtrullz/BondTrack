@@ -176,7 +176,7 @@ export function getTransactionSourceSafety({
       canCopyBondMemo: false,
       canCopyUnbondMemo: false,
       canPreview: false,
-      detail: 'THORNode positions failed to load. Do not copy, preview, or broadcast until the THORNode source check passes.',
+      detail: 'THORNode positions failed to load. Do not copy, preview, or broadcast until THORNode positions respond again.',
       itemSeverity: 'warning',
       status: 'Eligibility unavailable',
       value: 'THORNode failed',
@@ -188,7 +188,7 @@ export function getTransactionSourceSafety({
       canCopyBondMemo: false,
       canCopyUnbondMemo: false,
       canPreview: false,
-      detail: 'THORNode source check is degraded. Do not copy, preview, or broadcast until the THORNode source check passes.',
+      detail: 'THORNode source check is degraded. Do not copy, preview, or broadcast until THORNode positions respond again.',
       itemSeverity: 'warning',
       status: 'Source check degraded',
       value: `THORNode ${thornodeStatus}`,
@@ -223,10 +223,10 @@ export function getTransactionSourceSafety({
     canCopyBondMemo: true,
     canCopyUnbondMemo: true,
     canPreview: true,
-    detail: 'THORNode positions loaded for node status and unbond eligibility. Wallet still presents the final payload and fee for your approval.',
+    detail: 'THORNode positions responded for node status and unbond eligibility. Source availability is not transaction approval; wallet still presents the final payload and fee.',
     itemSeverity: 'checked',
-    status: 'Source check passed',
-    value: 'THORNode checked',
+    status: 'Source responding',
+    value: 'THORNode responding',
   };
 }
 
@@ -297,7 +297,7 @@ export function buildTransactionPreflightModel({
           ? `Switch to ${wallet.networkMismatch.expected} before broadcast.`
           : wallet.isConnected
             ? `${wallet.walletType?.toUpperCase() ?? 'Wallet'} connected; wallet must present final payload before approval.`
-            : 'Required for preview and broadcast; memo copy stays local after the THORNode source check passes.',
+            : 'Required for preview and broadcast; memo copy stays local once THORNode positions respond.',
         severity: wallet.isNetworkMismatch ? 'critical' : wallet.isConnected ? 'checked' : 'info',
       },
       {
@@ -322,7 +322,7 @@ export function buildTransactionPreflightModel({
         detail: action === 'bond'
           ? source.canCopyBondMemo
             ? 'Confirm the node address before copying or signing.'
-            : 'THORNode source check must pass before Heimdall allows BOND memo copy, preview, or broadcast.'
+            : 'Current THORNode positions must respond before Heimdall allows BOND memo copy, preview, or broadcast.'
           : !source.canCopyUnbondMemo
             ? 'THORNode positions must load before Heimdall can prove standby eligibility.'
           : eligibleUnbondCount > 0

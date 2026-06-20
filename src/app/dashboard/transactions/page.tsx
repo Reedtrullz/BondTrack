@@ -99,7 +99,7 @@ export default function TransactionsPage() {
   }, [router, searchParams]);
 
   return (
-    <div className="space-y-2 sm:space-y-5">
+    <div className="space-y-2 sm:space-y-4">
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Transactions</h1>
         <p className="hidden max-w-3xl text-sm leading-6 text-zinc-500 dark:text-zinc-400 sm:block">
@@ -110,7 +110,7 @@ export default function TransactionsPage() {
       <section
         aria-label="Transaction safety preflight"
         className={cn(
-          'rounded-2xl border p-2 shadow-sm sm:p-5',
+          'rounded-2xl border p-2 shadow-sm sm:p-4',
           preflightSeverityClass[preflight.severity]
         )}
       >
@@ -133,7 +133,7 @@ export default function TransactionsPage() {
           </a>
         </div>
 
-        <div className="mt-2 grid grid-cols-3 gap-1 sm:mt-4 sm:gap-2 xl:grid-cols-5">
+        <div className="mt-2 grid grid-cols-3 gap-1 sm:mt-3 sm:gap-2 xl:grid-cols-5">
           {preflight.items.map((item) => {
             const ItemIcon = getPreflightItemIcon(item);
 
@@ -141,7 +141,7 @@ export default function TransactionsPage() {
               <div
                 key={item.id}
                 className={cn(
-                  'min-w-0 rounded-xl border bg-white/70 p-1.5 dark:bg-zinc-950/30 sm:p-3',
+                  'min-w-0 rounded-xl border bg-white/70 p-1.5 dark:bg-zinc-950/30 sm:p-2.5',
                   preflightSeverityClass[item.severity]
                 )}
               >
