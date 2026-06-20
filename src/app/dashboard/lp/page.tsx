@@ -84,7 +84,7 @@ export default function LpPage() {
     <MetricStrip
       compactMobileDetailIds={['historical-lp-values', 'lp-price-feed']}
       compactDetailMode="all"
-      compactMobileColumns={3}
+      compactMobileColumns={4}
       id="lp-data-confidence"
       metrics={pageModel.confidenceMetrics}
       mobileDensity="compact"
