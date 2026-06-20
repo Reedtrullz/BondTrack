@@ -424,6 +424,12 @@ describe('PortfolioPage', () => {
     expect(sourceHealth).not.toHaveTextContent('Recent Midgard + THORNode checks succeeded');
     expect(sourceHealth).not.toHaveTextContent('Sources healthy');
     expect(sourceHealth).not.toHaveTextContent('Midgard + THORNode confirmed');
+    expect(sourceHealth).toHaveClass('border-cyan-200/70');
+    expect(sourceHealth).toHaveClass('text-cyan-700');
+    expect(sourceHealth).not.toHaveClass('border-emerald-200/70');
+    expect(sourceHealth).not.toHaveClass('text-emerald-700');
+    expect(sourceHealth.querySelector('[aria-hidden="true"]')).toHaveClass('bg-cyan-500');
+    expect(sourceHealth.querySelector('[aria-hidden="true"]')).not.toHaveClass('bg-emerald-500');
     expect(screen.queryByText('Live')).not.toBeInTheDocument();
   });
 

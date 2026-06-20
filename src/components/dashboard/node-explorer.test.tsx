@@ -169,11 +169,61 @@ describe('NodeExplorer', () => {
     expect(scoreEvidence).toHaveTextContent('5/5 inputs usable');
     expect(scoreEvidence).toHaveTextContent('All candidate inputs present');
     expect(scoreEvidence).toHaveTextContent('Capacity: Watched address is listed as a bond provider.');
+    expect(within(scoreEvidence).getByText(/All candidate inputs present/)).toHaveClass('text-sky-700');
+    expect(within(scoreEvidence).getByText(/All candidate inputs present/)).not.toHaveClass('text-emerald-700');
     expect(recommendation.compareDocumentPosition(apyPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(recommendation.compareDocumentPosition(scoreEvidence) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(scoreEvidence.compareDocumentPosition(apyPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(apyPanel).toHaveAccessibleName('Adjusted APY 10.00 percent');
     expect(apyPanel).toHaveTextContent('Adj. APY');
+  });
+
+  it('frames high APY and zero slash as source metrics instead of green approvals', () => {
+    render(
+      <NodeExplorer
+        nodes={[{
+          ...baseNode,
+          adjustedAPY: 88,
+          slash_points: 0,
+        }]}
+        sourceSafety={freshSourceSafety}
+        userAddress="thor1provider0000000000000000000000000000000"
+        positions={[]}
+      />
+    );
+
+    const apy = within(screen.getByTestId('candidate-apy')).getByText('88.00%');
+    const slash = within(screen.getByTestId('candidate-slash')).getByText('0');
+
+    expect(apy).toHaveClass('text-sky-600');
+    expect(apy).not.toHaveClass('text-emerald-600');
+    expect(slash).toHaveClass('text-sky-600');
+    expect(slash).not.toHaveClass('text-emerald-600');
+    expect(screen.getByTestId('candidate-slash')).toHaveAccessibleName('Slash points 0 from current THORNode source data');
+  });
+
+  it('frames bonded membership and active status as source facts instead of green approvals', () => {
+    render(
+      <NodeExplorer
+        nodes={[baseNode]}
+        sourceSafety={freshSourceSafety}
+        userAddress="thor1provider0000000000000000000000000000000"
+        positions={[{ nodeAddress: baseNode.node_address }]}
+      />
+    );
+
+    const bondedBadge = screen.getByTestId('candidate-bonded-badge');
+    const status = screen.getByTestId('candidate-status');
+    const statusIcon = within(status).getByTestId('candidate-status-icon');
+
+    expect(bondedBadge).toHaveTextContent('Bonded');
+    expect(bondedBadge).toHaveAccessibleName('Watched address is listed as bonded to this node in current THORNode source data');
+    expect(bondedBadge).toHaveClass('bg-sky-100');
+    expect(bondedBadge).not.toHaveClass('bg-emerald-100');
+    expect(status).toHaveAccessibleName('Node status Active from current THORNode source data');
+    expect(statusIcon).toHaveClass('text-sky-500');
+    expect(statusIcon).not.toHaveClass('text-emerald-500');
+    expect(within(status).getByTestId('candidate-status-value')).toHaveTextContent('Active');
   });
 
   it('does not offer bond memo preparation for avoid-rated candidates', () => {

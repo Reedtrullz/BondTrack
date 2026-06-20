@@ -84,8 +84,8 @@ function getPortfolioSourceStatus(midgard: ApiHealthStatus, thornode: ApiHealthS
   return {
     label: 'Sources responding',
     detail: 'Recent Midgard + THORNode checks responded',
-    dotClass: 'bg-emerald-500',
-    className: 'border-emerald-200/70 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200',
+    dotClass: 'bg-cyan-500',
+    className: 'border-cyan-200/70 bg-cyan-50 text-cyan-700 dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200',
   };
 }
 

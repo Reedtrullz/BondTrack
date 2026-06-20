@@ -27,7 +27,7 @@ export default function SimulatorPage() {
             Bond Simulator
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-            Test bond strategies and preview the impact on your portfolio
+            Model manual reward scenarios before separately reviewing node risk and wallet safety
           </p>
         </div>
       </div>

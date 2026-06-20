@@ -90,8 +90,8 @@ export function CandidateScoreEvidence({
             'mt-1 text-xs font-medium',
             scoreEvidence.unavailableInputs.length > 0
               ? 'text-amber-700 dark:text-amber-300'
-              : 'text-emerald-700 dark:text-emerald-300'
-          )}>
+              : 'text-sky-700 dark:text-sky-300'
+          )} data-testid={`${testId}-summary`}>
             {evidenceSummary}. Capacity: {capacityEvidence}
           </p>
         </div>

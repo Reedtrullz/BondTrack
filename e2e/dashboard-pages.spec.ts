@@ -261,6 +261,8 @@ test.describe("Portfolio Page", () => {
 
     await page.goto(`/dashboard/simulator?address=${MOCK_ADDRESS}`);
 
+    await expect(page.getByText("Model manual reward scenarios before separately reviewing node risk and wallet safety")).toBeVisible();
+    await expect(page.getByText("Test bond strategies and preview the impact on your portfolio")).toHaveCount(0);
     const diagnosis = page.getByLabel("Simulator scenario diagnosis");
     await expect(diagnosis).toContainText("Manual Estimate", { timeout: 10000 });
     await expect(diagnosis).not.toContainText("Estimate Ready");
@@ -275,14 +277,23 @@ test.describe("Portfolio Page", () => {
     await expect(assumptions).not.toContainText("Meets minimum");
     await expect(assumptions.getByText("Meets active minimum")).toHaveClass(/text-sky-600/);
     await expect(assumptions.getByText("Meets active minimum")).not.toHaveClass(/text-emerald-600/);
-    await expect(page.getByRole("button", { name: "Conservative inputs 50% manual APY, 10% operator fee, 90-day window" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Baseline inputs 50% manual APY, 10% operator fee, 90-day window" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Reference inputs 65% manual APY, 15% operator fee, 180-day window" })).toBeVisible();
+    await expect(page.getByText("Conservative inputs")).toHaveCount(0);
+    await expect(page.getByText("Balanced inputs")).toHaveCount(0);
     await expect(page.getByText("Low risk, established nodes, 10% fee")).toHaveCount(0);
     await expect(page.getByText("Moderate risk and return, 15% fee")).toHaveCount(0);
     await expect(page.getByText("Higher APY, newer nodes, 20% fee")).toHaveCount(0);
-    await expect(page.getByText("Impact Preview")).toBeVisible();
-    await expect(page.getByText("Risk check")).toBeVisible();
-    await expect(page.getByText("Not modeled")).toBeVisible();
-    await expect(page.getByText("Review slash, jail, and churn before acting")).toBeVisible();
+    const rewardOnlyImpact = page.getByRole("group", { name: "Reward-only impact" });
+    await expect(rewardOnlyImpact).toBeVisible();
+    await expect(rewardOnlyImpact.getByText("Reward-only impact")).toBeVisible();
+    await expect(page.getByText("Impact Preview")).toHaveCount(0);
+    const positiveApyDelta = rewardOnlyImpact.getByText(/^\+\d+\.\d{2}%$/);
+    await expect(positiveApyDelta).toHaveClass(/text-sky-600/);
+    await expect(positiveApyDelta).not.toHaveClass(/text-emerald-600/);
+    await expect(rewardOnlyImpact.getByText("Risk check")).toBeVisible();
+    await expect(rewardOnlyImpact.getByText("Not modeled")).toBeVisible();
+    await expect(rewardOnlyImpact.getByText("Review slash, jail, and churn before acting")).toBeVisible();
     await expect(page.getByText("Projected Health")).toHaveCount(0);
 
     const diagnosisBeforeInput = await diagnosis.evaluate((element) => {

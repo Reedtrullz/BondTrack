@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Calculator, TrendingUp, Coins, BarChart3, ShieldCheck, AlertTriangle, Info } from 'lucide-react';
+import { Calculator, TrendingUp, Coins, BarChart3, AlertTriangle, Info } from 'lucide-react';
 import { NETWORK } from '@/lib/config';
 import { buildBondSimulatorInsight } from '@/lib/dashboard/bond-simulator-context';
 import { formatRuneFromNumber, formatCompactNumber } from '@/lib/utils/formatters';
@@ -33,16 +33,16 @@ interface Preset {
 
 const PRESETS: Record<PresetType, Preset> = {
   conservative: {
-    name: 'Conservative inputs',
+    name: 'Baseline inputs',
     description: '50% manual APY, 10% operator fee, 90-day window',
     bondAmount: 50000,
     lockDays: 90,
     networkApy: 50,
     operatorFeeBps: 1000,
-    icon: <ShieldCheck className="w-4 h-4 text-emerald-500" />,
+    icon: <Info className="w-4 h-4 text-sky-500" />,
   },
   balanced: {
-    name: 'Balanced inputs',
+    name: 'Reference inputs',
     description: '65% manual APY, 15% operator fee, 180-day window',
     bondAmount: 100000,
     lockDays: 180,
@@ -133,7 +133,7 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
     [bondAmount, lockDaysNum, networkApyNum, operatorFeeNum]
   );
 
-  // Impact Preview: Reward math can shift bond totals, but node-risk scoring remains a separate source check.
+  // Reward-only impact: reward math can shift bond totals, but node-risk scoring remains a separate source check.
   const impactPreview = useMemo(() => {
     if (!currentPositions || bondAmount <= 0) return null;
 
@@ -370,13 +370,17 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
             </table>
           </div>
 
-          {/* Impact Preview */}
+          {/* Reward-only impact */}
           {impactPreview && currentPositions && currentPositions.length > 0 && (
-            <div className="p-4 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+            <div
+              className="p-4 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20"
+              role="group"
+              aria-label="Reward-only impact"
+            >
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp className="w-4 h-4 text-blue-500" />
                 <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                  Impact Preview
+                  Reward-only impact
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -392,8 +396,8 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
                     impactPreview.estimatedAPYChange === null
                       ? 'text-zinc-600 dark:text-zinc-400'
                       : impactPreview.estimatedAPYChange >= 0
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-red-600 dark:text-red-400'
+                        ? 'text-sky-600 dark:text-sky-400'
+                        : 'text-amber-600 dark:text-amber-400'
                   }`}>
                     {impactPreview.estimatedAPYChange === null
                       ? 'First bonded baseline'

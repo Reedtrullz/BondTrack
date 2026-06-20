@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { AlertTriangle, ArrowRight, Check, Info } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NodeRaw } from '@/lib/api/thornode';
 import { formatRuneDisplayNumber } from '@/lib/utils/formatters';
@@ -102,15 +102,12 @@ function formatCandidateNumber(value: number): string {
 
 function getApyTone(adjustedAPY: number): string {
   if (!isUsableCandidateNumber(adjustedAPY)) return 'text-zinc-600 dark:text-zinc-400';
-  if (adjustedAPY > 70) return 'text-emerald-600 dark:text-emerald-400';
-  if (adjustedAPY > 50) return 'text-blue-600 dark:text-blue-400';
-  if (adjustedAPY > 30) return 'text-yellow-600 dark:text-yellow-400';
-  return 'text-red-600 dark:text-red-400';
+  return 'text-sky-600 dark:text-sky-400';
 }
 
 function getSlashTone(slashPoints: number): string {
   if (!isUsableCandidateNumber(slashPoints)) return 'text-zinc-600 dark:text-zinc-400';
-  if (slashPoints === 0) return 'text-emerald-600 dark:text-emerald-400';
+  if (slashPoints === 0) return 'text-sky-600 dark:text-sky-400';
   if (slashPoints < 50) return 'text-yellow-600 dark:text-yellow-400';
   return 'text-red-600 dark:text-red-400';
 }
@@ -208,7 +205,11 @@ export function NodeExplorer({
                   <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-zinc-500">
                     <span className="min-w-0 break-all">Version: {node.version}</span>
                     {bonded && (
-                      <span className="px-2 py-0.5 text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full">
+                      <span
+                        className="rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-700 dark:bg-sky-900/30 dark:text-sky-300"
+                        data-testid="candidate-bonded-badge"
+                        aria-label="Watched address is listed as bonded to this node in current THORNode source data"
+                      >
                         Bonded
                       </span>
                     )}
@@ -262,7 +263,10 @@ export function NodeExplorer({
                     : 'Adjusted APY unavailable'}
                 >
                   <p className="text-xs text-zinc-500">Adj. APY</p>
-                  <p className={cn("break-words font-mono text-zinc-900 dark:text-zinc-100", getApyTone(node.adjustedAPY))}>
+                  <p
+                    className={cn("break-words font-mono text-zinc-900 dark:text-zinc-100", getApyTone(node.adjustedAPY))}
+                    data-testid="candidate-apy-value"
+                  >
                     {formatCandidatePercent(node.adjustedAPY)}
                   </p>
                 </div>
@@ -278,23 +282,41 @@ export function NodeExplorer({
                     {formatCandidatePercent(node.operatorFeePercent * 100)}
                   </p>
                 </div>
-                <div className="min-w-0">
+                <div
+                  className="min-w-0"
+                  data-testid="candidate-slash"
+                  aria-label={isUsableCandidateNumber(node.slash_points)
+                    ? `Slash points ${formatCandidateNumber(node.slash_points)} from current THORNode source data`
+                    : 'Slash points unavailable from current THORNode source data'}
+                >
                   <p className="text-xs text-zinc-500">Slash Points</p>
-                  <p className={cn("break-words font-mono", getSlashTone(node.slash_points))}>
+                  <p
+                    className={cn("break-words font-mono", getSlashTone(node.slash_points))}
+                    data-testid="candidate-slash-value"
+                  >
                     {formatCandidateNumber(node.slash_points)}
                   </p>
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs text-zinc-500">Status</p>
-                  <div className="flex min-w-0 items-center gap-1">
+                  <div
+                    className="flex min-w-0 items-center gap-1"
+                    data-testid="candidate-status"
+                    aria-label={`Node status ${node.status} from current THORNode source data`}
+                  >
                     {node.status === 'Active' ? (
-                      <Check className="h-3 w-3 shrink-0 text-emerald-500" />
+                      <Info className="h-3 w-3 shrink-0 text-sky-500" data-testid="candidate-status-icon" />
                     ) : node.status === 'Standby' ? (
-                      <AlertTriangle className="h-3 w-3 shrink-0 text-yellow-500" />
+                      <AlertTriangle className="h-3 w-3 shrink-0 text-yellow-500" data-testid="candidate-status-icon" />
                     ) : (
-                      <AlertTriangle className="h-3 w-3 shrink-0 text-red-500" />
+                      <AlertTriangle className="h-3 w-3 shrink-0 text-red-500" data-testid="candidate-status-icon" />
                     )}
-                    <span className="min-w-0 break-words text-zinc-900 dark:text-zinc-100">{node.status}</span>
+                    <span
+                      className="min-w-0 break-words text-zinc-900 dark:text-zinc-100"
+                      data-testid="candidate-status-value"
+                    >
+                      {node.status}
+                    </span>
                   </div>
                 </div>
                 <div className="min-w-0">

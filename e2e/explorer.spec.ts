@@ -166,6 +166,27 @@ test.describe('Node explorer', () => {
     await expect(recommendation).not.toContainText('memo prep');
     await expect(recommendation).not.toContainText('Ready for bond prep');
 
+    const scoreEvidence = candidateCard.getByTestId('candidate-score-evidence');
+    await expect(scoreEvidence.getByTestId('candidate-score-evidence-summary')).toHaveClass(/text-sky-700/);
+    await expect(scoreEvidence.getByTestId('candidate-score-evidence-summary')).not.toHaveClass(/text-emerald-700/);
+
+    const apyMetric = candidateCard.getByTestId('candidate-apy');
+    const slashMetric = candidateCard.getByTestId('candidate-slash');
+    await expect(apyMetric.getByTestId('candidate-apy-value')).toHaveClass(/text-sky-600/);
+    await expect(apyMetric.getByTestId('candidate-apy-value')).not.toHaveClass(/text-emerald-600/);
+    await expect(slashMetric).toHaveAccessibleName('Slash points 0 from current THORNode source data');
+    await expect(slashMetric.getByTestId('candidate-slash-value')).toHaveClass(/text-sky-600/);
+    await expect(slashMetric.getByTestId('candidate-slash-value')).not.toHaveClass(/text-emerald-600/);
+
+    const bondedBadge = candidateCard.getByTestId('candidate-bonded-badge');
+    const statusMetric = candidateCard.getByTestId('candidate-status');
+    await expect(bondedBadge).toHaveAccessibleName('Watched address is listed as bonded to this node in current THORNode source data');
+    await expect(bondedBadge).toHaveClass(/bg-sky-100/);
+    await expect(bondedBadge).not.toHaveClass(/bg-emerald-100/);
+    await expect(statusMetric).toHaveAccessibleName('Node status Active from current THORNode source data');
+    await expect(statusMetric.getByTestId('candidate-status-icon')).toHaveClass(/text-sky-500/);
+    await expect(statusMetric.getByTestId('candidate-status-icon')).not.toHaveClass(/text-emerald-500/);
+
     await page.goto(`/dashboard/explorer?address=${DEFAULT_DASHBOARD_ADDRESS}&node=thor1nodemocked123456789abcdef`);
     const focusedCandidateContext = page.getByLabel('Focused candidate context');
     await expect(focusedCandidateContext).toBeVisible();

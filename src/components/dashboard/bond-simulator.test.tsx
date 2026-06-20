@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -60,11 +60,14 @@ describe('BondSimulator trust copy', () => {
     render(<BondSimulator currentPositions={[]} />);
 
     await user.click(screen.getByRole('button', {
-      name: 'Conservative inputs 50% manual APY, 10% operator fee, 90-day window',
+      name: 'Baseline inputs 50% manual APY, 10% operator fee, 90-day window',
     }));
 
     expect(screen.getByText('Scenario estimates, not guarantees')).toBeInTheDocument();
-    expect(screen.getByText('Conservative inputs')).toBeInTheDocument();
+    expect(screen.getByText('Baseline inputs')).toBeInTheDocument();
+    expect(screen.getByText('Reference inputs')).toBeInTheDocument();
+    expect(screen.queryByText('Conservative inputs')).not.toBeInTheDocument();
+    expect(screen.queryByText('Balanced inputs')).not.toBeInTheDocument();
     expect(screen.queryByText('Low risk, established nodes, 10% fee')).not.toBeInTheDocument();
     expect(screen.queryByText('Moderate risk and return, 15% fee')).not.toBeInTheDocument();
     expect(screen.queryByText('Higher APY, newer nodes, 20% fee')).not.toBeInTheDocument();
@@ -98,7 +101,11 @@ describe('BondSimulator trust copy', () => {
       />
     );
 
-    expect(screen.getByText('Impact Preview')).toBeInTheDocument();
+    const impact = screen.getByRole('group', { name: 'Reward-only impact' });
+
+    expect(impact).toBeInTheDocument();
+    expect(screen.getByText('Reward-only impact')).toBeInTheDocument();
+    expect(screen.queryByText('Impact Preview')).not.toBeInTheDocument();
     expect(screen.getByText('First bonded baseline')).toBeInTheDocument();
     expect(screen.queryByText(/NaN|Infinity/)).not.toBeInTheDocument();
   });
@@ -127,10 +134,50 @@ describe('BondSimulator trust copy', () => {
       />
     );
 
-    expect(screen.getByText('Impact Preview')).toBeInTheDocument();
+    const impact = screen.getByRole('group', { name: 'Reward-only impact' });
+    expect(impact).toBeInTheDocument();
+    expect(screen.getByText('Reward-only impact')).toBeInTheDocument();
     expect(screen.getByText('Risk check')).toBeInTheDocument();
     expect(screen.getByText('Not modeled')).toBeInTheDocument();
     expect(screen.getByText('Review slash, jail, and churn before acting')).toBeInTheDocument();
     expect(screen.queryByText('Projected Health')).not.toBeInTheDocument();
+    expect(screen.queryByText('Impact Preview')).not.toBeInTheDocument();
+  });
+
+  it('frames positive APY delta as reward-only context instead of a green approval', () => {
+    render(
+      <BondSimulator
+        currentPositions={[
+          {
+            nodeAddress: 'thor1existingbond',
+            nodeOperatorAddress: 'thor1operator',
+            bondAmount: 100_000,
+            bondSharePercent: 100,
+            status: 'Active',
+            operatorFee: 1000,
+            operatorFeeFormatted: '10.0%',
+            netAPY: 12,
+            totalBond: 100_000,
+            slashPoints: 0,
+            isJailed: false,
+            jailReleaseHeight: 0,
+            version: '3.19.0',
+            requestedToLeave: false,
+          },
+        ]}
+      />
+    );
+
+    const impact = screen.getByRole('group', { name: 'Reward-only impact' });
+
+    expect(impact).toBeInTheDocument();
+    expect(screen.getByText('Reward-only impact')).toBeInTheDocument();
+    expect(screen.queryByText('Impact Preview')).not.toBeInTheDocument();
+
+    const apyDelta = within(impact).getByText('+43.25%');
+    expect(apyDelta).toHaveClass('text-sky-600');
+    expect(apyDelta).not.toHaveClass('text-emerald-600');
+    expect(screen.getByText('Risk check')).toBeInTheDocument();
+    expect(screen.getByText('Not modeled')).toBeInTheDocument();
   });
 });
