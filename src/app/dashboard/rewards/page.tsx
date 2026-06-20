@@ -33,16 +33,18 @@ function RewardsStateCard({
   detail,
   action,
 }: {
-  tone: 'empty' | 'error';
+  tone: 'empty' | 'error' | 'warning';
   title: string;
   description: string;
   detail: string;
   action?: ReactNode;
 }) {
-  const Icon = tone === 'error' ? AlertTriangle : Search;
+  const Icon = tone === 'empty' ? Search : AlertTriangle;
   const iconClass = tone === 'error'
     ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300'
-    : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300';
+    : tone === 'warning'
+      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+      : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300';
 
   return (
     <DashboardCard className="p-8 text-center bg-white dark:bg-zinc-900 rounded-xl">
@@ -97,6 +99,7 @@ export default function RewardsPage() {
     positions: safePositions,
     runePrice,
     runePriceIsStale,
+    runePriceUpdatedAt,
   }), [
     actionsError,
     bondHistory,
@@ -104,6 +107,7 @@ export default function RewardsPage() {
     networkData?.bondingAPY,
     runePrice,
     runePriceIsStale,
+    runePriceUpdatedAt,
     safePositions,
   ]);
   const weightedApy = rewardsModel.weightedApy;
@@ -126,7 +130,7 @@ export default function RewardsPage() {
     runePriceUpdatedAt,
   ]);
   const bondComposerAction = resolveThornodeGatedBondAction(rewardsInsight.actions, {
-    label: 'Open Bond Composer',
+    label: 'Open BOND review',
     href: address
       ? `/dashboard/transactions?address=${encodeURIComponent(address)}`
       : '/dashboard/transactions',
@@ -157,11 +161,11 @@ export default function RewardsPage() {
     }, 0);
   };
 
-  const handleReviewDataConfidence = () => {
+  const handleReviewDataChecks = () => {
     window.setTimeout(() => {
-      const confidencePanel = document.getElementById('rewards-data-confidence');
-      if (confidencePanel && typeof confidencePanel.scrollIntoView === 'function') {
-        confidencePanel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      const checksPanel = document.getElementById('rewards-data-confidence');
+      if (checksPanel && typeof checksPanel.scrollIntoView === 'function') {
+        checksPanel.scrollIntoView({ block: 'start', behavior: 'smooth' });
       }
     }, 0);
   };
@@ -245,7 +249,7 @@ export default function RewardsPage() {
         <RewardsStateCard
           tone="error"
           title="Rewards data is temporarily unavailable"
-          description="The bond-position lookup failed before reward calculations could be trusted."
+          description="The bond-position lookup failed before reward inputs could be checked."
           detail={error instanceof Error ? error.message : 'Use the global refresh control after Midgard or THORNode recovers.'}
         />
       </div>
@@ -256,7 +260,7 @@ export default function RewardsPage() {
   const primaryConfidenceIssue = rewardsModel.primaryConfidenceIssue;
   const weightedApyCopy = weightedApy > 0 ? formatPercent(weightedApy) : 'not available yet';
   const rewardsDiagnosis = primaryConfidenceIssue
-    ? `${primaryConfidenceIssue.label} is ${primaryConfidenceIssue.value.toLowerCase()}. ${primaryConfidenceIssue.detail}. Weighted net APY is ${weightedApyCopy}; use the confidence panel before relying on return, forecast, or tax outputs.`
+    ? `${primaryConfidenceIssue.label} is ${primaryConfidenceIssue.value.toLowerCase()}. ${primaryConfidenceIssue.detail}. Weighted net APY is ${weightedApyCopy}; use the data checks before relying on return, forecast, or tax outputs.`
     : `Weighted net APY is ${weightedApyCopy}. Returns, fee leakage, forecast assumptions, and tax worksheet context are separated below so each decision has its own context.`;
   const rewardsTopRisk = primaryConfidenceIssue
     ? `${primaryConfidenceIssue.label}: ${primaryConfidenceIssue.value}`
@@ -265,9 +269,9 @@ export default function RewardsPage() {
       : rewardsInsight.topRisk;
   const rewardsPrimaryAction = primaryConfidenceIssue
     ? {
-        label: 'Review data confidence',
+        label: 'Review data checks',
         href: '#rewards-data-confidence',
-        onClick: handleReviewDataConfidence,
+        onClick: handleReviewDataChecks,
       }
     : {
         label: 'Review Fees',
@@ -279,9 +283,23 @@ export default function RewardsPage() {
     ? primaryConfidenceIssue.severity === 'critical' ? 'Action Needed' : 'Review Needed'
     : rewardsInsight.statusLabel;
   const bondedRune = safePositions.reduce((sum, position) => sum + position.bondAmount, 0);
+  const noBondNeedsSourceReview = bondComposerAction.kind === 'source-confidence';
+  const noBondState = noBondNeedsSourceReview
+    ? {
+        tone: 'warning' as const,
+        title: 'Bond position result needs source check',
+        description: 'No active bond-provider position is visible yet, but THORNode confidence has not passed, so do not treat the missing bond position as final.',
+        detail: 'Confirm the address, then wait for the THORNode source check to pass before opening BOND review.',
+      }
+    : {
+        tone: 'empty' as const,
+        title: 'No active bond-provider position visible',
+        description: 'Current THORNode node data does not show this address as an active bond provider. Treat this as the current source result, not a guarantee about past or pending bond activity.',
+        detail: 'If you intend to add bond, open BOND review after confirming the address and node operator.',
+      };
 
   return (
-    <div className="space-y-12 pb-20">
+    <div className="space-y-6 pb-20 sm:space-y-12">
       <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Rewards</h1>
       {hasPositions ? (
         <>
@@ -306,7 +324,13 @@ export default function RewardsPage() {
             compactMobileMetrics
           />
 
-          <MetricStrip id="rewards-data-confidence" metrics={rewardsModel.confidenceMetrics} title="Rewards data confidence" />
+          <MetricStrip
+            compactDetailMode="all"
+            id="rewards-data-confidence"
+            metrics={rewardsModel.confidenceMetrics}
+            mobileDensity="compact"
+            title="Rewards data checks"
+          />
 
           <Tabs value={activeRewardsTab} onValueChange={setActiveRewardsTab} className="space-y-4">
             <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800 md:grid-cols-4">
@@ -369,7 +393,7 @@ export default function RewardsPage() {
                   <div>
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Reward tax worksheet</h2>
                     <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                      CSV includes date-inclusive FIFO bond rows and estimated LP confidence metadata. It is not a filing-ready tax report.
+                      CSV includes date-inclusive FIFO bond rows and estimated LP source metadata. It is not a filing-ready tax report.
                     </p>
                   </div>
                   <Button
@@ -416,10 +440,10 @@ export default function RewardsPage() {
         </>
       ) : (
         <RewardsStateCard
-          tone="empty"
-          title="No bonded positions found"
-          description="The address was queried successfully, but it is not currently listed as a bond provider on an active node."
-          detail="Bond RUNE to a node operator first; then this page will show net APY, operator fee impact, reward velocity, and tax worksheet options."
+          tone={noBondState.tone}
+          title={noBondState.title}
+          description={noBondState.description}
+          detail={noBondState.detail}
           action={
             <Button type="button" size="sm" onClick={() => router.push(bondComposerAction.href)}>
               {bondComposerAction.label}
@@ -449,7 +473,7 @@ export default function RewardsPage() {
           >
             <h3 id="tax-export-title" className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Export tax worksheet CSV</h3>
             <p id="tax-export-description" className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-              Choose a date range for FIFO bond rows and estimated LP income confidence metadata. Use it for reconciliation before tax filing; it is not a filing-ready tax report.
+              Choose a date range for FIFO bond rows and estimated LP source metadata. Use it for reconciliation before tax filing; it is not a filing-ready tax report.
             </p>
             <div className="mt-5 space-y-4">
               <div>

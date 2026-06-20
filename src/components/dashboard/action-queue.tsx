@@ -12,6 +12,7 @@ interface ActionQueueProps {
   title?: string;
   emptyTitle?: string;
   emptyDetail?: string;
+  emptyTone?: 'good' | 'info';
   compact?: boolean;
   mobileCompact?: boolean;
 }
@@ -55,31 +56,24 @@ function groupItems(items: ActionItem[]): Array<[InsightSeverity, ActionItem[]]>
     .filter(([, entries]) => entries.length > 0);
 }
 
-function getMobileActionLabel(actionLabel: string, item: ActionItem): string {
-  if (item.id.startsWith('source:') || /source confidence/i.test(actionLabel)) {
-    return 'Review source';
-  }
-
-  if (/risk|slash|churn|jail/i.test(actionLabel)) {
-    return /slash/i.test(actionLabel) ? 'Review exposure' : 'Review risk';
-  }
-
-  if (/node/i.test(actionLabel)) {
-    return 'Inspect node';
-  }
-
-  return actionLabel;
-}
-
 export function ActionQueue({
   items,
   now = new Date(),
   title = 'Provider review queue',
-  emptyTitle = 'No provider review needed',
-  emptyDetail = 'Current sources do not show a node, source, or LP confidence issue that needs provider review.',
+  emptyTitle = 'No urgent provider review visible',
+  emptyDetail = 'Current source responses do not show a node, source, or LP issue that needs provider review.',
+  emptyTone = 'info',
   compact = false,
   mobileCompact = false,
 }: ActionQueueProps) {
+  const EmptyIcon = emptyTone === 'info' ? Info : CheckCircle2;
+  const emptyToneClass = emptyTone === 'info'
+    ? 'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/20 dark:text-sky-200'
+    : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-200';
+  const emptyDetailClass = emptyTone === 'info'
+    ? 'text-sky-700 dark:text-sky-300'
+    : 'text-emerald-700 dark:text-emerald-300';
+
   return (
     <section
       className={cn(
@@ -92,14 +86,7 @@ export function ActionQueue({
         <div>
           <h2 className="text-lg font-bold text-zinc-950 dark:text-zinc-50">{title}</h2>
           <p className={cn('text-sm text-zinc-500 dark:text-zinc-400', mobileCompact ? 'sr-only sm:not-sr-only' : '')}>
-            {mobileCompact ? (
-              <>
-                <span className="sm:hidden">Ranked by provider exposure.</span>
-                <span className="hidden sm:inline">Ranked by provider exposure, not by visual noise.</span>
-              </>
-            ) : (
-              'Ranked by provider exposure, not by visual noise.'
-            )}
+            Ranked by provider exposure, not by visual noise.
           </p>
         </div>
         <span className="rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
@@ -108,12 +95,12 @@ export function ActionQueue({
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-200">
+        <div className={cn('rounded-xl border p-4', emptyToneClass)}>
           <div className="flex items-center gap-2 font-semibold">
-            <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+            <EmptyIcon className="h-4 w-4" aria-hidden="true" />
             {emptyTitle}
           </div>
-          <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-300">{emptyDetail}</p>
+          <p className={cn('mt-1 text-sm', emptyDetailClass)}>{emptyDetail}</p>
         </div>
       ) : (
         <div className={cn(mobileCompact ? 'space-y-3 sm:space-y-4' : 'space-y-4')}>
@@ -127,15 +114,13 @@ export function ActionQueue({
                 </div>
                 {entries.map((item) => {
                   const actionLabel = item.primaryAction ?? 'Inspect';
-                  const mobileActionLabel = getMobileActionLabel(actionLabel, item);
-                  const keepImpactVisible = mobileCompact && item.id.startsWith('source:');
 
                   return (
                     <article
                       key={item.id}
                       className={cn(
                         'rounded-xl border',
-                        mobileCompact ? 'p-2 sm:p-3' : 'p-3',
+                        mobileCompact ? 'p-1.5 sm:p-3' : 'p-3',
                         compact ? 'space-y-2' : mobileCompact ? 'space-y-2 sm:space-y-3' : 'space-y-3',
                         config.row
                       )}
@@ -162,7 +147,7 @@ export function ActionQueue({
                             className={cn(
                               'font-bold text-zinc-950 dark:text-zinc-50',
                               mobileCompact
-                                ? 'mt-1 truncate text-[13px] leading-5 sm:mt-2 sm:overflow-visible sm:text-clip sm:whitespace-normal sm:text-sm'
+                                ? 'mt-1 whitespace-normal break-words text-[13px] leading-[18px] sm:mt-2 sm:leading-5 sm:text-sm'
                                 : 'mt-2 text-sm'
                             )}
                           >
@@ -170,8 +155,8 @@ export function ActionQueue({
                           </h3>
                           <p
                             className={cn(
-                              'mt-1 text-sm leading-5 text-zinc-700 dark:text-zinc-300',
-                              mobileCompact ? 'hidden sm:block' : ''
+                              'mt-1 text-zinc-700 dark:text-zinc-300',
+                              mobileCompact ? 'line-clamp-2 text-xs leading-4 sm:line-clamp-none sm:text-sm sm:leading-5' : 'text-sm leading-5'
                             )}
                           >
                             {item.detail}
@@ -179,8 +164,10 @@ export function ActionQueue({
                           {!compact ? (
                             <p
                               className={cn(
-                                'mt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400',
-                                mobileCompact && !keepImpactVisible ? 'hidden sm:block' : ''
+                                'font-medium text-zinc-500 dark:text-zinc-400',
+                                mobileCompact
+                                  ? 'mt-1 line-clamp-1 text-[11px] leading-[14px] sm:mt-2 sm:line-clamp-none sm:text-xs sm:leading-4'
+                                  : 'mt-2 text-xs'
                               )}
                             >
                               Provider impact: {item.impact}
@@ -189,20 +176,12 @@ export function ActionQueue({
                         </div>
                         <Link
                           href={item.href}
-                          aria-label={mobileCompact ? actionLabel : undefined}
                           className={cn(
                             'inline-flex shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white font-bold text-zinc-900 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800',
                             mobileCompact ? 'h-8 px-2 text-[11px] sm:h-9 sm:px-3 sm:text-xs' : 'h-9 px-3 text-xs'
                           )}
                         >
-                          {mobileCompact ? (
-                            <>
-                              <span className="sm:hidden">{mobileActionLabel}</span>
-                              <span className="hidden sm:inline">{actionLabel}</span>
-                            </>
-                          ) : (
-                            actionLabel
-                          )}
+                          {actionLabel}
                         </Link>
                       </div>
                     </article>

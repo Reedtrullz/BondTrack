@@ -13,7 +13,7 @@ import { InsightHeader } from '@/components/dashboard/insight-header';
 import { SourceFreshnessPanel } from '@/components/dashboard/source-freshness-panel';
 import { DashboardLoadingSkeleton } from '@/components/shared/dashboard-loading-skeleton';
 import { buttonVariants } from '@/components/ui/button';
-import { AlertTriangle, ArrowLeft, CheckCircle2, Filter, ArrowUpDown } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Filter, ArrowUpDown, Info } from 'lucide-react';
 import {
   getCandidateSortLabel,
   getDefaultCandidateSortOrder,
@@ -73,9 +73,9 @@ function buildBondPrepHref(address: string | null, nodeAddress?: string) {
 function getDecisionActionLabel(action: ExplorerDecisionAction): string {
   switch (action) {
     case 'prepare-bond':
-      return 'Prepare BOND memo';
+      return 'Review BOND memo';
     case 'review-source':
-      return 'Review source confidence';
+      return 'Review source checks';
     case 'review-access':
       return 'Review provider access';
     case 'review-risk':
@@ -96,15 +96,15 @@ function getFocusedCandidateAction(
     if (!sourceSafety.canPrepareBond) {
       return {
         href: EXPLORER_SOURCE_CONFIDENCE_HREF,
-        label: 'Review source confidence',
+        label: 'Review source checks',
         tone: 'review' as const,
       };
     }
 
     return {
       href: buildBondPrepHref(address, candidate.node_address),
-      label: 'Prepare BOND memo',
-      tone: 'ready' as const,
+      label: 'Review BOND memo',
+      tone: 'review' as const,
     };
   }
 
@@ -126,9 +126,9 @@ function getFocusedCandidateAction(
 function getFocusedCapacitySummary(candidate: NodeExplorerCandidate): string {
   switch (candidate.candidateScore.capacityTrust) {
     case 'available':
-      return 'Provider whitelisted';
+      return 'Provider listed by THORNode';
     case 'needs_whitelist':
-      return 'Whitelist needed';
+      return 'Provider not listed by THORNode';
     case 'full':
       return 'Provider slots full';
     case 'unknown':
@@ -175,14 +175,12 @@ function FocusedCandidateSummary({
     ? 'border-red-200 bg-red-50/80 text-red-950 dark:border-red-900/60 dark:bg-red-950/25 dark:text-red-100'
     : candidate.candidateScore.quality === 'Watch'
       ? 'border-amber-200 bg-amber-50/80 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100'
-      : 'border-emerald-200 bg-emerald-50/80 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-100';
+      : 'border-sky-200 bg-sky-50/80 text-sky-950 dark:border-sky-900/60 dark:bg-sky-950/25 dark:text-sky-100';
   const focusedAction = getFocusedCandidateAction(candidate, address, sourceSafety);
   const directBondSourceBlocked = candidate.candidateScore.quality === 'Strong'
     && candidate.candidateScore.capacityTrust === 'available'
     && !sourceSafety.canPrepareBond;
-  const primaryActionClass = focusedAction.tone === 'ready'
-    ? 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 dark:border-emerald-500 dark:bg-emerald-500 dark:text-zinc-950 dark:hover:bg-emerald-400'
-    : 'border-current/30 bg-white/90 text-current hover:bg-white dark:bg-zinc-950/70 dark:hover:bg-zinc-900';
+  const primaryActionClass = 'border-current/30 bg-white/90 text-current hover:bg-white dark:bg-zinc-950/70 dark:hover:bg-zinc-900';
   const secondaryActionClass = 'border-current/25 bg-white/55 text-current hover:bg-white/80 dark:bg-zinc-950/40 dark:hover:bg-zinc-900';
   const metricSummary = [
     getFocusedCapacitySummary(candidate),
@@ -203,14 +201,14 @@ function FocusedCandidateSummary({
               Focused candidate
             </span>
             <span className="text-xs font-semibold uppercase">
-              {candidate.candidateScore.quality} · {candidate.candidateScore.score}/100
+              {candidate.candidateScore.quality} candidate
             </span>
           </div>
           <h2 className="mt-2 break-all font-mono text-sm font-semibold sm:text-base">
             {candidate.node_address}
           </h2>
           <p className="mt-1 text-sm opacity-85">
-            This is the node selected from risk review. Compare the evidence below before preparing any BOND transaction.
+            This is the node selected from risk review. Compare the evidence below before reviewing any BOND memo.
           </p>
           {directBondSourceBlocked ? (
             <p className="mt-2 rounded-lg border border-current/20 bg-white/60 px-3 py-2 text-sm font-semibold dark:bg-black/20" data-testid="focused-candidate-source-warning">
@@ -376,7 +374,7 @@ export default function ExplorerPage() {
         </div>
         <DashboardLoadingSkeleton
           title="Loading node discovery data"
-          detail="Waiting for the active THORNode set before scoring candidates by slash history, operator fee, APY, and capacity trust."
+          detail="Waiting for the active THORNode set before ranking candidates by slash history, operator fee, APY, and capacity trust."
           cards={6}
           className="p-0"
         />
@@ -429,7 +427,12 @@ export default function ExplorerPage() {
       </div>
 
       <div id="explorer-source-confidence" className="mb-3 scroll-mt-24 sm:mb-6">
-        <SourceFreshnessPanel sources={explorerSources} compact title="Discovery source confidence" />
+        <SourceFreshnessPanel
+          ariaLabel="Discovery source checks"
+          sources={explorerSources}
+          compact
+          title="Discovery source checks"
+        />
       </div>
 
       {focusedNodeAddress ? (
@@ -442,60 +445,6 @@ export default function ExplorerPage() {
           sourceSafety={sourceSafety}
         />
       ) : null}
-
-      <section
-        aria-label="Candidate quality summary"
-        className={`mb-3 rounded-xl border p-2.5 sm:mb-6 sm:p-4 ${
-          directBondIsActionable
-            ? 'border-emerald-200 bg-emerald-50/70 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-100'
-            : 'border-amber-200 bg-amber-50/80 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100'
-        }`}
-      >
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-3">
-            {directBondIsActionable ? (
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-            ) : (
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-            )}
-            <div>
-              <h2 className="text-sm font-bold">
-                {directBondCount > 0
-                  ? sourceSafety.canPrepareBond
-                    ? `${directBondCount} direct-bond candidate${directBondCount === 1 ? '' : 's'} with confirmed capacity`
-                    : `${directBondCount} direct-bond candidate${directBondCount === 1 ? '' : 's'} waiting on source confidence`
-                  : 'No direct-bond candidates with confirmed capacity'}
-              </h2>
-              <p className="mt-1 text-sm opacity-85">
-                {directBondCount > 0
-                  ? sourceSafety.canPrepareBond
-                    ? 'Only Strong candidates where the watched address is already a bond provider can be prepared directly. Other nodes route through Risk review first.'
-                    : sourceSafety.detail
-                  : 'No visible node confirms the watched address as a bond provider with low enough risk. Review whitelist and risk evidence before preparing any bond.'}
-              </p>
-              <p className="mt-1 text-xs opacity-70">
-                {maxBondProviders
-                  ? `Provider-slot confidence uses THORNode MaxBondProviders (${maxBondProviders}).`
-                  : 'Provider-slot confidence waits for THORNode constants; unlisted addresses stay in review.'}
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-center text-xs font-semibold md:min-w-72">
-            <div className="flex items-center justify-center gap-1 rounded-full bg-white/60 px-2 py-1 dark:bg-black/20 md:block md:rounded-lg md:px-3 md:py-2">
-              <div className="font-bold md:text-lg">{qualityCounts.Strong}</div>
-              <div>Strong</div>
-            </div>
-            <div className="flex items-center justify-center gap-1 rounded-full bg-white/60 px-2 py-1 dark:bg-black/20 md:block md:rounded-lg md:px-3 md:py-2">
-              <div className="font-bold md:text-lg">{qualityCounts.Watch}</div>
-              <div>Watch</div>
-            </div>
-            <div className="flex items-center justify-center gap-1 rounded-full bg-white/60 px-2 py-1 dark:bg-black/20 md:block md:rounded-lg md:px-3 md:py-2">
-              <div className="font-bold md:text-lg">{qualityCounts.Avoid}</div>
-              <div>Avoid</div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       <InsightHeader
         severity={decision.severity}
@@ -531,7 +480,62 @@ export default function ExplorerPage() {
                 }}
         eyebrow="Discovery decision"
         compactMobileMetrics
+        compactMetricDetailMode="all"
       />
+
+      <section
+        aria-label="Candidate quality summary"
+        className={`mt-3 rounded-xl border p-2.5 sm:mt-6 sm:p-4 ${
+          directBondIsActionable
+            ? 'border-sky-200 bg-sky-50/70 text-sky-900 dark:border-sky-900/60 dark:bg-sky-950/20 dark:text-sky-100'
+            : 'border-amber-200 bg-amber-50/80 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100'
+        }`}
+      >
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-3">
+            {directBondIsActionable ? (
+              <Info className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+            ) : (
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+            )}
+            <div>
+              <h2 className="text-sm font-bold">
+                {directBondCount > 0
+                  ? sourceSafety.canPrepareBond
+                    ? `${directBondCount} direct-bond candidate${directBondCount === 1 ? '' : 's'} with watched-provider evidence`
+                    : `${directBondCount} direct-bond candidate${directBondCount === 1 ? '' : 's'} waiting on THORNode source check`
+                  : 'No direct-bond candidates with watched-provider evidence'}
+              </h2>
+              <p className="mt-1 text-sm opacity-85">
+                {directBondCount > 0
+                  ? sourceSafety.canPrepareBond
+                    ? 'Only Strong candidates where THORNode lists the watched address as a bond provider can be reviewed in the transaction composer. Other nodes route through Risk review first.'
+                    : sourceSafety.detail
+                  : 'No visible node lists the watched address as a bond provider with low enough risk. Review operator access and risk evidence before reviewing any BOND memo.'}
+              </p>
+              <p className="mt-1 text-xs opacity-70">
+                {maxBondProviders
+                  ? `Provider-slot evidence uses THORNode MaxBondProviders (${maxBondProviders}).`
+                  : 'Provider-slot evidence waits for THORNode constants; unlisted addresses stay in review.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center text-xs font-semibold md:min-w-72">
+            <div className="flex items-center justify-center gap-1 rounded-full bg-white/60 px-2 py-1 dark:bg-black/20 md:block md:rounded-lg md:px-3 md:py-2">
+              <div className="font-bold md:text-lg">{qualityCounts.Strong}</div>
+              <div>Strong</div>
+            </div>
+            <div className="flex items-center justify-center gap-1 rounded-full bg-white/60 px-2 py-1 dark:bg-black/20 md:block md:rounded-lg md:px-3 md:py-2">
+              <div className="font-bold md:text-lg">{qualityCounts.Watch}</div>
+              <div>Watch</div>
+            </div>
+            <div className="flex items-center justify-center gap-1 rounded-full bg-white/60 px-2 py-1 dark:bg-black/20 md:block md:rounded-lg md:px-3 md:py-2">
+              <div className="font-bold md:text-lg">{qualityCounts.Avoid}</div>
+              <div>Avoid</div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Filters and Sorting */}
       <div className="my-3 flex flex-wrap gap-2 rounded-xl border border-zinc-200 bg-white p-2.5 dark:border-zinc-800 dark:bg-zinc-900 sm:my-6 sm:gap-3 sm:p-4">

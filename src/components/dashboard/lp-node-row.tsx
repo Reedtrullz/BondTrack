@@ -17,6 +17,20 @@ interface LpNodeRowProps {
   position: LpPosition;
 }
 
+function getEntryPricingLabel(position: LpPosition): string | null {
+  if (position.pricingSource === 'current-only') {
+    return 'Historical entry unavailable';
+  }
+
+  if (position.pricingSource === 'estimated') {
+    return position.entryRunePriceSource === 'coingecko'
+      ? 'External CoinGecko entry quote'
+      : 'Estimated entry pricing';
+  }
+
+  return null;
+}
+
 export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
   const pnlPercent = position.netProfitLossPercent ?? 0;
   const pnlColor = pnlPercent > 0
@@ -33,6 +47,7 @@ export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
     : position.redeemQuoteSource === 'derived'
       ? 'Estimated from pool share'
       : 'Redeem quote unavailable';
+  const entryPricingLabel = getEntryPricingLabel(position);
 
   return (
     <tr className="border-b border-zinc-100 bg-white transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800/50">
@@ -85,11 +100,8 @@ export const LpNodeRow: React.FC<LpNodeRowProps> = ({ position }) => {
           <div className={`text-sm ${pnlColor}`}>
             {formatPercent(position.netProfitLossPercent)}
           </div>
-          {position.pricingSource === 'current-only' && (
-            <div className="text-[10px] text-amber-600 dark:text-amber-400">Historical entry unavailable</div>
-          )}
-          {position.pricingSource === 'estimated' && (
-            <div className="text-[10px] text-amber-600 dark:text-amber-400">Estimated entry pricing</div>
+          {entryPricingLabel && (
+            <div className="text-[10px] text-amber-600 dark:text-amber-400">{entryPricingLabel}</div>
           )}
         </div>
       </td>

@@ -3,6 +3,13 @@ import type { BondPosition } from '@/lib/types/node';
 
 export type NodesSortField = 'nodeAddress' | 'status' | 'bondAmount' | 'netAPY' | 'slashPoints' | 'operatorFee' | 'riskScore';
 export type NodesSortDirection = 'asc' | 'desc';
+export type NodeReviewStateSeverity = 'critical' | 'warning' | 'info' | 'healthy';
+
+export interface NodeReviewState {
+  label: 'Jailed' | 'High slash' | 'Slash watch' | 'Churn risk' | 'Leaving' | 'Non-active' | 'Minor slash' | 'Routine';
+  detail: string;
+  severity: NodeReviewStateSeverity;
+}
 
 export interface NodesPageModel {
   exceptionPositions: BondPosition[];
@@ -47,6 +54,73 @@ export function isUrgentNodeException(position: BondPosition): boolean {
     slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning ||
     hasUrgentYieldFlag
   );
+}
+
+export function getNodeReviewState(position: BondPosition): NodeReviewState {
+  const slashPoints = finiteNonNegative(position.slashPoints);
+  const flags = position.yieldGuardFlags ?? [];
+
+  if (position.isJailed) {
+    return {
+      detail: 'Confirm operator recovery before changing provider exposure.',
+      label: 'Jailed',
+      severity: 'critical',
+    };
+  }
+
+  if (slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical) {
+    return {
+      detail: `${slashPoints.toLocaleString()} slash points above provider-review threshold.`,
+      label: 'High slash',
+      severity: 'warning',
+    };
+  }
+
+  if (slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.warning) {
+    return {
+      detail: `${slashPoints.toLocaleString()} slash points above watch threshold.`,
+      label: 'Slash watch',
+      severity: 'warning',
+    };
+  }
+
+  if (flags.includes('leaving')) {
+    return {
+      detail: 'Node is flagged as leaving; confirm continuity before adding exposure.',
+      label: 'Leaving',
+      severity: 'warning',
+    };
+  }
+
+  if (flags.includes('lowest_bond')) {
+    return {
+      detail: 'Near the low-bond edge; review churn context.',
+      label: 'Churn risk',
+      severity: 'warning',
+    };
+  }
+
+  if (position.status !== 'Active') {
+    return {
+      detail: `${position.status} validator status; active-set earning may not apply.`,
+      label: 'Non-active',
+      severity: 'warning',
+    };
+  }
+
+  if (slashPoints > 0) {
+    return {
+      detail: 'Below provider-review threshold; keep in comparison history.',
+      label: 'Minor slash',
+      severity: 'info',
+    };
+  }
+
+  return {
+    detail: 'No review flag from current node status or slash data.',
+    label: 'Routine',
+    severity: 'healthy',
+  };
 }
 
 function getExceptionPriority(position: BondPosition): number {

@@ -1,6 +1,6 @@
 # Heimdall 🛡️
 
-A professional investment command center for THORChain bond providers — monitor bonded RUNE, node health, rewards, risk metrics, and LP positions with institutional-grade precision.
+A professional investment command center for THORChain bond providers and liquidity providers — monitor bonded RUNE exposure, rewards, risk metrics, LP provenance, and provider-safe alerts with institutional-grade precision.
 
 > **Canonical project:** This repository (`Reedtrullz/Heimdall`, local path `/Users/reidar/Projectos/Heimdall`) is the canonical THORChain dashboard. Do not revive or implement new work in the older `THORNode Watcher` / BondTrack checkout; keep it archive-only for historical QA/audit artifacts.
 
@@ -18,15 +18,16 @@ A professional investment command center for THORChain bond providers — monito
 - Total bonded RUNE tracking with USD valuation
 - Real-time RUNE price (USD)
 - Weighted APY calculations with benchmark comparison
-- Portfolio health scoring (A-F grade)
+- Provider exposure scoring and ranked next actions
 - Net earnings transparency (gross vs net after fees)
 
-### ⛓️ Node Health
+### ⛓️ Provider Exposure
 - Active/Standby/Ready status monitoring
 - Bond amount and rank tracking
 - Slash points and jail status
 - Churn-out risk assessment
 - Node operator fee impact analysis
+- Background browser push alerts for provider exposure transitions
 
 ### 💰 Rewards & Earnings
 - P&L dashboard with initial bond tracking
@@ -40,7 +41,7 @@ A professional investment command center for THORChain bond providers — monito
 - Network security metrics (TVL, bond-to-pool ratio)
 - Unbond window tracker
 - Churn-out risk indicators
-- Portfolio health score with actionable insights
+- Provider exposure score with actionable insights
 
 ### 🔧 Transaction Tools
 - BOND/UNBOND memo composer
@@ -122,14 +123,29 @@ secrets in `NEXT_PUBLIC_*` variables; they are bundled into client-side code.
 | `TRUST_CLOUDFLARE_HEADERS` | Server-side rate limiting: trust `CF-Connecting-IP` when directly behind Cloudflare | `false` |
 | `TRUST_VERCEL_PROXY_HEADERS` | Server-side rate limiting: trust Vercel forwarded IP headers outside the Vercel runtime | `false` |
 | `VERSION` | Runtime app version; Ansible sets this to the immutable deployed image tag | `sha-<short>` |
+| `HEIMDALL_DATA_DIR` | Durable server-side data directory for background notification subscriptions | `.heimdall-data` locally; `/data` in production |
+| `WEB_PUSH_VAPID_PUBLIC_KEY` | Public VAPID key returned by `/api/notifications/status` for browser push subscriptions | unset |
+| `WEB_PUSH_VAPID_PRIVATE_KEY` | Server-only VAPID private key used to send browser push notifications | unset |
+| `WEB_PUSH_CONTACT` | VAPID subject/contact for Web Push delivery | unset |
+| `NOTIFICATION_POLL_INTERVAL_MS` | Background provider-alert monitor interval; values below 30s are clamped | `60000` |
+| `HEIMDALL_NOTIFICATION_RUNNER_TOKEN` | Bearer token for the optional internal notification monitor trigger route | unset |
+| `HEIMDALL_NOTIFICATION_MAX_SUBSCRIPTIONS` | Runtime-wide cap for stored browser push subscriptions | `1000` |
+| `HEIMDALL_NOTIFICATION_MAX_SUBSCRIPTIONS_PER_ADDRESS` | Per-address cap for stored browser push subscriptions | `10` |
 
 `NEXT_PUBLIC_*` variables are build-time public configuration: Docker/CI passes
 them as `--build-arg` so browser JavaScript is baked deterministically. Runtime
 Ansible or Compose entries with the same names are for server-side rendering and
 diagnostics only; they do **not** rewrite an already-built client bundle.
+For a throwaway local mock-data build, set `NEXT_PUBLIC_USE_MOCK_DATA=true`
+before `npm run build` and use `thor1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5e949nr`
+as the demo provider address.
 Proxy trust variables only affect server-side best-effort rate-limit identity.
 Leave forwarding headers untrusted unless the deployment proxy overwrites or
 sanitizes them.
+Background notifications are server-triggered browser push alerts. They require
+VAPID keys and a durable `HEIMDALL_DATA_DIR`; without those, the notification
+settings page stays read-only and the local open-tab alert fallback still works.
+Subscription caps are enforced server-side because these routes are public.
 
 ## THORChain Data Conventions
 
@@ -185,6 +201,7 @@ IMAGE_SHA=<exact-short-sha> scripts/compose-production.sh up -d
 ### Features
 - **Liveness Check**: Docker/Compose healthchecks use `/api/health` for local process liveness
 - **Readiness Gate**: Promotion and rollback wait on `/api/ready` so THORNode and Midgard are reachable through runtime config
+- **Durable Notifications**: Background browser push subscriptions persist in the mounted `/data` directory
 - **Rollback**: Automatically reverts to the previous image ID/digest/reference on readiness check failure
 - **Vault**: Sensitive vars (e.g. CoinAPI key) stored in `group_vars/vps/vault.yml` (encrypted)
 See [DEPLOYMENT.md](DEPLOYMENT.md) for full details. The Inebotten
@@ -296,7 +313,7 @@ The deployed site at `https://bond.thorchain.no` is the source of truth for user
 After deployment, verify:
 - Dashboard routes keep rendering when optional THORName or upstream pool-history calls degrade.
 - LP valuation clearly labels `current-only` or degraded pricing when historical data is unavailable.
-- Notification prompts stay non-blocking, and notification settings immediately affect live in-app alerts.
+- Notification prompts stay non-blocking; background browser push stays configured after restart/update, and notification settings immediately affect live open-tab alerts.
 - Portfolio/node quick actions preserve the intended BOND or UNBOND transaction mode.
 - Transaction preview shows wallet/network-confirmed fee copy, memo copy feedback, and clear UNBOND memo semantics.
 - Rewards controls, tax export, changelog search, filters, and entry buttons all produce visible results.

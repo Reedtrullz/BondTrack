@@ -7,7 +7,7 @@ import { useCurrentBlockHeight } from '@/lib/hooks/use-current-block-height';
 import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
 import { useNetworkConstants } from '@/lib/hooks/use-network-constants';
 
-import { AlertTriangle, Shield, TrendingDown, Clock, Zap, AlertCircle, Lock, Hourglass, Activity, CheckCircle, TrendingUp, Minus, AlertCircle as AlertIcon } from 'lucide-react';
+import { AlertTriangle, Shield, TrendingDown, Clock, Zap, AlertCircle, Lock, Hourglass, Activity, TrendingUp, Minus, AlertCircle as AlertIcon } from 'lucide-react';
 import { SlashMonitor } from '@/components/dashboard/slash-monitor';
 import { ChurnOutRisk } from '@/components/dashboard/churn-out-risk';
 import { NetworkSecurityMetrics } from '@/components/dashboard/network-security-metrics';
@@ -78,6 +78,10 @@ function formatNodeAddress(nodeAddress: string): string {
   return `${nodeAddress.slice(0, 12)}...${nodeAddress.slice(-6)}`;
 }
 
+function formatActiveNodeCount(count: number): string {
+  return `${count} active node${count === 1 ? '' : 's'}`;
+}
+
 function getActionNodeAddress(action: ActionItem): string | null {
   try {
     return new URL(action.href, 'https://heimdall.local').searchParams.get('node');
@@ -95,9 +99,9 @@ function getNonFocusedRiskActions(actions: ActionItem[], focusedNodeAddress: str
 function getFocusedRiskCapacitySummary(candidateContext: CandidateRiskContext): string {
   switch (candidateContext.candidateScore.capacityTrust) {
     case 'available':
-      return 'Provider whitelisted';
+      return 'Provider listed by THORNode';
     case 'needs_whitelist':
-      return 'Whitelist needed';
+      return 'Provider not listed by THORNode';
     case 'full':
       return 'Provider slots full';
     case 'unknown':
@@ -127,26 +131,26 @@ function getFocusedCandidateRiskDecision({
       return {
         detail: sourceSafety.detail,
         href: sourceConfidenceHref,
-        label: 'Wait for source confidence',
-        linkLabel: 'Review source confidence',
+        label: 'Wait for source check',
+        linkLabel: 'Review source checks',
         tone: 'review' as const,
       };
     }
 
     return {
-      detail: 'Watched address is already listed as a provider and the candidate score is strong.',
+      detail: 'Candidate evidence and THORNode-listed provider access support reviewing a BOND memo, but this is not a safety guarantee. Reconfirm risk evidence and the wallet preview before signing.',
       href: buildBondMemoHref(address, nodeAddress, 'bond'),
-      label: 'Prepare BOND memo',
-      linkLabel: 'Prepare BOND memo',
-      tone: 'ready' as const,
+      label: 'Review before BOND memo',
+      linkLabel: 'Review BOND memo',
+      tone: 'review' as const,
     };
   }
 
   if (candidateScore.capacityTrust === 'needs_whitelist') {
     return {
-      detail: 'Do not bond until this address is whitelisted.',
+      detail: 'Do not bond until THORNode lists this address as a bond provider.',
       href: explorerHref,
-      label: 'Ask operator to whitelist',
+      label: 'Ask operator to add provider',
       linkLabel: 'Compare alternatives',
       tone: 'blocked' as const,
     };
@@ -173,7 +177,7 @@ function getFocusedCandidateRiskDecision({
   }
 
   return {
-    detail: 'Provider access is available, but the candidate score still needs risk review before bonding.',
+    detail: 'Provider access is available, but the candidate evidence still needs risk review before bonding.',
     href: explorerHref,
     label: 'Review risk evidence',
     linkLabel: 'Compare candidates',
@@ -246,13 +250,13 @@ const YIELD_GUARD_CONFIG: Record<YieldGuardFlag, { icon: React.ReactNode; color:
   leaving: { icon: <AlertCircle className="w-3 h-3" />, color: 'text-zinc-500', label: 'Leaving' },
 };
 
-function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
+function RiskSummaryBanner({ address, positions }: { address: string | null; positions: BondPosition[] }) {
   const { data: network } = useNetworkMetrics();
   const { currentBlockHeight } = useCurrentBlockHeight();
   const summary = summarizeRiskPositions(positions);
 
-  const statusIcon = summary.statusLabel === 'Healthy' ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : summary.statusLabel === 'Review Needed' ? <AlertIcon className="w-5 h-5 text-amber-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />;
-  const statusColor = summary.statusLabel === 'Healthy' ? 'text-emerald-600 dark:text-emerald-400' : summary.statusLabel === 'Review Needed' ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
+  const statusIcon = summary.statusLabel === 'No urgent review' ? <Activity className="w-5 h-5 text-sky-500" /> : summary.statusLabel === 'Review Needed' ? <AlertIcon className="w-5 h-5 text-amber-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />;
+  const statusColor = summary.statusLabel === 'No urgent review' ? 'text-sky-600 dark:text-sky-400' : summary.statusLabel === 'Review Needed' ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
 
   // Use NETWORK bonds for pendulum (active + standby)
   const networkBondRaw = network?.bondMetrics?.totalActiveBond || '0';
@@ -260,26 +264,17 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
   const networkLiquidityRaw = network?.totalPooledRune || '0';
   const networkBond = runeToNumber(networkBondRaw) + runeToNumber(networkStandbyRaw);
   const networkLiquidity = runeToNumber(networkLiquidityRaw);
-  const bondToPoolRatio = networkLiquidity > 0 ? networkBond / networkLiquidity : 0;
+  const pendulum = getIncentivePendulumModel({
+    totalBonds: networkBond,
+    totalLiquidity: networkLiquidity,
+  });
+  const pendulumPresentation = getPendulumPresentation(pendulum.level);
   
   // For display
   const networkLiquidityDisplay = networkLiquidity > 0 
     ? formatRuneFromNumber(networkLiquidity) 
     : '0';
   
-  // THORChain Incentive Pendulum status:
-  // - >2.5x: Well Secured, 1.5-2.5x: Healthy, 1.0-1.5x: Building, <1.0x: Under-secured
-  let pendulumStatus: { status: string; icon: React.ReactNode; color: string };
-  if (bondToPoolRatio > NETWORK.BOND_TO_POOL_THRESHOLDS.healthy) {
-    pendulumStatus = { status: 'Well Secured', icon: <TrendingUp className="w-3 h-3" />, color: 'text-emerald-600 dark:text-emerald-400' };
-  } else if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.building) {
-    pendulumStatus = { status: 'Healthy', icon: <Minus className="w-3 h-3" />, color: 'text-emerald-600 dark:text-emerald-400' };
-  } else if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.underSecured) {
-    pendulumStatus = { status: 'Building', icon: <TrendingDown className="w-3 h-3" />, color: 'text-amber-600 dark:text-amber-400' };
-  } else {
-    pendulumStatus = { status: 'Under-secured', icon: <TrendingDown className="w-3 h-3" />, color: 'text-red-600 dark:text-red-400' };
-  }
-
   const nextChurn = currentBlockHeight ? estimateNextChurn(currentBlockHeight) : null;
   const nextChurnText = nextChurn ? (() => {
     const totalSeconds = nextChurn.estimatedSeconds;
@@ -289,14 +284,22 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
   })() : '--';
 
   if (positions.length === 0) {
+    const hasAddress = Boolean(address);
+
     return (
       <section
         aria-label="Risk summary"
         className="p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-center"
       >
         <Shield className="w-10 h-10 mx-auto mb-3 text-zinc-400" />
-        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">No Bond Positions</h3>
-        <p className="text-sm text-zinc-500">Enter an address to view risk status.</p>
+        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">
+          {hasAddress ? 'Address checked' : 'No Bond Positions'}
+        </h3>
+        <p className="text-sm text-zinc-500">
+          {hasAddress
+            ? 'No bonded node risk is visible for this address because Heimdall did not find any active bond-provider positions.'
+            : 'Enter an address to view risk status.'}
+        </p>
       </section>
     );
   }
@@ -322,8 +325,8 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
         </div>
       </div>
       <div className="flex flex-wrap gap-2 text-sm">
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
-          <Zap className="w-3 h-3" />{summary.activeCount} active
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300">
+          <Activity className="w-3 h-3" />{formatActiveNodeCount(summary.activeCount)}
         </span>
         {summary.standbyCount > 0 && (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
@@ -356,9 +359,9 @@ function RiskSummaryBanner({ positions }: { positions: BondPosition[] }) {
           <div className="flex items-center gap-1.5">
             <Activity className="w-4 h-4 text-zinc-400" />
             <span className="text-zinc-500">Pendulum:</span>
-            <span className={cn("font-medium", pendulumStatus.color)}>
-              {pendulumStatus.icon}
-              <span className="ml-1">{pendulumStatus.status}</span>
+            <span className={cn("inline-flex items-center gap-1 font-medium", pendulumPresentation.color)}>
+              {pendulumPresentation.icon}
+              <span>{pendulum.status}</span>
             </span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -563,14 +566,10 @@ function FocusedNodeContext({
         sourceConfidenceHref,
         sourceSafety,
       });
-      const decisionToneClass = riskDecision.tone === 'ready'
-        ? 'border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100'
-        : riskDecision.tone === 'blocked'
+      const decisionToneClass = riskDecision.tone === 'blocked'
           ? 'border-red-200 bg-red-50 text-red-950 dark:border-red-900/60 dark:bg-red-950/25 dark:text-red-100'
           : 'border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100';
-      const primaryLinkClass = riskDecision.tone === 'ready'
-        ? 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 dark:border-emerald-500 dark:bg-emerald-500 dark:text-zinc-950 dark:hover:bg-emerald-400'
-        : riskDecision.tone === 'blocked'
+      const primaryLinkClass = riskDecision.tone === 'blocked'
           ? 'border-red-300 bg-white text-red-800 hover:bg-red-50 dark:border-red-800 dark:bg-zinc-950 dark:text-red-100 dark:hover:bg-red-950'
           : 'border-amber-300 bg-white text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-zinc-950 dark:text-amber-100 dark:hover:bg-amber-950';
       const secondaryLinkClass = 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900';
@@ -607,14 +606,14 @@ function FocusedNodeContext({
                   Provider access review
                 </span>
                 <span className={cn("text-xs font-semibold uppercase", qualityTone)}>
-                  {candidateContext.candidateScore.quality} candidate · {candidateContext.candidateScore.score}/100
+                  {candidateContext.candidateScore.quality} candidate
                 </span>
               </div>
               <h2 className="mt-2 break-all font-mono text-sm font-semibold text-zinc-950 dark:text-zinc-50 sm:text-base">
                 {focusedCandidate.node_address}
               </h2>
               <p className="mt-1 hidden text-sm text-zinc-700 dark:text-zinc-300 sm:block">
-                This node is not bonded to the watched address yet. Confirm provider access before preparing any BOND transaction.
+                This node is not bonded to the watched address yet. Confirm provider access before reviewing any BOND memo.
               </p>
             </div>
           </div>
@@ -887,7 +886,7 @@ function RiskKPIs({ positions }: { positions: BondPosition[] }) {
   const churnDays = nextChurnEstimate ? Math.floor(nextChurnEstimate.estimatedSeconds / 86400) : null;
 
   const pills = [
-    { icon: <Zap className="w-4 h-4" />, value: summary.activeCount, label: 'Earning', color: 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400', sub: summary.standbyCount > 0 ? `${summary.standbyCount} standby` : null },
+    { icon: <Activity className="w-4 h-4" />, value: summary.activeCount, label: 'Active set', color: 'bg-sky-50 dark:bg-sky-950 border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300', sub: summary.standbyCount > 0 ? `${summary.standbyCount} standby` : null },
     { icon: <AlertTriangle className="w-4 h-4" />, value: summary.slashNodeCount, label: 'Slash review', color: summary.highSlashReviewCount > 0 ? 'bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400' : summary.elevatedSlashReviewCount > 0 ? 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400', sub: summary.highSlashReviewCount > 0 ? `${summary.highSlashReviewCount} high` : summary.elevatedSlashReviewCount > 0 ? `${summary.elevatedSlashReviewCount} watch` : null },
     { icon: <Lock className="w-4 h-4" />, value: summary.jailedCount, label: 'Jailed', color: summary.jailedCount > 0 ? 'bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400', sub: null },
     { icon: <Hourglass className="w-4 h-4" />, value: churnDays !== null ? churnDays + 'd' : '--', label: 'Churn', color: 'bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400', sub: null },
@@ -915,14 +914,14 @@ function getPendulumPresentation(level: IncentivePendulumLevel) {
   switch (level) {
     case 'well-secured':
       return {
-        bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-        color: 'text-emerald-600 dark:text-emerald-400',
+        bg: 'bg-sky-50 dark:bg-sky-900/20',
+        color: 'text-sky-600 dark:text-sky-400',
         icon: <TrendingUp className="w-4 h-4" />,
       };
     case 'healthy':
       return {
-        bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-        color: 'text-emerald-600 dark:text-emerald-400',
+        bg: 'bg-sky-50 dark:bg-sky-900/20',
+        color: 'text-sky-600 dark:text-sky-400',
         icon: <Minus className="w-4 h-4" />,
       };
     case 'building':
@@ -1005,7 +1004,7 @@ function IncentivePendulum() {
           <div 
             className={cn(
               "h-full transition-all",
-              pendulum.level === 'well-secured' || pendulum.level === 'healthy' ? 'bg-emerald-500' :
+              pendulum.level === 'well-secured' || pendulum.level === 'healthy' ? 'bg-sky-500' :
               pendulum.level === 'building' ? 'bg-amber-500' : 'bg-red-500'
             )}
             style={{ width: `${pendulum.progressPercent}%` }}
@@ -1105,6 +1104,7 @@ export default function RiskPage() {
         primaryAction={riskPrimaryAction}
         eyebrow="Provider risk"
         compactMobileMetrics
+        compactMetricDetailMode="all"
       />
       <div id="risk-source-confidence" className="scroll-mt-24">
         <SourceFreshnessPanel sources={riskInsight.sources} compact />
@@ -1128,12 +1128,12 @@ export default function RiskPage() {
           items={visibleRiskActions}
           title={actionQueueTitle}
           emptyTitle="Risk queue is clear"
-          emptyDetail="No jail, slash exposure, churn-risk, or source-confidence issue is visible now."
+          emptyDetail="No jail, slash exposure, churn-risk, or source-check issue is visible now."
           compact
         />
       ) : null}
 
-      <RiskSummaryBanner positions={positions} />
+      <RiskSummaryBanner address={address} positions={positions} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">

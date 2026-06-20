@@ -7,6 +7,8 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:3001:3000"
+    volumes:
+      - /opt/apps/heimdall/data:/data
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -32,6 +34,12 @@ services:
       # TRUST_X_FORWARDED_FOR=false unless the full proxy chain sanitizes it.
       - TRUST_PROXY_HEADERS=true
       - TRUST_X_FORWARDED_FOR=false
+      - HEIMDALL_DATA_DIR=/data
+      - NOTIFICATION_POLL_INTERVAL_MS=60000
+      - WEB_PUSH_VAPID_PUBLIC_KEY=${WEB_PUSH_VAPID_PUBLIC_KEY:-}
+      - WEB_PUSH_VAPID_PRIVATE_KEY=${WEB_PUSH_VAPID_PRIVATE_KEY:-}
+      - WEB_PUSH_CONTACT=${WEB_PUSH_CONTACT:-mailto:alerts@bond.thorchain.no}
+      - HEIMDALL_NOTIFICATION_RUNNER_TOKEN=${HEIMDALL_NOTIFICATION_RUNNER_TOKEN:-}
     healthcheck:
       test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
       interval: 30s

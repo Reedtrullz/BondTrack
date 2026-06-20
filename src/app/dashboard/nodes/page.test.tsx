@@ -1,4 +1,4 @@
-import { render, screen } from '@/test/utils';
+import { render, screen, within } from '@/test/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import NodesPage from './page';
 import type { BondPosition } from '@/lib/types/node';
@@ -103,6 +103,21 @@ describe('NodesPage', () => {
     expect(screen.queryByText('Waiting for live THORNode data before ranking node exceptions, slash points, and validator status.')).not.toBeInTheDocument();
   });
 
+  it('scopes the empty node result to current source data instead of address validity', () => {
+    mockUseBondPositions.mockReturnValue({
+      positions: [],
+      isLoading: false,
+    });
+
+    render(<NodesPage />);
+
+    expect(screen.getByLabelText('Node diagnosis')).toHaveTextContent('No Bond');
+    expect(screen.getByText('No tracked node exceptions')).toBeInTheDocument();
+    expect(screen.getByText(/current THORNode node data does not show bonded nodes for this address/i)).toBeInTheDocument();
+    expect(screen.getByText(/current source result, not proof of address validity or past\/pending bond activity/i)).toBeInTheDocument();
+    expect(screen.queryByText(/this address is valid/i)).not.toBeInTheDocument();
+  });
+
   it('renders malformed node metrics as unavailable in cards and comparison rows', () => {
     mockUseBondPositions.mockReturnValue({
       positions: [malformedPosition],
@@ -112,8 +127,11 @@ describe('NodesPage', () => {
     const { container } = render(<NodesPage />);
 
     expect(screen.getByRole('heading', { name: 'Node Comparison' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sort by Review State ascending' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Review Score/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Prepare BOND Memo/i })).not.toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: /Review exposure first/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Non-active')).toBeInTheDocument();
     expect(screen.getAllByText('--').length).toBeGreaterThanOrEqual(7);
     expect(container).not.toHaveTextContent(/NaN|Infinity/);
   });
@@ -136,14 +154,14 @@ describe('NodesPage', () => {
 
     expect(screen.queryByRole('link', { name: /Prepare BOND Memo/i })).not.toBeInTheDocument();
     const sourceReviewHrefs = screen
-      .getAllByRole('link', { name: /Review source confidence/i })
+      .getAllByRole('link', { name: /Review source checks/i })
       .map((link) => link.getAttribute('href'));
     expect(sourceReviewHrefs).toEqual(
       expect.arrayContaining([
         '/dashboard/risk?address=thor1nodeprovider&node=thor1minor000000000000000000000000000000000#risk-source-confidence',
       ])
     );
-    expect(screen.getAllByText(/THORNode source confidence is degraded/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/THORNode candidate source check is degraded/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByRole('link', { name: /Prepare UNBOND Memo/i })).not.toBeInTheDocument();
   });
 
@@ -155,10 +173,27 @@ describe('NodesPage', () => {
 
     const { container } = render(<NodesPage />);
 
+    const diagnosis = screen.getByLabelText('Node diagnosis');
+    expect(within(diagnosis).getByText('No urgent review', { exact: true })).toBeVisible();
+    expect(diagnosis).toHaveClass('border-sky-200/70');
+    expect(diagnosis).not.toHaveClass('border-emerald-200/70');
+    expect(within(diagnosis).getByRole('link', { name: 'Inspect details' })).toHaveAttribute(
+      'href',
+      '/dashboard/risk?address=thor1nodeprovider'
+    );
+    expect(within(diagnosis).queryByRole('link', { name: 'Review exposure' })).not.toBeInTheDocument();
+    expect(diagnosis).not.toHaveTextContent('Healthy');
     expect(screen.getByRole('heading', { name: 'Provider review cards' })).toBeInTheDocument();
+    expect(screen.getByText('No urgent node exception visible')).toBeInTheDocument();
+    expect(screen.getByText(/current THORNode node data does not show jail, elevated slash, churn-risk, or status exceptions/i)).toBeInTheDocument();
+    expect(screen.getByText(/routine metrics remain visible below/i)).toBeInTheDocument();
+    expect(screen.queryByText(/all tracked nodes are active/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/clear of churn-risk flags/i)).not.toBeInTheDocument();
     expect(screen.getByText('No provider review cards to show. Minor slash history and routine node metrics remain visible in the comparison table below.')).toBeInTheDocument();
     expect(container.querySelector('[data-urgent-exception="true"]')).not.toBeInTheDocument();
     expect(container.querySelector('[data-urgent-exception="false"]')).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: '49' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: /Minor slash Below provider-review threshold/i })).toBeInTheDocument();
+    expect(container).not.toHaveTextContent(/Review Score/);
   });
 });

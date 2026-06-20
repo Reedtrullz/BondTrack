@@ -18,11 +18,15 @@ describe('learn article renderer', () => {
     expect(screen.queryByText(/\[Bonding Basics\]/)).not.toBeInTheDocument();
   });
 
-  it('keeps Learn article branding on Heimdall', async () => {
+  it('keeps Provider Exposure learning copy semantic instead of score-first', async () => {
     const params = Promise.resolve({ slug: 'health-score-guide' });
     render(await ArticlePage({ params }));
 
-    expect(screen.getByText(/Heimdall's Provider Exposure score/)).toBeInTheDocument();
+    const sections = screen.getByLabelText('Article sections');
+    expect(sections).toHaveTextContent(/Heimdall's Provider Exposure review state/);
+    expect(sections).toHaveTextContent(/Review State Guide/);
+    expect(sections).not.toHaveTextContent(/Provider Exposure score/);
+    expect(sections).not.toHaveTextContent(/Score Scale/);
     expect(screen.queryByText(/BondTrack/)).not.toBeInTheDocument();
   });
 
@@ -65,6 +69,17 @@ describe('learn article renderer', () => {
     expect(within(sections).getByRole('listitem', { name: /Choose a Node/i })).toHaveTextContent('Node Explorer');
   });
 
+  it('teaches node choice as evidence review instead of a healthy-status shortcut', async () => {
+    const params = Promise.resolve({ slug: 'bonding-basics' });
+    render(await ArticlePage({ params }));
+
+    const chooseNodeStep = within(screen.getByLabelText('Article sections')).getByRole('listitem', { name: /Choose a Node/i });
+    expect(chooseNodeStep).toHaveTextContent('candidate evidence');
+    expect(chooseNodeStep).toHaveTextContent('source checks');
+    expect(chooseNodeStep).toHaveTextContent('wallet preview');
+    expect(chooseNodeStep).not.toHaveTextContent(/healthy status/i);
+  });
+
   it('keeps source-sensitive learning copy from implying live certainty', async () => {
     const lpParams = Promise.resolve({ slug: 'lp-impermanent-loss' });
     render(await ArticlePage({ params: lpParams }));
@@ -74,6 +89,17 @@ describe('learn article renderer', () => {
     expect(sections).toHaveTextContent('inspect source-backed positions');
     expect(sections).not.toHaveTextContent('live price data');
     expect(sections).not.toHaveTextContent('inspect live positions');
+  });
+
+  it('frames LP confidence as source-loaded review material instead of trusted certainty', async () => {
+    const lpParams = Promise.resolve({ slug: 'lp-impermanent-loss' });
+    render(await ArticlePage({ params: lpParams }));
+
+    const sections = screen.getByLabelText('Article sections');
+    expect(sections).toHaveTextContent('source context to support an action');
+    expect(sections).toHaveTextContent('Source-loaded values');
+    expect(sections).not.toHaveTextContent(/trusted enough/i);
+    expect(sections).not.toHaveTextContent(/Trusted values/i);
   });
 
   it('treats confirmed bonds as active instead of live UI readings', async () => {

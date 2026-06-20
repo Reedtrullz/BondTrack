@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { AlertTriangle, ArrowRight, Check, Plus } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Check, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NodeRaw } from '@/lib/api/thornode';
 import { formatRuneDisplayNumber } from '@/lib/utils/formatters';
@@ -46,7 +46,7 @@ function getCandidateRecommendation(
   if (node.candidateScore.quality === 'Avoid') {
     return {
       title: 'Avoid direct bond',
-      detail: `${primaryReason}. Review risk context before preparing any BOND memo.`,
+      detail: `${primaryReason}. Review risk context before opening BOND memo review.`,
       tone: 'critical',
     };
   }
@@ -54,9 +54,9 @@ function getCandidateRecommendation(
   if (node.candidateScore.capacityTrust !== 'available') {
     return {
       title: 'Confirm provider access first',
-      detail: node.candidateScore.trustLabel === 'Needs operator whitelist'
-        ? 'The watched address is not listed as a bond provider. Confirm operator whitelist status before preparing a BOND memo.'
-        : 'Direct-bond access is not confirmed for this address. Inspect risk context before preparing a BOND memo.',
+      detail: node.candidateScore.capacityTrust === 'needs_whitelist'
+        ? 'The watched address is not listed as a THORNode bond provider. Ask the operator to add or confirm provider access before opening BOND memo review.'
+        : 'Direct-bond access is not confirmed for this address. Inspect risk context before opening BOND memo review.',
       tone: 'warning',
     };
   }
@@ -64,7 +64,7 @@ function getCandidateRecommendation(
   if (node.candidateScore.quality === 'Watch') {
     return {
       title: 'Review before bonding',
-      detail: `${primaryReason}. Confirm the trade-off before preparing a BOND memo.`,
+      detail: `${primaryReason}. Confirm the trade-off before opening BOND memo review.`,
       tone: 'warning',
     };
   }
@@ -78,8 +78,8 @@ function getCandidateRecommendation(
   }
 
   return {
-    title: 'Ready for bond prep',
-    detail: 'Candidate score and capacity support preparing a BOND memo. Reconfirm the wallet preview before signing.',
+    title: 'Review before BOND memo',
+    detail: 'Candidate evidence and THORNode-listed provider access support reviewing a BOND memo, but this is not a safety guarantee. Reconfirm risk evidence and the wallet preview before signing.',
     tone: 'healthy',
   };
 }
@@ -166,23 +166,21 @@ export function NodeExplorer({
           });
           const nodeRiskHref = buildNodeRiskHref(userAddress, node.node_address);
           const fallbackActionHref = sourceBlockedForDirectBond ? sourceConfidenceHref : nodeRiskHref;
-          const fallbackActionLabel = sourceBlockedForDirectBond ? 'Review source confidence' : reviewActionLabel;
+          const fallbackActionLabel = sourceBlockedForDirectBond ? 'Review source checks' : reviewActionLabel;
           const recommendation = getCandidateRecommendation(node, sourceSafety);
-          const RecommendationIcon = recommendation.tone === 'healthy' ? Check : AlertTriangle;
+          const RecommendationIcon = recommendation.tone === 'healthy' ? Info : AlertTriangle;
           const recommendationTone = recommendation.tone === 'healthy'
-            ? 'border-emerald-400 bg-emerald-50 text-emerald-950 dark:border-emerald-500/70 dark:bg-emerald-950/25 dark:text-emerald-100'
+            ? 'border-sky-400 bg-sky-50 text-sky-950 dark:border-sky-500/70 dark:bg-sky-950/25 dark:text-sky-100'
             : recommendation.tone === 'warning'
               ? 'border-amber-400 bg-amber-50 text-amber-950 dark:border-amber-500/70 dark:bg-amber-950/25 dark:text-amber-100'
               : 'border-red-400 bg-red-50 text-red-950 dark:border-red-500/70 dark:bg-red-950/25 dark:text-red-100';
           const riskSignals = node.candidateScore.reasons.slice(0, 3);
           const qualityTone = node.candidateScore.quality === 'Strong'
-            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
+            ? 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200'
             : node.candidateScore.quality === 'Watch'
               ? 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200'
               : 'bg-red-100 text-red-900 dark:bg-red-900/40 dark:text-red-200';
-          const bondActionClass = node.candidateScore.quality === 'Strong'
-            ? 'bg-blue-600 text-white hover:bg-blue-700'
-            : 'bg-amber-600 text-white hover:bg-amber-700';
+          const bondActionClass = 'border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900';
 
           return (
             <div
@@ -204,7 +202,7 @@ export function NodeExplorer({
                       {node.node_address.slice(0, 12)}...{node.node_address.slice(-4)}
                     </span>
                     <span className={cn('px-2 py-0.5 text-xs font-bold rounded-full', qualityTone)}>
-                      {node.candidateScore.quality} · {node.candidateScore.score}/100
+                      {node.candidateScore.quality} candidate
                     </span>
                   </div>
                   <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-zinc-500">
@@ -312,10 +310,10 @@ export function NodeExplorer({
                 {canPrepareBond ? (
                   <Link
                     href={buildBondMemoHref(userAddress, node.node_address, 'bond')}
-                    className={cn('inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-center text-sm font-medium transition', bondActionClass)}
+                    className={cn('inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-center text-sm font-semibold transition', bondActionClass)}
                   >
-                    <Plus className="h-3.5 w-3.5 shrink-0" />
-                    Prepare BOND Memo
+                    <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                    Review BOND Memo
                   </Link>
                 ) : (
                   <Link

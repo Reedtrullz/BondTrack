@@ -24,6 +24,20 @@ function position(overrides: Partial<BondPosition> = {}): BondPosition {
 }
 
 describe('calculatePortfolioHealth', () => {
+  it('describes clean bonded positions as current-input exposure review instead of a health verdict', () => {
+    const health = calculatePortfolioHealth([position()]);
+
+    expect(health.reason).toBe('Current node inputs show no jail, elevated slash, churn, or status issue');
+    expect(health.reason).not.toMatch(/\bhealthy\b|\bsafe\b/i);
+  });
+
+  it('marks low-bond churn-risk flags as review reasons instead of clean current inputs', () => {
+    const health = calculatePortfolioHealth([position({ yieldGuardFlags: ['lowest_bond'] })]);
+
+    expect(health.reason).toBe('Churn-risk exposure detected');
+    expect(health.reason).not.toBe('Current node inputs show no jail, elevated slash, churn, or status issue');
+  });
+
   it('bounds active slash exposure so high historical slash does not produce a zero score by itself', () => {
     const health = calculatePortfolioHealth([
       position({ nodeAddress: 'thor1highslashone', slashPoints: 284_890 }),

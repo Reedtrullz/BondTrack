@@ -13,7 +13,8 @@ function truncateAddress(address: string): string {
 function formatWalletName(walletType: string | null): string {
   if (walletType === 'keplr') return 'Keplr';
   if (walletType === 'vultisig') return 'Vultisig';
-  return 'XDEFI';
+  if (walletType === 'xdefi') return 'XDEFI';
+  return 'Wallet';
 }
 
 function KeplrIcon({ className }: { className?: string }) {
@@ -100,6 +101,7 @@ export function WalletConnect() {
     availableWallets,
     connect,
     disconnect,
+    networkMismatch,
     isNetworkMismatch,
   } = useWalletContext();
 
@@ -109,6 +111,7 @@ export function WalletConnect() {
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = isConnected ? 'wallet-account-menu' : 'wallet-connect-menu';
   const noWalletMessageId = 'wallet-no-provider-message';
+  const walletErrorMessageId = error ? 'wallet-connect-error-message' : undefined;
   const hasDetectedWallet = Boolean(availableWallets);
 
   useEffect(() => {
@@ -154,10 +157,50 @@ export function WalletConnect() {
   };
 
   if (isNetworkMismatch && isConnected === false) {
+    const expectedChain = networkMismatch.expected;
+    const actualChain = networkMismatch.actual ?? 'unknown';
+    const canReconnect = Boolean(walletType);
+
     return (
-      <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-        <AlertTriangle className="h-4 w-4" />
-        <span className="text-sm">Network mismatch</span>
+      <div className="flex max-w-[min(24rem,calc(100vw-2rem))] flex-col items-end gap-1">
+        <div
+          role="alert"
+          data-testid="wallet-network-mismatch"
+          className="flex w-full items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-left text-xs leading-snug text-amber-800 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200"
+        >
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="space-y-0.5">
+            <span className="block font-semibold">Wallet network mismatch</span>
+            <span className="block">
+              Wallet reports {actualChain}; THORChain mainnet expects {expectedChain}.
+            </span>
+            <span className="block">Switch to THORChain mainnet before preview or broadcast.</span>
+          </span>
+        </div>
+        <div className="flex flex-wrap justify-end gap-1">
+          {canReconnect && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={isConnecting}
+              onClick={() => {
+                connect(walletType);
+              }}
+            >
+              Reconnect wallet
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label="Clear wallet state"
+            onClick={disconnect}
+          >
+            Clear
+          </Button>
+        </div>
       </div>
     );
   }
@@ -226,7 +269,7 @@ export function WalletConnect() {
   }
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative flex flex-col items-end gap-1" ref={dropdownRef}>
       <Button
         ref={triggerRef}
         type="button"
@@ -238,10 +281,24 @@ export function WalletConnect() {
         aria-haspopup="menu"
         aria-expanded={dropdownOpen}
         aria-controls={menuId}
+        aria-describedby={walletErrorMessageId}
       >
         <Wallet className="mr-2 h-4 w-4" />
         {isConnecting ? 'Connecting...' : 'Connect Wallet'}
       </Button>
+
+      {error && (
+        <div
+          id={walletErrorMessageId}
+          role="status"
+          aria-live="polite"
+          data-testid="wallet-connect-error"
+          className="flex max-w-[min(22rem,calc(100vw-2rem))] items-start gap-1.5 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-left text-xs leading-snug text-red-700 shadow-sm dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+        >
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {dropdownOpen && (
         <div
@@ -254,12 +311,6 @@ export function WalletConnect() {
           <div className="px-3 py-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
             Select wallet
           </div>
-
-          {error && (
-            <div className="mx-3 mb-2 rounded-md bg-red-50 p-2 text-xs text-red-600 dark:bg-red-900/20 dark:text-red-400">
-              {error}
-            </div>
-          )}
 
           {!hasDetectedWallet && (
             <div

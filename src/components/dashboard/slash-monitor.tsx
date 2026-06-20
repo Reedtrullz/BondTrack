@@ -3,7 +3,7 @@
 import { useCurrentBlockHeight } from '@/lib/hooks/use-current-block-height';
 import { calculateJailBlocksRemaining, estimateNextChurn } from '@/lib/utils/calculations';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { AlertTriangle, Clock, CheckCircle } from 'lucide-react';
+import { AlertTriangle, Clock, Info } from 'lucide-react';
 import { BondPosition } from '@/lib/types/node';
 import { NETWORK } from '@/lib/config';
 import { getSlashSeverity } from '@/lib/dashboard/slash-severity';
@@ -45,6 +45,15 @@ export function SlashMonitor({ positions }: SlashMonitorProps) {
   const nextChurn = estimateNextChurn(currentBlockHeight);
 
   const hasSlashPoints = slashNodes.length > 0;
+  const jailedSummaryClasses = jailedNodes.length > 0
+    ? {
+        container: 'bg-red-50 dark:bg-red-900/20',
+        text: 'text-red-600 dark:text-red-400',
+      }
+    : {
+        container: 'bg-zinc-100 dark:bg-zinc-800',
+        text: 'text-zinc-600 dark:text-zinc-400',
+      };
 
   return (
     <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
@@ -58,10 +67,10 @@ export function SlashMonitor({ positions }: SlashMonitorProps) {
 
       {!hasSlashPoints ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <CheckCircle className="w-8 h-8 text-emerald-500 mb-3" />
-          <p className="text-zinc-600 dark:text-zinc-400 text-sm font-medium">No slash points on your nodes</p>
+          <Info className="w-8 h-8 text-sky-500 mb-3" />
+          <p className="text-zinc-600 dark:text-zinc-400 text-sm font-medium">No current slash points visible</p>
           <p className="text-zinc-500 dark:text-zinc-500 text-xs max-w-[200px] mt-1">
-            Slash points are accumulated by nodes that fail to remain performant. Your nodes currently have a clean record.
+            Current THORNode data reports zero slash points for these watched nodes. Keep monitoring source freshness and post-churn changes.
           </p>
         </div>
       ) : (
@@ -75,9 +84,9 @@ export function SlashMonitor({ positions }: SlashMonitorProps) {
               <div className="text-lg font-bold text-orange-600 dark:text-orange-400">{warningNodes.length}</div>
               <div className="text-xs text-orange-600 dark:text-orange-400">Warning</div>
             </div>
-            <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-900/20 text-center">
-              <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{jailedNodes.length}</div>
-              <div className="text-xs text-emerald-600 dark:text-emerald-400">Jailed</div>
+            <div className={`p-2 rounded ${jailedSummaryClasses.container} text-center`}>
+              <div className={`text-lg font-bold ${jailedSummaryClasses.text}`}>{jailedNodes.length}</div>
+              <div className={`text-xs ${jailedSummaryClasses.text}`}>Jailed</div>
             </div>
           </div>
 
@@ -114,7 +123,7 @@ export function SlashMonitor({ positions }: SlashMonitorProps) {
           </div>
 
           <div className="mt-3 text-xs text-zinc-500">
-            Severity: OK (0-{NETWORK.SLASH_POINT_THRESHOLDS.warning - 1}), Warning ({NETWORK.SLASH_POINT_THRESHOLDS.warning}-{NETWORK.SLASH_POINT_THRESHOLDS.critical - 1}), Critical ({NETWORK.SLASH_POINT_THRESHOLDS.critical}+)
+            Severity: Monitor (1-{NETWORK.SLASH_POINT_THRESHOLDS.warning - 1}), Warning ({NETWORK.SLASH_POINT_THRESHOLDS.warning}-{NETWORK.SLASH_POINT_THRESHOLDS.critical - 1}), Critical ({NETWORK.SLASH_POINT_THRESHOLDS.critical}+)
           </div>
         </>
       )}

@@ -37,9 +37,6 @@ function makePosition(overrides: Partial<AlertPosition> = {}): AlertPosition {
 
 function makeChecks() {
   return {
-    checkSlash: vi.fn(),
-    checkJail: vi.fn(),
-    checkStatusChange: vi.fn(),
     triggerAlert: vi.fn(),
   };
 }
@@ -61,13 +58,10 @@ describe('useBondPositionAlerts', () => {
     renderHook(() => useBondPositionAlerts(ADDRESS, checks));
 
     await waitFor(() => expect(useBondPositions).toHaveBeenCalledWith(ADDRESS));
-    expect(checks.checkSlash).not.toHaveBeenCalled();
-    expect(checks.checkJail).not.toHaveBeenCalled();
-    expect(checks.checkStatusChange).not.toHaveBeenCalled();
     expect(checks.triggerAlert).not.toHaveBeenCalled();
   });
 
-  it('checks slash, jail, status, and newly entered churn risk after the first snapshot', async () => {
+  it('emits slash, jail, status, and newly entered churn risk alerts after the first snapshot', async () => {
     const checks = makeChecks();
     let positions = [makePosition()];
     vi.mocked(useBondPositions).mockImplementation(() => ({
@@ -93,10 +87,23 @@ describe('useBondPositionAlerts', () => {
     rerender();
 
     await waitFor(() => {
-      expect(checks.checkSlash).toHaveBeenCalledWith(12, 4, NODE_ADDRESS);
+      expect(checks.triggerAlert).toHaveBeenCalledTimes(4);
     });
-    expect(checks.checkJail).toHaveBeenCalledWith(positions[0], expect.objectContaining({ isJailed: false }), NODE_ADDRESS);
-    expect(checks.checkStatusChange).toHaveBeenCalledWith('Standby', 'Active', NODE_ADDRESS);
+    expect(checks.triggerAlert).toHaveBeenCalledWith(
+      'SLASH_INCREASE',
+      NODE_ADDRESS,
+      expect.stringContaining('slash points increased by 8 to 12')
+    );
+    expect(checks.triggerAlert).toHaveBeenCalledWith(
+      'JAIL',
+      NODE_ADDRESS,
+      expect.stringContaining('entered jail: missed observation')
+    );
+    expect(checks.triggerAlert).toHaveBeenCalledWith(
+      'NODE_STATUS_CHANGE',
+      NODE_ADDRESS,
+      expect.stringContaining('status changed from Active to Standby')
+    );
     expect(checks.triggerAlert).toHaveBeenCalledWith(
       'CHURN_RISK',
       NODE_ADDRESS,
@@ -115,7 +122,6 @@ describe('useBondPositionAlerts', () => {
 
     renderHook(() => useBondPositionAlerts(ADDRESS, checks));
 
-    expect(checks.checkSlash).not.toHaveBeenCalled();
     expect(checks.triggerAlert).not.toHaveBeenCalled();
   });
 
@@ -138,9 +144,6 @@ describe('useBondPositionAlerts', () => {
     rerender();
 
     await waitFor(() => expect(useBondPositions).toHaveBeenCalledWith(address));
-    expect(checks.checkSlash).not.toHaveBeenCalled();
-    expect(checks.checkJail).not.toHaveBeenCalled();
-    expect(checks.checkStatusChange).not.toHaveBeenCalled();
     expect(checks.triggerAlert).not.toHaveBeenCalled();
   });
 
@@ -163,7 +166,11 @@ describe('useBondPositionAlerts', () => {
     renderHook(() => useBondPositionAlerts(ADDRESS, checks));
 
     await waitFor(() => {
-      expect(checks.checkSlash).toHaveBeenCalledWith(12, 4, NODE_ADDRESS);
+      expect(checks.triggerAlert).toHaveBeenCalledWith(
+        'SLASH_INCREASE',
+        NODE_ADDRESS,
+        expect.stringContaining('slash points increased by 8 to 12')
+      );
     });
     expect(localStorage.getItem(snapshotKey!)).toContain('"slashPoints":12');
   });
@@ -186,7 +193,7 @@ describe('useBondPositionAlerts', () => {
 
     renderHook(() => useBondPositionAlerts(ADDRESS, checks));
 
-    expect(checks.checkSlash).not.toHaveBeenCalled();
+    expect(checks.triggerAlert).not.toHaveBeenCalled();
     expect(localStorage.getItem(snapshotKey!)).toContain('"slashPoints":4');
   });
 });

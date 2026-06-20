@@ -8,9 +8,16 @@ export interface MockBondPosition {
   isJailed: boolean;
 }
 
+export const MOCK_PROVIDER_ADDRESS = 'thor1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5e949nr';
+export const MOCK_SECONDARY_PROVIDER_ADDRESS = 'thor1z5tpwxqergd3c8g7ruszzg3rysjjvfegwqptm4';
+export const MOCK_ACTIVE_NODE_ADDRESS = 'thor19y4zktpd9chnqvfjxv6r2d3h8qun5weu08uk0l';
+export const MOCK_STANDBY_NODE_ADDRESS = 'thor185lr7szpgfp5g32xgayyjjjtf3x5un6s4965w4';
+export const MOCK_ACTIVE_OPERATOR_ADDRESS = 'thor129f9x4z42et4sk26tdw96hjlvpskycmy96y988';
+export const MOCK_STANDBY_OPERATOR_ADDRESS = 'thor1v4nxw6rfdf4kcmtwdac8zunnw36hvamcea8m74';
+
 export const MOCK_BOND_POSITIONS: MockBondPosition[] = [
   {
-    nodeAddress: 'thor1qlfaaz6zyt80xk7vxa6n7kmzp0ncz8rwzpaj9h',
+    nodeAddress: MOCK_ACTIVE_NODE_ADDRESS,
     bondAmount: '100000000000',
     status: 'Active',
     netAPY: 0.125,
@@ -19,7 +26,7 @@ export const MOCK_BOND_POSITIONS: MockBondPosition[] = [
     isJailed: false,
   },
   {
-    nodeAddress: 'thor1abc123def456ghi789jkl012mno345pqr678stu',
+    nodeAddress: MOCK_STANDBY_NODE_ADDRESS,
     bondAmount: '50000000000',
     status: 'Standby',
     netAPY: 0.10,
@@ -61,14 +68,14 @@ export const MOCK_MEMBER_DATA = {
       status: 'available',
     },
   ],
-  runeAddress: 'thor1qlfaaz6zyt80xk7vxa6n7kmzp0ncz8rwzpaj9h',
+  runeAddress: MOCK_PROVIDER_ADDRESS,
   assetAddress: '',
   lastAddedLiquidityHeight: 1234567,
 };
 
 export const MOCK_NODES = [
   {
-    address: 'thor1qlfaaz6zyt80xk7vxa6n7kmzp0ncz8rwzpaj9h',
+    address: MOCK_ACTIVE_NODE_ADDRESS,
     status: 'Active',
     bond: '100000000000',
     slashPoints: 12,

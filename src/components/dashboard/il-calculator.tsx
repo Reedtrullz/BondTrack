@@ -224,7 +224,7 @@ export default function IlCalculator() {
                     </span>
                   </div>
                   <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                    Review before withdrawing. Compare this estimate with earned fees, LP source confidence, and pool depth before acting.
+                    Review before withdrawing. Compare this estimate with earned fees, LP source checks, and pool depth before acting.
                   </p>
                 </div>
 

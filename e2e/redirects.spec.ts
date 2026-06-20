@@ -31,6 +31,8 @@ test.describe('Dashboard redirects', () => {
     await expect(diagnosis).toContainText('Choose a watched THORChain address to start triage');
     await expect(page.getByText('Public read-only')).toBeVisible();
     await expect(page.getByText('Freshness after lookup')).toBeVisible();
+    await expect(page.getByText(/wallet connection is only needed later for wallet-presented transaction review/i)).toBeVisible();
+    await expect(page.getByText(/transaction confirmation/i)).toHaveCount(0);
     await page.waitForTimeout(300);
     expect(apiRequestsBeforeSubmit).toEqual([]);
 

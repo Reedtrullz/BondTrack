@@ -11,7 +11,8 @@ export interface TransactionPreviewData {
   amount: string;
   memo: string;
   feeNote: string;
-  walletType: 'keplr' | 'xdefi' | 'vultisig';
+  walletAddress: string | null;
+  walletType: 'keplr' | 'xdefi' | 'vultisig' | null;
 }
 
 interface TransactionPreviewProps {
@@ -37,13 +38,23 @@ export function TransactionPreview({
 }: TransactionPreviewProps) {
   const isLargeAmount = parseFloat(data.amount) > 2000;
   const titleId = 'transaction-preview-title';
+  const walletName = data.walletType === 'keplr'
+    ? 'Keplr'
+    : data.walletType === 'xdefi'
+      ? 'XDEFI'
+      : data.walletType === 'vultisig'
+        ? 'Vultisig'
+        : null;
+  const isUnbond = data.type === 'UNBOND';
+  const walletTransferAmount = isUnbond ? '0' : data.amount;
+  const shouldShowWalletAuthorization = Boolean(walletName && !confirmDisabled);
 
   return (
     <FocusDialog open titleId={titleId} onClose={onCancel}>
-      <div className="w-full max-w-md mx-4 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-800">
+      <div className="w-[calc(100vw-2rem)] max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-800">
         <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800">
           <h2 id={titleId} className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-            Confirm Transaction
+            Wallet Broadcast Review
           </h2>
           <button
             type="button"
@@ -59,9 +70,15 @@ export function TransactionPreview({
           <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-zinc-500">Type</span>
-              <span className={`font-medium ${data.type === 'BOND' ? 'text-emerald-600' : 'text-amber-600'}`}>
+              <span className={`font-medium ${data.type === 'BOND' ? 'text-sky-600' : 'text-amber-600'}`}>
                 {data.type}
               </span>
+            </div>
+            <div className="space-y-1 text-sm">
+              <span className="text-zinc-500">Connected wallet</span>
+              <code className="block rounded-md border border-zinc-200 bg-white px-2 py-1 font-mono text-xs leading-relaxed text-zinc-700 break-all dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+                {data.walletAddress ?? 'Not connected'}
+              </code>
             </div>
             <div className="space-y-1 text-sm">
               <span className="text-zinc-500">Target node</span>
@@ -70,9 +87,15 @@ export function TransactionPreview({
               </code>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-zinc-500">Requested Amount</span>
-              <span className="font-semibold">{data.amount} RUNE</span>
+              <span className="text-zinc-500">Wallet transfer amount</span>
+              <span className="font-semibold">{walletTransferAmount} RUNE</span>
             </div>
+            {isUnbond && (
+              <div className="flex justify-between gap-4 text-sm">
+                <span className="text-zinc-500">Amount requested in memo</span>
+                <span className="font-semibold text-amber-700 dark:text-amber-300">{data.amount} RUNE</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-zinc-500">Network Fee</span>
               <span className="text-right text-xs text-zinc-600 dark:text-zinc-300">{data.feeNote}</span>
@@ -93,7 +116,7 @@ export function TransactionPreview({
                   Large Transaction
                 </p>
                 <p className="text-amber-700 dark:text-amber-300">
-                  This transaction involves a significant amount of RUNE. Please verify all details before confirming.
+                  This transaction involves a significant amount of RUNE. Recheck the target node, memo, transfer amount, and wallet-presented fee. Approve only if the wallet payload matches this review.
                 </p>
               </div>
             </div>
@@ -102,7 +125,7 @@ export function TransactionPreview({
           {data.type === 'UNBOND' && position && (
             <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
               <p className="text-sm text-amber-700 dark:text-amber-300">
-                <strong>Note:</strong> Unbonding is irreversible. The requested amount is encoded in the memo; the wallet transfer amount is not the unbond amount.
+                <strong>Note:</strong> Unbonding is irreversible. The wallet transfer amount stays 0 RUNE; the requested unbond amount is encoded in the memo.
               </p>
             </div>
           )}
@@ -122,8 +145,9 @@ export function TransactionPreview({
 
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-xs text-blue-700 dark:text-blue-300">
-              By confirming, you authorize this THORChain deposit transaction using your{' '}
-              {data.walletType === 'keplr' ? 'Keplr' : data.walletType === 'xdefi' ? 'XDEFI' : 'Vultisig'} wallet.
+              {shouldShowWalletAuthorization
+                ? `This opens your ${walletName} wallet for final review. Approve in the wallet only if the payload, memo, amount, and network fee match.`
+                : 'Open wallet review only after your wallet presents the final THORChain deposit payload and network fee.'}
             </p>
           </div>
         </div>
@@ -143,7 +167,7 @@ export function TransactionPreview({
             className="flex-1"
             variant={data.type === 'BOND' ? 'default' : 'default'}
           >
-            {isLoading ? 'Broadcasting...' : 'Confirm & Broadcast'}
+            {isLoading ? 'Waiting on wallet...' : 'Request Wallet Broadcast'}
           </Button>
         </div>
       </div>

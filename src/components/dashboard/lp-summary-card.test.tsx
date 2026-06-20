@@ -95,6 +95,13 @@ describe('LpSummaryCard', () => {
     expect(screen.queryByText(/LP yield/)).not.toBeInTheDocument();
   });
 
+  it('formats the added date without server/client locale drift', () => {
+    render(<LpSummaryCard position={basePosition} />);
+
+    expect(screen.getByText('Added 2022-07-15')).toBeInTheDocument();
+    expect(screen.getByText('Added 2022-07-15')).toHaveAttribute('title', 'Added 2022-07-15');
+  });
+
   it('labels degraded metrics as enriching while historical pricing is still loading', () => {
     render(
       <LpSummaryCard
@@ -138,5 +145,20 @@ describe('LpSummaryCard', () => {
     expect(screen.getByText('Estimated withdrawable ATOM')).toBeInTheDocument();
     expect(screen.getAllByText('Derived from pool share; not THORNode-confirmed')).toHaveLength(2);
     expect(screen.queryByText('Claimable RUNE')).not.toBeInTheDocument();
+  });
+
+  it('labels external historical RUNE fallback quotes in card performance details', () => {
+    render(
+      <LpSummaryCard
+        position={{
+          ...basePosition,
+          pricingSource: 'estimated',
+          entryRunePriceSource: 'coingecko',
+        }}
+      />
+    );
+
+    expect(screen.getByText(/external CoinGecko quote/i)).toBeInTheDocument();
+    expect(screen.getByText(/external CoinGecko quote/i)).not.toHaveClass('truncate');
   });
 });

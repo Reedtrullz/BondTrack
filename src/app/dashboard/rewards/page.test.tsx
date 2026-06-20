@@ -163,14 +163,19 @@ describe('RewardsPage', () => {
 
     render(<RewardsPage />);
 
-    await user.click(screen.getByRole('button', { name: 'Open Bond Composer' }));
+    expect(screen.queryByRole('heading', { name: 'No bonded positions found' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/queried successfully/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'No active bond-provider position visible' })).toBeVisible();
+    expect(screen.getByText(/current THORNode node data does not show this address as an active bond provider/i)).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Open BOND review' }));
 
     expect(mocks.router.push).toHaveBeenCalledWith(
       '/dashboard/transactions?address=thor1rewardaddress'
     );
   });
 
-  it.each(['degraded', 'down', 'unknown'] as const)('routes the empty-state bond action to source confidence when THORNode is %s', async (thornode) => {
+  it.each(['degraded', 'down', 'unknown'] as const)('routes the empty-state bond action to source checks when THORNode is %s', async (thornode) => {
     const user = userEvent.setup();
     mockUseBondPositions.mockReturnValue({
       positions: [],
@@ -189,8 +194,13 @@ describe('RewardsPage', () => {
 
     render(<RewardsPage />);
 
-    expect(screen.queryByRole('button', { name: 'Open Bond Composer' })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Review source confidence' }));
+    expect(screen.queryByRole('heading', { name: 'No bonded positions found' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/queried successfully/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Bond position result needs source check' })).toBeVisible();
+    expect(screen.getByText(/do not treat the missing bond position as final/i)).toBeVisible();
+    expect(screen.getByText(/wait for the THORNode source check to pass/i)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Open BOND review' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Review source checks' }));
 
     expect(mocks.router.push).toHaveBeenCalledWith(
       '/dashboard?address=thor1rewardaddress#source-confidence'
@@ -208,7 +218,7 @@ describe('RewardsPage', () => {
     expect(within(diagnosis).queryByText('Fresh quote')).not.toBeInTheDocument();
   });
 
-  it('labels a loaded non-stale RUNE price as fresh', async () => {
+  it('labels a loaded non-stale RUNE price as recent instead of fresh', async () => {
     mockUseRunePrice.mockReturnValue({
       price: 0.6,
       isStale: false,
@@ -218,39 +228,130 @@ describe('RewardsPage', () => {
     render(<RewardsPage />);
 
     const diagnosis = await screen.findByLabelText('Rewards diagnosis');
-    expect(within(diagnosis).getByText('Fresh quote')).toBeInTheDocument();
+    expect(within(diagnosis).getByText('Recent quote')).toBeInTheDocument();
+    expect(within(diagnosis).queryByText('Fresh quote')).not.toBeInTheDocument();
     expect(within(diagnosis).queryByText('Live quote')).not.toBeInTheDocument();
   });
 
-  it('summarizes reward data confidence before the decision tabs', async () => {
+  it('labels a loaded RUNE price without source freshness as unverified', async () => {
+    mockUseRunePrice.mockReturnValue({
+      price: 0.6,
+      isStale: false,
+      updatedAt: null,
+    });
+    mockUseBondHistory.mockReturnValue({
+      history: {
+        initialBond: 25_000,
+        currentBond: 100_000,
+        bondGrowth: 75_000,
+        firstBondAmount: 25_000,
+        firstBondDate: new Date('2025-01-01T00:00:00.000Z'),
+        lastBondDate: new Date('2026-01-01T00:00:00.000Z'),
+        actionLimit: 50,
+        loadedActionCount: 3,
+        totalActionCount: 3,
+        isPartial: false,
+      },
+      isLoading: false,
+      error: undefined,
+    });
+
     render(<RewardsPage />);
 
-    const confidence = await screen.findByLabelText('Rewards data confidence');
-    expect(within(confidence).getByText('Reward history')).toBeVisible();
-    expect(within(confidence).getByText('Current-only')).toBeVisible();
-    expect(within(confidence).getByText('No bond action history')).toBeVisible();
-    expect(within(confidence).getByText('APY basis')).toBeVisible();
-    expect(within(confidence).getByText('Node-level')).toBeVisible();
-    expect(within(confidence).getByText('12.00% weighted from 1 node')).toBeVisible();
-    expect(within(confidence).getByText('RUNE price')).toBeVisible();
-    expect(within(confidence).getByText('Missing')).toBeVisible();
-    expect(within(confidence).getByText('USD returns unavailable')).toBeVisible();
-    expect(within(confidence).getByText('Forecast')).toBeVisible();
-    expect(within(confidence).getByText('Estimated')).toBeVisible();
-    expect(within(confidence).getByText('Simple projection from node APY')).toBeVisible();
+    const diagnosis = await screen.findByLabelText('Rewards diagnosis');
+    expect(within(diagnosis).getByRole('heading', { name: 'RUNE price: Unverified' })).toBeVisible();
+    expect(within(diagnosis).getByText('Quote loaded without freshness')).toBeVisible();
+    expect(within(diagnosis).queryByText('Fresh quote')).not.toBeInTheDocument();
 
-    const tabs = screen.getByRole('tablist');
-    expect(confidence.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const checks = await screen.findByLabelText('Rewards data checks');
+    expect(within(checks).getByText('RUNE price')).toBeVisible();
+    expect(within(checks).getByText('Unverified')).toBeVisible();
+    expect(within(checks).getByText('Quote loaded without freshness')).toBeVisible();
   });
 
-  it('leads the rewards diagnosis with the strongest data-confidence issue', async () => {
+  it('summarizes reward data checks before the decision tabs', async () => {
+    render(<RewardsPage />);
+
+    const checks = await screen.findByLabelText('Rewards data checks');
+    expect(within(checks).getByText('Reward history')).toBeVisible();
+    expect(within(checks).getByText('Current-only')).toBeVisible();
+    expect(within(checks).getByText('No bond action history')).toBeVisible();
+    expect(within(checks).getByText('APY basis')).toBeVisible();
+    const nodeLevelBasis = within(checks).getByText('Node-level');
+    expect(nodeLevelBasis).toBeVisible();
+    expect(nodeLevelBasis).toHaveClass('text-sky-600');
+    expect(nodeLevelBasis).not.toHaveClass('text-emerald-600');
+    const apyBasisDetail = within(checks).getByText('12.00% node-weighted estimate from 1 node');
+    expect(apyBasisDetail).toBeVisible();
+    expect(apyBasisDetail).not.toHaveClass('line-clamp-1');
+    expect(within(checks).getByText('RUNE price')).toBeVisible();
+    expect(within(checks).getByText('Missing')).toBeVisible();
+    expect(within(checks).getByText('USD returns unavailable')).toBeVisible();
+    expect(within(checks).getByText('Forecast')).toBeVisible();
+    expect(within(checks).getByText('Estimated')).toBeVisible();
+    expect(within(checks).getByText('Simple projection from node APY')).toBeVisible();
+    expect(within(checks).queryByText('Rewards data confidence')).not.toBeInTheDocument();
+
+    const tabs = screen.getByRole('tablist');
+    expect(checks.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('labels a complete tax worksheet as review material rather than ready-to-file', async () => {
+    mockUseBondHistory.mockReturnValue({
+      history: {
+        initialBond: 25_000,
+        currentBond: 100_000,
+        bondGrowth: 75_000,
+        firstBondAmount: 25_000,
+        firstBondDate: new Date('2025-01-01T00:00:00.000Z'),
+        lastBondDate: new Date('2026-01-01T00:00:00.000Z'),
+        actionLimit: 50,
+        loadedActionCount: 3,
+        totalActionCount: 3,
+        isPartial: false,
+      },
+      isLoading: false,
+      error: undefined,
+    });
+
+    render(<RewardsPage />);
+
+    const checks = await screen.findByLabelText('Rewards data checks');
+    expect(within(checks).getByText('Reward history')).toBeVisible();
+    expect(within(checks).getByText('Source-loaded')).toBeVisible();
+    expect(within(checks).getByText('Bond action rows loaded; returns are app-calculated review metrics')).toBeVisible();
+    expect(within(checks).queryByText('Source-backed')).not.toBeInTheDocument();
+    expect(within(checks).queryByText('Trusted')).not.toBeInTheDocument();
+    expect(within(checks).getByText('Tax worksheet')).toBeVisible();
+    expect(within(checks).getByText('Review')).toBeVisible();
+    expect(within(checks).getByText('Bond history rows available; not filing-ready')).toBeVisible();
+    expect(within(checks).queryByText('Ready')).not.toBeInTheDocument();
+  });
+
+  it('describes reward lookup failures as unchecked source data, not untrusted calculations', () => {
+    mockUseBondPositions.mockReturnValue({
+      positions: [],
+      isLoading: false,
+      error: new Error('THORNode nodes failed'),
+    });
+
+    render(<RewardsPage />);
+
+    expect(screen.getByRole('heading', { name: 'Rewards data is temporarily unavailable' })).toBeVisible();
+    expect(screen.getByText('The bond-position lookup failed before reward inputs could be checked.')).toBeVisible();
+    expect(screen.queryByText(/reward calculations could be trusted/i)).not.toBeInTheDocument();
+  });
+
+  it('leads the rewards diagnosis with the strongest data-check issue', async () => {
     render(<RewardsPage />);
 
     const diagnosis = await screen.findByLabelText('Rewards diagnosis');
     expect(within(diagnosis).getByRole('heading', { name: 'Reward history: Current-only' })).toBeVisible();
     expect(within(diagnosis).getByText(/Reward history is current-only/i)).toBeVisible();
     expect(within(diagnosis).getByText(/No bond action history/i)).toBeVisible();
-    expect(within(diagnosis).getByRole('button', { name: 'Review data confidence' })).toBeVisible();
+    expect(within(diagnosis).getByText(/use the data checks before relying on return, forecast, or tax outputs/i)).toBeVisible();
+    expect(within(diagnosis).queryByText(/confidence panel/i)).not.toBeInTheDocument();
+    expect(within(diagnosis).getByRole('button', { name: 'Review data checks' })).toBeVisible();
     expect(within(diagnosis).queryByRole('button', { name: 'Review Fees' })).not.toBeInTheDocument();
   });
 
@@ -268,13 +369,13 @@ describe('RewardsPage', () => {
 
     render(<RewardsPage />);
 
-    const confidence = await screen.findByLabelText('Rewards data confidence');
-    expect(within(confidence).getAllByText('Degraded')).toHaveLength(2);
-    expect(within(confidence).getAllByText('Using current bond baseline').length).toBeGreaterThan(0);
-    expect(within(confidence).getByText('Stale')).toBeVisible();
-    expect(within(confidence).getByText('Price returns use last quote')).toBeVisible();
-    expect(within(confidence).getByText('Tax worksheet')).toBeVisible();
-    expect(within(confidence).getByText('Worksheet may include history warnings')).toBeVisible();
+    const checks = await screen.findByLabelText('Rewards data checks');
+    expect(within(checks).getAllByText('Degraded')).toHaveLength(2);
+    expect(within(checks).getAllByText('Using current bond baseline').length).toBeGreaterThan(0);
+    expect(within(checks).getByText('Stale')).toBeVisible();
+    expect(within(checks).getByText('Price returns use last quote')).toBeVisible();
+    expect(within(checks).getByText('Tax worksheet')).toBeVisible();
+    expect(within(checks).getByText('Worksheet may include history warnings')).toBeVisible();
   });
 
   it('does not derive historical entry price from partial reward history', async () => {
@@ -298,14 +399,14 @@ describe('RewardsPage', () => {
 
     render(<RewardsPage />);
 
-    const confidence = await screen.findByLabelText('Rewards data confidence');
+    const checks = await screen.findByLabelText('Rewards data checks');
     expect(mockUseHistoricalRunePrice).toHaveBeenCalledWith(null);
     expect(mockUseHistoricalRunePrice).not.toHaveBeenCalledWith(partialFirstDate);
-    expect(within(confidence).getByText('Partial')).toBeVisible();
-    expect(within(confidence).getByText('Loaded 50 of 76; auto returns need full history or manual baseline')).toBeVisible();
-    expect(within(confidence).getByText('Tax worksheet')).toBeVisible();
-    expect(within(confidence).getByText('Review')).toBeVisible();
-    expect(within(confidence).getByText('Visible history is partial; export may include history warnings')).toBeVisible();
+    expect(within(checks).getByText('Partial')).toBeVisible();
+    expect(within(checks).getByText('Loaded 50 of 76; auto returns need full history or manual baseline')).toBeVisible();
+    expect(within(checks).getByText('Tax worksheet')).toBeVisible();
+    expect(within(checks).getByText('Review')).toBeVisible();
+    expect(within(checks).getByText('Visible history is partial; export may include history warnings')).toBeVisible();
   });
 
   it('keeps node-level APY forecast available when network fallback APY is unavailable', async () => {
@@ -317,16 +418,16 @@ describe('RewardsPage', () => {
 
     render(<RewardsPage />);
 
-    const confidence = await screen.findByLabelText('Rewards data confidence');
-    expect(within(confidence).getByText('APY basis')).toBeVisible();
-    expect(within(confidence).getByText('Node-level')).toBeVisible();
-    expect(within(confidence).getByText('12.00% weighted from 1 node')).toBeVisible();
-    expect(within(confidence).getByText('Forecast')).toBeVisible();
-    expect(within(confidence).getByText('Estimated')).toBeVisible();
-    expect(within(confidence).getByText('Simple projection from node APY')).toBeVisible();
+    const checks = await screen.findByLabelText('Rewards data checks');
+    expect(within(checks).getByText('APY basis')).toBeVisible();
+    expect(within(checks).getByText('Node-level')).toBeVisible();
+    expect(within(checks).getByText('12.00% node-weighted estimate from 1 node')).toBeVisible();
+    expect(within(checks).getByText('Forecast')).toBeVisible();
+    expect(within(checks).getByText('Estimated')).toBeVisible();
+    expect(within(checks).getByText('Simple projection from node APY')).toBeVisible();
   });
 
-  it('blocks forecast confidence only when both node and network APY are unavailable', async () => {
+  it('blocks forecast checks only when both node and network APY are unavailable', async () => {
     mockUseBondPositions.mockReturnValue({
       positions: [{ ...activePosition, netAPY: 0 }],
       isLoading: false,
@@ -340,13 +441,13 @@ describe('RewardsPage', () => {
 
     render(<RewardsPage />);
 
-    const confidence = await screen.findByLabelText('Rewards data confidence');
-    expect(within(confidence).getByText('APY basis')).toBeVisible();
-    expect(within(confidence).getAllByText('Unavailable').length).toBeGreaterThan(0);
-    expect(within(confidence).getByText('Forecasts withheld')).toBeVisible();
-    expect(within(confidence).getByText('Forecast')).toBeVisible();
-    expect(within(confidence).getByText('Blocked')).toBeVisible();
-    expect(within(confidence).getByText('Needs APY baseline')).toBeVisible();
+    const checks = await screen.findByLabelText('Rewards data checks');
+    expect(within(checks).getByText('APY basis')).toBeVisible();
+    expect(within(checks).getAllByText('Unavailable').length).toBeGreaterThan(0);
+    expect(within(checks).getByText('Forecasts withheld')).toBeVisible();
+    expect(within(checks).getByText('Forecast')).toBeVisible();
+    expect(within(checks).getByText('Blocked')).toBeVisible();
+    expect(within(checks).getByText('Needs APY baseline')).toBeVisible();
   });
 
   it('shows tiny network APY only as fallback when node APY is unavailable', async () => {
@@ -363,11 +464,11 @@ describe('RewardsPage', () => {
 
     render(<RewardsPage />);
 
-    const confidence = await screen.findByLabelText('Rewards data confidence');
-    expect(within(confidence).getByText('APY basis')).toBeVisible();
-    expect(within(confidence).getByText('Network fallback')).toBeVisible();
-    expect(within(confidence).getByText('<0.01% THORNode fallback')).toBeVisible();
-    expect(within(confidence).queryByText('0.00%')).not.toBeInTheDocument();
+    const checks = await screen.findByLabelText('Rewards data checks');
+    expect(within(checks).getByText('APY basis')).toBeVisible();
+    expect(within(checks).getByText('Network fallback')).toBeVisible();
+    expect(within(checks).getByText('<0.01% THORNode fallback')).toBeVisible();
+    expect(within(checks).queryByText('0.00%')).not.toBeInTheDocument();
   });
 
   it('opens the fee leakage tab from the reward diagnosis primary action', async () => {
@@ -406,14 +507,19 @@ describe('RewardsPage', () => {
     await user.click(await screen.findByRole('tab', { name: 'Tax' }));
 
     expect(screen.getByRole('heading', { name: 'Reward tax worksheet' })).toBeInTheDocument();
+    expect(screen.getByText(/estimated LP source metadata/i)).toBeInTheDocument();
     expect(screen.getByText(/not a filing-ready tax report/i)).toBeInTheDocument();
+    expect(screen.queryByText(/confidence metadata/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Export Worksheet CSV' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Export Tax Report' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Export Worksheet CSV' }));
 
-    expect(screen.getByRole('heading', { name: 'Export tax worksheet CSV' })).toBeInTheDocument();
-    expect(screen.getByText(/Use it for reconciliation before tax filing/i)).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: 'Export tax worksheet CSV' });
+    expect(within(dialog).getByRole('heading', { name: 'Export tax worksheet CSV' })).toBeInTheDocument();
+    expect(within(dialog).getByText(/estimated LP source metadata/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Use it for reconciliation before tax filing/i)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/confidence metadata/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Export Tax Report' })).not.toBeInTheDocument();
   });
 

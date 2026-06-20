@@ -13,9 +13,21 @@ describe('BondSimulator trust copy', () => {
     const firstInput = screen.getByLabelText('Bond Amount (RUNE)');
 
     expect(diagnosis).toHaveTextContent('Rewards-only projection');
+    expect(diagnosis).toHaveTextContent('Manual Estimate');
+    expect(diagnosis).not.toHaveTextContent('Estimate Ready');
     expect(diagnosis).toHaveTextContent('Verify node risk before bonding');
     expect(assumptions).toHaveTextContent('Risk coverage');
     expect(assumptions).toHaveTextContent('Excludes slash and jail');
+    expect(assumptions).toHaveTextContent('Manual APY');
+    expect(assumptions).toHaveTextContent('No live source or compounding');
+    expect(assumptions).toHaveTextContent('Minimum bond');
+    expect(assumptions).toHaveTextContent('Meets active minimum');
+    expect(assumptions).toHaveTextContent('threshold only');
+
+    const minimumBondValue = screen.getByText('Meets active minimum');
+    expect(minimumBondValue).toHaveClass('text-sky-600');
+    expect(minimumBondValue).not.toHaveClass('text-emerald-600');
+
     expect(
       diagnosis.compareDocumentPosition(firstInput) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
@@ -36,6 +48,10 @@ describe('BondSimulator trust copy', () => {
     expect(screen.getByText('Est. Per Churn')).toBeInTheDocument();
     expect(screen.getByText('Est. Total Reward')).toBeInTheDocument();
     expect(screen.getByText('Projected Total')).toBeInTheDocument();
+    expect(
+      screen.getByText('Estimated rewards by period using manual APY math from the current simulator inputs')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/using simple APY math/i)).not.toBeInTheDocument();
   });
 
   it('keeps preset changes inside the explicit estimate model', async () => {
@@ -44,10 +60,14 @@ describe('BondSimulator trust copy', () => {
     render(<BondSimulator currentPositions={[]} />);
 
     await user.click(screen.getByRole('button', {
-      name: 'Conservative Low risk, established nodes, 10% fee',
+      name: 'Conservative inputs 50% manual APY, 10% operator fee, 90-day window',
     }));
 
     expect(screen.getByText('Scenario estimates, not guarantees')).toBeInTheDocument();
+    expect(screen.getByText('Conservative inputs')).toBeInTheDocument();
+    expect(screen.queryByText('Low risk, established nodes, 10% fee')).not.toBeInTheDocument();
+    expect(screen.queryByText('Moderate risk and return, 15% fee')).not.toBeInTheDocument();
+    expect(screen.queryByText('Higher APY, newer nodes, 20% fee')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Bond Amount (RUNE)')).toHaveValue(50000);
     expect(screen.getByLabelText('Lock Period (days)')).toHaveValue(90);
     expect(screen.getByLabelText('Est. Network APY (%)')).toHaveValue(50);
@@ -81,5 +101,36 @@ describe('BondSimulator trust copy', () => {
     expect(screen.getByText('Impact Preview')).toBeInTheDocument();
     expect(screen.getByText('First bonded baseline')).toBeInTheDocument();
     expect(screen.queryByText(/NaN|Infinity/)).not.toBeInTheDocument();
+  });
+
+  it('does not show a hardcoded projected health grade in the impact preview', () => {
+    render(
+      <BondSimulator
+        currentPositions={[
+          {
+            nodeAddress: 'thor1existingbond',
+            nodeOperatorAddress: 'thor1operator',
+            bondAmount: 100_000,
+            bondSharePercent: 100,
+            status: 'Active',
+            operatorFee: 1000,
+            operatorFeeFormatted: '10.0%',
+            netAPY: 12,
+            totalBond: 100_000,
+            slashPoints: 0,
+            isJailed: false,
+            jailReleaseHeight: 0,
+            version: '3.19.0',
+            requestedToLeave: false,
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByText('Impact Preview')).toBeInTheDocument();
+    expect(screen.getByText('Risk check')).toBeInTheDocument();
+    expect(screen.getByText('Not modeled')).toBeInTheDocument();
+    expect(screen.getByText('Review slash, jail, and churn before acting')).toBeInTheDocument();
+    expect(screen.queryByText('Projected Health')).not.toBeInTheDocument();
   });
 });

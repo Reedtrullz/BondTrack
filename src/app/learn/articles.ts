@@ -104,7 +104,7 @@ export const articles: LearnArticle[] = [
           kind: 'ordered',
           label: 'How to Bond steps',
           items: [
-            '**Choose a Node**: Use the [Node Explorer](/dashboard/explorer) to find a node with healthy status, acceptable fees, and enough capacity.',
+            '**Choose a Node**: Use the [Node Explorer](/dashboard/explorer) to compare candidate evidence, source checks, operator fees, and capacity, then reconfirm the wallet preview before signing.',
             '**Connect Wallet**: Connect a THORChain-capable wallet and confirm the chain/network before signing.',
             '**Enter Bond Amount**: Specify how much RUNE to bond and verify the memo before broadcast.',
             '**Submit Bond**: Sign the transaction and wait for confirmation before treating the position as active.',
@@ -158,13 +158,13 @@ export const articles: LearnArticle[] = [
       {
         heading: 'What is an LP?',
         body: [
-          'A liquidity provider adds assets to a THORChain pool and earns a share of pool fees. In Heimdall, LP views should be read with source confidence because historical entry data and current price data can arrive from different systems.',
+          'A liquidity provider adds assets to a THORChain pool and earns a share of pool fees. In Heimdall, LP views should be read with source checks because historical entry data and current price data can arrive from different systems.',
         ],
       },
       {
         heading: 'Impermanent Loss Explained',
         body: [
-          'Impermanent loss appears when the price ratio between pooled assets changes. It becomes realized only if you withdraw at that changed ratio, so the useful question is whether the current estimate is trusted enough to support an action.',
+          'Impermanent loss appears when the price ratio between pooled assets changes. It becomes realized only if you withdraw at that changed ratio, so the useful question is whether the current estimate has enough source context to support an action.',
         ],
       },
       {
@@ -173,7 +173,7 @@ export const articles: LearnArticle[] = [
           kind: 'unordered',
           label: 'What to Inspect points',
           items: [
-            '**Trusted values**: Current pool/member data that loaded successfully.',
+            '**Source-loaded values**: Current pool/member data that returned from Heimdall source checks; loaded data still needs freshness and completeness review.',
             '**Estimated values**: Derived entry, price, or IL calculations that depend on historical data.',
             '**Data confidence**: Source freshness and degraded calls before interpreting return metrics.',
           ],
@@ -231,7 +231,7 @@ export const articles: LearnArticle[] = [
           items: [
             'Open [Rewards](/dashboard/rewards) and start with the net outcome.',
             'Inspect fee leakage before comparing headline APY.',
-            'Use [Node Explorer](/dashboard/explorer) only after risk and source confidence look acceptable.',
+            'Use [Node Explorer](/dashboard/explorer) only after risk and source checks look acceptable.',
           ],
         },
       },
@@ -257,7 +257,7 @@ export const articles: LearnArticle[] = [
   {
     slug: 'health-score-guide',
     title: 'Provider Exposure Guide',
-    description: 'How Heimdall scores bonded-provider exposure',
+    description: 'How Heimdall labels bonded-provider exposure for review',
     date: '2026-05-03',
     readTime: '4 min read',
     priority: 'Start here',
@@ -268,22 +268,21 @@ export const articles: LearnArticle[] = [
     },
     sections: [
       {
-        heading: 'What the score is for',
+        heading: 'What the review state is for',
         body: [
-          'Heimdall\'s Provider Exposure score helps you quickly assess whether a bonded-provider position needs review. It is a triage signal, not a replacement for inspecting slash context, source freshness, and transaction safety.',
+          'Heimdall\'s Provider Exposure review state helps you quickly assess whether a bonded-provider position needs review. It is a triage signal, not a replacement for inspecting slash context, source freshness, and transaction safety.',
         ],
       },
       {
-        heading: 'Score Scale',
+        heading: 'Review State Guide',
         list: {
           kind: 'unordered',
-          label: 'Score Scale points',
+          label: 'Review State Guide points',
           items: [
-            '**A (90-100)**: Clear provider exposure with low visible risk.',
-            '**B (80-89)**: Good, with minor context to review.',
-            '**C (70-79)**: Watchlist-level exposure that deserves attention.',
-            '**D (60-69)**: Elevated exposure; review before changing bond.',
-            '**F (0-59)**: Action-needed exposure, usually from jail, non-active status, or stacked risk signals.',
+            '**No bonded exposure**: Heimdall did not find a bonded-provider position for the selected address.',
+            '**No exposure issue visible**: Heimdall found bonded exposure, but no jail, slash, churn, or status signal currently stands out.',
+            '**Needs review**: One or more signals deserves operator attention before changing bond.',
+            '**Critical review**: Jail, non-active status, high slash exposure, or stacked risk signals need attention before action.',
           ],
         },
       },
@@ -293,23 +292,23 @@ export const articles: LearnArticle[] = [
           kind: 'ordered',
           label: 'Calculation Factors steps',
           items: [
-            '**Jail and node status**: Jailed nodes and non-active nodes are the strongest score penalties.',
-            '**Slash exposure**: Warning starts at 50 slash points and critical review starts at 200; high historical slash is bounded so it does not zero the score by itself.',
-            '**Yield-guard flags**: Lowest-bond and leave-request signals lower the score because they can affect provider continuity.',
-            '**Separate trust gates**: Source freshness and transaction safety are shown beside the score, but they are not hidden inside it.',
+            '**Jail and node status**: Jailed nodes and non-active nodes are the strongest review signals.',
+            '**Slash exposure**: Warning starts at 50 slash points and critical review starts at 200; high historical slash is bounded so it does not dominate every other signal by itself.',
+            '**Yield-guard flags**: Lowest-bond and leave-request signals raise review priority because they can affect provider continuity.',
+            '**Separate trust gates**: Source freshness and transaction safety are shown beside the review state, but they are not hidden inside it.',
           ],
         },
       },
       {
-        heading: 'Improving Your Score',
+        heading: 'Resolving Review Signals',
         list: {
           kind: 'unordered',
-          label: 'Improving Your Score points',
+          label: 'Resolving Review Signals points',
           items: [
             '**Review jailed or non-active nodes first**: These are the clearest provider-exposure risks.',
             '**Watch slash thresholds**: Treat 50+ slash points as a review signal and 200+ as critical context, not an automatic command to unbond.',
             '**Check churn and leave signals**: Inspect lowest-bond and requested-to-leave flags before adding or removing bond.',
-            '**Use source confidence before action**: A good score still needs fresh THORNode and Midgard data before memo preparation.',
+            '**Use source checks before action**: A calm review state still needs current THORNode and Midgard data before BOND memo review.',
           ],
         },
       },

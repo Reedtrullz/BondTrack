@@ -320,6 +320,13 @@ export async function getRunePriceHistory(interval = 'day', count?: number, from
 
 const HISTORY_COVERAGE_TOLERANCE_SECONDS = 86400;
 
+export type HistoricalRunePriceSource = 'midgard' | 'coingecko';
+
+export interface HistoricalRunePriceResult {
+  price: number;
+  source: HistoricalRunePriceSource;
+}
+
 function normalizeHistoryTimestampValue(timestamp: number | string): number {
   const seconds = normalizeMidgardTimestampToSeconds(timestamp);
   return seconds > 0 ? seconds : Number.NaN;
@@ -342,7 +349,16 @@ function hasHistoryCoverage(timestamps: Array<number | string>, requestedTimesta
     && normalizedRequestedTimestamp <= latestTimestamp + HISTORY_COVERAGE_TOLERANCE_SECONDS;
 }
 
-export async function getHistoricalRunePrice(timestamp: number): Promise<number | null> {
+function buildHistoricalRunePriceResult(
+  price: number | null,
+  source: HistoricalRunePriceSource
+): HistoricalRunePriceResult | null {
+  return Number.isFinite(price) && price !== null && price > 0
+    ? { price, source }
+    : null;
+}
+
+export async function getHistoricalRunePriceWithSource(timestamp: number): Promise<HistoricalRunePriceResult | null> {
   try {
     const normalizedTimestamp = Math.floor(normalizeHistoryTimestampValue(timestamp));
     if (!Number.isFinite(normalizedTimestamp)) return null;
@@ -376,7 +392,7 @@ export async function getHistoricalRunePrice(timestamp: number): Promise<number 
     if (containingInterval) {
       const runePriceUsd = Number.parseFloat(containingInterval.runePriceUSD);
       if (Number.isFinite(runePriceUsd) && runePriceUsd > 0) {
-        return runePriceUsd;
+        return { price: runePriceUsd, source: 'midgard' };
       }
     }
 
@@ -396,15 +412,23 @@ export async function getHistoricalRunePrice(timestamp: number): Promise<number 
 
       const runePriceUsd = Number.parseFloat(closestInterval.runePriceUSD);
       if (Number.isFinite(runePriceUsd) && runePriceUsd > 0) {
-        return runePriceUsd;
+        return { price: runePriceUsd, source: 'midgard' };
       }
     }
 
     // Fallback 2: Try CoinGecko if Midgard has no data for this range
-    return getCoingeckoRunePrice(normalizedTimestamp);
+    return buildHistoricalRunePriceResult(
+      await getCoingeckoRunePrice(normalizedTimestamp),
+      'coingecko'
+    );
   } catch {
     return null;
   }
+}
+
+export async function getHistoricalRunePrice(timestamp: number): Promise<number | null> {
+  const result = await getHistoricalRunePriceWithSource(timestamp);
+  return result?.price ?? null;
 }
 
 export async function getNetwork(): Promise<NetworkRaw> {

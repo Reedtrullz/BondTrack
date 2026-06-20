@@ -1,7 +1,7 @@
 # API Layer — THORNode + Midgard
 
 **7 files**: `client.ts` (base fetch + retry), `thornode.ts` (THORNode API), `midgard.ts` (Midgard API), `coinapi.ts` (RUNE price), `coingecko.ts` (RUNE price fallback), `rate-limit.ts` (per-route rate limiting)
-**9 API routes**: `/api/midgard/[...path]`, `/api/thorchain/[...path]`, `/api/coingecko/[...path]`, `/api/coinapi/rune-price`, `/api/health`, `/api/ready`, `/api/address/[address]`, `/api/pools/[pool]`, `/api/tax-report`
+**13 API routes**: `/api/midgard/[...path]`, `/api/thorchain/[...path]`, `/api/coingecko/[...path]`, `/api/coinapi/rune-price`, `/api/health`, `/api/ready`, `/api/address/[address]`, `/api/pools/[pool]`, `/api/tax-report`, `/api/notifications/status`, `/api/notifications/subscribe`, `/api/notifications/unsubscribe`, `/api/internal/notifications/run`
 
 ## WHERE TO LOOK
 | Need | File |
@@ -60,6 +60,9 @@ If you remove the leading-segment strip, every request 403s, `useApiHealth` flip
 | `/api/thorchain`, `/api/midgard` | 300/min |
 | `/api/health`, `/api/ready`, `/api/coingecko` | 60/min |
 | `/api/pools`, `/api/address` | 30/min |
+| `/api/notifications/status` | 60/min |
+| `/api/notifications/subscribe` | 20/min |
+| `/api/notifications/unsubscribe` | 30/min |
 | `/api/tax-report` | 10/min |
 | `/api/coinapi` | 80/day |
 
@@ -83,6 +86,8 @@ If you remove the leading-segment strip, every request 403s, `useApiHealth` flip
 **Midgard timestamps**: Nanosecond strings. Divide by `1e9` for seconds.
 
 **Midgard actions**: `getActions()` uses `txType` parameter. Keep `limit <= 50`.
+
+**Address-bound server routes**: Validate with the shared bech32 checksum helpers. Mainnet-only flows use `normalizeTHORChainMainnetAddress()` and must reject `tthor` testnet addresses before fetching upstream data.
 
 **Action type detection**: Check `metadata.refund.txType` first -> `action.type` -> memo prefixes.
 

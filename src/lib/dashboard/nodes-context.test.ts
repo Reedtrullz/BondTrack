@@ -5,6 +5,7 @@ import {
   buildNodesPageModel,
   calculateNodeRiskScore,
   getNodeRowRiskClass,
+  getNodeReviewState,
   isUrgentNodeException,
   type NodesSortField,
 } from './nodes-context';
@@ -50,6 +51,26 @@ describe('getNodeRowRiskClass', () => {
     expect(getNodeRowRiskClass(position({ slashPoints: NETWORK.SLASH_POINT_THRESHOLDS.critical }))).toContain('bg-amber-50');
     expect(getNodeRowRiskClass(position({ slashPoints: NETWORK.SLASH_POINT_THRESHOLDS.warning }))).toContain('bg-amber-50');
     expect(getNodeRowRiskClass(position({ slashPoints: 0 }))).toBe('');
+  });
+});
+
+describe('getNodeReviewState', () => {
+  it('turns internal risk scoring into operator-facing review states', () => {
+    expect(getNodeReviewState(position({ isJailed: true })).label).toBe('Jailed');
+    expect(getNodeReviewState(position({ slashPoints: NETWORK.SLASH_POINT_THRESHOLDS.critical })).label).toBe('High slash');
+    expect(getNodeReviewState(position({ slashPoints: NETWORK.SLASH_POINT_THRESHOLDS.warning })).label).toBe('Slash watch');
+    expect(getNodeReviewState(position({ yieldGuardFlags: ['lowest_bond'] })).label).toBe('Churn risk');
+    expect(getNodeReviewState(position({ status: 'Standby' })).label).toBe('Non-active');
+    expect(getNodeReviewState(position({ slashPoints: NETWORK.SLASH_POINT_THRESHOLDS.warning - 1 })).label).toBe('Minor slash');
+    expect(getNodeReviewState(position()).label).toBe('Routine');
+  });
+
+  it('does not expose a numeric score as the visible review label', () => {
+    const review = getNodeReviewState(position({ slashPoints: 75 }));
+
+    expect(review.label).toBe('Slash watch');
+    expect(review.label).not.toMatch(/\d+\/100|\d+$/);
+    expect(review.detail).toContain('75 slash points');
   });
 });
 

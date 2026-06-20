@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mutate } from 'swr';
 
 import { getThorNameReverseLookupStorageKey } from '@/lib/storage/keys';
+import type { ApiHealthState } from '@/lib/hooks/use-api-health';
 import { DashboardShell, getSourceFreshnessLabel } from './dashboard-shell';
 
 const mocks = vi.hoisted(() => ({
@@ -19,7 +20,7 @@ const mocks = vi.hoisted(() => ({
       midgard: new Date('2026-06-12T10:00:00Z'),
       thornode: new Date('2026-06-12T10:00:00Z'),
     },
-  },
+  } as ApiHealthState,
 }));
 
 vi.mock('next/navigation', () => ({
@@ -203,6 +204,47 @@ describe('DashboardShell', () => {
 
     expect(screen.getByTestId('source-freshness-compact')).toHaveTextContent('Sources degraded');
     expect(screen.getByTestId('source-freshness-full')).toHaveTextContent('THORNode degraded');
+    expect(screen.getByTestId('source-freshness-full')).not.toHaveTextContent('Sources synced');
+  });
+
+  it('labels healthy compact source status as checked rather than synced', async () => {
+    mocks.reverseLookup.mockResolvedValueOnce({ entry: null });
+
+    render(
+      <DashboardShell>
+        <div>Dashboard content</div>
+      </DashboardShell>
+    );
+
+    await screen.findByText('Dashboard content');
+
+    expect(screen.getByTestId('source-freshness-compact')).toHaveTextContent('Sources checked');
+    expect(screen.getByTestId('source-freshness-compact')).not.toHaveTextContent('Sources synced');
+  });
+
+  it('labels mock-data builds as demo data in compact source status', async () => {
+    mocks.apiHealth = {
+      midgard: 'mock',
+      thornode: 'mock',
+      lastChecked: new Date('2026-06-12T10:05:00Z'),
+      lastSuccessful: {
+        midgard: null,
+        thornode: null,
+      },
+    };
+    mocks.reverseLookup.mockResolvedValueOnce({ entry: null });
+
+    render(
+      <DashboardShell>
+        <div>Dashboard content</div>
+      </DashboardShell>
+    );
+
+    await screen.findByText('Dashboard content');
+
+    expect(screen.getByTestId('source-freshness-compact')).toHaveTextContent('Demo data');
+    expect(screen.getByTestId('source-freshness-full')).toHaveTextContent('Midgard demo data');
+    expect(screen.getByTestId('source-freshness-full')).toHaveTextContent('THORNode demo data');
     expect(screen.getByTestId('source-freshness-full')).not.toHaveTextContent('Sources synced');
   });
 

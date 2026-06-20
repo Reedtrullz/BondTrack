@@ -37,7 +37,9 @@ test.describe('Homepage', () => {
 
     await expect(trustPanel).toContainText('Public on-chain data');
     await expect(trustPanel).toContainText('Stored locally');
-    await expect(trustPanel).toContainText('Wallet confirms transactions');
+    await expect(trustPanel).toContainText('Wallet approval stays external');
+    await expect(trustPanel).toContainText('approve only if memo, amount, network, and fee match');
+    await expect(trustPanel).not.toContainText('Wallet confirms transactions');
     await expect(main.getByRole('heading', { name: 'Node Health', exact: true })).toHaveCount(0);
   });
 

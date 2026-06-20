@@ -104,7 +104,7 @@ export function scoreNodeCandidate(input: NodeCandidateInput): NodeCandidateScor
     reasons.push('high operator fee');
   }
   if (capacityTrust === 'needs_whitelist') {
-    reasons.push('needs operator whitelist');
+    reasons.push('provider not listed by THORNode');
   } else if (capacityTrust === 'full') {
     reasons.push('provider slots full');
   } else if (capacityTrust === 'unknown') {
@@ -122,9 +122,9 @@ export function scoreNodeCandidate(input: NodeCandidateInput): NodeCandidateScor
 
   const quality: CandidateQuality = score >= 75 ? 'Strong' : score >= 55 ? 'Watch' : 'Avoid';
   const trustLabel = capacityTrust === 'available'
-    ? 'Provider whitelisted'
+    ? 'Provider listed by THORNode'
     : capacityTrust === 'needs_whitelist'
-      ? 'Needs operator whitelist'
+      ? 'Provider not listed by THORNode'
     : capacityTrust === 'full'
       ? 'Provider slots full'
       : 'Direct-bond access unknown';
@@ -134,6 +134,6 @@ export function scoreNodeCandidate(input: NodeCandidateInput): NodeCandidateScor
     score: Math.round(score),
     quality,
     trustLabel,
-    reasons: reasons.length > 0 ? reasons : ['healthy candidate signals'],
+    reasons: reasons.length > 0 ? reasons : ['No obvious candidate blockers in current inputs'],
   };
 }

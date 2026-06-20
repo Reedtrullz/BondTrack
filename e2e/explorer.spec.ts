@@ -19,28 +19,30 @@ test.describe('Node explorer', () => {
     await page.goto(`/dashboard/explorer?address=${DEFAULT_DASHBOARD_ADDRESS}`);
 
     await expect(page.getByText('Rank bond candidates by quality, slash history, operator fee, and capacity trust')).toBeVisible();
-    await expect(page.getByText('No direct-bond candidates with confirmed capacity')).toBeVisible();
+    await expect(page.getByText('No direct-bond candidates with watched-provider evidence')).toBeVisible();
+    await expect(page.getByText('No direct-bond candidates with confirmed capacity')).toBeHidden();
     const decision = page.getByLabel('Discovery decision diagnosis');
-    await expect(decision).toContainText('Do not prepare a BOND from this set');
+    await expect(decision).toContainText('No BOND candidate is review-ready');
     await expect(decision).toContainText('Avoid');
     await expect(decision.getByRole('link', { name: 'Review risk evidence' })).toHaveAttribute(
       'href',
       `/dashboard/risk?address=${DEFAULT_DASHBOARD_ADDRESS}&node=thor1nodemocked123456789abcdef`
     );
     await expect(page.getByRole('button', { name: 'Low Slash' })).toBeVisible();
-    await expect(page.getByText(/Avoid · \d+\/100/)).toBeVisible();
+    await expect(page.getByText('Avoid candidate')).toBeVisible();
     const candidateCard = page.getByTestId('candidate-card');
     const recommendation = candidateCard.getByTestId('candidate-recommendation');
     const scoreEvidence = candidateCard.getByTestId('candidate-score-evidence');
+    await expect(candidateCard).not.toContainText(/\d+\/100/);
     await expect(recommendation).toContainText('Avoid direct bond');
-    await expect(recommendation).toContainText('Review risk context before preparing any BOND memo');
-    await expect(scoreEvidence).toContainText('Score evidence · THORNode');
+    await expect(recommendation).toContainText('Review risk context before opening BOND memo review');
+    await expect(scoreEvidence).toContainText('Candidate evidence · THORNode');
     await expect(scoreEvidence).toContainText('5/5 inputs usable');
-    await expect(scoreEvidence).toContainText('Capacity: Watched address is not listed; operator whitelist is required.');
+    await expect(scoreEvidence).toContainText('Capacity: Watched address is not listed as a THORNode bond provider.');
     await expect(candidateCard.getByTestId('candidate-risk-reason')).toContainText([
       '180 slash points',
       'high operator fee',
-      'needs operator whitelist',
+      'provider not listed by THORNode',
     ]);
     const recommendationOrder = await candidateCard.evaluate((card) => {
       const recommendationBox = card.querySelector('[data-testid="candidate-recommendation"]')?.getBoundingClientRect();
@@ -75,7 +77,8 @@ test.describe('Node explorer', () => {
     await expect(focusedRiskContext).toContainText('Avoid candidate');
     await expect(focusedRiskContext).toContainText('Slash points');
     await expect(focusedRiskContext).toContainText('Operator fee');
-    await expect(focusedRiskContext).toContainText('Needs operator whitelist');
+    await expect(focusedRiskContext).toContainText('Provider not listed by THORNode');
+    await expect(focusedRiskContext).not.toContainText(/operator whitelist|whitelisted/i);
     await expect(focusedRiskContext).not.toContainText('candidate or stale-alert context');
 
     await page.getByRole('link', { name: 'Compare alternatives' }).click();
@@ -92,11 +95,12 @@ test.describe('Node explorer', () => {
       'href',
       `/dashboard/risk?address=${DEFAULT_DASHBOARD_ADDRESS}&node=thor1nodemocked123456789abcdef`
     );
-    await expect(focusedCandidateContext.getByTestId('focused-candidate-score-evidence')).toContainText('Score evidence · THORNode');
+    await expect(focusedCandidateContext).not.toContainText(/\d+\/100/);
+    await expect(focusedCandidateContext.getByTestId('focused-candidate-score-evidence')).toContainText('Candidate evidence · THORNode');
     await expect(focusedCandidateContext.getByTestId('focused-candidate-score-evidence')).toContainText('5/5 inputs usable');
-    await expect(focusedCandidateContext.getByTestId('focused-candidate-score-evidence')).toContainText('Capacity: Watched address is not listed; operator whitelist is required.');
+    await expect(focusedCandidateContext.getByTestId('focused-candidate-score-evidence')).toContainText('Capacity: Watched address is not listed as a THORNode bond provider.');
     await expect(focusedCandidateContext.getByTestId('focused-candidate-metric-details')).toContainText('Operational details');
-    await expect(focusedCandidateContext.getByTestId('focused-candidate-metric-details')).toContainText('Whitelist needed · Slash 180 · Fee 25.0%');
+    await expect(focusedCandidateContext.getByTestId('focused-candidate-metric-details')).toContainText('Provider not listed by THORNode · Slash 180 · Fee 25.0%');
     await expect(focusedCandidateContext.getByTestId('focused-candidate-metrics')).toBeHidden();
     await expect(focusedCandidateContext).toContainText('Grid status');
     await expect(focusedCandidateContext).toContainText('Highlighted');
@@ -113,22 +117,122 @@ test.describe('Node explorer', () => {
     await expect(page.getByLabel('Focused candidate node thor1nodemocked123456789abcdef')).toHaveAttribute('data-focused-node', 'true');
   });
 
+  test('frames strong direct-bond candidates as review states before BOND memo review', async ({ page }) => {
+    await mockDashboardApis(page, DEFAULT_DASHBOARD_ADDRESS, {
+      withBondPosition: true,
+      primaryNodeOverrides: {
+        bond_providers: {
+          node_operator_fee: '500',
+          providers: [{ bond_address: DEFAULT_DASHBOARD_ADDRESS, bond: '1250000000000' }],
+        },
+        current_award: '30000000000',
+        slash_points: 0,
+      },
+    });
+
+    await page.goto(`/dashboard/explorer?address=${DEFAULT_DASHBOARD_ADDRESS}`);
+
+    const decision = page.getByLabel('Discovery decision diagnosis');
+    await expect(decision).toContainText('Candidate Review');
+    await expect(decision).toContainText('Strong candidate still needs wallet review');
+    await expect(decision).toContainText('not a safety guarantee');
+    await expect(decision).toContainText('watched provider listed by THORNode');
+    await expect(decision).not.toContainText('confirmed provider access');
+    await expect(decision).not.toContainText('Strong direct-bond candidate available');
+    await expect(decision).not.toContainText('Ready');
+    await expect(decision.getByRole('link', { name: 'Review BOND memo' })).toHaveAttribute(
+      'href',
+      `/dashboard/transactions?address=${DEFAULT_DASHBOARD_ADDRESS}&action=bond&node=thor1nodemocked123456789abcdef`
+    );
+    await expect(decision.getByRole('link', { name: 'Prepare BOND memo' })).toBeHidden();
+
+    const qualitySummary = page.getByLabel('Candidate quality summary');
+    await expect(qualitySummary).toContainText('1 direct-bond candidate with watched-provider evidence');
+    await expect(qualitySummary).toHaveClass(/border-sky-200/);
+    await expect(qualitySummary).not.toHaveClass(/border-emerald-200/);
+
+    const candidateCard = page.getByTestId('candidate-card');
+    const qualityBadge = candidateCard.getByText('Strong candidate');
+    await expect(qualityBadge).toHaveClass(/bg-sky-100/);
+    await expect(qualityBadge).not.toHaveClass(/bg-emerald-100/);
+
+    const recommendation = page.getByTestId('candidate-recommendation');
+    await expect(recommendation).toContainText('Review before BOND memo');
+    await expect(recommendation).toContainText('THORNode-listed provider access');
+    await expect(recommendation).toContainText('not a safety guarantee');
+    await expect(recommendation).toHaveClass(/border-sky-400/);
+    await expect(recommendation).not.toHaveClass(/border-emerald-400/);
+    await expect(recommendation).not.toContainText('Candidate evidence and capacity support');
+    await expect(recommendation).not.toContainText('memo prep');
+    await expect(recommendation).not.toContainText('Ready for bond prep');
+
+    await page.goto(`/dashboard/explorer?address=${DEFAULT_DASHBOARD_ADDRESS}&node=thor1nodemocked123456789abcdef`);
+    const focusedCandidateContext = page.getByLabel('Focused candidate context');
+    await expect(focusedCandidateContext).toBeVisible();
+    await expect(focusedCandidateContext).toContainText('Strong candidate');
+    await expect(focusedCandidateContext).toContainText('Compare the evidence below before reviewing any BOND memo.');
+    await expect(focusedCandidateContext).toHaveClass(/border-sky-200/);
+    await expect(focusedCandidateContext).not.toHaveClass(/border-emerald-200/);
+    await expect(focusedCandidateContext.getByTestId('focused-candidate-primary-action')).toContainText('Review BOND memo');
+  });
+
+  test('withholds strong direct-bond review when the THORNode source check is degraded', async ({ page, allowApiErrors }) => {
+    allowApiErrors(['/api/thorchain/thorchain/nodes']);
+    await mockDashboardApis(page, DEFAULT_DASHBOARD_ADDRESS, {
+      withBondPosition: true,
+      primaryNodeOverrides: {
+        bond_providers: {
+          node_operator_fee: '500',
+          providers: [{ bond_address: DEFAULT_DASHBOARD_ADDRESS, bond: '1250000000000' }],
+        },
+        current_award: '30000000000',
+        slash_points: 0,
+      },
+      thornodeHealthProbeStatus: 502,
+    });
+
+    await page.goto(`/dashboard/explorer?address=${DEFAULT_DASHBOARD_ADDRESS}`);
+
+    const qualitySummary = page.getByLabel('Candidate quality summary');
+    const decision = page.getByLabel('Discovery decision diagnosis');
+    const recommendation = page.getByTestId('candidate-recommendation');
+
+    await expect(qualitySummary).toContainText('1 direct-bond candidate waiting on THORNode source check');
+    await expect(qualitySummary).toContainText('THORNode candidate source check is degraded');
+    await expect(decision).toContainText('Wait for THORNode source check before BOND review');
+    await expect(decision).toContainText('Source degraded');
+    await expect(decision).toContainText('THORNode candidate source check is degraded');
+    await expect(decision.getByRole('link', { name: 'Review source checks' })).toHaveAttribute(
+      'href',
+      '#explorer-source-confidence'
+    );
+    await expect(recommendation).toContainText('Wait for source check');
+    await expect(recommendation).toContainText('THORNode candidate source check is degraded');
+    await expect(recommendation).not.toContainText('fresh enough');
+    await expect(page.getByRole('link', { name: 'Review BOND memo' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Prepare BOND memo' })).toHaveCount(0);
+  });
+
   test('keeps candidate sort controls within the mobile viewport', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 740 });
     await page.goto(`/dashboard/explorer?address=${DEFAULT_DASHBOARD_ADDRESS}`);
 
     const sortControls = page.getByTestId('explorer-sort-controls');
-    const sourceConfidence = page.getByRole('region', { name: 'Source confidence' });
+    const sourceConfidence = page.getByRole('region', { name: 'Discovery source checks' });
     const decision = page.getByLabel('Discovery decision diagnosis');
+    const candidateSummary = page.getByLabel('Candidate quality summary');
     await expect(sourceConfidence).toBeVisible();
     await expect(sourceConfidence).toContainText('THORNode');
     await expect(sourceConfidence).toContainText('Midgard');
     await expect(decision).toBeVisible();
+    await expect(candidateSummary).toBeVisible();
     await expect(sortControls).toBeVisible();
 
     const hierarchy = await page.evaluate(() => {
-      const sourceConfidence = document.querySelector('section[aria-label="Source confidence"]');
+      const sourceConfidence = document.querySelector('section[aria-label="Discovery source checks"]');
       const decision = document.querySelector('section[aria-label="Discovery decision diagnosis"]');
+      const decisionAction = decision?.querySelector('a[href], button');
+      const candidateSummary = document.querySelector('section[aria-label="Candidate quality summary"]');
       const sortControls = document.querySelector('[data-testid="explorer-sort-controls"]');
       const box = (element: Element | null) => {
         const rect = element?.getBoundingClientRect();
@@ -136,21 +240,28 @@ test.describe('Node explorer', () => {
       };
 
       return {
+        viewportHeight: window.innerHeight,
         sourceConfidence: box(sourceConfidence),
         decision: box(decision),
+        decisionAction: box(decisionAction ?? null),
+        candidateSummary: box(candidateSummary),
         sortControls: box(sortControls),
       };
     });
 
     expect(hierarchy.sourceConfidence).not.toBeNull();
     expect(hierarchy.decision).not.toBeNull();
+    expect(hierarchy.decisionAction).not.toBeNull();
+    expect(hierarchy.candidateSummary).not.toBeNull();
     expect(hierarchy.sortControls).not.toBeNull();
     expect(hierarchy.sourceConfidence!.top).toBeLessThan(hierarchy.decision!.top);
-    expect(hierarchy.decision!.top).toBeLessThan(hierarchy.sortControls!.top);
+    expect(hierarchy.decisionAction!.bottom).toBeLessThanOrEqual(hierarchy.viewportHeight);
+    expect(hierarchy.decision!.top).toBeLessThan(hierarchy.candidateSummary!.top);
+    expect(hierarchy.candidateSummary!.top).toBeLessThan(hierarchy.sortControls!.top);
 
     const overflow = await page.evaluate(() => {
       const viewportWidth = window.innerWidth;
-      const sourceConfidence = document.querySelector('section[aria-label="Source confidence"]');
+      const sourceConfidence = document.querySelector('section[aria-label="Discovery source checks"]');
       const sortControls = document.querySelector('[data-testid="explorer-sort-controls"]');
       return Array.from([
         ...(sourceConfidence ? Array.from(sourceConfidence.querySelectorAll('*')) : []),
@@ -181,7 +292,8 @@ test.describe('Node explorer', () => {
     const cards = page.getByTestId('candidate-card');
     await expect(cards).toHaveCount(1);
     await expect(cards.getByTestId('candidate-recommendation')).toContainText('Avoid direct bond');
-    await expect(cards.getByTestId('candidate-score-evidence')).toContainText('Score evidence · THORNode');
+    await expect(cards).not.toContainText(/\d+\/100/);
+    await expect(cards.getByTestId('candidate-score-evidence')).toContainText('Candidate evidence · THORNode');
     await expect(page.getByTestId('candidate-apy')).toBeVisible();
     await expect(page.getByText('Adj. APY')).toBeVisible();
 
@@ -276,7 +388,7 @@ test.describe('Node explorer', () => {
     const focusedRiskContext = page.getByLabel('Focused node risk context');
     await expect(focusedRiskContext).toBeVisible();
     await expect(focusedRiskContext).toContainText('Provider access review');
-    await expect(focusedRiskContext).toContainText('Needs operator whitelist');
+    await expect(focusedRiskContext).toContainText('Provider not listed by THORNode');
 
     const mobileRiskLayout = await focusedRiskContext.evaluate((context) => {
       const contextBox = context.getBoundingClientRect();
@@ -308,7 +420,7 @@ test.describe('Node explorer', () => {
     expect(mobileRiskLayout.overflow).toEqual([]);
   });
 
-  test('keeps focused candidate score evidence readable on mobile', async ({ page }) => {
+  test('keeps focused candidate evidence readable on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 740 });
     await page.goto(
       `/dashboard/explorer?address=${DEFAULT_DASHBOARD_ADDRESS}&node=thor1nodemocked123456789abcdef`
@@ -322,10 +434,11 @@ test.describe('Node explorer', () => {
     await expect(focusedCandidateContext).toBeVisible();
     await expect(focusedCandidateContext.getByTestId('focused-candidate-primary-action')).toContainText('Review provider access');
     await expect(scoreEvidence).toBeVisible();
-    await expect(scoreEvidence).toContainText('Score evidence · THORNode');
-    await expect(scoreEvidence).toContainText('Capacity: Watched address is not listed; operator whitelist is required.');
+    await expect(focusedCandidateContext).not.toContainText(/\d+\/100/);
+    await expect(scoreEvidence).toContainText('Candidate evidence · THORNode');
+    await expect(scoreEvidence).toContainText('Capacity: Watched address is not listed as a THORNode bond provider.');
     await expect(metricDetails).toContainText('Operational details');
-    await expect(metricDetails).toContainText('Whitelist needed · Slash 180 · Fee 25.0%');
+    await expect(metricDetails).toContainText('Provider not listed by THORNode · Slash 180 · Fee 25.0%');
     await expect(metricGrid).toBeHidden();
 
     const mobileFocusedLayout = await focusedCandidateContext.evaluate((context) => {

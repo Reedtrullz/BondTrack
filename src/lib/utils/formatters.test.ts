@@ -4,6 +4,7 @@ import {
   formatPercent,
   formatRuneAmount,
   formatRuneDisplayNumber,
+  formatUtcDateTime,
   formatUsd,
   rawRuneToDisplayNumber,
   runeToNumber,
@@ -39,5 +40,9 @@ describe('THORChain unit formatting regressions', () => {
   it('centralizes display-only RUNE number formatting for already-converted values', () => {
     expect(formatRuneDisplayNumber(1234.5, 2)).toBe('1,234.50');
     expect(formatRuneDisplayNumber(Number.NaN)).toBe('--');
+  });
+
+  it('formats source freshness timestamps without browser locale drift', () => {
+    expect(formatUtcDateTime(new Date('2026-06-12T10:05:30.000Z'))).toBe('2026-06-12 10:05 UTC');
   });
 });

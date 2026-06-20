@@ -5,7 +5,7 @@ import { BondPosition, NodeRaw } from '@/lib/types/node';
 import { YieldBenchmarks } from '@/lib/utils/yield-benchmarks';
 import { analyzeBondOptimization } from '@/lib/utils/bond-optimizer';
 import { generatePortfolioAlerts } from '@/lib/utils/portfolio-alerts';
-import { Eye, TrendingUp, ArrowRight, Zap, ShieldCheck } from 'lucide-react';
+import { Eye, TrendingUp, ArrowRight, Zap, Info } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
@@ -60,18 +60,22 @@ export function IntelligenceFeed({ positions, benchmarks, allNodes, providerAddr
 
   if (insights.length === 0 && positions.length > 0) {
     return (
-      <div className="relative overflow-hidden rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-6 text-center shadow-sm dark:bg-emerald-500/5">
+      <div
+        className="relative overflow-hidden rounded-xl border border-sky-200 bg-sky-50/70 p-6 text-center shadow-sm dark:border-sky-900/60 dark:bg-sky-950/20"
+        role="status"
+        aria-label="Portfolio review signals empty state"
+      >
         <div className="relative z-10">
           <div className="flex justify-center mb-3">
-            <div className="p-3 rounded-full bg-emerald-100/80 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 shadow-inner">
-              <ShieldCheck className="w-6 h-6" />
+            <div className="p-3 rounded-full bg-sky-100/80 text-sky-700 shadow-inner dark:bg-sky-900/40 dark:text-sky-300">
+              <Info className="w-6 h-6" aria-hidden="true" />
             </div>
           </div>
           <h3 className="mb-1 text-sm font-bold uppercase text-zinc-900 dark:text-zinc-100">
-            No immediate alerts
+            No slash, jail, or churn-risk feed items
           </h3>
           <p className="mx-auto max-w-xs text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-            No slash, jail, or churn-risk signals are currently detected. Keep reviewing source freshness before acting.
+            This feed did not generate slash, jail, or churn-risk items from loaded portfolio inputs. Keep using the diagnosis and source checks before acting.
           </p>
         </div>
       </div>

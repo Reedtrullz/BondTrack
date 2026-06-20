@@ -13,6 +13,8 @@ export default defineConfig({
     reporters: process.env.CI ? ['default', 'junit'] : ['default'],
     outputFile: process.env.CI ? { junit: 'test-results/vitest/junit.xml' } : undefined,
     passWithNoTests: false,
+    // Local full-suite React/jsdom runs can spike past Vitest's 5s default under load.
+    testTimeout: 15_000,
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     setupFiles: ['./src/setupTests.ts'],
     coverage: {

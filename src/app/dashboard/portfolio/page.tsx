@@ -44,7 +44,6 @@ import {
   ArrowRight,
   Shield,
   Coins,
-  Plus,
   Minus,
   Eye,
   ChevronDown,
@@ -84,7 +83,7 @@ function getPortfolioSourceStatus(midgard: ApiHealthStatus, thornode: ApiHealthS
 
   return {
     label: 'Sources responding',
-    detail: 'Recent Midgard + THORNode checks succeeded',
+    detail: 'Recent Midgard + THORNode checks responded',
     dotClass: 'bg-emerald-500',
     className: 'border-emerald-200/70 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200',
   };
@@ -121,6 +120,7 @@ export default function PortfolioPage() {
   const {
     positions: lpPositions,
     error: lpError,
+    runePriceFreshness: lpRunePriceFreshness,
   } = useLpPositions(address);
   const { price: runePrice, intervals: runePriceHistory, isStale: runePriceIsStale, updatedAt: runePriceUpdatedAt } = useRunePriceHistory('hour', 24 * 7 + 1);
   const { data: marketNetwork } = useNetworkMetrics();
@@ -141,16 +141,20 @@ export default function PortfolioPage() {
     bondPositions,
     lpError,
     lpPositions,
+    lpRunePriceFreshness,
     runePrice,
     runePriceHistory,
     runePriceIsStale,
+    runePriceUpdatedAt,
   }), [
     bondPositions,
     lpError,
     lpPositions,
+    lpRunePriceFreshness,
     runePrice,
     runePriceHistory,
     runePriceIsStale,
+    runePriceUpdatedAt,
   ]);
   const {
     effectiveLpPositions,
@@ -185,10 +189,10 @@ export default function PortfolioPage() {
     [apiHealth.midgard, apiHealth.thornode]
   );
   const bondAction = resolveThornodeGatedBondAction(portfolioInsight.actions, {
-    label: 'Prepare BOND Memo',
+    label: 'Review BOND Memo',
     href: buildTransactionHref(address, 'bond'),
   });
-  const BondActionIcon = bondAction.kind === 'source-confidence' ? AlertTriangle : Plus;
+  const BondActionIcon = bondAction.kind === 'source-confidence' ? AlertTriangle : Eye;
   const hasUnbondEligiblePosition = bondPositions.some((position) => canUnbondNode(position).canUnbond);
   const canOfferUnbondPrep = bondAction.kind === 'bond-ready' && hasUnbondEligiblePosition;
 
@@ -221,7 +225,7 @@ export default function PortfolioPage() {
           <Link
             href={bondAction.href}
             className={buttonVariants({
-              variant: bondAction.kind === 'source-confidence' ? 'outline' : 'success',
+              variant: 'outline',
               className: 'gap-2',
             })}
           >
@@ -231,10 +235,10 @@ export default function PortfolioPage() {
           {canOfferUnbondPrep && (
             <Link
               href={buildTransactionHref(address, 'unbond')}
-              className={buttonVariants({ variant: 'destructive', className: 'gap-2' })}
+              className={buttonVariants({ variant: 'outline', className: 'gap-2' })}
             >
               <Minus className="w-4 h-4" />
-              Prepare UNBOND Memo
+              Review UNBOND Memo
             </Link>
           )}
           <div
@@ -265,13 +269,19 @@ export default function PortfolioPage() {
         compactMobileMetrics
       />
 
+      <MetricStrip
+        compactDetailMode="all"
+        compactMobileColumns={4}
+        metrics={portfolioModel.confidenceMetrics}
+        mobileDensity="compact"
+        title="Portfolio data checks"
+      />
+
       <ActionQueue
         items={portfolioInsight.actions.slice(0, 3)}
         title="Next portfolio actions"
         compact
       />
-
-      <MetricStrip metrics={portfolioModel.confidenceMetrics} title="Portfolio exposure confidence" />
 
       {/* Hero Stats */}
       <PortfolioSummary
@@ -443,7 +453,7 @@ export default function PortfolioPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-amber-600/80 dark:text-amber-500/80">
             <Eye className="w-4 h-4" />
-            <span className="text-xs font-bold uppercase font-serif italic">Heimdall&apos;s Sight</span>
+            <span className="text-xs font-bold uppercase">Provider review signals</span>
           </div>
           <button
             type="button"

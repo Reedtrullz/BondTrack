@@ -51,6 +51,9 @@ yarn-error.log*
 
 # Dogfood / scratch reports (regenerated locally)
 /dogfood-output
+/.hermes-agent-notes
+/.heimdall-data
+/output
 
 # Sibling project (separate repo at github.com/Reedtrullz/inebotten-discord)
 inebotten-discord/

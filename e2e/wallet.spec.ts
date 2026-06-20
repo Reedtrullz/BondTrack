@@ -168,6 +168,35 @@ test.describe('Wallet Connection', () => {
     await expect(page.getByText('User rejected', { exact: true })).toBeVisible();
   });
 
+  test('makes wallet network mismatch recoverable', async ({ page, context }) => {
+    const mockAddress = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
+    await context.addInitScript((address) => {
+      const walletWindow = window as unknown as Window & { __heimdallChainId: string };
+      walletWindow.__heimdallChainId = 'cosmoshub-4';
+      (window as unknown as Record<string, unknown>).keplr = {
+        enable: async () => {},
+        getChainId: async () => walletWindow.__heimdallChainId,
+        getKey: async () => ({ bech32Address: address }),
+      };
+    }, mockAddress);
+
+    await gotoWalletPage(page);
+    await openWalletMenu(page);
+    await chooseWallet(page, 'keplr');
+
+    const mismatch = page.getByTestId('wallet-network-mismatch');
+    await expect(mismatch).toContainText('Wallet network mismatch');
+    await expect(mismatch).toContainText('Wallet reports cosmoshub-4; THORChain mainnet expects thorchain-1.');
+    await expect(mismatch).toContainText('Switch to THORChain mainnet before preview or broadcast.');
+
+    await page.evaluate(() => {
+      (window as unknown as Window & { __heimdallChainId: string }).__heimdallChainId = 'thorchain-1';
+    });
+    await page.getByRole('button', { name: 'Reconnect wallet' }).click();
+
+    await expect(page.getByTestId('wallet-account-menu-button')).toHaveAccessibleName(/Keplr wallet thor1q.*7qn4/);
+  });
+
   test('connects successfully with mocked Keplr', async ({ page, context }) => {
     const mockAddress = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
     await context.addInitScript((address) => {

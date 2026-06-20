@@ -32,13 +32,14 @@ function resolveImport(importer, source) {
 walk(srcRoot);
 const imported = new Set();
 const importsByFile = new Map();
-const importRe = /(?:import|export)\s+(?:type\s+)?(?:[^'";]+?\s+from\s+)?['"]([^'"]+)['"]/g;
+const importRe = /import\s*\(\s*['"]([^'"]+)['"]\s*\)|(?:import|export)\s+(?:type\s+)?(?:[^'";]+?\s+from\s+)?['"]([^'"]+)['"]/g;
 
 for (const file of files) {
   const text = readFileSync(file, 'utf8');
   const sources = [];
   for (const match of text.matchAll(importRe)) {
-    const resolved = resolveImport(file, match[1]);
+    const source = match[1] ?? match[2];
+    const resolved = resolveImport(file, source);
     if (resolved) {
       imported.add(resolved);
       sources.push(resolved);

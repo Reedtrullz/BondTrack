@@ -65,4 +65,19 @@ describe('NetworkSecurityMetrics', () => {
     expect(screen.getByText('Effective Security')).toBeInTheDocument();
     expect(screen.queryByText(/NaN|Infinity/)).not.toBeInTheDocument();
   });
+
+  it('frames bond-to-pool status as incentive context instead of a safety verdict', () => {
+    render(<NetworkSecurityMetrics />);
+
+    expect(screen.getByText('Bond buffer in range')).toBeInTheDocument();
+    expect(screen.getByText(/Network-level incentive context/)).toBeInTheDocument();
+    expect(screen.getAllByText(/not a provider safety verdict/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/\bhealthy\b|well secured|\bsafe\b/i)).not.toBeInTheDocument();
+
+    const status = screen.getByText('Bond buffer in range');
+    expect(status).toHaveClass('text-sky-600');
+    expect(status).not.toHaveClass('text-emerald-600');
+    expect(status.closest('div[class*="rounded"]')).toHaveClass('bg-sky-50');
+    expect(status.closest('div[class*="rounded"]')).not.toHaveClass('bg-emerald-50');
+  });
 });

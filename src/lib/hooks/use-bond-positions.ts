@@ -4,7 +4,13 @@ import { getHealth } from '@/lib/api/midgard';
 import { extractBondPositions, type BondPosition, type YieldGuardFlag } from '@/lib/types/node';
 import { NETWORK } from '@/lib/config';
 import { runeToNumber } from '@/lib/utils/formatters';
-import { MOCK_BOND_POSITIONS, isDevelopmentMode } from '../mock-data';
+import {
+  MOCK_ACTIVE_OPERATOR_ADDRESS,
+  MOCK_BOND_POSITIONS,
+  MOCK_PROVIDER_ADDRESS,
+  MOCK_STANDBY_OPERATOR_ADDRESS,
+  isDevelopmentMode,
+} from '../mock-data';
 
 function getMockCurrentAward(position: { netAPY: number }): string {
   const apyDecimal = position.netAPY > 1 ? position.netAPY / 100 : position.netAPY;
@@ -16,7 +22,8 @@ export function __getMockCurrentAwardForTests(position: { netAPY: number }): str
 }
 
 function buildMockNodes(address: string | null): NodeRaw[] {
-  const bondAddress = address ?? 'thor1mockbondaddress000000000000000000000000';
+  const bondAddress = address ?? MOCK_PROVIDER_ADDRESS;
+  const operatorAddresses = [MOCK_ACTIVE_OPERATOR_ADDRESS, MOCK_STANDBY_OPERATOR_ADDRESS];
 
   return MOCK_BOND_POSITIONS.map((position, index) => {
     const totalBond = typeof position.bondAmount === 'string' ? position.bondAmount : String(position.bondAmount);
@@ -29,7 +36,7 @@ function buildMockNodes(address: string | null): NodeRaw[] {
       peer_id: '',
       active_block_height: 1234567,
       status_since: 1234500 - index * 100,
-      node_operator_address: `thor1mockoperator${index + 1}`,
+      node_operator_address: operatorAddresses[index] ?? MOCK_ACTIVE_OPERATOR_ADDRESS,
       total_bond: totalBond,
       bond_providers: {
         node_operator_fee: String(position.operatorFee),

@@ -15,13 +15,19 @@ vi.mock('@/lib/api/rate-limit', () => ({
   getClientIp: vi.fn(() => '127.0.0.1'),
 }));
 
-const address = `thor1${'a'.repeat(38)}`;
+const address = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz';
+const testnetAddress = 'tthor1qyqszqgpqyqszqgpqyqszqgpqyqszqgpsrf4px';
+const invalidChecksumAddress = 'thor1qyqszqgpqyqszqgpqyqszqgpqyqszqgp55c9cx';
 
 function post(body: unknown): NextRequest {
+  return rawPost(JSON.stringify(body));
+}
+
+function rawPost(body: string, headers: Record<string, string> = {}): NextRequest {
   return new NextRequest('http://localhost/api/tax-report', {
     method: 'POST',
-    headers: { origin: 'http://localhost:3000', 'content-type': 'application/json' },
-    body: JSON.stringify(body),
+    headers: { origin: 'http://localhost:3000', 'content-type': 'application/json', ...headers },
+    body,
   });
 }
 
@@ -33,7 +39,7 @@ describe('/api/tax-report', () => {
   });
 
   it('returns CSV for a valid POST with POST-aware CORS and no-store headers', async () => {
-    const response = await POST(post({ address, startDate: '2024-01-01', endDate: '2024-12-31' }));
+    const response = await POST(post({ address: address.toUpperCase(), startDate: '2024-01-01', endDate: '2024-12-31' }));
 
     expect(response.status).toBe(200);
     expect(await response.text()).toBe('csv-data');
@@ -69,11 +75,77 @@ describe('/api/tax-report', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-store, private');
   });
 
-  it('returns validation errors with no-store headers', async () => {
-    const response = await POST(post({ address: 'not-a-thor-address', startDate: '2024-01-01', endDate: '2024-12-31' }));
+  it('rate limits before parsing the JSON body', async () => {
+    vi.mocked(checkRateLimit).mockReturnValueOnce({ allowed: false, remaining: 0, resetAt: Date.now() + 60_000 });
+
+    const response = await POST(rawPost('{not-json'));
+
+    expect(response.status).toBe(429);
+    expect(await response.json()).toEqual({ error: 'Rate limit exceeded' });
+    expect(parseTaxDateRange).not.toHaveBeenCalled();
+    expect(generateTaxReportWithWarnings).not.toHaveBeenCalled();
+  });
+
+  it('requires an application/json content type after rate limiting', async () => {
+    const response = await POST(rawPost('address=thor1', { 'content-type': 'application/x-www-form-urlencoded' }));
+
+    expect(response.status).toBe(415);
+    expect(await response.json()).toEqual({ error: 'Content-Type must be application/json' });
+    expect(checkRateLimit).toHaveBeenCalled();
+    expect(parseTaxDateRange).not.toHaveBeenCalled();
+    expect(generateTaxReportWithWarnings).not.toHaveBeenCalled();
+  });
+
+  it('rejects oversized request bodies before JSON parsing', async () => {
+    const response = await POST(rawPost('{}', { 'content-length': '2049' }));
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({ error: 'Tax report request body is too large' });
+    expect(checkRateLimit).toHaveBeenCalled();
+    expect(parseTaxDateRange).not.toHaveBeenCalled();
+    expect(generateTaxReportWithWarnings).not.toHaveBeenCalled();
+  });
+
+  it('returns a 400 for malformed JSON bodies', async () => {
+    const response = await POST(rawPost('{not-json'));
 
     expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'Malformed JSON body' });
+    expect(checkRateLimit).toHaveBeenCalled();
+    expect(parseTaxDateRange).not.toHaveBeenCalled();
+    expect(generateTaxReportWithWarnings).not.toHaveBeenCalled();
+  });
+
+  it('surfaces known date validation failures without generating a report', async () => {
+    vi.mocked(parseTaxDateRange).mockImplementationOnce(() => {
+      throw new Error('Tax worksheet range cannot exceed 366 days');
+    });
+
+    const response = await POST(post({ address, startDate: '2023-01-01', endDate: '2024-12-31' }));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'Tax worksheet range cannot exceed 366 days' });
+    expect(checkRateLimit).toHaveBeenCalled();
+    expect(generateTaxReportWithWarnings).not.toHaveBeenCalled();
+  });
+
+  it('rejects regex-shaped addresses with invalid checksums after rate limiting', async () => {
+    const response = await POST(post({ address: invalidChecksumAddress, startDate: '2024-01-01', endDate: '2024-12-31' }));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'A valid THORChain mainnet address is required' });
     expect(response.headers.get('Cache-Control')).toBe('no-store, private');
-    expect(checkRateLimit).not.toHaveBeenCalled();
+    expect(checkRateLimit).toHaveBeenCalled();
+    expect(generateTaxReportWithWarnings).not.toHaveBeenCalled();
+  });
+
+  it('rejects testnet THORChain addresses for mainnet tax reports', async () => {
+    const response = await POST(post({ address: testnetAddress, startDate: '2024-01-01', endDate: '2024-12-31' }));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'A valid THORChain mainnet address is required' });
+    expect(response.headers.get('Cache-Control')).toBe('no-store, private');
+    expect(checkRateLimit).toHaveBeenCalled();
+    expect(generateTaxReportWithWarnings).not.toHaveBeenCalled();
   });
 });

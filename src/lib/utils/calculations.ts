@@ -157,30 +157,30 @@ export function calculateNetworkSecurityState(bondToPoolRatio: number): {
   securityHealth: NetworkSecurityHealth;
   solvencyStatus: string;
 } {
-  if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.healthy) {
+  if (bondToPoolRatio > NETWORK.BOND_TO_POOL_THRESHOLDS.healthy) {
     return {
       securityHealth: 'healthy',
-      solvencyStatus: 'Well Secured',
+      solvencyStatus: 'Bond buffer high',
     };
   }
 
   if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.building) {
     return {
       securityHealth: 'healthy',
-      solvencyStatus: 'Healthy',
+      solvencyStatus: 'Bond buffer in range',
     };
   }
 
   if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.underSecured) {
     return {
       securityHealth: 'warning',
-      solvencyStatus: 'Building',
+      solvencyStatus: 'Bond buffer building',
     };
   }
 
   return {
     securityHealth: 'at-risk',
-    solvencyStatus: 'Undercapitalized',
+    solvencyStatus: 'Liquidity above bond',
   };
 }
 

@@ -222,12 +222,68 @@ test.describe("Portfolio Page", () => {
   });
 
   test("keeps simulator diagnosis and assumptions before raw inputs", async ({ page }) => {
+    await page.route("**/api/thorchain/thorchain/nodes", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            node_address: "thor1simulatornode0000000000000000000000",
+            status: "Active",
+            pub_key_set: { secp256k1: "", ed25519: "" },
+            validator_cons_pub_key: "",
+            peer_id: "",
+            active_block_height: 100,
+            status_since: 100,
+            node_operator_address: "thor1simulatoroperator000000000000000000",
+            total_bond: "10000000000000",
+            bond_providers: {
+              node_operator_fee: "1000",
+              providers: [{ bond_address: MOCK_ADDRESS, bond: "10000000000000" }],
+            },
+            signer_membership: null,
+            requested_to_leave: false,
+            forced_to_leave: false,
+            leave_height: 0,
+            ip_address: "",
+            version: "3.19.0",
+            slash_points: 0,
+            jail: {},
+            current_award: "0.12",
+            observe_chains: null,
+            preflight_status: { status: "ready", reason: "", code: 0 },
+            maintenance: false,
+            missing_blocks: 0,
+          },
+        ]),
+      });
+    });
+
     await page.goto(`/dashboard/simulator?address=${MOCK_ADDRESS}`);
 
     const diagnosis = page.getByLabel("Simulator scenario diagnosis");
+    await expect(diagnosis).toContainText("Manual Estimate", { timeout: 10000 });
+    await expect(diagnosis).not.toContainText("Estimate Ready");
     await expect(diagnosis).toContainText("Rewards-only projection", { timeout: 10000 });
     await expect(diagnosis).toContainText("Verify node risk before bonding");
-    await expect(page.getByLabel("Simulation assumptions")).toContainText("Risk coverage");
+    const assumptions = page.getByLabel("Simulation assumptions");
+    await expect(assumptions).toContainText("Risk coverage");
+    await expect(assumptions).toContainText("Manual APY");
+    await expect(assumptions).toContainText("Minimum bond");
+    await expect(assumptions).toContainText("Meets active minimum");
+    await expect(assumptions).toContainText("threshold only");
+    await expect(assumptions).not.toContainText("Meets minimum");
+    await expect(assumptions.getByText("Meets active minimum")).toHaveClass(/text-sky-600/);
+    await expect(assumptions.getByText("Meets active minimum")).not.toHaveClass(/text-emerald-600/);
+    await expect(page.getByRole("button", { name: "Conservative inputs 50% manual APY, 10% operator fee, 90-day window" })).toBeVisible();
+    await expect(page.getByText("Low risk, established nodes, 10% fee")).toHaveCount(0);
+    await expect(page.getByText("Moderate risk and return, 15% fee")).toHaveCount(0);
+    await expect(page.getByText("Higher APY, newer nodes, 20% fee")).toHaveCount(0);
+    await expect(page.getByText("Impact Preview")).toBeVisible();
+    await expect(page.getByText("Risk check")).toBeVisible();
+    await expect(page.getByText("Not modeled")).toBeVisible();
+    await expect(page.getByText("Review slash, jail, and churn before acting")).toBeVisible();
+    await expect(page.getByText("Projected Health")).toHaveCount(0);
 
     const diagnosisBeforeInput = await diagnosis.evaluate((element) => {
       const firstInput = document.querySelector("#simulator-bond-amount");

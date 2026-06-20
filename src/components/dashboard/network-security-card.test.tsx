@@ -10,7 +10,7 @@ describe('NetworkSecurityCard', () => {
         ratio={1.5}
         activeRatio={1.2}
         health="healthy"
-        status="Network is well secured"
+        status="Bond buffer in range"
       />
     );
 
@@ -18,8 +18,18 @@ describe('NetworkSecurityCard', () => {
 
     expect(gauge).toBeInTheDocument();
     expect(screen.getByLabelText('Bond-to-pool ratio')).toHaveTextContent('1.50x');
+    expect(gauge).toHaveTextContent('In range');
+    expect(gauge).toHaveTextContent('Bond buffer in range');
+    expect(gauge).toHaveTextContent('Network-level bond coverage, not a provider safety verdict');
     expect(screen.getByText('Midgard reading')).toBeInTheDocument();
     expect(screen.getByText('freshness shown in source status')).toBeInTheDocument();
     expect(screen.queryByText('Live network')).not.toBeInTheDocument();
+    expect(gauge).not.toHaveTextContent(/\bhealthy\b|well secured|\bsafe\b/i);
+
+    const badge = screen.getByText('In range').closest('span');
+    expect(badge).toHaveClass('bg-sky-50');
+    expect(badge).not.toHaveClass('bg-emerald-50');
+    expect(screen.getByLabelText('Bond-to-pool ratio')).toHaveClass('text-sky-600');
+    expect(screen.getByLabelText('Bond-to-pool ratio')).not.toHaveClass('text-emerald-600');
   });
 });

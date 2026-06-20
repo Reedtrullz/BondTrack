@@ -130,13 +130,15 @@ function buildDecisionMetrics({
       label: 'Direct bond',
       value: String(directBondCount),
       detail: directBondCount > 0
-        ? sourceSafety.canPrepareBond ? 'Provider access confirmed' : 'Source confidence required first'
-        : 'No confirmed direct access',
+        ? sourceSafety.canPrepareBond ? 'Watched provider listed by THORNode' : 'THORNode source check required first'
+        : 'No listed provider access',
     },
     {
-      label: 'Top score',
-      value: topCandidate ? `${topCandidate.candidateScore.score}/100` : '--',
-      detail: `Strong ${qualityCounts.Strong} · Watch ${qualityCounts.Watch} · Avoid ${qualityCounts.Avoid}`,
+      label: 'Top candidate',
+      value: topCandidate ? topCandidate.candidateScore.quality : '--',
+      detail: topCandidate
+        ? `${topCandidate.candidateScore.trustLabel} · Strong ${qualityCounts.Strong} · Watch ${qualityCounts.Watch} · Avoid ${qualityCounts.Avoid}`
+        : `Strong ${qualityCounts.Strong} · Watch ${qualityCounts.Watch} · Avoid ${qualityCounts.Avoid}`,
     },
   ];
 }
@@ -198,11 +200,11 @@ function buildExplorerDecision({
     return {
       action: 'review-source',
       candidate: directBondCandidate,
-      diagnosis: `${candidateLabel} has confirmed provider access, but ${sourceSafety.detail}`,
+      diagnosis: `${candidateLabel} lists the watched address as a bond provider, but ${sourceSafety.detail}`,
       metrics,
       severity: sourceSafety.severity,
       statusLabel: sourceSafety.statusLabel,
-      topRisk: 'Source confidence must refresh before bond prep',
+      topRisk: 'Wait for THORNode source check before BOND review',
     };
   }
 
@@ -210,11 +212,11 @@ function buildExplorerDecision({
     return {
       action: 'prepare-bond',
       candidate: directBondCandidate,
-      diagnosis: `${candidateLabel} is the strongest visible candidate with confirmed provider access. Reconfirm the wallet preview before signing any BOND transaction.`,
+      diagnosis: `${candidateLabel} is the strongest visible candidate with the watched provider listed by THORNode, but this is not a safety guarantee. Reconfirm the wallet preview before signing any BOND transaction.`,
       metrics,
-      severity: 'healthy',
-      statusLabel: 'Ready',
-      topRisk: 'Strong direct-bond candidate available',
+      severity: 'info',
+      statusLabel: 'Candidate Review',
+      topRisk: 'Strong candidate still needs wallet review',
     };
   }
 
@@ -222,11 +224,11 @@ function buildExplorerDecision({
     return {
       action: 'review-risk',
       candidate: topCandidate,
-      diagnosis: `The best visible candidate is still Avoid-rated because ${firstReason.toLowerCase()}. Review risk evidence before preparing any BOND memo.`,
+      diagnosis: `The best visible candidate is still Avoid-rated because ${firstReason.toLowerCase()}. Review risk evidence before opening BOND memo review.`,
       metrics,
       severity: 'critical',
       statusLabel: 'Avoid',
-      topRisk: 'Do not prepare a BOND from this set',
+      topRisk: 'No BOND candidate is review-ready',
     };
   }
 
@@ -234,7 +236,7 @@ function buildExplorerDecision({
     return {
       action: 'review-access',
       candidate: topCandidate,
-      diagnosis: `${candidateLabel} is the strongest visible candidate, but ${topCandidate.candidateScore.trustLabel.toLowerCase()}. Confirm provider access before preparing a BOND memo.`,
+      diagnosis: `${candidateLabel} is the strongest visible candidate, but ${topCandidate.candidateScore.trustLabel.toLowerCase()}. Confirm provider access before opening BOND memo review.`,
       metrics,
       severity: 'warning',
       statusLabel: 'Review Access',

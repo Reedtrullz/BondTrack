@@ -89,18 +89,27 @@ describe('buildExplorerPageModel', () => {
     expect(model.decision).toEqual(expect.objectContaining({
       action: 'prepare-bond',
       candidate: expect.objectContaining({ node_address: 'thor1clean' }),
-      severity: 'healthy',
-      statusLabel: 'Ready',
-      topRisk: 'Strong direct-bond candidate available',
+      severity: 'info',
+      statusLabel: 'Candidate Review',
+      topRisk: 'Strong candidate still needs wallet review',
     }));
+    expect(model.decision.diagnosis).toContain('strongest visible candidate with the watched provider listed by THORNode');
+    expect(model.decision.diagnosis).toContain('not a safety guarantee');
+    expect(model.decision.diagnosis).toContain('Reconfirm the wallet preview before signing');
+    expect(model.decision.diagnosis).not.toContain('confirmed provider access');
     expect(model.decision.metrics).toEqual(expect.arrayContaining([
       expect.objectContaining({ label: 'Visible candidates', value: '2' }),
       expect.objectContaining({ label: 'Direct bond', value: '1' }),
-      expect.objectContaining({ label: 'Top score', value: expect.stringMatching(/\/100$/) }),
+      expect.objectContaining({
+        label: 'Top candidate',
+        value: 'Strong',
+        detail: expect.stringContaining('Strong 1'),
+      }),
     ]));
+    expect(model.decision.metrics.map((metric) => metric.value)).not.toContainEqual(expect.stringMatching(/\d+\/100/));
   });
 
-  it('withholds BOND prep when a strong whitelisted candidate lacks fresh THORNode confidence', () => {
+  it('withholds BOND review when a strong listed-provider candidate lacks a current THORNode source check', () => {
     const model = buildExplorerPageModel({
       address: 'thor1provider',
       allNodes: [
@@ -119,10 +128,10 @@ describe('buildExplorerPageModel', () => {
       maxBondProviders: 100,
       sourceSafety: {
         canPrepareBond: false,
-        detail: 'THORNode source confidence is degraded. Treat candidate status and provider capacity as unverified before preparing any BOND memo.',
+        detail: 'THORNode candidate source check is degraded. Treat candidate status and provider capacity as unverified before reviewing or copying any BOND memo.',
         severity: 'warning',
         statusLabel: 'Source degraded',
-        title: 'Wait for source confidence',
+        title: 'Wait for source check',
         value: 'THORNode degraded',
       },
       sortField: 'quality',
@@ -135,15 +144,19 @@ describe('buildExplorerPageModel', () => {
       candidate: expect.objectContaining({ node_address: 'thor1clean' }),
       severity: 'warning',
       statusLabel: 'Source degraded',
-      topRisk: 'Source confidence must refresh before bond prep',
+      topRisk: 'Wait for THORNode source check before BOND review',
     }));
-    expect(model.decision.diagnosis).toContain('confirmed provider access');
-    expect(model.decision.diagnosis).toContain('THORNode source confidence is degraded');
+    expect(model.decision.diagnosis).toContain('lists the watched address as a bond provider');
+    expect(model.decision.diagnosis).toContain('THORNode candidate source check is degraded');
+    expect(model.decision.diagnosis).toContain('before reviewing or copying any BOND memo');
+    expect(model.decision.diagnosis).not.toContain('confirmed provider access');
+    expect(model.decision.diagnosis).not.toContain('before preparing any BOND memo');
+    expect(model.decision.diagnosis).not.toContain('fresh enough');
     expect(model.decision.metrics).toEqual(expect.arrayContaining([
       expect.objectContaining({
         label: 'Direct bond',
         value: '1',
-        detail: 'Source confidence required first',
+        detail: 'THORNode source check required first',
       }),
     ]));
   });
@@ -175,9 +188,12 @@ describe('buildExplorerPageModel', () => {
       candidate: expect.objectContaining({ node_address: 'thor1clean' }),
       severity: 'info',
       statusLabel: 'Source pending',
-      topRisk: 'Source confidence must refresh before bond prep',
+      topRisk: 'Wait for THORNode source check before BOND review',
     }));
-    expect(model.decision.diagnosis).toContain('THORNode source confidence has not completed yet');
+    expect(model.decision.diagnosis).toContain('THORNode candidate source check has not completed yet');
+    expect(model.decision.diagnosis).toContain('before reviewing or copying any BOND memo');
+    expect(model.decision.diagnosis).not.toContain('before preparing any BOND memo');
+    expect(model.decision.diagnosis).not.toContain('fresh source check');
   });
 
   it('keeps focused-node context even when the fee filter hides the card', () => {
@@ -310,7 +326,7 @@ describe('buildExplorerPageModel', () => {
       candidate: expect.objectContaining({ node_address: 'thor1malformed' }),
       severity: 'critical',
       statusLabel: 'Avoid',
-      topRisk: 'Do not prepare a BOND from this set',
+      topRisk: 'No BOND candidate is review-ready',
     }));
   });
 });

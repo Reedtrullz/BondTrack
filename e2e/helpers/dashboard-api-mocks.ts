@@ -119,6 +119,42 @@ function buildMockRuneHistory(nowMs = Date.now()) {
   };
 }
 
+function buildMockRuneHistoryWithoutTimestamp() {
+  return {
+    meta: {
+      startTime: '',
+      endTime: '',
+      startRunePriceUSD: '1.50',
+      endRunePriceUSD: '1.50',
+    },
+    intervals: [
+      {
+        startTime: '',
+        endTime: '',
+        runePriceUSD: '1.50',
+      },
+    ],
+  };
+}
+
+function buildHistoricalEntryRuneHistory() {
+  return {
+    meta: {
+      startTime: '1699913600',
+      endTime: '1700086400',
+      startRunePriceUSD: '0.50',
+      endRunePriceUSD: '0.50',
+    },
+    intervals: [
+      {
+        startTime: '1699913600',
+        endTime: '1700086400',
+        runePriceUSD: '0.50',
+      },
+    ],
+  };
+}
+
 const mockEarningsHistory = {
   meta: {
     startTime: '1699990000000000000',
@@ -202,15 +238,21 @@ interface MockDashboardApisOptions {
   withBondPosition?: boolean;
   primaryNodeOverrides?: Partial<(typeof mockNodes)[number]>;
   partialBondActions?: boolean;
+  cappedBondActions?: boolean;
+  completeBondActions?: boolean;
+  historicalEntryRuneHistory?: boolean;
   runeHistoryNowMs?: number;
+  runeHistoryMissingTimestamp?: boolean;
+  midgardHealthDelayMs?: number;
   midgardHealthStatus?: number;
   thornodeHealthProbeStatus?: number;
   thornodeNodesStatus?: number;
   supportFeedDelayMs?: number;
+  poolHistoryUnavailable?: boolean;
 }
 
 function getHealthProbeTarget(pageRouteRequestHeaders: Record<string, string>): string | undefined {
-  // Health probes and node data share /nodes; this keeps source confidence degradable without hiding cards.
+  // Health probes and node data share /nodes; this keeps source checks degradable without hiding cards.
   return pageRouteRequestHeaders['x-heimdall-health-probe'];
 }
 
@@ -344,6 +386,10 @@ export async function mockDashboardApis(
     const url = new URL(route.request().url());
 
     if (url.pathname === '/api/midgard/v2/health') {
+      if (options.midgardHealthDelayMs) {
+        await new Promise((resolve) => setTimeout(resolve, options.midgardHealthDelayMs));
+      }
+
       if (options.midgardHealthStatus && options.midgardHealthStatus >= 400) {
         await route.fulfill({
           status: options.midgardHealthStatus,
@@ -408,6 +454,17 @@ export async function mockDashboardApis(
     }
 
     if (url.pathname === '/api/midgard/v2/actions') {
+      if (options.cappedBondActions) {
+        const offset = Number(url.searchParams.get('offset') ?? '0');
+        await route.fulfill({
+          json: {
+            actions: offset < 1000 ? buildMockBondActions(50, address) : [],
+            count: '1001',
+          },
+        });
+        return;
+      }
+
       if (options.partialBondActions) {
         const offset = Number(url.searchParams.get('offset') ?? '0');
         await route.fulfill({
@@ -416,6 +473,11 @@ export async function mockDashboardApis(
             count: '76',
           },
         });
+        return;
+      }
+
+      if (options.completeBondActions) {
+        await route.fulfill({ json: { actions: buildMockBondActions(3, address), count: '3' } });
         return;
       }
 
@@ -430,8 +492,20 @@ export async function mockDashboardApis(
     }
 
     if (url.pathname === '/api/midgard/v2/history/rune') {
+      const from = Number(url.searchParams.get('from'));
+      const shouldUseHistoricalEntryWindow = options.historicalEntryRuneHistory
+        && url.searchParams.has('from')
+        && Number.isFinite(from)
+        && from < Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60;
+
       await delaySupportFeed();
-      await route.fulfill({ json: buildMockRuneHistory(options.runeHistoryNowMs) });
+      await route.fulfill({
+        json: shouldUseHistoricalEntryWindow
+          ? buildHistoricalEntryRuneHistory()
+          : options.runeHistoryMissingTimestamp
+          ? buildMockRuneHistoryWithoutTimestamp()
+          : buildMockRuneHistory(options.runeHistoryNowMs),
+      });
       return;
     }
 
@@ -441,7 +515,7 @@ export async function mockDashboardApis(
     }
 
     if (url.pathname === '/api/midgard/v2/pools/BTC.BTC/history') {
-      await route.fulfill({ json: mockPoolHistory });
+      await route.fulfill({ json: options.poolHistoryUnavailable ? { intervals: [] } : mockPoolHistory });
       return;
     }
 

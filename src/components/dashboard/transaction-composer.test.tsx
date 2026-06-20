@@ -7,14 +7,13 @@ import type { BondPosition } from '@/lib/types/node';
 import type { TransactionSourceSafety } from '@/lib/dashboard/transaction-preflight';
 
 const mocks = vi.hoisted(() => ({
-  searchParams: new URLSearchParams(),
   wallet: {
     address: 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4' as string | null,
     walletType: 'keplr' as 'keplr' | 'xdefi' | 'vultisig' | null,
     chainId: 'thorchain-1',
     isConnected: true,
     isConnecting: false,
-    error: null,
+    error: null as string | null,
     networkMismatch: {
       hasMismatch: false,
       expected: 'thorchain-1',
@@ -35,30 +34,26 @@ const transactionMocks = vi.hoisted(() => ({
 const NODE_ADDRESS = 'thor1qyqszqgpqyqszqgpqyqszqgpqyqszqgp55c9cr';
 const PROVIDER_ADDRESS = 'thor158qequwhhnggm4ch4psv55yqpxsugf67n62dy2';
 const WALLET_ADDRESS = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
+const STALE_SIGNER_REFRESH_ERROR =
+  'Keplr account changed, but Heimdall could not refresh the signer. Reconnect wallet before preview or broadcast.';
 const degradedSourceSafety: TransactionSourceSafety = {
   canCopyBondMemo: false,
   canCopyUnbondMemo: false,
   canPreview: false,
-  detail: 'THORNode source confidence is degraded. Do not copy, preview, or broadcast until source confidence is fresh.',
+  detail: 'THORNode source check is degraded. Do not copy, preview, or broadcast until the THORNode source check passes.',
   itemSeverity: 'warning',
-  status: 'Source confidence degraded',
+  status: 'Source check degraded',
   value: 'THORNode degraded',
 };
 const freshSourceSafety: TransactionSourceSafety = {
   canCopyBondMemo: true,
   canCopyUnbondMemo: true,
   canPreview: true,
-  detail: 'THORNode positions are available for node status and unbond eligibility checks.',
-  itemSeverity: 'ready',
-  status: 'Source verified',
-  value: 'THORNode fresh',
+  detail: 'THORNode positions loaded for node status and unbond eligibility. Wallet still presents the final payload and fee for your approval.',
+  itemSeverity: 'checked',
+  status: 'Source check passed',
+  value: 'THORNode checked',
 };
-
-vi.mock('next/navigation', () => ({
-  useSearchParams: () => ({
-    get: (key: string) => mocks.searchParams.get(key),
-  }),
-}));
 
 vi.mock('@/lib/hooks/use-wallet', () => ({
   useWalletContext: () => mocks.wallet,
@@ -95,10 +90,10 @@ function changeInput(label: string, value: string) {
 }
 
 beforeEach(() => {
-  mocks.searchParams = new URLSearchParams();
   mocks.wallet.address = WALLET_ADDRESS;
   mocks.wallet.walletType = 'keplr';
   mocks.wallet.isConnected = true;
+  mocks.wallet.error = null;
   mocks.wallet.isNetworkMismatch = false;
   mocks.wallet.networkMismatch = {
     hasMismatch: false,
@@ -123,11 +118,11 @@ describe('TransactionComposer BOND advanced validation', () => {
     changeInput('Node Address', NODE_ADDRESS);
     changeInput('Bond Amount', '2');
 
-    expect(screen.getByText('THORNode source confidence must be fresh before copying a BOND memo.')).toBeInTheDocument();
+    expect(screen.getByText('THORNode source check must pass before copying a BOND memo.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy Memo' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Review Transaction' })).toBeDisabled();
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Transaction source confidence was not provided. Reload the transactions page before copying, previewing, or broadcasting.'
+      'Transaction source check was not provided. Reload the transactions page before copying, previewing, or broadcasting.'
     );
     expect(transactionMocks.executeBondTransaction).not.toHaveBeenCalled();
   });
@@ -147,7 +142,8 @@ describe('TransactionComposer BOND advanced validation', () => {
     expect(screen.getByText('Enter a valid node address before copying a BOND memo.')).toBeInTheDocument();
     expect(screen.getByText('Bond payload minimum:')).toBeInTheDocument();
     expect(screen.getByText('1 RUNE')).toBeInTheDocument();
-    expect(screen.getByText('Network fees are dynamic and confirmed by the wallet before broadcast.')).toBeInTheDocument();
+    expect(screen.getByText('Network fees are dynamic and shown by the wallet before approval/broadcast.')).toBeInTheDocument();
+    expect(screen.queryByText('Network fees are dynamic and confirmed by the wallet before broadcast.')).not.toBeInTheDocument();
     expect(screen.queryByText('Minimum bond transaction reserve:')).not.toBeInTheDocument();
     expect(screen.queryByText('1.02 RUNE')).not.toBeInTheDocument();
     expect(screen.queryByText('BOND:')).not.toBeInTheDocument();
@@ -163,17 +159,27 @@ describe('TransactionComposer BOND advanced validation', () => {
     await user.click(screen.getByRole('button', { name: 'UNBOND' }));
 
     expect(screen.getByText('UNBOND uses a zero-RUNE deposit payload.')).toBeInTheDocument();
-    expect(screen.getByText('The requested amount is encoded in the memo in 1e8 base units; wallet/network fees are confirmed before broadcast.')).toBeInTheDocument();
+    expect(screen.getByText('The requested amount is encoded in the memo in 1e8 base units; the wallet presents any network fee before approval/broadcast.')).toBeInTheDocument();
+    expect(screen.queryByText('The requested amount is encoded in the memo in 1e8 base units; wallet/network fees are confirmed before broadcast.')).not.toBeInTheDocument();
     expect(screen.queryByText('Minimum bond transaction reserve:')).not.toBeInTheDocument();
     expect(screen.queryByText('1.02 RUNE')).not.toBeInTheDocument();
   });
 
   it('prefills a BOND deep link before operator interaction', () => {
-    mocks.searchParams = new URLSearchParams(`action=bond&node=${NODE_ADDRESS}&amount=2`);
+    render(
+      <TransactionComposer
+        positions={[]}
+        sourceSafety={freshSourceSafety}
+        action="bond"
+        nodeParam={NODE_ADDRESS}
+        amountParam="2"
+      />
+    );
 
-    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
-
-    expect(screen.getByRole('button', { name: 'BOND' })).toHaveAttribute('aria-pressed', 'true');
+    const bondMode = screen.getByRole('button', { name: 'BOND' });
+    expect(bondMode).toHaveAttribute('aria-pressed', 'true');
+    expect(bondMode).toHaveClass('bg-sky-600');
+    expect(bondMode).not.toHaveClass('bg-emerald-600');
     expect(screen.getByLabelText('Node Address')).toHaveValue(NODE_ADDRESS);
     expect(screen.getByLabelText('Bond Amount')).toHaveValue('2');
     expect(screen.getByText(`BOND:${NODE_ADDRESS}`)).toBeInTheDocument();
@@ -181,15 +187,52 @@ describe('TransactionComposer BOND advanced validation', () => {
   });
 
   it('prefills an UNBOND deep link with memo amount semantics before operator interaction', () => {
-    mocks.searchParams = new URLSearchParams(`action=unbond&node=${NODE_ADDRESS}&amount=10`);
-
-    render(<TransactionComposer positions={[standbyPosition]} sourceSafety={freshSourceSafety} />);
+    render(
+      <TransactionComposer
+        positions={[standbyPosition]}
+        sourceSafety={freshSourceSafety}
+        action="unbond"
+        nodeParam={NODE_ADDRESS}
+        amountParam="10"
+      />
+    );
 
     expect(screen.getByRole('button', { name: 'UNBOND' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByLabelText('Node Address')).toHaveValue(NODE_ADDRESS);
     expect(screen.getByLabelText('Amount to Unbond')).toHaveValue('10');
     expect(screen.getByText(`UNBOND:${NODE_ADDRESS}:1000000000`)).toBeInTheDocument();
+    expect(screen.getByText('UNBOND memo can be copied for wallet review; amount is encoded in 1e8 base units.')).toBeInTheDocument();
+    expect(screen.queryByText('UNBOND memo is ready to copy with the amount encoded in 1e8 base units.')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Review Transaction' })).toBeEnabled();
+  });
+
+  it('follows page-owned transaction mode changes so preflight and composer stay aligned', () => {
+    const { rerender } = render(
+      <TransactionComposer
+        positions={[standbyPosition]}
+        sourceSafety={freshSourceSafety}
+        action="unbond"
+        nodeParam={NODE_ADDRESS}
+        amountParam="10"
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'UNBOND' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Amount to Unbond')).toHaveValue('10');
+
+    rerender(
+      <TransactionComposer
+        positions={[standbyPosition]}
+        sourceSafety={freshSourceSafety}
+        action="bond"
+        nodeParam={NODE_ADDRESS}
+        amountParam="2"
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'BOND' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Bond Amount')).toHaveValue('2');
+    expect(screen.getByText(`BOND:${NODE_ADDRESS}`)).toBeInTheDocument();
   });
 
   it('enables memo copy only after the BOND memo itself is valid', async () => {
@@ -198,6 +241,9 @@ describe('TransactionComposer BOND advanced validation', () => {
     changeInput('Node Address', NODE_ADDRESS);
 
     expect(screen.getByText(`BOND:${NODE_ADDRESS}`)).toBeInTheDocument();
+    expect(screen.getByText('Memo can be copied for wallet review. Your wallet will present amount and fees before approval/broadcast.')).toBeInTheDocument();
+    expect(screen.queryByText('Memo can be copied for wallet review. Your wallet will confirm amount and fees before broadcast.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Memo is ready to copy. Your wallet will confirm amount and fees before broadcast.')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Copy Memo' })).toBeEnabled();
   });
@@ -218,7 +264,8 @@ describe('TransactionComposer BOND advanced validation', () => {
     expect(writeText).toHaveBeenCalledWith(`BOND:${NODE_ADDRESS}`);
     expect(screen.getByRole('button', { name: 'Memo copied' })).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('Success!');
-    expect(screen.getByRole('status')).toHaveTextContent('Memo copied to your clipboard.');
+    expect(screen.getByRole('status')).toHaveTextContent('Memo copied to your clipboard. Paste it into your wallet only after reviewing amount, memo, and fee.');
+    expect(screen.getByRole('status')).not.toHaveTextContent('Paste it into your wallet when you are ready.');
   });
 
   it('shows copy failure feedback without logging handled clipboard errors', async () => {
@@ -303,10 +350,18 @@ describe('TransactionComposer BOND advanced validation', () => {
     changeInput('Node Address', NODE_ADDRESS);
     changeInput('Bond Amount', '2');
     await user.click(screen.getByRole('button', { name: 'Review Transaction' }));
-    const dialog = screen.getByRole('dialog', { name: 'Confirm Transaction' });
+    const dialog = screen.getByRole('dialog', { name: 'Wallet Broadcast Review' });
+    const typeLabel = within(dialog).getByText('BOND', { exact: true });
+    expect(typeLabel).toHaveClass('text-sky-600');
+    expect(typeLabel).not.toHaveClass('text-emerald-600');
+    expect(within(dialog).getByText('Connected wallet')).toBeInTheDocument();
+    expect(within(dialog).getByText(WALLET_ADDRESS)).toBeInTheDocument();
     expect(within(dialog).getByText('Target node')).toBeInTheDocument();
     expect(within(dialog).getByText(NODE_ADDRESS)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Confirm & Broadcast' }));
+    expect(within(dialog).getByText('Wallet transfer amount')).toBeInTheDocument();
+    expect(within(dialog).getByText('2 RUNE')).toBeInTheDocument();
+    expect(within(dialog).queryByText('Requested Amount')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Request Wallet Broadcast' }));
 
     expect(transactionMocks.executeBondTransaction).toHaveBeenCalledWith({
       type: 'BOND',
@@ -318,7 +373,25 @@ describe('TransactionComposer BOND advanced validation', () => {
     expect(await screen.findByText('bond-hash')).toBeInTheDocument();
   });
 
-  it('keeps disconnected wallet guidance local while allowing memo preparation', () => {
+  it('warns large BOND reviews without implying Heimdall confirmation is approval', async () => {
+    const user = userEvent.setup();
+
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
+
+    changeInput('Node Address', NODE_ADDRESS);
+    changeInput('Bond Amount', '2500');
+    await user.click(screen.getByRole('button', { name: 'Review Transaction' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Wallet Broadcast Review' });
+    expect(dialog).toHaveTextContent('Large Transaction');
+    expect(dialog).toHaveTextContent(
+      'This transaction involves a significant amount of RUNE. Recheck the target node, memo, transfer amount, and wallet-presented fee. Approve only if the wallet payload matches this review.'
+    );
+    expect(dialog).not.toHaveTextContent('before confirming');
+    expect(screen.getByRole('button', { name: 'Request Wallet Broadcast' })).toBeEnabled();
+  });
+
+  it('keeps disconnected wallet guidance local while allowing memo copy for wallet review', () => {
     mocks.wallet.address = null;
     mocks.wallet.walletType = null;
     mocks.wallet.isConnected = false;
@@ -331,11 +404,12 @@ describe('TransactionComposer BOND advanced validation', () => {
     expect(screen.getByRole('button', { name: 'Copy Memo' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Wallet required' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Wallet required' })).toHaveAccessibleDescription(
-      'Connect a wallet when you are ready to preview and broadcast. Memo copy is available without a wallet.'
+      'Connect a wallet for preview and broadcast. Memo copy stays local for manual wallet review.'
     );
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Connect a wallet when you are ready to preview and broadcast. Memo copy is available without a wallet.'
+      'Connect a wallet for preview and broadcast. Memo copy stays local for manual wallet review.'
     );
+    expect(screen.getByRole('status')).not.toHaveTextContent('Memo copy remains available');
     expect(transactionMocks.executeBondTransaction).not.toHaveBeenCalled();
   });
 
@@ -392,7 +466,7 @@ describe('TransactionComposer BOND advanced validation', () => {
     changeInput('Bond Amount', '2');
     await user.click(screen.getByRole('button', { name: 'Review Transaction' }));
 
-    expect(screen.getByRole('dialog', { name: 'Confirm Transaction' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Wallet Broadcast Review' })).toBeInTheDocument();
 
     mocks.wallet.isNetworkMismatch = true;
     mocks.wallet.networkMismatch = {
@@ -402,14 +476,90 @@ describe('TransactionComposer BOND advanced validation', () => {
     };
     rerender(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
 
-    expect(screen.getByRole('button', { name: 'Confirm & Broadcast' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Request Wallet Broadcast' })).toBeDisabled();
     expect(transactionMocks.executeBondTransaction).not.toHaveBeenCalled();
-    expect(screen.getByRole('dialog', { name: 'Confirm Transaction' })).toHaveTextContent(
+    expect(screen.getByRole('dialog', { name: 'Wallet Broadcast Review' })).toHaveTextContent(
       'Wallet is connected to the wrong network. Switch to THORChain mainnet before preview or broadcast.'
     );
   });
 
-  it('blocks BOND memo copy and preview when source confidence is degraded', async () => {
+  it('does not broadcast when the connected wallet account changes after preview opens', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
+
+    changeInput('Node Address', NODE_ADDRESS);
+    changeInput('Bond Amount', '2');
+    await user.click(screen.getByRole('button', { name: 'Review Transaction' }));
+
+    expect(screen.getByRole('dialog', { name: 'Wallet Broadcast Review' })).toBeInTheDocument();
+
+    mocks.wallet.address = 'thor1changedwallet000000000000000000000000000';
+    rerender(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
+
+    expect(screen.getByRole('button', { name: 'Request Wallet Broadcast' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Request Wallet Broadcast' }));
+    expect(transactionMocks.executeBondTransaction).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Wallet Broadcast Review' })).toHaveTextContent(
+      'Connected wallet changed after preview opened. Close and review the transaction with the current wallet before broadcasting.'
+    );
+  });
+
+  it('removes wallet-specific authorization copy when the wallet disconnects after preview opens', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
+
+    changeInput('Node Address', NODE_ADDRESS);
+    changeInput('Bond Amount', '2');
+    await user.click(screen.getByRole('button', { name: 'Review Transaction' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Wallet Broadcast Review' });
+    expect(dialog).toHaveTextContent('opens your Keplr wallet for final review');
+    expect(dialog).toHaveTextContent('Approve in the wallet only if the payload, memo, amount, and network fee match.');
+    expect(dialog).not.toHaveTextContent('By confirming');
+    expect(dialog).not.toHaveTextContent('authorize this THORChain deposit transaction');
+
+    mocks.wallet.address = null;
+    mocks.wallet.walletType = null;
+    mocks.wallet.isConnected = false;
+    rerender(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
+
+    expect(screen.getByRole('button', { name: 'Request Wallet Broadcast' })).toBeDisabled();
+    expect(dialog).toHaveTextContent(
+      'Connect a wallet for preview and broadcast. Memo copy stays local for manual wallet review.'
+    );
+    expect(dialog).toHaveTextContent(
+      'Open wallet review only after your wallet presents the final THORChain deposit payload and network fee.'
+    );
+    expect(dialog).not.toHaveTextContent('opens your Keplr wallet for final review');
+    expect(transactionMocks.executeBondTransaction).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a failed Keplr signer refresh as the preview blocker', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
+
+    changeInput('Node Address', NODE_ADDRESS);
+    changeInput('Bond Amount', '2');
+    await user.click(screen.getByRole('button', { name: 'Review Transaction' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Wallet Broadcast Review' });
+    expect(dialog).toHaveTextContent('opens your Keplr wallet for final review');
+
+    mocks.wallet.address = null;
+    mocks.wallet.walletType = null;
+    mocks.wallet.isConnected = false;
+    mocks.wallet.error = STALE_SIGNER_REFRESH_ERROR;
+    rerender(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
+
+    expect(screen.getByRole('button', { name: 'Request Wallet Broadcast' })).toBeDisabled();
+    expect(dialog).toHaveTextContent(STALE_SIGNER_REFRESH_ERROR);
+    expect(dialog).not.toHaveTextContent(
+      'Connect a wallet for preview and broadcast. Memo copy stays local for manual wallet review.'
+    );
+    expect(transactionMocks.executeBondTransaction).not.toHaveBeenCalled();
+  });
+
+  it('blocks BOND memo copy and preview when source checks are degraded', async () => {
     const user = userEvent.setup();
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', {
@@ -422,13 +572,14 @@ describe('TransactionComposer BOND advanced validation', () => {
     changeInput('Node Address', NODE_ADDRESS);
     changeInput('Bond Amount', '2');
 
-    expect(screen.getByText('THORNode source confidence must be fresh before copying a BOND memo.')).toBeInTheDocument();
-    expect(screen.getByText('BOND copy stays disabled until THORNode source confidence is fresh.')).toBeInTheDocument();
+    expect(screen.getByText('THORNode source check must pass before copying a BOND memo.')).toBeInTheDocument();
+    expect(screen.getByText('BOND copy stays disabled until the THORNode source check passes.')).toBeInTheDocument();
+    expect(screen.queryByText(/fresh/i)).not.toBeInTheDocument();
     expect(screen.queryByText(`BOND:${NODE_ADDRESS}`)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy Memo' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Review Transaction' })).toBeDisabled();
     expect(screen.getByRole('status')).toHaveTextContent(
-      'THORNode source confidence is degraded. Do not copy, preview, or broadcast until source confidence is fresh.'
+      'THORNode source check is degraded. Do not copy, preview, or broadcast until the THORNode source check passes.'
     );
 
     await user.click(screen.getByRole('button', { name: 'Copy Memo' }));
@@ -438,14 +589,21 @@ describe('TransactionComposer BOND advanced validation', () => {
     expect(transactionMocks.executeBondTransaction).not.toHaveBeenCalled();
   });
 
-  it('blocks UNBOND memo copy when source confidence cannot prove standby eligibility', () => {
-    mocks.searchParams = new URLSearchParams(`action=unbond&node=${NODE_ADDRESS}&amount=10`);
-
-    render(<TransactionComposer positions={[standbyPosition]} sourceSafety={degradedSourceSafety} />);
+  it('blocks UNBOND memo copy when source checks cannot prove standby eligibility', () => {
+    render(
+      <TransactionComposer
+        positions={[standbyPosition]}
+        sourceSafety={degradedSourceSafety}
+        action="unbond"
+        nodeParam={NODE_ADDRESS}
+        amountParam="10"
+      />
+    );
 
     expect(screen.getByRole('button', { name: 'UNBOND' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('THORNode source confidence must be fresh before copying an UNBOND memo.')).toBeInTheDocument();
+    expect(screen.getByText('THORNode source check must pass before copying an UNBOND memo.')).toBeInTheDocument();
     expect(screen.getByText('UNBOND copy stays disabled until THORNode can prove standby eligibility.')).toBeInTheDocument();
+    expect(screen.queryByText(/fresh/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy Memo' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Review Transaction' })).toBeDisabled();
     expect(transactionMocks.executeUnbondTransaction).not.toHaveBeenCalled();
@@ -463,7 +621,7 @@ describe('TransactionComposer BOND advanced validation', () => {
     changeInput('Provider Address (optional)', PROVIDER_ADDRESS);
     changeInput('Operator Fee BPS (optional)', '1000');
     await user.click(screen.getByRole('button', { name: 'Review Transaction' }));
-    await user.click(screen.getByRole('button', { name: 'Confirm & Broadcast' }));
+    await user.click(screen.getByRole('button', { name: 'Request Wallet Broadcast' }));
 
     expect(transactionMocks.executeBondTransaction).toHaveBeenCalledWith({
       type: 'BOND',
@@ -483,8 +641,14 @@ describe('TransactionComposer BOND advanced validation', () => {
     await user.click(screen.getByRole('button', { name: 'UNBOND' }));
     changeInput('Amount to Unbond', '10');
     await user.click(screen.getByRole('button', { name: 'Review Transaction' }));
+    const dialog = screen.getByRole('dialog', { name: 'Wallet Broadcast Review' });
+    expect(within(dialog).getByText('Wallet transfer amount')).toBeInTheDocument();
+    expect(within(dialog).getByText('0 RUNE')).toBeInTheDocument();
+    expect(within(dialog).getByText('Amount requested in memo')).toBeInTheDocument();
+    expect(within(dialog).getByText('10 RUNE')).toBeInTheDocument();
+    expect(within(dialog).queryByText('Requested Amount')).not.toBeInTheDocument();
     expect(screen.getAllByText(`UNBOND:${NODE_ADDRESS}:1000000000`)).toHaveLength(2);
-    await user.click(screen.getByRole('button', { name: 'Confirm & Broadcast' }));
+    await user.click(screen.getByRole('button', { name: 'Request Wallet Broadcast' }));
 
     expect(transactionMocks.executeUnbondTransaction).toHaveBeenCalledWith({
       type: 'UNBOND',

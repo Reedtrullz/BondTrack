@@ -1,6 +1,6 @@
 import { NETWORK } from '@/lib/config';
 
-export type SlashSeverityLevel = 'ok' | 'warning' | 'critical';
+export type SlashSeverityLevel = 'none' | 'monitor' | 'warning' | 'critical';
 
 export interface SlashSeverity {
   level: SlashSeverityLevel;
@@ -11,8 +11,16 @@ export interface SlashSeverity {
 export function getSlashSeverity(slashPoints: number): SlashSeverity {
   if (!Number.isFinite(slashPoints) || slashPoints < 0) {
     return {
-      level: 'ok',
+      level: 'none',
       label: 'Unavailable',
+      className: 'text-zinc-600 dark:text-zinc-400',
+    };
+  }
+
+  if (slashPoints === 0) {
+    return {
+      level: 'none',
+      label: 'No current slash',
       className: 'text-zinc-600 dark:text-zinc-400',
     };
   }
@@ -34,12 +42,12 @@ export function getSlashSeverity(slashPoints: number): SlashSeverity {
   }
 
   return {
-    level: 'ok',
-    label: 'OK',
-    className: 'text-emerald-600 dark:text-emerald-400',
+    level: 'monitor',
+    label: 'Monitor',
+    className: 'text-sky-600 dark:text-sky-400',
   };
 }
 
 export function hasSlashReviewSignal(slashPoints: number): boolean {
-  return getSlashSeverity(slashPoints).level !== 'ok';
+  return getSlashSeverity(slashPoints).level !== 'none';
 }

@@ -5,20 +5,23 @@ import { cn } from '@/lib/utils';
 import { useApiHealthContext, type ApiHealthStatus } from '@/lib/hooks/use-api-health';
 
 function getBridgeStatus(midgard: ApiHealthStatus, thornode: ApiHealthStatus): ApiHealthStatus {
+  if (midgard === 'mock' || thornode === 'mock') return 'mock';
   if (midgard === 'down' || thornode === 'down') return 'down';
-  if (midgard === 'unknown' || thornode === 'unknown') return 'unknown';
   if (midgard === 'degraded' || thornode === 'degraded') return 'degraded';
+  if (midgard === 'unknown' || thornode === 'unknown') return 'unknown';
   return 'healthy';
 }
 
 function getStatusCopy(status: ApiHealthStatus): { label: string; detail: string } {
   switch (status) {
     case 'healthy':
-      return { label: 'Sources responding', detail: 'Recent Midgard + THORNode checks succeeded' };
+      return { label: 'Sources responding', detail: 'Recent Midgard + THORNode checks responded' };
     case 'degraded':
       return { label: 'Source checks degraded', detail: 'One recent check is retrying' };
     case 'down':
       return { label: 'Source checks failing', detail: 'Current data may be unavailable' };
+    case 'mock':
+      return { label: 'Demo data', detail: 'Local mock fixtures are not live source checks' };
     case 'unknown':
     default:
       return { label: 'Source checks pending', detail: 'Waiting for health probes' };
@@ -36,6 +39,7 @@ export function BifrostStatus() {
         <div className={cn(
           'w-2 h-2 rounded-full transition-all duration-1000',
           status === 'healthy' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' :
+          status === 'mock' ? 'bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.6)]' :
           status === 'degraded' || status === 'unknown' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]' :
           'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
         )} />
@@ -48,7 +52,7 @@ export function BifrostStatus() {
 
       <Zap className={cn(
         'ml-auto w-3 h-3 transition-colors',
-        status === 'healthy' ? 'text-amber-500/50 group-hover:text-amber-500' : 'text-zinc-500'
+        status === 'healthy' ? 'text-amber-500/50 group-hover:text-amber-500' : status === 'mock' ? 'text-sky-500/70' : 'text-zinc-500'
       )} aria-hidden="true" />
     </div>
   );

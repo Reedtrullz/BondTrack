@@ -2,11 +2,12 @@
 
 import { useId, useState } from 'react';
 import { TrendingUp, DollarSign, Activity, Coins, ShieldCheck, Info } from 'lucide-react';
-import { calculatePortfolioHealth, getGradeColor, type HealthGrade, type HealthScoreBreakdown } from '@/lib/utils/health-score';
-import { formatPercent, formatRuneDisplayNumber, formatRuneFromNumber, formatUsd } from '@/lib/utils/formatters';
+import { calculatePortfolioHealth, type HealthScoreResult } from '@/lib/utils/health-score';
+import { formatPercent, formatRuneDisplayNumber, formatRuneFromNumber, formatUsd, formatUtcDateTime } from '@/lib/utils/formatters';
 import { getYieldPerformanceColor } from '@/lib/utils/yield-benchmarks';
 import type { BondPosition } from '@/lib/types/node';
 import { YieldBenchmarks } from '@/lib/utils/yield-benchmarks';
+import { getProviderExposureReviewState } from '@/lib/dashboard/provider-exposure-review';
 import { cn } from '@/lib/utils';
 
 interface PortfolioSummaryProps {
@@ -41,10 +42,24 @@ export function PortfolioSummary({ totalBonded, runePrice, runePriceIsStale = fa
     ? getYieldPerformanceColor(weightedAPY, benchmarks.networkAverageAPY)
     : 'text-zinc-900 dark:text-zinc-100';
   const runePriceSubValue = runePriceIsStale
-    ? `Stale price${runePriceUpdatedAt ? ` · updated ${runePriceUpdatedAt.toLocaleString()}` : ''}`
+    ? `Stale price${runePriceUpdatedAt ? ` · updated ${formatUtcDateTime(runePriceUpdatedAt)}` : ''}`
     : runePriceUpdatedAt
-      ? `Updated ${runePriceUpdatedAt.toLocaleString()}`
-      : undefined;
+      ? `Updated ${formatUtcDateTime(runePriceUpdatedAt)}`
+      : hasUsableRunePrice
+        ? 'Quote loaded without freshness'
+        : undefined;
+  const quoteDerivedSuffix = runePriceIsStale
+    ? ' · stale quote'
+    : hasUsableRunePrice && !runePriceUpdatedAt
+      ? ' · quote unverified'
+      : '';
+  const totalBondedUsdSubValue = `${usdValue !== null ? formatUsd(usdValue, 2, 2) : '--'} USD${usdValue !== null ? quoteDerivedSuffix : ''}`;
+  const annualEarningsUsdSubValue = annualEarningsUSD !== null
+    ? `${formatUsd(annualEarningsUSD, 2, 2)}${quoteDerivedSuffix}`
+    : '--';
+  const feeImpactUsdSubValue = isUsableSummaryNumber(feeImpactUSD) && feeImpactUSD > 0
+    ? `-${formatUsd(feeImpactUSD, 2, 2)}${quoteDerivedSuffix}`
+    : undefined;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -52,14 +67,14 @@ export function PortfolioSummary({ totalBonded, runePrice, runePriceIsStale = fa
         icon={<TrendingUp className="w-4 h-4 text-emerald-500" />}
         label="Total Bonded"
         value={hasUsableTotalBonded ? formatRuneFromNumber(totalBonded) : '--'}
-        subValue={`${usdValue !== null ? formatUsd(usdValue, 2, 2) : '--'} USD`}
+        subValue={totalBondedUsdSubValue}
         highlight="emerald"
       />
       <SummaryCard 
         icon={<Coins className="w-4 h-4 text-amber-500" />}
         label="Annual Earnings (Net)"
         value={annualEarnings !== null ? formatRuneDisplayNumber(annualEarnings) : 'N/A'}
-        subValue={annualEarningsUSD !== null ? formatUsd(annualEarningsUSD, 2, 2) : '--'}
+        subValue={annualEarningsUsdSubValue}
         highlight="amber"
       />
       {hasUsableFeeImpact && (
@@ -67,7 +82,7 @@ export function PortfolioSummary({ totalBonded, runePrice, runePriceIsStale = fa
           icon={<DollarSign className="w-4 h-4 text-red-500" />}
           label="Fee Impact"
           value={`-${formatRuneDisplayNumber(feeImpactRUNE)} RUNE`}
-          subValue={isUsableSummaryNumber(feeImpactUSD) && feeImpactUSD > 0 ? `-${formatUsd(feeImpactUSD, 2, 2)}` : undefined}
+          subValue={feeImpactUsdSubValue}
           highlight="red"
         />
       )}
@@ -94,19 +109,29 @@ export function PortfolioSummary({ totalBonded, runePrice, runePriceIsStale = fa
   );
 }
 
-function HealthScoreDisplay({ health }: { health: { grade: HealthGrade; score: number; reason: string; breakdown: HealthScoreBreakdown } }) {
+function HealthScoreDisplay({ health }: { health: HealthScoreResult }) {
   const { breakdown } = health;
   const [isOpen, setIsOpen] = useState(false);
   const breakdownId = useId();
+  const reviewState = getProviderExposureReviewState(health);
+  const hasReviewDeductions = breakdown.slashPenalty > 0
+    || breakdown.atRiskPenalty > 0
+    || breakdown.jailedPenalty > 0
+    || breakdown.statusPenalty > 0;
   
   return (
-    <div className="space-y-2">
-      <div className="flex items-baseline gap-2">
-        <span className={cn("text-2xl font-bold", getGradeColor(health.grade))}>{health.grade}</span>
+    <div className="space-y-2 font-sans">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <span className={cn("block text-sm font-semibold leading-tight", reviewState.className)}>{reviewState.label}</span>
+          {health.reason && (
+            <span className="mt-1 block text-xs font-medium leading-snug text-zinc-500 dark:text-zinc-400">{health.reason}</span>
+          )}
+        </div>
         <button
           type="button"
-          className="inline-flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:focus-visible:ring-offset-zinc-950"
-          aria-label={`Provider exposure score breakdown: ${health.reason}`}
+          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:focus-visible:ring-offset-zinc-950"
+          aria-label={`Provider exposure evidence: ${health.reason}`}
           aria-expanded={isOpen}
           aria-controls={breakdownId}
           onClick={() => setIsOpen((open) => !open)}
@@ -122,10 +147,13 @@ function HealthScoreDisplay({ health }: { health: { grade: HealthGrade; score: n
         >
           <div className="flex items-center gap-1.5 mb-1.5 font-semibold text-zinc-900 dark:text-zinc-100">
             <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
-            Provider Exposure Breakdown
+            Provider Exposure Evidence
           </div>
           <div className="space-y-1">
-            <p>Starting points: {breakdown.startingPoints}</p>
+            <p className="text-zinc-900 dark:text-zinc-100">Review state: {reviewState.label}</p>
+            {!hasReviewDeductions && (
+              <p>No review deductions currently visible</p>
+            )}
             {breakdown.slashPenalty > 0 && (
               <p className="text-amber-700 dark:text-amber-300">- Slash exposure penalty: {breakdown.slashPenalty} points</p>
             )}
@@ -138,9 +166,6 @@ function HealthScoreDisplay({ health }: { health: { grade: HealthGrade; score: n
             {breakdown.statusPenalty > 0 && (
               <p className="text-amber-700 dark:text-amber-300">- Non-active status penalty: {breakdown.statusPenalty} points</p>
             )}
-            <div className="pt-1 border-t border-zinc-200 dark:border-zinc-800">
-              <span className="text-zinc-900 dark:text-zinc-100">Exposure score: {breakdown.finalScore}/100</span>
-            </div>
             {health.reason && (
               <p className="text-zinc-500 dark:text-zinc-400 mt-1">{health.reason}</p>
             )}

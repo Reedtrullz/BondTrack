@@ -1,8 +1,18 @@
 import useSWR from 'swr';
 import { getAllNodes, type NodeRaw } from '@/lib/api/thornode';
-import { MOCK_NODES, isDevelopmentMode } from '../mock-data';
+import {
+  MOCK_ACTIVE_OPERATOR_ADDRESS,
+  MOCK_NODES,
+  MOCK_PROVIDER_ADDRESS,
+  MOCK_SECONDARY_PROVIDER_ADDRESS,
+  MOCK_STANDBY_OPERATOR_ADDRESS,
+  isDevelopmentMode,
+} from '../mock-data';
 
 function buildMockNodes(): NodeRaw[] {
+  const operatorAddresses = [MOCK_ACTIVE_OPERATOR_ADDRESS, MOCK_STANDBY_OPERATOR_ADDRESS];
+  const providerAddresses = [MOCK_PROVIDER_ADDRESS, MOCK_SECONDARY_PROVIDER_ADDRESS];
+
   return MOCK_NODES.map((node, index) => ({
     node_address: node.address,
     status: node.status,
@@ -11,11 +21,11 @@ function buildMockNodes(): NodeRaw[] {
     peer_id: '',
     active_block_height: 1234567,
     status_since: 1234500 - index * 100,
-    node_operator_address: `thor1mockoperator${index + 1}`,
+    node_operator_address: operatorAddresses[index] ?? MOCK_ACTIVE_OPERATOR_ADDRESS,
     total_bond: node.bond,
     bond_providers: {
       node_operator_fee: String(node.operatorFee),
-      providers: [{ bond_address: `thor1mockbond${index + 1}`, bond: node.bond }],
+      providers: [{ bond_address: providerAddresses[index] ?? MOCK_PROVIDER_ADDRESS, bond: node.bond }],
     },
     signer_membership: null,
     requested_to_leave: false,

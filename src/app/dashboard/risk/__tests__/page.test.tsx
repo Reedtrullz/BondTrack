@@ -184,6 +184,53 @@ describe('RiskPage', () => {
     expect(screen.getByText(/bond-to-pool gauge/i)).toBeInTheDocument();
   });
 
+  it('labels clean provider exposure as informational no-urgent review instead of healthy', () => {
+    render(<RiskPage />);
+
+    const riskSummary = screen.getByLabelText('Risk summary');
+    const providerStatus = within(riskSummary).getByLabelText('Provider exposure status');
+
+    expect(providerStatus).toHaveTextContent('No urgent review');
+    expect(providerStatus).toHaveClass('text-sky-600');
+    expect(providerStatus).not.toHaveClass('text-emerald-600');
+    expect(providerStatus).not.toHaveTextContent(/\bhealthy\b|\bsafe\b|immediate issue/i);
+    expect(riskSummary).toHaveTextContent('Bond buffer in range');
+    expect(riskSummary).not.toHaveTextContent('Well Secured');
+  });
+
+  it('labels the active-position KPI as active set state instead of earning state', () => {
+    render(<RiskPage />);
+
+    const activeSetLabel = screen.getByText('Active set');
+    const activeSetTile = activeSetLabel.closest('.rounded-lg');
+
+    expect(activeSetTile).toHaveTextContent('1');
+    expect(activeSetTile).toHaveClass('bg-sky-50');
+    expect(activeSetTile).not.toHaveClass('bg-emerald-50');
+    expect(screen.queryByText('Earning')).not.toBeInTheDocument();
+  });
+
+  it('uses factual active-node copy for active jailed nodes in the summary banner', () => {
+    mockUseBondPositions.mockReturnValue({
+      positions: [{
+        ...mockPosition,
+        isJailed: true,
+      }],
+      isLoading: false,
+      error: undefined,
+      mutate: vi.fn(),
+    });
+
+    render(<RiskPage />);
+
+    const riskSummary = screen.getByLabelText('Risk summary');
+    const activePill = within(riskSummary).getByText('1 active node').closest('span');
+
+    expect(activePill).toHaveClass('bg-sky-100');
+    expect(activePill).not.toHaveClass('bg-emerald-100');
+    expect(riskSummary).toHaveTextContent('1 jailed');
+  });
+
   it('does not make missing RUNE price the top risk on a no-bond risk page', () => {
     mockUseBondPositions.mockReturnValue({
       positions: [],
@@ -196,10 +243,15 @@ describe('RiskPage', () => {
 
     expect(screen.getByLabelText('Provider risk diagnosis')).toHaveTextContent('No Bond');
     expect(screen.getByLabelText('Provider risk diagnosis')).toHaveTextContent('No bonded positions detected');
-    expect(within(screen.getByLabelText('Provider risk diagnosis')).getByRole('link', { name: 'Open Bond Composer' })).toHaveAttribute(
+    expect(within(screen.getByLabelText('Provider risk diagnosis')).getByRole('link', { name: 'Open BOND review' })).toHaveAttribute(
       'href',
       '/dashboard/transactions?address=thor1mocknode000000000000000000000000000000'
     );
+    expect(screen.getByLabelText('Risk summary')).toHaveTextContent('Address checked');
+    expect(screen.getByLabelText('Risk summary')).toHaveTextContent(
+      'No bonded node risk is visible for this address because Heimdall did not find any active bond-provider positions.'
+    );
+    expect(screen.queryByText('Enter an address to view risk status.')).not.toBeInTheDocument();
     expect(screen.queryByText('RUNE price is unknown')).not.toBeInTheDocument();
   });
 
@@ -255,6 +307,26 @@ describe('RiskPage', () => {
     );
     expect(within(diagnosis).queryByRole('button', { name: 'Review churn risk' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Churn-Out Risk' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the provider exposure reason visible in the compact risk diagnosis', () => {
+    mockUseBondPositions.mockReturnValue({
+      positions: [{
+        ...mockPosition,
+        isJailed: true,
+      }],
+      isLoading: false,
+      error: undefined,
+      mutate: vi.fn(),
+    });
+
+    render(<RiskPage />);
+
+    const diagnosis = screen.getByLabelText('Provider risk diagnosis');
+    const exposureReason = within(diagnosis).getByText('Action required · The node is currently in jail and may not be earning.');
+
+    expect(exposureReason).not.toHaveClass('hidden');
+    expect(exposureReason).not.toHaveClass('sm:block');
   });
 
   it('shows focused alert node context and highlights the matching row', () => {
@@ -375,7 +447,7 @@ describe('RiskPage', () => {
     expect(otherQueue).not.toHaveTextContent('has elevated slash points');
   });
 
-  it('keeps diagnosis and source confidence ahead of focused alert context', () => {
+  it('keeps diagnosis and source checks ahead of focused alert context', () => {
     mocks.searchParams.current = new URLSearchParams(
       `address=thor1mocknode000000000000000000000000000000&node=${mockPosition.nodeAddress}`
     );
@@ -393,17 +465,17 @@ describe('RiskPage', () => {
     const { container } = render(<RiskPage />);
 
     expect(screen.getByLabelText('Provider risk diagnosis')).toBeInTheDocument();
-    expect(screen.getByLabelText('Source confidence')).toHaveTextContent('THORNode');
-    expect(screen.getByLabelText('Source confidence')).toHaveTextContent('Midgard');
+    expect(screen.getByLabelText('Source checks')).toHaveTextContent('THORNode');
+    expect(screen.getByLabelText('Source checks')).toHaveTextContent('Midgard');
     expect(screen.getByLabelText('Focused node risk context')).toBeInTheDocument();
 
     const orderedSections = Array.from(container.querySelectorAll('section[aria-label]'))
       .map((section) => section.getAttribute('aria-label'))
-      .filter((label) => label === 'Provider risk diagnosis' || label === 'Source confidence' || label === 'Focused node risk context');
+      .filter((label) => label === 'Provider risk diagnosis' || label === 'Source checks' || label === 'Focused node risk context');
 
     expect(orderedSections).toEqual([
       'Provider risk diagnosis',
-      'Source confidence',
+      'Source checks',
       'Focused node risk context',
     ]);
   });
@@ -458,26 +530,27 @@ describe('RiskPage', () => {
     expect(focusedContext).toHaveTextContent('Provider access review');
     expect(focusedContext).toHaveTextContent(mockCandidateNode.node_address);
     expect(focusedContext).toHaveTextContent('Avoid candidate');
-    expect(within(focusedContext).getByTestId('focused-risk-primary-action')).toHaveTextContent('Ask operator to whitelist');
+    expect(within(focusedContext).getByTestId('focused-risk-primary-action')).toHaveTextContent('Ask operator to add provider');
     expect(within(focusedContext).getByTestId('focused-risk-primary-action')).toHaveTextContent(
-      'Do not bond until this address is whitelisted.'
+      'Do not bond until THORNode lists this address as a bond provider.'
     );
+    expect(within(focusedContext).getByTestId('focused-risk-primary-action')).not.toHaveTextContent(/whitelist/i);
     expect(within(focusedContext).getByTestId('focused-risk-inline-evidence')).toHaveTextContent(
-      'THORNode: All score inputs present. Capacity: Whitelist needed.'
+      'THORNode: All candidate inputs present. Capacity: Provider not listed by THORNode.'
     );
     expect(within(focusedContext).getByTestId('focused-risk-primary-link')).toHaveTextContent('Compare alternatives');
     expect(within(focusedContext).getByTestId('focused-risk-primary-link')).toHaveAttribute(
       'href',
       `/dashboard/explorer?address=thor1mocknode000000000000000000000000000000&node=${mockCandidateNode.node_address}`
     );
-    expect(within(focusedContext).getByTestId('focused-risk-score-evidence')).toHaveTextContent('Score evidence · THORNode');
+    expect(within(focusedContext).getByTestId('focused-risk-score-evidence')).toHaveTextContent('Candidate evidence · THORNode');
     expect(within(focusedContext).getByTestId('focused-risk-score-evidence')).toHaveTextContent(
-      'Watched address is not listed; operator whitelist is required.'
+      'Watched address is not listed as a THORNode bond provider.'
     );
 
     const metricDetails = within(focusedContext).getByTestId('focused-risk-metric-details');
     expect(metricDetails).toHaveTextContent('Operational details');
-    expect(metricDetails).toHaveTextContent('Whitelist needed · Slash 150 · Fee 25.0%');
+    expect(metricDetails).toHaveTextContent('Provider not listed by THORNode · Slash 150 · Fee 25.0%');
     expect(metricDetails).not.toHaveAttribute('open');
     expect(within(focusedContext).getByTestId('focused-risk-candidate-metrics').closest('[data-testid="focused-risk-metric-details"]')).toBe(metricDetails);
 
@@ -486,13 +559,15 @@ describe('RiskPage', () => {
     expect(metricDetails).toHaveAttribute('open');
     expect(within(metricDetails).getByText('Slash points')).toBeInTheDocument();
     expect(within(metricDetails).getByText('Operator fee')).toBeInTheDocument();
-    expect(focusedContext).toHaveTextContent('Needs operator whitelist');
+    expect(focusedContext).toHaveTextContent('Provider not listed by THORNode');
+    expect(focusedContext).not.toHaveTextContent(/operator whitelist|whitelisted/i);
     expect(focusedContext).toHaveTextContent('150 slash points');
     expect(focusedContext).not.toHaveTextContent('candidate or stale-alert context');
+    expect(focusedContext).not.toHaveTextContent(/\d+\/100/);
     expect(screen.queryByLabelText(`Focused risk node ${mockCandidateNode.node_address}`)).not.toBeInTheDocument();
   });
 
-  it('only links focused candidates to BOND prep when provider access is whitelisted and the score is strong', () => {
+  it('frames strong whitelisted focused candidates as review states before BOND prep', () => {
     const whitelistedCandidate = {
       ...mockCandidateNode,
       node_address: 'thor1strongcandidate0000000000000000000000',
@@ -517,24 +592,36 @@ describe('RiskPage', () => {
 
     const focusedContext = screen.getByLabelText('Focused node risk context');
     expect(focusedContext).toHaveTextContent('Strong candidate');
-    expect(within(focusedContext).getByTestId('focused-risk-primary-action')).toHaveTextContent('Prepare BOND memo');
+    expect(focusedContext).toHaveTextContent('Confirm provider access before reviewing any BOND memo.');
+    expect(focusedContext).not.toHaveTextContent('Confirm provider access before preparing any BOND transaction.');
+    expect(within(focusedContext).getByTestId('focused-risk-primary-action')).toHaveTextContent('Review before BOND memo');
+    expect(within(focusedContext).getByTestId('focused-risk-primary-action')).toHaveTextContent('Candidate evidence and THORNode-listed provider access support reviewing a BOND memo');
+    expect(within(focusedContext).getByTestId('focused-risk-primary-action')).not.toHaveTextContent('Candidate evidence and provider access support reviewing a BOND memo');
+    expect(within(focusedContext).getByTestId('focused-risk-primary-action')).not.toHaveTextContent('Score and provider access support preparing a BOND memo');
+    expect(within(focusedContext).getByTestId('focused-risk-primary-action')).not.toHaveTextContent('memo prep');
     expect(within(focusedContext).getByTestId('focused-risk-primary-action')).toHaveTextContent(
+      'not a safety guarantee'
+    );
+    expect(within(focusedContext).getByTestId('focused-risk-primary-action')).not.toHaveTextContent(
       'Watched address is already listed as a provider and the candidate score is strong.'
     );
     expect(within(focusedContext).getByTestId('focused-risk-inline-evidence')).toHaveTextContent(
-      'THORNode: All score inputs present. Capacity: Provider whitelisted.'
+      'THORNode: All candidate inputs present. Capacity: Provider listed by THORNode.'
     );
+    expect(within(focusedContext).getByTestId('focused-risk-primary-link')).toHaveTextContent('Review BOND memo');
     expect(within(focusedContext).getByTestId('focused-risk-primary-link')).toHaveAttribute(
       'href',
       `/dashboard/transactions?address=thor1mocknode000000000000000000000000000000&action=bond&node=${whitelistedCandidate.node_address}`
     );
+    expect(within(focusedContext).queryByRole('link', { name: 'Prepare BOND memo' })).not.toBeInTheDocument();
     expect(within(focusedContext).getByRole('link', { name: 'Compare candidates' })).toHaveAttribute(
       'href',
       `/dashboard/explorer?address=thor1mocknode000000000000000000000000000000&node=${whitelistedCandidate.node_address}`
     );
     expect(within(focusedContext).getByTestId('focused-risk-metric-details')).toHaveTextContent(
-      'Provider whitelisted · Slash 0 · Fee 5.0%'
+      'Provider listed by THORNode · Slash 0 · Fee 5.0%'
     );
+    expect(focusedContext).not.toHaveTextContent(/\d+\/100/);
   });
 
   it('does not link a strong whitelisted focused candidate to BOND prep while THORNode confidence is degraded', () => {
@@ -570,19 +657,19 @@ describe('RiskPage', () => {
     render(<RiskPage />);
 
     const focusedContext = screen.getByLabelText('Focused node risk context');
-    const sourceConfidence = screen.getByLabelText('Source confidence');
+    const sourceConfidence = screen.getByLabelText('Source checks');
 
     expect(sourceConfidence).toHaveTextContent('THORNode');
     expect(sourceConfidence).toHaveTextContent('Degraded');
     expect(focusedContext).toHaveTextContent('Strong candidate');
-    expect(within(focusedContext).getByTestId('focused-risk-primary-action')).toHaveTextContent('Wait for source confidence');
+    expect(within(focusedContext).getByTestId('focused-risk-primary-action')).toHaveTextContent('Wait for source check');
     expect(within(focusedContext).getByTestId('focused-risk-primary-action')).toHaveTextContent(
-      'THORNode source confidence is degraded'
+      'THORNode candidate source check is degraded'
     );
     expect(within(focusedContext).getByTestId('focused-risk-inline-evidence')).toHaveTextContent(
-      'THORNode source: THORNode degraded. Capacity: Provider whitelisted.'
+      'THORNode source: THORNode degraded. Capacity: Provider listed by THORNode.'
     );
-    expect(within(focusedContext).getByTestId('focused-risk-primary-link')).toHaveTextContent('Review source confidence');
+    expect(within(focusedContext).getByTestId('focused-risk-primary-link')).toHaveTextContent('Review source checks');
     expect(within(focusedContext).getByTestId('focused-risk-primary-link')).toHaveAttribute(
       'href',
       '#risk-source-confidence'
@@ -619,13 +706,13 @@ describe('RiskPage', () => {
     expect(focusedContext).toHaveTextContent('Avoid candidate');
     expect(within(focusedContext).getByTestId('focused-risk-primary-action')).toHaveTextContent('Review risk evidence');
     expect(within(focusedContext).getByTestId('focused-risk-inline-evidence')).toHaveTextContent(
-      'THORNode: Missing APY, bond, fee, slash. Capacity: Provider whitelisted.'
+      'THORNode: Missing APY, bond, fee, slash. Capacity: Provider listed by THORNode.'
     );
     expect(focusedContext).toHaveTextContent('slash data unavailable');
     expect(focusedContext).toHaveTextContent('operator fee unavailable');
     expect(focusedContext).toHaveTextContent('bond data unavailable');
     expect(within(focusedContext).getByTestId('focused-risk-metric-details')).toHaveTextContent(
-      'Provider whitelisted · Slash -- · Fee --'
+      'Provider listed by THORNode · Slash -- · Fee --'
     );
     expect(within(focusedContext).getAllByText('--').length).toBeGreaterThanOrEqual(4);
     expect(container).not.toHaveTextContent(/NaN|Infinity/);

@@ -105,7 +105,7 @@ vi.mock('@/lib/dashboard/insights', async (importOriginal) => {
             topRisk: 'No bonded positions detected',
             headerMetrics: [],
             primaryAction: {
-              label: 'Open Bond Composer',
+              label: 'Open BOND review',
               href: '/dashboard/transactions?address=thor1portfolioaddress&action=bond',
             },
             actions: mocks.insightActions.current,
@@ -175,22 +175,31 @@ describe('PortfolioPage', () => {
     });
   });
 
-  it('renders transaction actions as links without nested buttons', () => {
+  it('labels the portfolio review feed with operator-first copy', () => {
     render(<PortfolioPage />);
 
-    const bondLink = screen.getByRole('link', { name: 'Prepare BOND Memo' });
+    expect(screen.getByText('Provider review signals')).toBeInTheDocument();
+    expect(screen.queryByText("Heimdall's Sight")).not.toBeInTheDocument();
+  });
+
+  it('renders transaction actions as review-first links without nested buttons', () => {
+    render(<PortfolioPage />);
+
+    const bondLink = screen.getByRole('link', { name: 'Review BOND Memo' });
     expect(bondLink).toHaveAttribute(
       'href',
       '/dashboard/transactions?address=thor1portfolioaddress&action=bond'
     );
     expect(bondLink.querySelector('button')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Prepare BOND Memo' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Bond More' })).not.toBeInTheDocument();
 
+    expect(screen.queryByRole('link', { name: 'Review UNBOND Memo' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Prepare UNBOND Memo' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Unbond' })).not.toBeInTheDocument();
   });
 
-  it('offers UNBOND prep only when fresh source confidence has a standby bonded position', () => {
+  it('offers UNBOND prep only when source checks pass for a standby bonded position', () => {
     mockUseBondPositions.mockReturnValue({
       positions: [mockBondPosition],
       isLoading: false,
@@ -198,12 +207,13 @@ describe('PortfolioPage', () => {
 
     render(<PortfolioPage />);
 
-    const unbondLink = screen.getByRole('link', { name: 'Prepare UNBOND Memo' });
+    const unbondLink = screen.getByRole('link', { name: 'Review UNBOND Memo' });
     expect(unbondLink).toHaveAttribute(
       'href',
       '/dashboard/transactions?address=thor1portfolioaddress&action=unbond'
     );
     expect(unbondLink.querySelector('button')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Prepare UNBOND Memo' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Unbond' })).not.toBeInTheDocument();
   });
 
@@ -215,11 +225,13 @@ describe('PortfolioPage', () => {
 
     render(<PortfolioPage />);
 
-    expect(screen.getByRole('link', { name: 'Prepare BOND Memo' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Review BOND Memo' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Prepare BOND Memo' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Review UNBOND Memo' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Prepare UNBOND Memo' })).not.toBeInTheDocument();
   });
 
-  it('routes header BOND prep to source confidence when THORNode provenance is degraded', () => {
+  it('routes header BOND prep to source checks when THORNode provenance is degraded', () => {
     mocks.insightActions.current = [{
       id: 'source:thornode:degraded',
       severity: 'warning',
@@ -229,7 +241,7 @@ describe('PortfolioPage', () => {
       impact: 'Do not prepare node-sensitive BOND changes until THORNode recovers.',
       href: '/dashboard?address=thor1portfolioaddress#source-confidence',
       lastSeen: new Date('2026-06-13T00:00:00.000Z'),
-      primaryAction: 'Review source confidence',
+      primaryAction: 'Review source checks',
     }];
     mockUseApiHealthContext.mockReturnValue({
       midgard: 'healthy',
@@ -243,11 +255,13 @@ describe('PortfolioPage', () => {
 
     render(<PortfolioPage />);
 
+    expect(screen.queryByRole('link', { name: 'Review BOND Memo' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Prepare BOND Memo' })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'Review source confidence' })[0]).toHaveAttribute(
+    expect(screen.getAllByRole('link', { name: 'Review source checks' })[0]).toHaveAttribute(
       'href',
       '/dashboard?address=thor1portfolioaddress#source-confidence'
     );
+    expect(screen.queryByRole('link', { name: 'Review UNBOND Memo' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Prepare UNBOND Memo' })).not.toBeInTheDocument();
   });
 
@@ -265,12 +279,16 @@ describe('PortfolioPage', () => {
 
     render(<PortfolioPage />);
 
+    expect(screen.queryByRole('link', { name: 'Review BOND Memo' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Prepare BOND Memo' })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'Review source confidence' })[0]).toHaveAttribute(
+    expect(screen.getAllByRole('link', { name: 'Review source checks' })[0]).toHaveAttribute(
       'href',
       '/dashboard?address=thor1portfolioaddress#source-confidence'
     );
-    expect(screen.getByLabelText('Portfolio diagnosis')).toHaveTextContent('wait for fresh THORNode source confidence');
+    const diagnosis = screen.getByLabelText('Portfolio diagnosis');
+    expect(diagnosis).toHaveTextContent('wait for the THORNode source check to pass before opening BOND review');
+    expect(diagnosis).not.toHaveTextContent(/fresh THORNode source confidence/i);
+    expect(screen.queryByRole('link', { name: 'Review UNBOND Memo' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Prepare UNBOND Memo' })).not.toBeInTheDocument();
   });
 
@@ -284,7 +302,7 @@ describe('PortfolioPage', () => {
       impact: 'Do not prepare node-sensitive BOND changes until THORNode recovers.',
       href: '/dashboard?address=thor1portfolioaddress#source-confidence',
       lastSeen: new Date('2026-06-13T00:00:00.000Z'),
-      primaryAction: 'Review source confidence',
+      primaryAction: 'Review source checks',
     }];
     mockUseBondPositions.mockReturnValue({
       positions: [],
@@ -309,7 +327,7 @@ describe('PortfolioPage', () => {
     render(<PortfolioPage />);
 
     expect(screen.queryByRole('status', { name: 'Loading portfolio data' })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'Review source confidence' })[0]).toHaveAttribute(
+    expect(screen.getAllByRole('link', { name: 'Review source checks' })[0]).toHaveAttribute(
       'href',
       '/dashboard?address=thor1portfolioaddress#source-confidence'
     );
@@ -344,13 +362,44 @@ describe('PortfolioPage', () => {
 
     expect(screen.queryByRole('status', { name: 'Loading portfolio data' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Portfolio' })).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Prepare BOND Memo' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Review BOND Memo' })).toHaveAttribute(
       'href',
       '/dashboard/transactions?address=thor1portfolioaddress&action=bond'
     );
+    expect(screen.queryByRole('link', { name: 'Prepare BOND Memo' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('Portfolio diagnosis')).toBeVisible();
-    expect(screen.getByLabelText('Portfolio exposure confidence')).toHaveTextContent('RUNE price');
-    expect(screen.getByLabelText('Portfolio exposure confidence')).toHaveTextContent('Missing');
+    const checks = screen.getByLabelText('Portfolio data checks');
+    expect(checks).toHaveTextContent('RUNE price');
+    expect(checks).toHaveTextContent('Missing');
+    expect(screen.queryByLabelText('Portfolio exposure confidence')).not.toBeInTheDocument();
+  });
+
+  it('labels source-loaded LP valuation as review material instead of ready or source-backed', () => {
+    mockUseLpPositions.mockReturnValue({
+      positions: [{
+        currentTotalValueUsd: 10_000,
+        pricingSource: 'historical',
+        claimableTrusted: true,
+      }],
+      runePriceFreshness: {
+        updatedAt: new Date('2026-06-13T00:00:00.000Z'),
+        updatedAtTimestampSeconds: 1_781_308_800,
+        ageMs: 0,
+        isStale: false,
+        staleAfterMs: 36 * 60 * 60 * 1000,
+      },
+      error: undefined,
+    });
+
+    render(<PortfolioPage />);
+
+    const checks = screen.getByLabelText('Portfolio data checks');
+    expect(checks).toHaveTextContent('LP valuation');
+    expect(checks).toHaveTextContent('Source-loaded');
+    expect(checks).toHaveTextContent('1 THORNode LP value row loaded for review');
+    expect(checks).not.toHaveTextContent('Ready');
+    expect(checks).not.toHaveTextContent('Source-backed');
+    expect(screen.queryByLabelText('Portfolio exposure confidence')).not.toBeInTheDocument();
   });
 
   it('keeps the full-page skeleton while primary bond state is loading under healthy THORNode', () => {
@@ -371,7 +420,8 @@ describe('PortfolioPage', () => {
     const sourceHealth = screen.getByLabelText('Portfolio source health');
 
     expect(sourceHealth).toHaveTextContent('Sources responding');
-    expect(sourceHealth).toHaveTextContent('Recent Midgard + THORNode checks succeeded');
+    expect(sourceHealth).toHaveTextContent('Recent Midgard + THORNode checks responded');
+    expect(sourceHealth).not.toHaveTextContent('Recent Midgard + THORNode checks succeeded');
     expect(sourceHealth).not.toHaveTextContent('Sources healthy');
     expect(sourceHealth).not.toHaveTextContent('Midgard + THORNode confirmed');
     expect(screen.queryByText('Live')).not.toBeInTheDocument();
@@ -413,9 +463,10 @@ describe('PortfolioPage', () => {
 
     render(<PortfolioPage />);
 
-    const confidence = screen.getByLabelText('Portfolio exposure confidence');
-    expect(confidence).toHaveTextContent('LP valuation');
-    expect(confidence).toHaveTextContent('Degraded');
-    expect(confidence).toHaveTextContent('LP value excluded from totals');
+    const checks = screen.getByLabelText('Portfolio data checks');
+    expect(checks).toHaveTextContent('LP valuation');
+    expect(checks).toHaveTextContent('Degraded');
+    expect(checks).toHaveTextContent('LP value excluded from totals');
+    expect(screen.queryByLabelText('Portfolio exposure confidence')).not.toBeInTheDocument();
   });
 });

@@ -156,11 +156,19 @@ export default function TaxExport({ address, isHistoricalEnrichmentLoading: pare
       <Card className="border-zinc-200 bg-white/80 shadow-md backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80">
         <CardContent className="p-6">
           <div className="rounded-lg bg-zinc-50 p-4 text-sm text-zinc-500 dark:bg-zinc-800/50">
-            {!address
-              ? 'Connect a wallet to export an LP position snapshot.'
-              : error
-                ? 'Error loading LP positions: ' + error
-                : 'No LP positions found for this address.'}
+            {!address ? (
+              'Connect a wallet to export an LP position snapshot.'
+            ) : error ? (
+              'Error loading LP positions: ' + error
+            ) : (
+              <div className="space-y-1">
+                <p>No current LP positions are available for CSV export.</p>
+                <p>
+                  Midgard returned no active LP pools for this address; this is not
+                  proof of past liquidity activity or pending changes.
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

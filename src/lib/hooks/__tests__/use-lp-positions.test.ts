@@ -5,9 +5,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { __clearLpHistoricalCachesForTests, useLpPositions } from '../use-lp-positions';
 import * as midgard from '../../api/midgard';
 import * as thornode from '../../api/thornode';
+import * as mockDataModule from '../../mock-data';
 
 vi.mock('../../api/midgard');
 vi.mock('../../api/thornode', () => ({ getLiquidityProvider: vi.fn().mockResolvedValue(null) }));
+vi.mock('../../mock-data', async () => {
+  const actual = await vi.importActual<typeof import('../../mock-data')>('../../mock-data');
+  return {
+    ...actual,
+    isDevelopmentMode: vi.fn(() => false),
+  };
+});
 
 const wrapper = ({ children }: { children: React.ReactNode }) =>
   React.createElement(SWRConfig, { value: { provider: () => new Map() } }, children);
@@ -67,6 +75,7 @@ describe('useLpPositions', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     __clearLpHistoricalCachesForTests();
+    vi.mocked(mockDataModule.isDevelopmentMode).mockReturnValue(false);
     vi.mocked(thornode.getLiquidityProvider).mockResolvedValue(null as never);
     vi.mocked(midgard.getRunePriceHistory).mockResolvedValue({
       intervals: [{
@@ -81,7 +90,7 @@ describe('useLpPositions', () => {
         endRunePriceUSD: '0.48',
       },
     } as never);
-    vi.mocked(midgard.getHistoricalRunePrice).mockResolvedValue(0.48 as never);
+    vi.mocked(midgard.getHistoricalRunePriceWithSource).mockResolvedValue({ price: 0.48, source: 'midgard' } as never);
     vi.mocked(midgard.getPoolHistoryAtTimestamp).mockResolvedValue({
       timestamp: 1700000000,
       runeDepth: '100000000',
@@ -118,7 +127,7 @@ describe('useLpPositions', () => {
         endRunePriceUSD: '0.48',
       },
     } as never);
-    vi.mocked(midgard.getHistoricalRunePrice).mockResolvedValueOnce(null as never);
+    vi.mocked(midgard.getHistoricalRunePriceWithSource).mockResolvedValueOnce(null as never);
     vi.mocked(midgard.getPoolHistoryAtTimestamp).mockResolvedValueOnce(null);
 
     const { result } = renderHook(() => useLpPositions('thor1currentonly'), { wrapper });
@@ -143,6 +152,39 @@ describe('useLpPositions', () => {
       impermanentLossPercent: null,
     });
     expect(result.current.positions[0].currentTotalValueUsd).toBeCloseTo(240, 6);
+  });
+
+  it('returns local LP fixtures without touching live upstreams in mock mode', async () => {
+    vi.mocked(mockDataModule.isDevelopmentMode).mockReturnValue(true);
+    vi.mocked(midgard.getMemberDetails).mockRejectedValueOnce(new Error('should not call Midgard member'));
+    vi.mocked(midgard.getPools).mockRejectedValueOnce(new Error('should not call Midgard pools'));
+    vi.mocked(midgard.getRunePriceHistory).mockRejectedValueOnce(new Error('should not call Midgard price'));
+    vi.mocked(thornode.getLiquidityProvider).mockRejectedValueOnce(new Error('should not call THORNode LP'));
+
+    const { result } = renderHook(() => useLpPositions(mockDataModule.MOCK_PROVIDER_ADDRESS), { wrapper });
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isHistoricalEnrichmentLoading).toBe(false);
+    expect(result.current.state).toBe('ready');
+    expect(result.current.error).toBeUndefined();
+    expect(result.current.runePriceFreshness?.isStale).toBe(false);
+    expect(result.current.positions).toHaveLength(1);
+    expect(result.current.positions[0]).toMatchObject({
+      pool: 'BTC.BTC',
+      assetSymbol: 'BTC',
+      redeemQuoteSource: 'thornode',
+      claimableTrusted: true,
+      pricingSource: 'historical',
+      entryRunePriceUsd: 0.42,
+      entryAssetPriceUsd: 30000,
+    });
+    expect(result.current.positions[0].currentTotalValueUsd).toBeGreaterThan(0);
+    expect(midgard.getMemberDetails).not.toHaveBeenCalled();
+    expect(midgard.getPools).not.toHaveBeenCalled();
+    expect(midgard.getRunePriceHistory).not.toHaveBeenCalled();
+    expect(midgard.getHistoricalRunePriceWithSource).not.toHaveBeenCalled();
+    expect(midgard.getPoolHistoryAtTimestamp).not.toHaveBeenCalled();
+    expect(thornode.getLiquidityProvider).not.toHaveBeenCalled();
   });
 
   it('marks fallback LP redeem values as estimated when THORNode redeem lookup fails', async () => {
@@ -235,7 +277,7 @@ describe('useLpPositions', () => {
         endRunePriceUSD: '0.4885',
       },
     } as never);
-    vi.mocked(midgard.getHistoricalRunePrice).mockResolvedValueOnce(0.5 as never);
+    vi.mocked(midgard.getHistoricalRunePriceWithSource).mockResolvedValueOnce({ price: 0.5, source: 'midgard' } as never);
     vi.mocked(midgard.getPoolHistoryAtTimestamp).mockResolvedValueOnce({
       timestamp: 1700000000,
       runeDepth: '250000000000',
@@ -247,7 +289,7 @@ describe('useLpPositions', () => {
 
     await waitFor(() => expect(result.current.state).toBe('ready'));
 
-    expect(midgard.getHistoricalRunePrice).toHaveBeenCalledWith(1700000000);
+    expect(midgard.getHistoricalRunePriceWithSource).toHaveBeenCalledWith(1700000000);
     expect(midgard.getPoolHistoryAtTimestamp).toHaveBeenCalledWith('GAIA.ATOM', 1700000000);
     expect(result.current.positions[0]).toMatchObject({
       assetSymbol: 'ATOM',
@@ -255,6 +297,46 @@ describe('useLpPositions', () => {
       pricingSource: 'historical',
       entryRunePriceUsd: 0.5,
       entryAssetPriceUsd: 0.25,
+    });
+    expect(result.current.positions[0].netProfitLoss).not.toBe('Current value only');
+  });
+
+  it('treats external historical RUNE fallback as estimated LP entry pricing', async () => {
+    vi.mocked(midgard.getMemberDetails).mockResolvedValueOnce({
+      pools: [{
+        ...successfulMemberDetails.pools[0],
+        pool: 'GAIA.ATOM',
+        assetAddress: 'cosmos1member',
+        dateFirstAdded: '1700000000',
+      }],
+    } as never);
+    vi.mocked(midgard.getPools).mockResolvedValueOnce([
+      {
+        ...successfulPools[0],
+        asset: 'GAIA.ATOM',
+        assetPriceUSD: '1.8644',
+        runeDepth: '250000000000',
+        assetDepth: '500000000000',
+      },
+    ] as never);
+    vi.mocked(midgard.getHistoricalRunePriceWithSource).mockResolvedValueOnce({ price: 0.5, source: 'coingecko' } as never);
+    vi.mocked(midgard.getPoolHistoryAtTimestamp).mockResolvedValueOnce({
+      timestamp: 1700000000,
+      runeDepth: '250000000000',
+      assetDepth: '500000000000',
+      liquidityUnits: '1000',
+    });
+
+    const { result } = renderHook(() => useLpPositions('thor1externalfallback'), { wrapper });
+
+    await waitFor(() => expect(result.current.state).toBe('ready'));
+
+    expect(midgard.getHistoricalRunePriceWithSource).toHaveBeenCalledWith(1700000000);
+    expect(result.current.positions[0]).toMatchObject({
+      pricingSource: 'estimated',
+      entryRunePriceUsd: 0.5,
+      entryAssetPriceUsd: 0.25,
+      entryRunePriceSource: 'coingecko',
     });
     expect(result.current.positions[0].netProfitLoss).not.toBe('Current value only');
   });
@@ -422,7 +504,7 @@ describe('useLpPositions', () => {
       { ...successfulPools[0], asset: 'BTC.BTC', runeDepth: '250000000000', assetDepth: '500000000000' },
       { ...successfulPools[0], asset: 'ETH.ETH', runeDepth: '250000000000', assetDepth: '500000000000' },
     ] as never);
-    vi.mocked(midgard.getHistoricalRunePrice).mockResolvedValue(0.5 as never);
+    vi.mocked(midgard.getHistoricalRunePriceWithSource).mockResolvedValue({ price: 0.5, source: 'midgard' } as never);
     vi.mocked(midgard.getPoolHistoryAtTimestamp).mockResolvedValue({
       timestamp: 1700000000,
       runeDepth: '250000000000',
@@ -435,7 +517,7 @@ describe('useLpPositions', () => {
     await waitFor(() => expect(result.current.state).toBe('ready'));
 
     expect(result.current.positions).toHaveLength(2);
-    expect(midgard.getHistoricalRunePrice).toHaveBeenCalledTimes(1);
+    expect(midgard.getHistoricalRunePriceWithSource).toHaveBeenCalledTimes(1);
     expect(midgard.getPoolHistoryAtTimestamp).toHaveBeenCalledTimes(2);
   });
 
@@ -450,9 +532,9 @@ describe('useLpPositions', () => {
     vi.mocked(midgard.getPools).mockResolvedValue([
       { ...successfulPools[0], liquidityUnits: '1000', runeDepth: '250000000000', assetDepth: '500000000000' },
     ] as never);
-    vi.mocked(midgard.getHistoricalRunePrice)
+    vi.mocked(midgard.getHistoricalRunePriceWithSource)
       .mockRejectedValueOnce(new Error('API error: 500 temporary historical price failure'))
-      .mockResolvedValueOnce(0.5 as never);
+      .mockResolvedValueOnce({ price: 0.5, source: 'midgard' } as never);
     vi.mocked(midgard.getPoolHistoryAtTimestamp).mockResolvedValue({
       timestamp: 1700000000,
       runeDepth: '250000000000',
@@ -464,13 +546,13 @@ describe('useLpPositions', () => {
 
     await waitFor(() => expect(first.result.current.isHistoricalEnrichmentLoading).toBe(false));
     expect(first.result.current.positions[0].pricingSource).toBe('current-only');
-    expect(midgard.getHistoricalRunePrice).toHaveBeenCalledTimes(1);
+    expect(midgard.getHistoricalRunePriceWithSource).toHaveBeenCalledTimes(1);
     first.unmount();
 
     const second = renderHook(() => useLpPositions('thor1historicalretry'), { wrapper });
 
     await waitFor(() => expect(second.result.current.positions[0].pricingSource).toBe('historical'));
-    expect(midgard.getHistoricalRunePrice).toHaveBeenCalledTimes(2);
+    expect(midgard.getHistoricalRunePriceWithSource).toHaveBeenCalledTimes(2);
     expect(second.result.current.positions[0]).toMatchObject({
       entryRunePriceUsd: 0.5,
       pricingSource: 'historical',
@@ -489,7 +571,7 @@ describe('useLpPositions', () => {
     vi.mocked(midgard.getPools).mockResolvedValue([
       { ...successfulPools[0], liquidityUnits: '1000', runeDepth: '250000000000', assetDepth: '500000000000' },
     ] as never);
-    vi.mocked(midgard.getHistoricalRunePrice).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    vi.mocked(midgard.getHistoricalRunePriceWithSource).mockRejectedValueOnce(new TypeError('Failed to fetch'));
     vi.mocked(midgard.getPoolHistoryAtTimestamp).mockResolvedValue({
       timestamp: 1700000000,
       runeDepth: '250000000000',
@@ -524,7 +606,7 @@ describe('useLpPositions', () => {
     vi.mocked(midgard.getPools).mockResolvedValue([
       { ...successfulPools[0], liquidityUnits: '1000', runeDepth: '250000000000', assetDepth: '500000000000' },
     ] as never);
-    vi.mocked(midgard.getHistoricalRunePrice).mockResolvedValue(0.5 as never);
+    vi.mocked(midgard.getHistoricalRunePriceWithSource).mockResolvedValue({ price: 0.5, source: 'midgard' } as never);
     vi.mocked(midgard.getPoolHistoryAtTimestamp)
       .mockRejectedValueOnce(new Error('API error: 500 temporary pool history failure'))
       .mockResolvedValueOnce({
@@ -557,9 +639,9 @@ describe('useLpPositions', () => {
     vi.mocked(midgard.getPools).mockResolvedValue([
       { ...successfulPools[0], liquidityUnits: '1000', runeDepth: '250000000000', assetDepth: '500000000000' },
     ] as never);
-    vi.mocked(midgard.getHistoricalRunePrice)
+    vi.mocked(midgard.getHistoricalRunePriceWithSource)
       .mockRejectedValueOnce(new Error('API error: 500 temporary historical price failure'))
-      .mockResolvedValueOnce(0.5 as never);
+      .mockResolvedValueOnce({ price: 0.5, source: 'midgard' } as never);
     vi.mocked(midgard.getPoolHistoryAtTimestamp).mockResolvedValue({
       timestamp: 1700000000,
       runeDepth: '250000000000',
@@ -571,14 +653,14 @@ describe('useLpPositions', () => {
 
     await waitFor(() => expect(result.current.isHistoricalEnrichmentLoading).toBe(false));
     expect(result.current.positions[0].pricingSource).toBe('current-only');
-    expect(midgard.getHistoricalRunePrice).toHaveBeenCalledTimes(1);
+    expect(midgard.getHistoricalRunePriceWithSource).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       await result.current.retry();
     });
 
     await waitFor(() => expect(result.current.positions[0].pricingSource).toBe('historical'));
-    expect(midgard.getHistoricalRunePrice).toHaveBeenCalledTimes(2);
+    expect(midgard.getHistoricalRunePriceWithSource).toHaveBeenCalledTimes(2);
   });
 
   it('returns "empty" state for 404 member lookup', async () => {
@@ -622,7 +704,8 @@ describe('useLpPositions', () => {
 
     await waitFor(() => expect(result.current.state).toBe('error'));
 
-    expect(result.current.error).toMatch(/LP pricing is temporarily unavailable/i);
+    expect(result.current.error).toBe('Midgard LP pricing is temporarily unavailable right now. Current market value is unavailable until the price feed recovers.');
+    expect(result.current.error).not.toMatch(/safely/i);
     expect(result.current.positions).toEqual([]);
   });
 

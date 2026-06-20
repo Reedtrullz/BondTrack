@@ -150,7 +150,7 @@ describe('transaction memo and amount helpers', () => {
     expect(validateBondAmount('1.123456789').valid).toBe(false);
     expect(validateBondAmount('0.99999999')).toEqual({
       valid: false,
-      error: 'Minimum bond amount is 1 RUNE; wallet/network fees are confirmed separately',
+      error: 'Minimum bond amount is 1 RUNE; wallet/network fees are shown separately',
     });
   });
 

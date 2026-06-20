@@ -2,44 +2,47 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateTaxReportWithWarnings, exportToCSV, parseTaxDateRange } from '@/lib/utils/tax-export';
 import { noStorePrivateHeaders } from '@/lib/api/cors';
 import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
+import { normalizeTHORChainMainnetAddress } from '@/lib/utils/address-validation';
 
 export const dynamic = 'force-dynamic';
 
-const THOR_ADDRESS_PATTERN = /^thor1[0-9a-z]{38,59}$/;
-
 const MAX_REQUESTS = 10;
 const WINDOW_MS = 60 * 1000;
+const MAX_BODY_BYTES = 2_048;
 const TAX_REPORT_METHODS = ['POST', 'OPTIONS'];
+
+interface TaxReportRequestBody {
+  address?: string;
+  startDate?: string;
+  endDate?: string;
+}
 
 function taxReportHeaders(request: NextRequest): HeadersInit {
   return noStorePrivateHeaders(request, [], TAX_REPORT_METHODS);
 }
 
+function jsonError(request: NextRequest, error: string, status: number) {
+  return NextResponse.json(
+    { error },
+    { status, headers: taxReportHeaders(request) }
+  );
+}
+
+function isJsonRequest(request: NextRequest): boolean {
+  const contentType = request.headers.get('content-type')?.toLowerCase() ?? '';
+  return contentType.split(';')[0]?.trim() === 'application/json';
+}
+
+function requestBodyTooLarge(request: NextRequest): boolean {
+  const rawLength = request.headers.get('content-length');
+  if (!rawLength) return false;
+
+  const contentLength = Number(rawLength);
+  return Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as {
-      address?: string;
-      startDate?: string;
-      endDate?: string;
-    };
-
-    const { address, startDate, endDate } = body;
-
-    if (!address || typeof address !== 'string' || !THOR_ADDRESS_PATTERN.test(address)) {
-      return NextResponse.json(
-        { error: 'A valid THORChain address is required' },
-        { status: 400, headers: taxReportHeaders(request) }
-      );
-    }
-
-    if (!startDate || !endDate) {
-      return NextResponse.json(
-        { error: 'Start date and end date are required' },
-        { status: 400, headers: taxReportHeaders(request) }
-      );
-    }
-
-    // Rate limit
     const clientIp = getClientIp(request);
     const rateLimit = checkRateLimit(`tax-report:${clientIp}`, MAX_REQUESTS, WINDOW_MS);
     if (!rateLimit.allowed) {
@@ -55,9 +58,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!isJsonRequest(request)) {
+      return jsonError(request, 'Content-Type must be application/json', 415);
+    }
+
+    if (requestBodyTooLarge(request)) {
+      return jsonError(request, 'Tax report request body is too large', 413);
+    }
+
+    let body: TaxReportRequestBody;
+
+    try {
+      body = (await request.json()) as TaxReportRequestBody;
+    } catch {
+      return jsonError(request, 'Malformed JSON body', 400);
+    }
+
+    const { address, startDate, endDate } = body;
+    const normalizedAddress = typeof address === 'string'
+      ? normalizeTHORChainMainnetAddress(address)
+      : null;
+
+    if (!normalizedAddress) {
+      return jsonError(request, 'A valid THORChain mainnet address is required', 400);
+    }
+
+    if (!startDate || !endDate) {
+      return jsonError(request, 'Start date and end date are required', 400);
+    }
+
     parseTaxDateRange(startDate, endDate);
 
-    const { rows, warnings } = await generateTaxReportWithWarnings(address, startDate, endDate);
+    const { rows, warnings } = await generateTaxReportWithWarnings(normalizedAddress, startDate, endDate);
     const csv = exportToCSV(rows);
 
     return new NextResponse(csv, {
@@ -65,7 +97,7 @@ export async function POST(request: NextRequest) {
       headers: {
         ...taxReportHeaders(request),
         'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename=\"tax-worksheet-${address.slice(0, 8)}-${startDate}-to-${endDate}.csv\"`,
+        'Content-Disposition': `attachment; filename=\"tax-worksheet-${normalizedAddress.slice(0, 8)}-${startDate}-to-${endDate}.csv\"`,
         'X-Heimdall-Tax-Warnings': warnings.length > 0 ? JSON.stringify(warnings) : '[]',
       },
     });
@@ -75,7 +107,8 @@ export async function POST(request: NextRequest) {
     const isValidationError =
       message.includes('Dates must use YYYY-MM-DD format') ||
       message.includes('Invalid date range') ||
-      message.includes('Start date must be before');
+      message.includes('Start date must be before') ||
+      message.includes('Tax worksheet range cannot exceed');
     return NextResponse.json(
       { error: isValidationError ? message : 'Internal server error' },
       { status: isValidationError ? 400 : 500, headers: taxReportHeaders(request) }

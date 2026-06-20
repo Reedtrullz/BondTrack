@@ -96,7 +96,7 @@ describe('ExplorerPage', () => {
     });
   });
 
-  it('labels the live-data loading state before showing candidate scores', () => {
+  it('labels the live-data loading state before ranking candidates', () => {
     mockUseAllNodes.mockReturnValue({
       data: undefined,
       isLoading: true,
@@ -106,7 +106,7 @@ describe('ExplorerPage', () => {
     render(<ExplorerPage />);
 
     expect(screen.getByRole('status', { name: 'Loading node discovery data' })).toBeInTheDocument();
-    expect(screen.getByText(/Waiting for the active THORNode set/)).toBeVisible();
+    expect(screen.getByText(/Waiting for the active THORNode set before ranking candidates/)).toBeVisible();
     expect(screen.getByRole('link', { name: 'Back to Portfolio' })).toHaveAttribute(
       'href',
       '/dashboard/portfolio?address=thor1exploreraddress'
@@ -152,21 +152,75 @@ describe('ExplorerPage', () => {
 
     expect(screen.getByText('Showing 2 candidates')).toBeVisible();
     const decision = screen.getByLabelText('Discovery decision diagnosis');
-    expect(decision).toHaveTextContent('Strong direct-bond candidate available');
-    expect(decision).toHaveTextContent('Ready');
+    expect(decision).toHaveTextContent('Strong candidate still needs wallet review');
+    expect(decision).toHaveTextContent('Candidate Review');
+    expect(decision).toHaveTextContent('not a safety guarantee');
+    expect(decision).not.toHaveTextContent('Strong direct-bond candidate available');
+    expect(decision).not.toHaveTextContent('Ready');
     expect(decision).toHaveTextContent('Direct bond');
     expect(decision).toHaveTextContent('1');
-    expect(screen.getByRole('link', { name: 'Prepare BOND memo' })).toHaveAttribute(
+    const directBondEvidence = within(decision).getByText('Watched provider listed by THORNode');
+    expect(directBondEvidence).not.toHaveClass('hidden');
+    expect(directBondEvidence).not.toHaveClass('sm:block');
+    expect(screen.getByRole('link', { name: 'Review BOND memo' })).toHaveAttribute(
       'href',
       '/dashboard/transactions?address=thor1exploreraddress&action=bond&node=thor1candidatebelowoptimal0000000000000000000'
     );
-    expect(screen.getByText('1 direct-bond candidate with confirmed capacity')).toBeVisible();
-    expect(screen.getByText('Provider-slot confidence uses THORNode MaxBondProviders (100).')).toBeVisible();
-    expect(screen.getByText('Provider whitelisted')).toBeVisible();
-    expect(screen.getByText('Needs operator whitelist')).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Prepare BOND memo' })).not.toBeInTheDocument();
+    expect(screen.getByText('1 direct-bond candidate with watched-provider evidence')).toBeVisible();
+    const qualitySummary = screen.getByLabelText('Candidate quality summary');
+    expect(qualitySummary).toHaveClass('border-sky-200');
+    expect(qualitySummary).not.toHaveClass('border-emerald-200');
+    expect(screen.queryByText('1 direct-bond candidate with confirmed capacity')).not.toBeInTheDocument();
+    expect(screen.getByText('Only Strong candidates where THORNode lists the watched address as a bond provider can be reviewed in the transaction composer. Other nodes route through Risk review first.')).toBeVisible();
+    expect(screen.queryByText('Only Strong candidates where the watched address is already a bond provider can be reviewed in the transaction composer. Other nodes route through Risk review first.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Only Strong candidates where the watched address is already a bond provider can be prepared directly. Other nodes route through Risk review first.')).not.toBeInTheDocument();
+    expect(screen.getByText('Provider-slot evidence uses THORNode MaxBondProviders (100).')).toBeVisible();
+    expect(screen.getByText('Provider listed by THORNode')).toBeVisible();
+    expect(screen.getByText('Provider not listed by THORNode')).toBeVisible();
+    expect(screen.queryByText('Needs operator whitelist')).not.toBeInTheDocument();
   });
 
-  it('shows source confidence before candidate action and blocks BOND prep when THORNode is degraded', () => {
+  it('frames a focused strong direct-bond candidate as review evidence instead of safety approval', () => {
+    mocks.searchParams.current = new URLSearchParams(
+      'address=thor1exploreraddress&node=thor1candidatebelowoptimal0000000000000000000'
+    );
+    mockUseAllNodes.mockReturnValue({
+      data: [
+        buildNode({
+          bond_providers: {
+            node_operator_fee: '0',
+            providers: [{ bond_address: 'thor1exploreraddress', bond: '500000000000' }],
+          },
+          current_award: '50000000000',
+          slash_points: 0,
+        }),
+      ],
+      isLoading: false,
+      error: undefined,
+    });
+
+    render(<ExplorerPage />);
+
+    const focusedContext = screen.getByLabelText('Focused candidate context');
+    expect(focusedContext).toHaveTextContent('Strong candidate');
+    expect(focusedContext).toHaveTextContent('Compare the evidence below before reviewing any BOND memo.');
+    expect(focusedContext).toHaveClass('border-sky-200');
+    expect(focusedContext).not.toHaveClass('border-emerald-200');
+    expect(within(focusedContext).getByTestId('focused-candidate-primary-action')).toHaveTextContent('Review BOND memo');
+    expect(within(focusedContext).getByTestId('focused-candidate-primary-action')).toHaveAttribute(
+      'href',
+      '/dashboard/transactions?address=thor1exploreraddress&action=bond&node=thor1candidatebelowoptimal0000000000000000000'
+    );
+
+    const recommendation = screen.getByTestId('candidate-recommendation');
+    expect(recommendation).toHaveTextContent('Review before BOND memo');
+    expect(recommendation).toHaveTextContent('not a safety guarantee');
+    expect(recommendation).toHaveClass('border-sky-400');
+    expect(recommendation).not.toHaveClass('border-emerald-400');
+  });
+
+  it('shows source checks before the decision action and blocks BOND prep when THORNode is degraded', () => {
     mockUseApiHealthContext.mockReturnValue({
       midgard: 'healthy',
       thornode: 'degraded',
@@ -191,23 +245,24 @@ describe('ExplorerPage', () => {
 
     const { container } = render(<ExplorerPage />);
 
-    const sourceConfidence = screen.getByLabelText('Source confidence');
+    const sourceConfidence = screen.getByLabelText('Discovery source checks');
     const qualitySummary = screen.getByLabelText('Candidate quality summary');
     const decision = screen.getByLabelText('Discovery decision diagnosis');
     const candidateCard = screen.getByTestId('candidate-card');
 
     expect(sourceConfidence).toHaveTextContent('THORNode');
     expect(sourceConfidence).toHaveTextContent('Degraded');
-    expect(qualitySummary).toHaveTextContent('1 direct-bond candidate waiting on source confidence');
-    expect(decision).toHaveTextContent('Source confidence must refresh before bond prep');
+    expect(qualitySummary).toHaveTextContent('1 direct-bond candidate waiting on THORNode source check');
+    expect(decision).toHaveTextContent('Wait for THORNode source check before BOND review');
     expect(decision).toHaveTextContent('Source degraded');
-    expect(within(decision).getByRole('link', { name: 'Review source confidence' })).toHaveAttribute(
+    expect(within(decision).getByRole('link', { name: 'Review source checks' })).toHaveAttribute(
       'href',
       '#explorer-source-confidence'
     );
-    expect(candidateCard).toHaveTextContent('Wait for source confidence');
-    expect(candidateCard).toHaveTextContent('THORNode source confidence is degraded');
-    expect(within(candidateCard).getByRole('link', { name: 'Review source confidence' })).toHaveAttribute(
+    expect(candidateCard).toHaveTextContent('Wait for source check');
+    expect(candidateCard).toHaveTextContent('THORNode candidate source check is degraded');
+    expect(candidateCard).not.toHaveTextContent('fresh enough');
+    expect(within(candidateCard).getByRole('link', { name: 'Review source checks' })).toHaveAttribute(
       'href',
       '#explorer-source-confidence'
     );
@@ -216,12 +271,12 @@ describe('ExplorerPage', () => {
 
     const orderedSections = Array.from(container.querySelectorAll('section[aria-label]'))
       .map((section) => section.getAttribute('aria-label'))
-      .filter((label) => label === 'Source confidence' || label === 'Candidate quality summary' || label === 'Discovery decision diagnosis');
+      .filter((label) => label === 'Discovery source checks' || label === 'Candidate quality summary' || label === 'Discovery decision diagnosis');
 
     expect(orderedSections).toEqual([
-      'Source confidence',
-      'Candidate quality summary',
+      'Discovery source checks',
       'Discovery decision diagnosis',
+      'Candidate quality summary',
     ]);
   });
 
@@ -264,7 +319,8 @@ describe('ExplorerPage', () => {
       'href',
       '/dashboard/risk?address=thor1exploreraddress&node=thor1candidatebelowoptimal0000000000000000000'
     );
-    expect(screen.getByText('No direct-bond candidates with confirmed capacity')).toBeVisible();
+    expect(screen.getByText('No direct-bond candidates with watched-provider evidence')).toBeVisible();
+    expect(screen.queryByText('No direct-bond candidates with confirmed capacity')).not.toBeInTheDocument();
     expect(screen.getByText('Provider slots full')).toBeVisible();
   });
 
@@ -321,7 +377,7 @@ describe('ExplorerPage', () => {
     const { container } = render(<ExplorerPage />);
 
     const decision = screen.getByLabelText('Discovery decision diagnosis');
-    expect(decision).toHaveTextContent('Do not prepare a BOND from this set');
+    expect(decision).toHaveTextContent('No BOND candidate is review-ready');
     expect(decision).toHaveTextContent('Avoid');
     expect(within(decision).getByRole('link', { name: 'Review risk evidence' })).toHaveAttribute(
       'href',
@@ -345,12 +401,12 @@ describe('ExplorerPage', () => {
     const focusedMetrics = screen.getByTestId('focused-candidate-metrics');
 
     expect(focusedEvidence).toHaveAccessibleName(
-      'Score evidence from THORNode: 1 of 5 score inputs usable. Missing APY, bond, fee, slash. Watched address is listed as a bond provider.'
+      'Candidate evidence from THORNode: 1 of 5 candidate inputs usable. Missing APY, bond, fee, slash. Watched address is listed as a bond provider.'
     );
-    expect(focusedEvidence).toHaveTextContent('Score evidence · THORNode');
+    expect(focusedEvidence).toHaveTextContent('Candidate evidence · THORNode');
     expect(focusedEvidence).toHaveTextContent('Missing APY, bond, fee, slash');
     expect(metricDetails).toHaveTextContent('Operational details');
-    expect(metricDetails).toHaveTextContent('Provider whitelisted · Slash -- · Fee --');
+    expect(metricDetails).toHaveTextContent('Provider listed by THORNode · Slash -- · Fee --');
     expect(metricDetails).not.toHaveAttribute('open');
     expect(focusedMetrics.closest('[data-testid="focused-candidate-metric-details"]')).toBe(metricDetails);
     expect(focusedEvidence.compareDocumentPosition(metricDetails) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -358,9 +414,10 @@ describe('ExplorerPage', () => {
     expect(detailsSummary).not.toBeNull();
     fireEvent.click(detailsSummary!);
     expect(metricDetails).toHaveAttribute('open');
-    expect(screen.getAllByText('Avoid · 0/100').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('Avoid candidate').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText(/average APY unavailable/i)).toBeVisible();
     expect(screen.getAllByText('--').length).toBeGreaterThanOrEqual(6);
     expect(container).not.toHaveTextContent(/NaN|Infinity/);
+    expect(container).not.toHaveTextContent(/\d+\/100/);
   });
 });

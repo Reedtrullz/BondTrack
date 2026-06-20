@@ -59,6 +59,15 @@ function isThorNameReverseLookupPath(path: string): boolean {
   return /^v2\/thorname\/rlookup\/[A-Za-z0-9._-]+$/.test(path);
 }
 
+function isMemberLookupPath(path: string): boolean {
+  return /^v2\/member\/[A-Za-z0-9._:-]+$/.test(path);
+}
+
+function allConfiguredUpstreamsReturned404(statusCodes: number[]): boolean {
+  return statusCodes.length === MIDGARD_ENDPOINTS.length
+    && statusCodes.every((statusCode) => statusCode === 404);
+}
+
 function schemaForPath(path: string): QuerySchema {
   if (path === 'v2/actions') return ACTIONS_QUERY;
   if (/^v2\/history\/(earnings|rune)$/.test(path)) return HISTORY_QUERY;
@@ -230,8 +239,15 @@ export async function GET(
     });
   }
 
-  if (isThorNameReverseLookupPath(decodedPath) && upstreamResult.statusCodes.includes(404)) {
+  if (isThorNameReverseLookupPath(decodedPath) && allConfiguredUpstreamsReturned404(upstreamResult.statusCodes)) {
     return createProxySuccessResponse(request, { entry: null }, {
+      extraOrigins: ['https://bond.thorchain.no'],
+      cacheControl: SUCCESS_CACHE_CONTROL,
+    });
+  }
+
+  if (isMemberLookupPath(decodedPath) && allConfiguredUpstreamsReturned404(upstreamResult.statusCodes)) {
+    return createProxySuccessResponse(request, { pools: [] }, {
       extraOrigins: ['https://bond.thorchain.no'],
       cacheControl: SUCCESS_CACHE_CONTROL,
     });

@@ -48,7 +48,12 @@ export default function DashboardPage() {
     isStale: runePriceIsStale,
     updatedAt: runePriceUpdatedAt,
   } = useRunePriceHistory('hour', 24);
-  const { bondActions } = useBondHistory(address);
+  const {
+    bondActions,
+    error: bondHistoryError,
+    history: bondHistory,
+    isLoading: bondHistoryLoading,
+  } = useBondHistory(address);
   const apiHealth = useApiHealthContext();
 
   const thornodeSourceUnreliable = apiHealth.thornode === 'degraded' || apiHealth.thornode === 'down';
@@ -63,6 +68,14 @@ export default function DashboardPage() {
     runePriceIsStale,
     runePriceUpdatedAt,
     recentTransactionCount: bondActions.length,
+    recentTransactionIsPartial: bondHistory?.isPartial,
+    recentTransactionStatus: !address
+      ? 'not-requested'
+      : bondHistoryError
+        ? 'error'
+        : bondHistoryLoading
+          ? 'loading'
+          : 'loaded',
   }), [
     address,
     positions,
@@ -72,6 +85,9 @@ export default function DashboardPage() {
     runePrice,
     runePriceIsStale,
     runePriceUpdatedAt,
+    bondHistory?.isPartial,
+    bondHistoryError,
+    bondHistoryLoading,
     bondActions.length,
   ]);
 
@@ -87,14 +103,14 @@ export default function DashboardPage() {
     })
     .slice(0, 4);
   const bondEntryAction = resolveThornodeGatedBondAction(insight.actions, {
-    label: 'Open BOND',
+    label: 'Review BOND memo',
     href: address
       ? `/dashboard/transactions?address=${encodeURIComponent(address)}&action=bond`
       : '/dashboard/transactions?action=bond',
   });
-  const bondEntryVariant = bondEntryAction.kind === 'source-confidence' ? 'outline' : 'success';
   const hasUnbondEligiblePosition = positions.some((position) => canUnbondNode(position).canUnbond);
   const canOfferUnbondEntry = bondEntryAction.kind === 'bond-ready' && hasUnbondEligiblePosition;
+  const hasDemoSource = insight.sources.some((source) => source.status === 'demo');
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6">
@@ -114,7 +130,14 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[1.35fr_0.9fr]">
-          <ActionQueue items={insight.actions} mobileCompact />
+          <ActionQueue
+            items={insight.actions}
+            mobileCompact
+            emptyTitle={hasDemoSource ? 'Demo data only' : undefined}
+            emptyDetail={hasDemoSource
+              ? 'Local fixtures can show the interface, but they cannot prove this provider has no live issues.'
+              : undefined}
+          />
           <div className="hidden lg:block">
             <SourceFreshnessPanel sources={insight.sources} />
           </div>
@@ -181,12 +204,12 @@ export default function DashboardPage() {
           )}
         </DashboardCard>
 
-        <DashboardCard className="p-5" role="region" aria-label="Next transaction">
+        <DashboardCard className="p-5" role="region" aria-label="Transaction review">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-zinc-950 dark:text-zinc-50">Next transaction</h2>
+              <h2 className="text-lg font-bold text-zinc-950 dark:text-zinc-50">Transaction review</h2>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Composer-first access for source-checked bond work.
+                Memo review starts here; wallet approval stays external.
               </p>
             </div>
             <Wallet className="h-5 w-5 text-zinc-400" aria-hidden="true" />
@@ -195,16 +218,16 @@ export default function DashboardPage() {
             <div className="flex items-start gap-3">
               <ShieldAlert className="mt-0.5 h-5 w-5 text-amber-500" aria-hidden="true" />
               <div>
-                <h3 className="text-sm font-bold text-zinc-950 dark:text-zinc-50">Use wallet-confirmed deposit fees</h3>
+                <h3 className="text-sm font-bold text-zinc-950 dark:text-zinc-50">Review wallet-presented deposit fees</h3>
                 <p className="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
-                  Heimdall now treats transaction fees as wallet/network-confirmed instead of showing a fixed RUNE preview.
+                  Heimdall shows no fixed RUNE fee reserve; review the wallet/network-presented fee before approval.
                 </p>
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link
                 href={bondEntryAction.href}
-                className={buttonVariants({ variant: bondEntryVariant, size: 'sm' })}
+                className={buttonVariants({ variant: 'outline', size: 'sm' })}
               >
                 {bondEntryAction.label}
               </Link>
@@ -213,7 +236,7 @@ export default function DashboardPage() {
                   href={address ? `/dashboard/transactions?address=${encodeURIComponent(address)}&action=unbond` : '/dashboard/transactions?action=unbond'}
                   className={buttonVariants({ variant: 'outline', size: 'sm' })}
                 >
-                  Open UNBOND
+                  Review UNBOND memo
                 </Link>
               )}
             </div>

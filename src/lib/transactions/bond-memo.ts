@@ -65,7 +65,7 @@ export function validateBondAmount(amount: string): ValidationResult {
   }
 
   if (BigInt(baseUnits) < MIN_BOND_BASE_UNITS) {
-    return { valid: false, error: 'Minimum bond amount is 1 RUNE; wallet/network fees are confirmed separately' };
+    return { valid: false, error: 'Minimum bond amount is 1 RUNE; wallet/network fees are shown separately' };
   }
 
   return { valid: true };

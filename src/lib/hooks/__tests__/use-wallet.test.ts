@@ -98,6 +98,63 @@ delete (window as unknown as Record<string, unknown>).thorchain;
     expect(result.current.walletType).toBe('keplr');
   });
 
+  it('refreshes the connected Keplr account when the wallet key store changes', async () => {
+    const getKey = vi.fn()
+      .mockResolvedValueOnce({ bech32Address: VALID_WALLET_ADDRESS })
+      .mockResolvedValueOnce({ bech32Address: VALID_XDEFI_ADDRESS });
+    (window as unknown as Record<string, unknown>).keplr = {
+      enable: vi.fn().mockResolvedValue(undefined),
+      getChainId: vi.fn().mockResolvedValue('thorchain-1'),
+      getKey,
+    };
+
+    const { result } = renderHook(() => useWallet());
+
+    await act(async () => {
+      await result.current.connect('keplr');
+    });
+    await waitFor(() => expect(result.current.address).toBe(VALID_WALLET_ADDRESS));
+
+    await act(async () => {
+      window.dispatchEvent(new Event('keplr_keystorechange'));
+    });
+
+    await waitFor(() => expect(result.current.address).toBe(VALID_XDEFI_ADDRESS));
+    expect(result.current.isConnected).toBe(true);
+    expect(result.current.walletType).toBe('keplr');
+    expect(getKey).toHaveBeenCalledTimes(2);
+  });
+
+  it('clears a stale Keplr signer when account refresh fails after a key store change', async () => {
+    const getKey = vi.fn()
+      .mockResolvedValueOnce({ bech32Address: VALID_WALLET_ADDRESS })
+      .mockRejectedValueOnce(new Error('Keplr account unavailable'));
+    (window as unknown as Record<string, unknown>).keplr = {
+      enable: vi.fn().mockResolvedValue(undefined),
+      getChainId: vi.fn().mockResolvedValue('thorchain-1'),
+      getKey,
+    };
+
+    const { result } = renderHook(() => useWallet());
+
+    await act(async () => {
+      await result.current.connect('keplr');
+    });
+    await waitFor(() => expect(result.current.address).toBe(VALID_WALLET_ADDRESS));
+
+    await act(async () => {
+      window.dispatchEvent(new Event('keplr_keystorechange'));
+    });
+
+    await waitFor(() => expect(result.current.isConnected).toBe(false));
+    expect(result.current.address).toBeNull();
+    expect(result.current.walletType).toBeNull();
+    expect(result.current.error).toBe(
+      'Keplr account changed, but Heimdall could not refresh the signer. Reconnect wallet before preview or broadcast.'
+    );
+    expect(getKey).toHaveBeenCalledTimes(2);
+  });
+
   it('connects with XDEFI wallet', async () => {
     (window as unknown as Record<string, unknown>).xfi = {
       thorchain: {

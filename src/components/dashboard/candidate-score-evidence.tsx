@@ -31,7 +31,7 @@ export function getCapacityEvidenceLabel(capacityTrust: CapacityTrust): string {
     case 'available':
       return 'Watched address is listed as a bond provider.';
     case 'needs_whitelist':
-      return 'Watched address is not listed; operator whitelist is required.';
+      return 'Watched address is not listed as a THORNode bond provider.';
     case 'full':
       return 'Provider slots appear full from THORNode constants.';
     case 'unknown':
@@ -58,7 +58,7 @@ export function getCandidateScoreEvidenceSummary(candidate: CandidateScoreEviden
   const evidence = getCandidateScoreEvidence(candidate);
 
   return evidence.unavailableInputs.length === 0
-    ? 'All score inputs present'
+    ? 'All candidate inputs present'
     : `Missing ${evidence.unavailableInputs.join(', ')}`;
 }
 
@@ -75,13 +75,13 @@ export function CandidateScoreEvidence({
     <div
       className={cn('text-sm', className)}
       data-testid={testId}
-      aria-label={`Score evidence from THORNode: ${scoreEvidence.usableCount} of 5 score inputs usable. ${evidenceSummary}. ${capacityEvidence}`}
+      aria-label={`Candidate evidence from THORNode: ${scoreEvidence.usableCount} of 5 candidate inputs usable. ${evidenceSummary}. ${capacityEvidence}`}
     >
       <div className="flex items-start gap-2">
         <Database className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase text-zinc-500 dark:text-zinc-400">
-            Score evidence · THORNode
+            Candidate evidence · THORNode
           </p>
           <p className="mt-1 text-zinc-700 dark:text-zinc-300">
             {scoreEvidence.usableCount}/5 inputs usable: APY award, total bond, operator fee, slash points, provider capacity.

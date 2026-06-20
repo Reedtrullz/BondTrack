@@ -64,7 +64,23 @@ describe('scoreNodeCandidate', () => {
     ]));
   });
 
-  it('derives direct-bond trust from the watched address provider whitelist', () => {
+  it('uses conservative fallback evidence when no candidate blockers are visible', () => {
+    const candidate = scoreNodeCandidate({
+      adjustedAPY: 80,
+      totalBond: 250_000,
+      operatorFeePercent: 0.05,
+      slashPoints: 0,
+      status: 'Active',
+      capacityTrust: 'available',
+    });
+
+    expect(candidate.reasons).toEqual(['No obvious candidate blockers in current inputs']);
+    expect(candidate.reasons).not.toContain('healthy candidate signals');
+    expect(candidate.trustLabel).toBe('Provider listed by THORNode');
+    expect(candidate.trustLabel).not.toBe('Provider whitelisted');
+  });
+
+  it('derives direct-bond trust from the watched address provider listing', () => {
     expect(getDirectBondAccessTrust({
       maxBondProviders: 100,
       providers: [{ bond_address: 'thor1provider' }],
@@ -101,5 +117,19 @@ describe('scoreNodeCandidate', () => {
 
     expect(fullCandidate.trustLabel).toBe('Provider slots full');
     expect(fullCandidate.reasons).toContain('provider slots full');
+
+    const unlistedCandidate = scoreNodeCandidate({
+      adjustedAPY: 80,
+      totalBond: 25_000,
+      operatorFeePercent: 0.05,
+      slashPoints: 0,
+      status: 'Active',
+      capacityTrust: 'needs_whitelist',
+    });
+
+    expect(unlistedCandidate.trustLabel).toBe('Provider not listed by THORNode');
+    expect(unlistedCandidate.trustLabel).not.toMatch(/whitelist/i);
+    expect(unlistedCandidate.reasons).toContain('provider not listed by THORNode');
+    expect(unlistedCandidate.reasons).not.toContain('needs operator whitelist');
   });
 });

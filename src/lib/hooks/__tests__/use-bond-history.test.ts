@@ -81,6 +81,7 @@ describe('useBondHistory', () => {
     expect(getActions).toHaveBeenNthCalledWith(2, ADDRESS, 50, 'bond,unbond,leave', 'txType', 50);
     expect(result.current.history).toMatchObject({
       actionLimit: 1000,
+      isLocalActionCapReached: false,
       currentBond: 30,
       initialBond: 51,
       isPartial: false,
@@ -105,6 +106,7 @@ describe('useBondHistory', () => {
     expect(getActions).toHaveBeenLastCalledWith(ADDRESS, 50, 'bond,unbond,leave', 'txType', 950);
     expect(result.current.history).toMatchObject({
       actionLimit: 1000,
+      isLocalActionCapReached: true,
       isPartial: true,
       loadedActionCount: 1000,
       totalActionCount: 1001,

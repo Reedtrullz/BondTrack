@@ -1,5 +1,6 @@
 export type LpPoolStatus = 'available' | 'staged' | 'suspended' | 'unknown';
 export type LpPricingSource = 'historical' | 'current-only' | 'estimated';
+export type LpEntryRunePriceSource = 'midgard' | 'coingecko';
 export type LpRedeemQuoteSource = 'thornode' | 'derived' | 'unavailable';
 
 export interface LpPosition {
@@ -35,6 +36,7 @@ export interface LpPosition {
   currentAssetPriceUsd: number;
   entryRunePriceUsd: number | null;
   entryAssetPriceUsd: number | null;
+  entryRunePriceSource?: LpEntryRunePriceSource | null;
   currentTotalValueUsd: number;
   depositedTotalValueUsd: number | null;
   netProfitLoss: string;

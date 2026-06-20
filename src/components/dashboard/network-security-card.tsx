@@ -17,9 +17,9 @@ function getHealthStyles(health: NetworkSecurityHealth) {
   switch (health) {
     case 'healthy':
       return {
-        badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900',
-        ratio: 'text-emerald-600 dark:text-emerald-400',
-        bar: 'bg-emerald-500',
+        badge: 'bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:ring-sky-900',
+        ratio: 'text-sky-600 dark:text-sky-400',
+        bar: 'bg-sky-500',
         icon: <Shield className="h-4 w-4" />,
       };
     case 'warning':
@@ -40,8 +40,21 @@ function getHealthStyles(health: NetworkSecurityHealth) {
   }
 }
 
+function getHealthLabel(health: NetworkSecurityHealth): string {
+  switch (health) {
+    case 'healthy':
+      return 'In range';
+    case 'warning':
+      return 'Below target';
+    case 'at-risk':
+    default:
+      return 'At risk';
+  }
+}
+
 export function NetworkSecurityCard({ ratio, activeRatio, health, status }: NetworkSecurityCardProps) {
   const styles = getHealthStyles(health);
+  const healthLabel = getHealthLabel(health);
   const progress = ratio > 0 ? Math.min(ratio * NETWORK.PROGRESS_BAR_MULTIPLIER, 100) : 0;
 
   return (
@@ -60,7 +73,7 @@ export function NetworkSecurityCard({ ratio, activeRatio, health, status }: Netw
         </div>
         <span className={cn('inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset', styles.badge)}>
           {styles.icon}
-          {health}
+          {healthLabel}
         </span>
       </div>
 
@@ -71,6 +84,9 @@ export function NetworkSecurityCard({ ratio, activeRatio, health, status }: Netw
           </div>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             {status}
+          </p>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Network-level bond coverage, not a provider safety verdict.
           </p>
         </div>
         <div className="text-right text-xs text-zinc-500 dark:text-zinc-400">

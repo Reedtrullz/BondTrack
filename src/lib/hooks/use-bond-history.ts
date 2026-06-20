@@ -23,6 +23,7 @@ export interface BondHistory {
   loadedActionCount: number;
   totalActionCount: number | null;
   isPartial: boolean;
+  isLocalActionCapReached: boolean;
 }
 
 interface BondActionsResponse {
@@ -31,6 +32,7 @@ interface BondActionsResponse {
   loadedActionCount: number;
   totalActionCount: number | null;
   isPartial: boolean;
+  isLocalActionCapReached: boolean;
 }
 
 interface BondAction {
@@ -77,6 +79,7 @@ async function getPaginatedBondActions(address: string): Promise<BondActionsResp
   const isPartial = totalActionCount !== null
     ? loadedActionCount < totalActionCount
     : !reachedEnd;
+  const isLocalActionCapReached = isPartial && loadedActionCount >= actionLimit;
 
   return {
     actions,
@@ -84,6 +87,7 @@ async function getPaginatedBondActions(address: string): Promise<BondActionsResp
     loadedActionCount,
     totalActionCount,
     isPartial,
+    isLocalActionCapReached,
   };
 }
 
@@ -159,6 +163,7 @@ export function useBondHistory(address: string | null) {
   const loadedActionCount = actions?.actions?.length ?? 0;
   const totalActionCount = actions?.totalActionCount ?? null;
   const isPartial = actions?.isPartial ?? false;
+  const isLocalActionCapReached = actions?.isLocalActionCapReached ?? false;
 
   const history: BondHistory | null = address && !error
     ? (() => {
@@ -180,6 +185,7 @@ export function useBondHistory(address: string | null) {
           loadedActionCount,
           totalActionCount,
           isPartial,
+          isLocalActionCapReached,
         };
       })()
     : null;

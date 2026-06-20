@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { SWRConfig } from 'swr';
+import { SWRConfig, useSWRConfig } from 'swr';
 import React from 'react';
 import { TransactionHistory } from '../transaction-history';
 import * as midgard from '@/lib/api/midgard';
@@ -8,7 +8,7 @@ import * as midgard from '@/lib/api/midgard';
 vi.mock('@/lib/api/midgard');
 
 const wrapper = ({ children }: { children: React.ReactNode }) =>
-  React.createElement(SWRConfig, { value: { provider: () => new Map() } }, children);
+  React.createElement(SWRConfig, { value: { provider: () => new Map(), dedupingInterval: 0 } }, children);
 
 const ADDRESS_ONE = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz';
 const ADDRESS_TWO = 'thor1pc8qurswpc8qurswpc8qurswpc8qurswmv23u6';
@@ -47,6 +47,22 @@ function mockBondAction(overrides: Partial<midgard.ActionRaw> = {}): midgard.Act
     },
     ...overrides,
   };
+}
+
+function TransactionHistoryWithRefresh({ address }: { address: string }) {
+  const { mutate } = useSWRConfig();
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => void mutate(['transaction-history', address])}
+      >
+        Force Midgard refresh
+      </button>
+      <TransactionHistory address={address} />
+    </>
+  );
 }
 
 describe('TransactionHistory', () => {
@@ -161,6 +177,166 @@ describe('TransactionHistory', () => {
     expect(source).toHaveTextContent('No matching recent actions returned.');
     expect(screen.getByText('No recent BOND/UNBOND actions returned by Midgard for this address')).toBeInTheDocument();
     expect(screen.queryByText('No BOND/UNBOND transactions found for this address')).not.toBeInTheDocument();
+  });
+
+  it('warns when Midgard history is a partial recent-action window', async () => {
+    vi.mocked(midgard.getActions).mockResolvedValue({
+      actions: Array.from({ length: 50 }, (_, index) => mockBondAction({
+        date: String(1711860190834567113n + BigInt(index)),
+        in: [
+          {
+            address: HISTORY_ADDRESS,
+            coins: [{ asset: 'THOR.RUNE', amount: '10000000000' }],
+            txID: `PARTIAL${index}`,
+          },
+        ],
+      })),
+      count: '76',
+    } as unknown as midgard.ActionsResponseRaw);
+
+    render(<TransactionHistory address={HISTORY_ADDRESS} />, { wrapper });
+
+    const source = await screen.findByLabelText('Transaction history source');
+    expect(source).toHaveTextContent('Partial Midgard window');
+    expect(source).toHaveTextContent('Loaded 50 of 76 recent Midgard actions before filtering to BOND/UNBOND.');
+    expect(source).toHaveTextContent('50 matching BOND/UNBOND actions rendered from the recent window.');
+    expect(source).not.toHaveTextContent('50 matching BOND/UNBOND actions rendered.');
+  });
+
+  it('loads older Midgard actions when a partial recent-action window is available', async () => {
+    vi.mocked(midgard.getActions).mockImplementation(async (_address, _limit, _actionTypes, _typeParam, offset) => ({
+      actions: offset === 50
+        ? Array.from({ length: 26 }, (_, index) => mockBondAction({
+          date: String(1711860190834567113n - BigInt(index + 50)),
+          in: [
+            {
+              address: HISTORY_ADDRESS,
+              coins: [{ asset: 'THOR.RUNE', amount: '10000000000' }],
+              txID: `OLDER${index}`,
+            },
+          ],
+        }))
+        : Array.from({ length: 50 }, (_, index) => mockBondAction({
+          date: String(1711860190834567113n + BigInt(index)),
+          in: [
+            {
+              address: HISTORY_ADDRESS,
+              coins: [{ asset: 'THOR.RUNE', amount: '10000000000' }],
+              txID: `PARTIAL${index}`,
+            },
+          ],
+        })),
+      count: '76',
+    }) as unknown as midgard.ActionsResponseRaw);
+
+    render(<TransactionHistory address={HISTORY_ADDRESS} />, { wrapper });
+
+    expect(await screen.findByText('Partial Midgard window')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load older Midgard actions' }));
+
+    await waitFor(() => {
+      expect(midgard.getActions).toHaveBeenCalledWith(HISTORY_ADDRESS, 50, 'bond,unbond', 'txType', 50);
+    });
+
+    const source = await screen.findByLabelText('Transaction history source');
+    expect(source).toHaveTextContent('Loaded all 76 reported Midgard actions before filtering to BOND/UNBOND.');
+    expect(source).toHaveTextContent('76 matching BOND/UNBOND actions rendered.');
+    expect(screen.queryByRole('button', { name: 'Load older Midgard actions' })).not.toBeInTheDocument();
+  });
+
+  it('drops loaded older pages when Midgard refreshes the recent action window', async () => {
+    let firstPagePrefix = 'PARTIAL';
+    let firstPageCount = '76';
+
+    vi.mocked(midgard.getActions).mockImplementation(async (_address, _limit, _actionTypes, _typeParam, offset) => ({
+      actions: offset === 50
+        ? Array.from({ length: 26 }, (_, index) => mockBondAction({
+          date: String(1711860190834567113n - BigInt(index + 50)),
+          in: [
+            {
+              address: HISTORY_ADDRESS,
+              coins: [{ asset: 'THOR.RUNE', amount: '10000000000' }],
+              txID: `OLDER${index}`,
+            },
+          ],
+        }))
+        : Array.from({ length: 50 }, (_, index) => mockBondAction({
+          date: String(1711860190834567113n + BigInt(index)),
+          in: [
+            {
+              address: HISTORY_ADDRESS,
+              coins: [{ asset: 'THOR.RUNE', amount: '10000000000' }],
+              txID: `${firstPagePrefix}${index}`,
+            },
+          ],
+        })),
+      count: offset === 50 ? '76' : firstPageCount,
+    }) as unknown as midgard.ActionsResponseRaw);
+
+    render(<TransactionHistoryWithRefresh address={HISTORY_ADDRESS} />, { wrapper });
+
+    expect(await screen.findByText('Partial Midgard window')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load older Midgard actions' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Transaction history source')).toHaveTextContent(
+        'Loaded all 76 reported Midgard actions before filtering to BOND/UNBOND.'
+      );
+    });
+    expect(screen.getAllByText('OLDER0').length).toBeGreaterThan(0);
+
+    firstPagePrefix = 'REFRESHED';
+    firstPageCount = '77';
+    fireEvent.click(screen.getByRole('button', { name: 'Force Midgard refresh' }));
+
+    const source = await screen.findByLabelText('Transaction history source');
+    await waitFor(() => {
+      expect(source).toHaveTextContent('Loaded 50 of 77 recent Midgard actions before filtering to BOND/UNBOND.');
+    });
+    expect(source).toHaveTextContent('Midgard refreshed its recent action window');
+    expect(source).toHaveTextContent('Load older actions again before treating history as complete.');
+    expect(screen.queryAllByText('OLDER0')).toHaveLength(0);
+    expect(screen.getAllByText('REFRESHED0').length).toBeGreaterThan(0);
+  });
+
+  it('stops loading older actions at the local history cap with explicit partial-history copy', async () => {
+    vi.mocked(midgard.getActions).mockImplementation(async (_address, _limit, _actionTypes, _typeParam, offset = 0) => ({
+      actions: Array.from({ length: 50 }, (_, index) => mockBondAction({
+        date: String(1711860190834567113n - BigInt(offset + index)),
+        in: [
+          {
+            address: HISTORY_ADDRESS,
+            coins: [{ asset: 'THOR.RUNE', amount: '10000000000' }],
+            txID: `PAGE${offset + index}`,
+          },
+        ],
+      })),
+      count: '300',
+    }) as unknown as midgard.ActionsResponseRaw);
+
+    render(<TransactionHistory address={HISTORY_ADDRESS} />, { wrapper });
+
+    const source = await screen.findByLabelText('Transaction history source');
+    expect(source).toHaveTextContent('Loaded 50 of 300 recent Midgard actions before filtering to BOND/UNBOND.');
+
+    for (const expectedLoadedCount of [100, 150, 200, 250]) {
+      fireEvent.click(screen.getByRole('button', { name: 'Load older Midgard actions' }));
+
+      await waitFor(() => {
+        expect(source).toHaveTextContent(
+          `Loaded ${expectedLoadedCount} of 300 recent Midgard actions before filtering to BOND/UNBOND.`
+        );
+      });
+    }
+
+    expect(midgard.getActions).toHaveBeenCalledWith(HISTORY_ADDRESS, 50, 'bond,unbond', 'txType', 200);
+    expect(midgard.getActions).not.toHaveBeenCalledWith(HISTORY_ADDRESS, 50, 'bond,unbond', 'txType', 250);
+    expect(source).toHaveTextContent('Local history cap reached');
+    expect(source).toHaveTextContent('Heimdall keeps the latest 250 Midgard actions loaded locally for responsiveness.');
+    expect(source).toHaveTextContent('Use this as recent context, not complete history.');
+    expect(screen.queryByRole('button', { name: 'Load older Midgard actions' })).not.toBeInTheDocument();
   });
 
   it('handles empty string address prop correctly', async () => {

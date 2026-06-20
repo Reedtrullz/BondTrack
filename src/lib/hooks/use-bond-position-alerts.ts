@@ -1,23 +1,20 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import type { BondPosition } from '@/lib/types/node';
+import {
+  buildPositionAlertEvents,
+  toBondPositionAlertSnapshot,
+  type BondPositionAlertSnapshot,
+} from '@/lib/alerts/position-alerts';
 import { getAlertPositionSnapshotStorageKey, readLocalStorageValue, writeLocalStorageValue } from '@/lib/storage/keys';
 import { useBondPositions } from './use-bond-positions';
 import type { AlertType } from './use-alerts';
 
 interface BondPositionAlertChecks {
-  checkSlash: (currentSlashPoints: number, previousSlashPoints: number, nodeAddress: string) => void;
-  checkJail: (currentPosition: BondPosition, previousPosition: BondPosition | null, nodeAddress: string) => void;
-  checkStatusChange: (currentStatus: string, previousStatus: string | null, nodeAddress: string) => void;
   triggerAlert: (type: AlertType, nodeAddress: string, message: string) => void;
 }
 
-function hasChurnRisk(position: BondPosition): boolean {
-  return position.yieldGuardFlags?.includes('lowest_bond') ?? false;
-}
-
-function readStoredSnapshot(address: string): Map<string, BondPosition> | null {
+function readStoredSnapshot(address: string): BondPositionAlertSnapshot[] | null {
   const storageKey = getAlertPositionSnapshotStorageKey(address);
   if (!storageKey) return null;
 
@@ -28,22 +25,20 @@ function readStoredSnapshot(address: string): Map<string, BondPosition> | null {
     const parsed = JSON.parse(stored);
     if (!Array.isArray(parsed?.positions)) return null;
 
-    const positions = parsed.positions.filter((position: Partial<BondPosition>) => (
+    const positions = parsed.positions.filter((position: Partial<BondPositionAlertSnapshot>) => (
       typeof position.nodeAddress === 'string' &&
       typeof position.status === 'string' &&
       typeof position.slashPoints === 'number' &&
       typeof position.isJailed === 'boolean'
-    )) as BondPosition[];
+    )) as BondPositionAlertSnapshot[];
 
-    return positions.length > 0
-      ? new Map(positions.map((position) => [position.nodeAddress, position]))
-      : null;
+    return positions.length > 0 ? positions : null;
   } catch {
     return null;
   }
 }
 
-function writeStoredSnapshot(address: string, positions: BondPosition[]): void {
+function writeStoredSnapshot(address: string, positions: BondPositionAlertSnapshot[]): void {
   const storageKey = getAlertPositionSnapshotStorageKey(address);
   if (!storageKey) return;
 
@@ -62,7 +57,7 @@ export function useBondPositionAlerts(
   checks: BondPositionAlertChecks
 ) {
   const { positions, isLoading, error } = useBondPositions(address);
-  const previousPositionsRef = useRef<Map<string, BondPosition> | null>(null);
+  const previousPositionsRef = useRef<BondPositionAlertSnapshot[] | null>(null);
   const previousAddressRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -74,7 +69,7 @@ export function useBondPositionAlerts(
 
     if (isLoading || error) return;
 
-    const currentPositions = new Map(positions.map((position) => [position.nodeAddress, position]));
+    const currentSnapshots = positions.map(toBondPositionAlertSnapshot);
     let previousPositions = previousPositionsRef.current;
 
     if (previousAddressRef.current !== address) {
@@ -83,29 +78,16 @@ export function useBondPositionAlerts(
     }
 
     if (!previousPositions) {
-      previousPositionsRef.current = currentPositions;
-      writeStoredSnapshot(address, positions);
+      previousPositionsRef.current = currentSnapshots;
+      writeStoredSnapshot(address, currentSnapshots);
       return;
     }
 
-    for (const position of positions) {
-      const previous = previousPositions.get(position.nodeAddress) ?? null;
-      if (!previous) continue;
-
-      checks.checkSlash(position.slashPoints, previous.slashPoints, position.nodeAddress);
-      checks.checkJail(position, previous, position.nodeAddress);
-      checks.checkStatusChange(position.status, previous.status, position.nodeAddress);
-
-      if (hasChurnRisk(position) && !hasChurnRisk(previous)) {
-        checks.triggerAlert(
-          'CHURN_RISK',
-          position.nodeAddress,
-          `Node ${position.nodeAddress.slice(0, 12)}... entered the low-bond churn risk set`
-        );
-      }
+    for (const event of buildPositionAlertEvents(currentSnapshots, previousPositions)) {
+      checks.triggerAlert(event.type, event.nodeAddress, event.message);
     }
 
-    previousPositionsRef.current = currentPositions;
-    writeStoredSnapshot(address, positions);
+    previousPositionsRef.current = currentSnapshots;
+    writeStoredSnapshot(address, currentSnapshots);
   }, [address, checks, error, isLoading, positions]);
 }

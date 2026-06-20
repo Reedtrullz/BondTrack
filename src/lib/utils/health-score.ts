@@ -1,6 +1,8 @@
 import { NETWORK } from '../config';
 import { BondPosition } from '@/lib/types/node';
 
+export const NO_VISIBLE_EXPOSURE_ISSUE_REASON = 'Current node inputs show no jail, elevated slash, churn, or status issue';
+
 export type HealthGrade = 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
 
 export interface HealthScoreBreakdown {
@@ -21,7 +23,7 @@ export interface HealthScoreResult {
 }
 
 /**
- * Calculates a portfolio-wide provider exposure grade based on risk vectors.
+ * Calculates a portfolio-wide provider exposure review result based on risk vectors.
  * Weighting:
  * - Slash Points: Bounded review signal for active nodes
  * - Churn Percentile: Medium (risk of losing earnings)
@@ -41,7 +43,7 @@ export function calculatePortfolioHealth(positions: BondPosition[]): HealthScore
   }
 
   let totalPoints = NETWORK.HEALTH_SCORE_RULES.startingPoints;
-  const criticalIssues = [];
+  const exposureIssues = [];
   let slashPenalty = 0;
   let atRiskPenalty = 0;
   let jailedPenalty = 0;
@@ -52,7 +54,7 @@ export function calculatePortfolioHealth(positions: BondPosition[]): HealthScore
   if (jailedNodes.length > 0) {
     jailedPenalty = NETWORK.HEALTH_SCORE_RULES.jailedPenalty;
     totalPoints -= jailedPenalty;
-    criticalIssues.push(`${jailedNodes.length} node(s) jailed`);
+    exposureIssues.push(`${jailedNodes.length} node(s) jailed`);
   }
 
   const highSlashNodes = positions.filter(p => p.slashPoints >= NETWORK.SLASH_POINT_THRESHOLDS.critical);
@@ -68,18 +70,28 @@ export function calculatePortfolioHealth(positions: BondPosition[]): HealthScore
   slashPenalty = Math.min(rawSlashPenalty, NETWORK.HEALTH_SCORE_RULES.maxSlashPenalty);
   totalPoints -= slashPenalty;
 
-  if (highSlashNodes.length > 0) criticalIssues.push('High slash exposure detected');
+  if (highSlashNodes.length > 0) exposureIssues.push('High slash exposure detected');
 
   // 3. Churn Risk (Based on yieldGuard flags)
   const atRiskNodes = positions.filter(p => p.yieldGuardFlags?.includes('lowest_bond'));
   atRiskPenalty = atRiskNodes.length * NETWORK.HEALTH_SCORE_RULES.atRiskPenalty;
   totalPoints -= atRiskPenalty;
+  if (atRiskNodes.length > 0) {
+    exposureIssues.push('Churn-risk exposure detected');
+  }
+
+  const leavingNodes = positions.filter(p => (
+    p.requestedToLeave || p.yieldGuardFlags?.includes('leaving')
+  ));
+  if (leavingNodes.length > 0) {
+    exposureIssues.push('Leaving-node exposure detected');
+  }
 
   const nonActiveNodes = positions.filter(p => !p.isJailed && p.status !== 'Active');
   statusPenalty = nonActiveNodes.length * NETWORK.HEALTH_SCORE_RULES.nonActivePenalty;
   totalPoints -= statusPenalty;
   if (nonActiveNodes.length > 0) {
-    criticalIssues.push(`${nonActiveNodes.length} node(s) not active`);
+    exposureIssues.push(`${nonActiveNodes.length} node(s) not active`);
   }
 
   // Clamp score 0-100
@@ -105,7 +117,7 @@ export function calculatePortfolioHealth(positions: BondPosition[]): HealthScore
   return {
     grade,
     score: finalScore,
-    reason: criticalIssues.length > 0 ? criticalIssues.join(', ') : 'All positions healthy',
+    reason: exposureIssues.length > 0 ? exposureIssues.join(', ') : NO_VISIBLE_EXPOSURE_ISSUE_REASON,
     isCritical: finalScore < NETWORK.HEALTH_SCORE_RULES.gradeThresholds.d || jailedNodes.length > 0,
     breakdown,
   };

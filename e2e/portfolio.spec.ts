@@ -135,6 +135,62 @@ const mockRuneHistory = {
   ],
 };
 
+const mockRuneHistoryWithoutTimestamp = {
+  meta: {
+    startTime: '',
+    endTime: '',
+    startRunePriceUSD: '1.50',
+    endRunePriceUSD: '1.50',
+  },
+  intervals: [
+    {
+      startTime: '',
+      endTime: '',
+      runePriceUSD: '1.50',
+    },
+  ],
+};
+
+function buildFreshRuneHistory() {
+  const endSeconds = Math.floor(Date.now() / 1000);
+  const startSeconds = endSeconds - 60 * 60;
+  const toNanoTimestamp = (seconds: number) => (BigInt(seconds) * 1_000_000_000n).toString();
+
+  return {
+    meta: {
+      startTime: toNanoTimestamp(startSeconds),
+      endTime: toNanoTimestamp(endSeconds),
+      startRunePriceUSD: '1.50',
+      endRunePriceUSD: '1.50',
+    },
+    intervals: [
+      {
+        startTime: toNanoTimestamp(startSeconds),
+        endTime: toNanoTimestamp(endSeconds),
+        runePriceUSD: '1.50',
+      },
+    ],
+  };
+}
+
+function buildHistoricalEntryRuneHistory() {
+  return {
+    meta: {
+      startTime: '1699913600',
+      endTime: '1700086400',
+      startRunePriceUSD: '0.50',
+      endRunePriceUSD: '0.50',
+    },
+    intervals: [
+      {
+        startTime: '1699913600',
+        endTime: '1700086400',
+        runePriceUSD: '0.50',
+      },
+    ],
+  };
+}
+
 const mockEarningsHistory = {
   meta: {
     startTime: '1699990000000000000',
@@ -181,7 +237,7 @@ const mockPoolHistory = {
   ],
 };
 
-async function setupMocks(page: Page, options: { nodeStatus?: string; thornodeNodesStatus?: number } = {}) {
+async function setupMocks(page: Page, options: { nodeStatus?: string; freshRuneHistory?: boolean; runeHistoryMissingTimestamp?: boolean; thornodeNodesStatus?: number } = {}) {
   const nodeStatus = options.nodeStatus ?? 'Active';
   const routedNodes = mockNodes.map((node) => ({ ...node, status: nodeStatus }));
 
@@ -281,7 +337,21 @@ async function setupMocks(page: Page, options: { nodeStatus?: string; thornodeNo
     }
 
     if (url.pathname === '/api/midgard/v2/history/rune') {
-      await route.fulfill({ json: mockRuneHistory });
+      const from = Number(url.searchParams.get('from'));
+      const shouldUseHistoricalEntryWindow = options.freshRuneHistory
+        && url.searchParams.has('from')
+        && Number.isFinite(from)
+        && from < Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60;
+
+      await route.fulfill({
+        json: shouldUseHistoricalEntryWindow
+          ? buildHistoricalEntryRuneHistory()
+          : options.runeHistoryMissingTimestamp
+            ? mockRuneHistoryWithoutTimestamp
+            : options.freshRuneHistory
+              ? buildFreshRuneHistory()
+              : mockRuneHistory,
+      });
       return;
     }
 
@@ -318,18 +388,48 @@ test.describe('Portfolio dashboard', () => {
     await expect(page.getByText('Quick Actions')).toBeVisible();
     const sourceHealth = page.getByRole('group', { name: 'Portfolio source health' });
     await expect(sourceHealth).toContainText('Sources responding');
-    await expect(sourceHealth).toContainText('Recent Midgard + THORNode checks succeeded');
+    await expect(sourceHealth).toContainText('Recent Midgard + THORNode checks responded');
+    await expect(sourceHealth).not.toContainText('Recent Midgard + THORNode checks succeeded');
     await expect(sourceHealth).not.toContainText('Sources healthy');
     await expect(sourceHealth).not.toContainText('Midgard + THORNode confirmed');
     await expect(page.getByText('Live', { exact: true })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: 'Prepare BOND Memo' })).toBeVisible();
+    const checks = page.getByRole('region', { name: 'Portfolio data checks' });
+    await expect(checks).toContainText('Bond exposure');
+    await expect(checks).toContainText('1 flagged');
+    await expect(checks).toContainText('Review churn, slash, or leaving signals before adding bond');
+    await expect(checks).not.toContainText('Bond exposure 1 node');
+    await expect(checks).not.toContainText('Source-backed');
+    await expect(checks).not.toContainText('Ready');
+    await expect(page.getByRole('link', { name: 'Review BOND Memo' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Prepare BOND Memo' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Review UNBOND Memo' })).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Prepare UNBOND Memo' })).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'View Risk' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'View Rewards' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'View LP' })).toBeVisible();
   });
 
-  test('routes header BOND prep to source confidence when THORNode /nodes is unavailable', async ({ page, allowApiErrors }) => {
+  test('does not label malformed RUNE quote freshness as fresh in portfolio data checks', async ({ page }) => {
+    await page.unroute('**/api/thorchain/**');
+    await page.unroute('**/api/midgard/**');
+    await setupMocks(page, { runeHistoryMissingTimestamp: true });
+    await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
+
+    const checks = page.getByRole('region', { name: 'Portfolio data checks' });
+    const runePriceSummary = page.getByRole('group', { name: 'RUNE Price summary' });
+
+    await expect(checks).toContainText('RUNE price');
+    await expect(checks).toContainText('LP valuation');
+    await expect(checks).toContainText('Quote stale');
+    await expect(checks).toContainText('LP USD values use stale RUNE quote');
+    await expect(checks).toContainText('Missing');
+    await expect(checks).not.toContainText(/RUNE price\s*Fresh/);
+    await expect(page.getByRole('region', { name: 'Portfolio exposure confidence' })).toHaveCount(0);
+    await expect(runePriceSummary).toContainText('--');
+    await expect(runePriceSummary).not.toContainText('Fresh');
+  });
+
+  test('routes header BOND prep to source checks when THORNode /nodes is unavailable', async ({ page, allowApiErrors }) => {
     allowApiErrors(['/api/thorchain/thorchain/nodes']);
     await page.unroute('**/api/thorchain/**');
     await page.unroute('**/api/midgard/**');
@@ -340,11 +440,13 @@ test.describe('Portfolio dashboard', () => {
     const sourceHealth = page.getByRole('group', { name: 'Portfolio source health' });
 
     await expect(sourceHealth).toContainText('Sources degraded');
-    await expect(transactionActions.getByRole('link', { name: 'Review source confidence' })).toHaveAttribute(
+    await expect(transactionActions.getByRole('link', { name: 'Review source checks' })).toHaveAttribute(
       'href',
       `/dashboard?address=${MOCK_ADDRESS}#source-confidence`
     );
+    await expect(transactionActions.getByRole('link', { name: 'Review BOND Memo' })).toHaveCount(0);
     await expect(transactionActions.getByRole('link', { name: 'Prepare BOND Memo' })).toHaveCount(0);
+    await expect(transactionActions.getByRole('link', { name: 'Review UNBOND Memo' })).toHaveCount(0);
     await expect(transactionActions.getByRole('link', { name: 'Prepare UNBOND Memo' })).toHaveCount(0);
   });
 
@@ -398,17 +500,53 @@ test.describe('Portfolio dashboard', () => {
     expect(overflowingMobileMetrics).toEqual([]);
   });
 
-  test('opens the transaction composer in UNBOND memo-prep mode', async ({ page }) => {
+  test('opens the transaction composer in UNBOND review mode', async ({ page }) => {
     await page.unroute('**/api/thorchain/**');
     await page.unroute('**/api/midgard/**');
     await setupMocks(page, { nodeStatus: 'Standby' });
     await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
 
-    await expect(page.getByRole('link', { name: 'Prepare UNBOND Memo' })).toBeVisible();
-    await page.getByRole('link', { name: 'Prepare UNBOND Memo' }).click();
+    await expect(page.getByRole('link', { name: 'Review UNBOND Memo' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Prepare UNBOND Memo' })).toHaveCount(0);
+    await page.getByRole('link', { name: 'Review UNBOND Memo' }).click();
 
     await expect(page).toHaveURL(/\/dashboard\/transactions\?.*action=unbond/);
     await expect(page.getByText('Unbond mode')).toBeVisible();
     await expect(page.getByText('Amount to Unbond')).toBeVisible();
+  });
+
+  test('keeps quiet portfolio review feed evidence-limited', async ({ page }) => {
+    await page.unroute('**/api/thorchain/**');
+    await page.unroute('**/api/midgard/**');
+    await setupMocks(page, { nodeStatus: 'Standby' });
+    await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
+
+    await expect(page.getByText('Provider review signals')).toBeVisible();
+    await page.getByRole('button', { name: 'Show Heimdall insight feed' }).click();
+    const emptyFeedState = page.getByRole('status', { name: 'Portfolio review signals empty state' });
+
+    await expect(emptyFeedState).toContainText(
+      'No slash, jail, or churn-risk feed items'
+    );
+    await expect(emptyFeedState).toContainText(
+      'Keep using the diagnosis and source checks before acting'
+    );
+    await expect(page.getByText('No immediate alerts')).toHaveCount(0);
+    await expect(page.getByText("Heimdall's Sight")).toHaveCount(0);
+  });
+});
+
+test.describe('Portfolio source-loaded valuation state', () => {
+  test('labels fresh THORNode LP valuation as source-loaded review material', async ({ page }) => {
+    await setupMocks(page, { freshRuneHistory: true });
+    await page.goto(`/dashboard/portfolio?address=${MOCK_ADDRESS}`);
+
+    const checks = page.getByRole('region', { name: 'Portfolio data checks' });
+
+    await expect(checks).toContainText('LP valuation');
+    await expect(checks).toContainText('Source-loaded');
+    await expect(checks).toContainText('1 THORNode LP value row loaded for review');
+    await expect(checks).not.toContainText('Source-backed');
+    await expect(checks).not.toContainText('Ready');
   });
 });

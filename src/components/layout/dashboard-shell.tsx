@@ -68,6 +68,10 @@ function getSourceStatusLabel(
   checkedAt: Date | null,
   now: number
 ): string {
+  if (status === 'mock') {
+    return `${source} demo data`;
+  }
+
   if (status === 'healthy') {
     return formatSourceAge(source, checkedAt, now);
   }
@@ -85,7 +89,11 @@ function getSourceFreshnessTone(
   midgard: ApiHealthState['midgard'],
   thornode: ApiHealthState['thornode'],
   lastChecked: Date | null
-): 'healthy' | 'checking' | 'degraded' | 'down' {
+): 'healthy' | 'checking' | 'degraded' | 'down' | 'demo' {
+  if (midgard === 'mock' || thornode === 'mock') {
+    return 'demo';
+  }
+
   if (midgard === 'down' || thornode === 'down') {
     return 'down';
   }
@@ -102,6 +110,10 @@ function getSourceFreshnessTone(
 }
 
 function getCompactFreshnessLabel(tone: ReturnType<typeof getSourceFreshnessTone>): string {
+  if (tone === 'demo') {
+    return 'Demo data';
+  }
+
   if (tone === 'down') {
     return 'Sources down';
   }
@@ -114,11 +126,12 @@ function getCompactFreshnessLabel(tone: ReturnType<typeof getSourceFreshnessTone
     return 'Checking sources';
   }
 
-  return 'Sources synced';
+  return 'Sources checked';
 }
 
 function getSourceIconClass(tone: ReturnType<typeof getSourceFreshnessTone>): string {
   if (tone === 'healthy') return 'text-emerald-500';
+  if (tone === 'demo') return 'text-sky-500';
   if (tone === 'down') return 'text-red-500';
   if (tone === 'checking') return 'text-blue-500';
   return 'text-yellow-500';

@@ -8,7 +8,7 @@ import { formatCompactNumber, formatPercent, formatRuneFromNumber, formatUsd, ru
 
 export type InsightSeverity = 'healthy' | 'info' | 'warning' | 'critical';
 
-export type SourceStatus = 'fresh' | 'stale' | 'degraded' | 'unknown';
+export type SourceStatus = 'fresh' | 'stale' | 'degraded' | 'unknown' | 'demo';
 
 export interface ActionItem {
   id: string;
@@ -38,6 +38,8 @@ export interface MetricStripItem {
   severity?: InsightSeverity;
 }
 
+export type RecentTransactionStatus = 'not-requested' | 'loading' | 'error' | 'loaded';
+
 export interface InsightHeaderMetric {
   label: string;
   value: string;
@@ -47,7 +49,7 @@ export interface InsightHeaderMetric {
 
 export interface DashboardInsightState {
   severity: InsightSeverity;
-  statusLabel: 'Healthy' | 'No Bond' | 'Review Needed' | 'Action Needed';
+  statusLabel: 'No urgent review' | 'No Bond' | 'Review Needed' | 'Action Needed' | 'Demo';
   diagnosis: string;
   topRisk: string;
   primaryAction: {
@@ -71,6 +73,8 @@ interface BuildDashboardInsightStateInput {
   runePriceIsStale?: boolean;
   includeRunePriceSource?: boolean;
   recentTransactionCount?: number;
+  recentTransactionIsPartial?: boolean;
+  recentTransactionStatus?: RecentTransactionStatus;
   now?: Date;
 }
 
@@ -86,6 +90,7 @@ const SOURCE_STATUS_DETAIL: Record<ApiHealthStatus, { status: SourceStatus; deta
   degraded: { status: 'degraded', detail: 'Recent probe failed; using last successful data where available.' },
   down: { status: 'degraded', detail: 'Multiple probes failed. Treat current readings as unreliable.' },
   unknown: { status: 'unknown', detail: 'Health probe has not completed yet.' },
+  mock: { status: 'demo', detail: 'Local mock data is enabled. Values are illustrative and are not live THORChain readings.' },
 };
 const DEFAULT_RUNE_PRICE_STALE_AFTER_MS = 36 * 60 * 60 * 1000;
 
@@ -165,7 +170,7 @@ export function resolveThornodeGatedBondAction(
   if (sourceAction) {
     return {
       kind: 'source-confidence',
-      label: sourceAction.primaryAction ?? 'Review source confidence',
+      label: sourceAction.primaryAction ?? 'Review source checks',
       href: sourceAction.href,
       sourceAction,
     };
@@ -204,6 +209,7 @@ export function buildSourceFreshness(
   options: {
     runePriceUpdatedAt?: Date | null;
     runePriceIsStale?: boolean;
+    runePriceQuoteAvailable?: boolean;
     includeRunePriceSource?: boolean;
     runePriceStaleAfterMs?: number;
     now?: Date;
@@ -213,6 +219,7 @@ export function buildSourceFreshness(
   const midgard = SOURCE_STATUS_DETAIL[apiHealth.midgard];
   const includeRunePriceSource = options.includeRunePriceSource ?? true;
   const runePriceUpdatedAt = options.runePriceUpdatedAt ?? null;
+  const runePriceQuoteAvailable = Boolean(options.runePriceQuoteAvailable);
   const runePriceAgeMs = runePriceUpdatedAt
     ? Math.max(0, (options.now ?? new Date()).getTime() - runePriceUpdatedAt.getTime())
     : null;
@@ -250,7 +257,9 @@ export function buildSourceFreshness(
         ? 'Price feed is stale; USD values use the last successful quote.'
         : runePriceUpdatedAt
           ? 'Price quote available for USD conversions.'
-          : 'No RUNE price quote has loaded yet; USD values are unavailable.',
+          : runePriceQuoteAvailable
+            ? 'Price quote loaded without freshness; USD values are unverified.'
+            : 'No RUNE price quote has loaded yet; USD values are unavailable.',
     });
   }
 
@@ -339,18 +348,18 @@ function buildSourceActions(address: string | null, sources: SourceFreshness[], 
   const sourceConfidenceHref = buildHrefWithHash('/dashboard', address, {}, 'source-confidence');
 
   return sources.flatMap((source) => {
-    if (source.status === 'fresh') return [];
+    if (source.status === 'fresh' || source.status === 'demo') return [];
 
     return [{
       id: `source:${source.source.toLowerCase().replace(/\s+/g, '-')}:${source.status}`,
       severity: 'warning',
       source: source.source,
       title: `${source.source} is ${source.status}`,
-      detail: source.detail ?? 'Source confidence is not fully fresh.',
+      detail: source.detail ?? 'Source check has not passed yet.',
       impact: getSourceActionImpact(source),
       href: sourceConfidenceHref,
       lastSeen: now,
-      primaryAction: 'Review source confidence',
+      primaryAction: 'Review source checks',
     }];
   });
 }
@@ -371,6 +380,104 @@ function getSourceActionImpact(source: SourceFreshness): string {
   return 'Treat derived metrics as advisory until this source recovers.';
 }
 
+function getRecentTransactionMetric({
+  count = 0,
+  isPartial = false,
+  status = 'loaded',
+}: {
+  count?: number;
+  isPartial?: boolean;
+  status?: RecentTransactionStatus;
+}): MetricStripItem {
+  if (status === 'not-requested') {
+    return {
+      id: 'recent-transactions',
+      label: 'Recent tx',
+      value: '--',
+      detail: 'Enter address',
+      severity: 'info',
+    };
+  }
+
+  if (status === 'loading') {
+    return {
+      id: 'recent-transactions',
+      label: 'Recent tx',
+      value: '--',
+      detail: 'Loading bond events',
+      severity: 'info',
+    };
+  }
+
+  if (status === 'error') {
+    return {
+      id: 'recent-transactions',
+      label: 'Recent tx',
+      value: '--',
+      detail: 'Bond events unavailable',
+      severity: 'warning',
+    };
+  }
+
+  if (isPartial) {
+    return {
+      id: 'recent-transactions',
+      label: 'Recent tx',
+      value: String(count),
+      detail: 'Partial bond-event window',
+      severity: 'warning',
+    };
+  }
+
+  return {
+    id: 'recent-transactions',
+    label: 'Recent tx',
+    value: String(count),
+    detail: count === 0
+      ? 'No bond events found in loaded history'
+      : `${count} bond event${count === 1 ? '' : 's'} loaded`,
+    severity: count === 0 ? 'info' : undefined,
+  };
+}
+
+function getProviderExposureMetricDetail({
+  actionDetail,
+  hasBondPositions,
+  hasDemoSource,
+  healthReason,
+  severity,
+}: {
+  actionDetail?: string;
+  hasBondPositions: boolean;
+  hasDemoSource: boolean;
+  healthReason: string;
+  severity: InsightSeverity;
+}): string {
+  if (hasDemoSource) {
+    return 'Local mock fixture; not a live provider exposure reading.';
+  }
+
+  if (!hasBondPositions) {
+    return 'No bonded positions tracked';
+  }
+
+  const reason = actionDetail ?? healthReason;
+
+  if (severity === 'critical') {
+    return `Action required · ${reason}`;
+  }
+
+  if (severity === 'warning') {
+    return `Review needed · ${reason}`;
+  }
+
+  if (severity === 'info') {
+    return `Source check pending · ${reason}`;
+  }
+
+  return `No urgent action visible · ${healthReason}`;
+}
+
 function buildLpActions(address: string | null, positions: LpPosition[], now: Date): ActionItem[] {
   const untrustedRedeemCount = positions.filter((position) => !position.claimableTrusted).length;
   const estimatedCount = positions.filter((position) => position.pricingSource === 'estimated').length;
@@ -387,7 +494,7 @@ function buildLpActions(address: string | null, positions: LpPosition[], now: Da
       impact: 'Do not treat estimated withdrawable amounts as claimable before acting on an LP position.',
       href: buildHref('/dashboard/lp', address),
       lastSeen: now,
-      primaryAction: 'Review LP confidence',
+      primaryAction: 'Review LP checks',
     });
   }
 
@@ -401,7 +508,7 @@ function buildLpActions(address: string | null, positions: LpPosition[], now: Da
       impact: 'Do not use LP performance totals for decisions until historical pricing enriches.',
       href: buildHref('/dashboard/lp', address),
       lastSeen: now,
-      primaryAction: 'Review LP confidence',
+      primaryAction: 'Review LP checks',
     });
   }
 
@@ -411,8 +518,8 @@ function buildLpActions(address: string | null, positions: LpPosition[], now: Da
       severity: 'warning',
       source: 'LP',
       title: `${estimatedCount} LP position${estimatedCount === 1 ? '' : 's'} use estimated entry pricing`,
-      detail: 'Estimated LP P/L is shown per pool and excluded from trusted aggregate totals.',
-      impact: 'Use trusted historical values for aggregate decisions.',
+      detail: 'Estimated LP P/L is shown per pool and excluded from aggregate totals that require historical entry prices.',
+      impact: 'Use only source-loaded entry-price rows for aggregate LP performance decisions.',
       href: buildHref('/dashboard/lp', address),
       lastSeen: now,
       primaryAction: 'Review estimates',
@@ -426,18 +533,20 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
   const now = input.now ?? new Date();
   const positions = input.positions;
   const lpPositions = input.lpPositions ?? [];
+  const totalLpValueUsd = lpPositions.reduce((sum, position) => sum + position.currentTotalValueUsd, 0);
   const sources = buildSourceFreshness(input.apiHealth, {
     runePriceUpdatedAt: input.runePriceUpdatedAt,
     runePriceIsStale: input.runePriceIsStale,
+    runePriceQuoteAvailable: Boolean((input.runePrice && input.runePrice > 0) || totalLpValueUsd > 0),
     includeRunePriceSource: input.includeRunePriceSource,
     now,
   });
+  const hasDemoSource = sources.some((source) => source.status === 'demo');
   const allBondAmountsUsable = positions.every((position) => isUsableAmount(position.bondAmount));
   const totalBonded = positions.reduce((sum, position) => (
     isUsableAmount(position.bondAmount) ? sum + position.bondAmount : sum
   ), 0);
   const hasBondPositions = positions.length > 0;
-  const totalLpValueUsd = lpPositions.reduce((sum, position) => sum + position.currentTotalValueUsd, 0);
   const activeNodes = positions.filter((position) => position.status === 'Active').length;
   const jailedNodes = positions.filter((position) => position.isJailed).length;
   const weightedApy = positions.length > 0 && totalBonded > 0
@@ -455,7 +564,7 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
   ]));
   const mostSevereAction = actions[0];
   const noBondAction = resolveThornodeGatedBondAction(actions, {
-    label: 'Open Bond Composer',
+    label: 'Open BOND review',
     href: buildHref('/dashboard/transactions', input.address),
   });
   const noBondPrimaryAction = { label: noBondAction.label, href: noBondAction.href };
@@ -463,47 +572,62 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
     ? 'warning'
     : sources.some((source) => source.status === 'unknown')
       ? 'info'
-      : 'healthy';
+      : hasDemoSource
+        ? 'info'
+        : 'healthy';
   const severity = getMostSevere([
     { severity: !hasBondPositions ? 'info' : health.isCritical ? 'critical' : health.score < NETWORK.HEALTH_SCORE_THRESHOLDS.healthy ? 'warning' : 'healthy' },
     { severity: mostSevereAction?.severity ?? 'healthy' },
     { severity: sourceSeverity },
   ]);
-  const statusLabel = !hasBondPositions
-    ? 'No Bond'
-    : severity === 'critical'
-      ? 'Action Needed'
-      : severity === 'warning'
-        ? 'Review Needed'
-        : 'Healthy';
+  const statusLabel = hasDemoSource
+    ? 'Demo'
+    : !hasBondPositions
+      ? 'No Bond'
+      : severity === 'critical'
+        ? 'Action Needed'
+        : severity === 'warning'
+          ? 'Review Needed'
+          : 'No urgent review';
   const noBondDiagnosis = noBondAction.kind === 'source-confidence'
-    ? 'No active bond-provider position was found for this address. Confirm the address, then wait for fresh THORNode source confidence before preparing a BOND transaction.'
-    : 'No active bond-provider position was found for this address. Start by confirming the address or preparing a BOND transaction.';
-  const diagnosis = positions.length === 0
+    ? 'No active bond-provider position was found for this address. Confirm the address, then wait for the THORNode source check to pass before opening BOND review.'
+    : 'No active bond-provider position was found for this address. Start by confirming the address or opening BOND review.';
+  const demoDiagnosis = 'Local mock data is illustrative. Use live THORNode and Midgard source checks before concluding this provider has no live issues.';
+  const diagnosis = hasDemoSource
+    ? demoDiagnosis
+    : positions.length === 0
     ? noBondDiagnosis
-    : statusLabel === 'Healthy'
-      ? 'Current source responses show no provider action needed.'
+    : statusLabel === 'No urgent review'
+      ? 'Current source responses do not show an urgent provider action.'
       : mostSevereAction?.detail ?? health.reason;
   const topRisk = mostSevereAction
     ? positions.length === 0
       ? 'No bonded positions detected'
       : mostSevereAction.title
-    : positions.length === 0
-      ? 'No bonded positions detected'
-      : 'No provider review needed';
+    : hasDemoSource
+      ? 'Demo data only'
+      : positions.length === 0
+        ? 'No bonded positions detected'
+        : 'No urgent review visible';
   const primaryAction = mostSevereAction
     ? positions.length === 0
       ? noBondPrimaryAction
       : { label: mostSevereAction.primaryAction ?? 'Inspect issue', href: mostSevereAction.href }
-    : positions.length === 0
-      ? noBondPrimaryAction
-      : { label: 'Review exposure', href: buildHref('/dashboard/risk', input.address) };
-  const healthMetricDetail = severity === 'healthy'
-    ? `Score ${health.score}/100 · ${health.reason}`
+    : hasDemoSource
+      ? { label: 'Review source checks', href: buildHrefWithHash('/dashboard', input.address, {}, 'source-confidence') }
+      : positions.length === 0
+        ? noBondPrimaryAction
+        : { label: 'Inspect details', href: buildHref('/dashboard/risk', input.address) };
+  const healthMetricDetail = getProviderExposureMetricDetail({
+    actionDetail: mostSevereAction?.detail,
+    hasBondPositions,
+    hasDemoSource,
+    healthReason: health.reason,
+    severity,
+  });
+  const exposureMetricValue = hasDemoSource
+    ? 'Demo'
     : !hasBondPositions
-      ? 'No bonded positions tracked'
-      : `Score ${health.score}/100 · ${mostSevereAction?.detail ?? health.reason}`;
-  const exposureMetricValue = !hasBondPositions
     ? '--'
     : severity === 'critical'
       ? 'Action'
@@ -511,13 +635,26 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
         ? 'Review'
         : severity === 'info'
           ? 'Pending'
-          : 'Clear';
+          : 'No urgent';
   const bondedMetricValue = hasBondPositions && !allBondAmountsUsable
     ? '--'
     : formatRuneFromNumber(totalBonded);
   const bondedMetricCompactValue = hasBondPositions && !allBondAmountsUsable
     ? '--'
     : formatCompactRuneFromNumber(totalBonded);
+  const runePriceSource = sources.find((source) => source.source === 'RUNE price');
+  const quoteConfidenceSuffix = runePriceSource?.status === 'stale'
+    ? ' · stale quote'
+    : runePriceSource?.status === 'unknown'
+      ? ' · quote unverified'
+      : '';
+  const totalBondUsdDetail = input.runePrice && allBondAmountsUsable
+    ? `${formatUsd(totalBonded * input.runePrice)}${quoteConfidenceSuffix}`
+    : undefined;
+  const lpPoolDetail = `${lpPositions.length} pool${lpPositions.length === 1 ? '' : 's'}`;
+  const lpValueDetail = totalLpValueUsd > 0
+    ? `${lpPoolDetail}${quoteConfidenceSuffix}`
+    : lpPoolDetail;
 
   return {
     severity,
@@ -542,18 +679,17 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
         id: 'total-bond',
         label: 'Total bond',
         value: hasBondPositions && !allBondAmountsUsable ? '--' : formatCompactRuneFromNumber(totalBonded),
-        detail: input.runePrice && allBondAmountsUsable ? formatUsd(totalBonded * input.runePrice) : undefined,
+        detail: totalBondUsdDetail,
       },
       { id: 'active-nodes', label: 'Active nodes', value: String(activeNodes), detail: `${positions.length} tracked` },
       { id: 'jailed-nodes', label: 'Jailed nodes', value: String(jailedNodes), severity: jailedNodes > 0 ? 'critical' : 'healthy', detail: jailedNodes > 0 ? 'Action needed' : 'None' },
       { id: 'rewards', label: 'Reward rate', value: weightedApy > 0 ? `${weightedApy.toFixed(2)}%` : '--', detail: 'Net weighted APY' },
-      { id: 'lp-value', label: 'LP value', value: totalLpValueUsd > 0 ? formatUsd(totalLpValueUsd) : '--', detail: `${lpPositions.length} pool${lpPositions.length === 1 ? '' : 's'}` },
-      {
-        id: 'recent-transactions',
-        label: 'Recent tx',
-        value: String(input.recentTransactionCount ?? 0),
-        detail: 'Bond events loaded',
-      },
+      { id: 'lp-value', label: 'LP value', value: totalLpValueUsd > 0 ? formatUsd(totalLpValueUsd) : '--', detail: lpValueDetail },
+      getRecentTransactionMetric({
+        count: input.recentTransactionCount,
+        isPartial: input.recentTransactionIsPartial,
+        status: input.recentTransactionStatus,
+      }),
       {
         id: 'network-bond',
         label: 'Network bond',

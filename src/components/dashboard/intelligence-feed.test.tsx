@@ -61,7 +61,7 @@ function node(overrides: Partial<NodeRaw> = {}): NodeRaw {
 }
 
 describe('IntelligenceFeed', () => {
-  it('uses evidence-limited language when no portfolio issues are detected', () => {
+  it('uses evidence-limited language when no portfolio review signals are visible', () => {
     render(
       <IntelligenceFeed
         positions={[position()]}
@@ -75,8 +75,13 @@ describe('IntelligenceFeed', () => {
       />
     );
 
-    expect(screen.getByText('No immediate alerts')).toBeInTheDocument();
-    expect(screen.getByText(/No slash, jail, or churn-risk signals/i)).toBeInTheDocument();
+    const emptyState = screen.getByLabelText('Portfolio review signals empty state');
+    expect(screen.getByText('No slash, jail, or churn-risk feed items')).toBeInTheDocument();
+    expect(screen.getByText(/This feed did not generate slash, jail, or churn-risk items from loaded portfolio inputs/i)).toBeInTheDocument();
+    expect(screen.getByText(/Keep using the diagnosis and source checks before acting/i)).toBeInTheDocument();
+    expect(emptyState.className).toContain('border-sky');
+    expect(emptyState.className).not.toContain('border-emerald');
+    expect(screen.queryByText('No immediate alerts')).not.toBeInTheDocument();
     expect(screen.queryByText(/sees no threats/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/positions are optimal/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/certified/i)).not.toBeInTheDocument();

@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getActions, getHistoricalRunePrice, getPoolHistoryAtTimestamp } from '../midgard';
+import { getCoingeckoRunePrice } from '../coingecko';
+import { getActions, getHistoricalRunePrice, getHistoricalRunePriceWithSource, getPoolHistoryAtTimestamp } from '../midgard';
 import { fetchMidgard } from '@/lib/api/client';
 
 vi.mock('@/lib/api/client', () => ({
   fetchMidgard: vi.fn(),
+}));
+vi.mock('../coingecko', () => ({
+  getCoingeckoRunePrice: vi.fn(),
 }));
 
 describe('getActions', () => {
@@ -24,6 +28,8 @@ describe('getActions', () => {
 describe('historical lookup helpers', () => {
   beforeEach(() => {
     vi.mocked(fetchMidgard).mockReset();
+    vi.mocked(getCoingeckoRunePrice).mockReset();
+    vi.mocked(getCoingeckoRunePrice).mockResolvedValue(null);
   });
 
   it('uses the interval containing the requested historical timestamp even when the next interval start is numerically closer', async () => {
@@ -51,6 +57,53 @@ describe('historical lookup helpers', () => {
     const result = await getHistoricalRunePrice(1700086300);
 
     expect(result).toBe(0.5);
+  });
+
+  it('returns source metadata for Midgard historical RUNE prices', async () => {
+    vi.mocked(fetchMidgard).mockResolvedValueOnce({
+      intervals: [
+        {
+          startTime: '1700000000',
+          endTime: '1700086400',
+          runePriceUSD: '0.5',
+        },
+      ],
+      meta: {
+        startTime: '1700000000',
+        endTime: '1700086400',
+        startRunePriceUSD: '0.5',
+        endRunePriceUSD: '0.5',
+      },
+    } as never);
+
+    const result = await getHistoricalRunePriceWithSource(1700000100);
+
+    expect(result).toEqual({ price: 0.5, source: 'midgard' });
+    expect(getCoingeckoRunePrice).not.toHaveBeenCalled();
+  });
+
+  it('labels CoinGecko fallback prices so consumers do not treat them as Midgard historical coverage', async () => {
+    vi.mocked(fetchMidgard).mockResolvedValueOnce({
+      intervals: [
+        {
+          startTime: '1700000000',
+          endTime: '1700086400',
+          runePriceUSD: 'not-a-price',
+        },
+      ],
+      meta: {
+        startTime: '1700000000',
+        endTime: '1700086400',
+        startRunePriceUSD: '0',
+        endRunePriceUSD: '0',
+      },
+    } as never);
+    vi.mocked(getCoingeckoRunePrice).mockResolvedValueOnce(0.42);
+
+    const result = await getHistoricalRunePriceWithSource(1700000100);
+
+    expect(result).toEqual({ price: 0.42, source: 'coingecko' });
+    expect(getCoingeckoRunePrice).toHaveBeenCalledWith(1700000100);
   });
 
   it('returns null when the available history does not cover the requested timestamp', async () => {

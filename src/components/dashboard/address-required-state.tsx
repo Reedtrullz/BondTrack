@@ -49,7 +49,7 @@ export function AddressRequiredState({
               <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-700 dark:text-zinc-300">
                 {invalidUrlAddress
                   ? 'Heimdall did not use the address in this URL and did not change the saved dashboard address. Enter a valid THORChain address or THORName to continue safely.'
-                  : 'Heimdall needs a bond provider, node operator, or LP address before it can rank node risk, rewards, transactions, and source confidence.'}
+                  : 'Heimdall needs a bond provider, node operator, or LP address before it can rank node risk, rewards, transactions, and source checks.'}
               </p>
             </div>
             <Link
@@ -64,7 +64,7 @@ export function AddressRequiredState({
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
           <DashboardCard className="p-4 sm:p-5" title="Start lookup">
             <p className="mb-4 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-              Paste a watched address or THORName. The dashboard stays public and read-only; wallet connection is only needed later for transaction confirmation.
+              Paste a watched address or THORName. The dashboard stays public and read-only; wallet connection is only needed later for wallet-presented transaction review.
             </p>
             <AddressInput onAddressSubmit={onAddressSubmit} />
           </DashboardCard>

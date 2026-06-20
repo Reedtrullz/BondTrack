@@ -45,13 +45,15 @@ export function extractBondPositions(
 
       if (!provider) return null;
 
+      const bondAmount = runeToNumber(provider.bond);
+      if (!Number.isFinite(bondAmount) || bondAmount <= 0) return null;
+
       const jail = node.jail as { release_height?: number; reason?: string } | Record<string, never>;
       const jailReleaseHeight = typeof jail?.release_height === 'number' ? jail.release_height : 0;
       const hasJailReason = typeof jail?.reason === 'string';
       const isJailed = jailReleaseHeight > currentBlockHeight;
       const jailReason = isJailed && hasJailReason ? jail?.reason : undefined;
 
-      const bondAmount = runeToNumber(provider.bond);
       const bondSharePercent = calculateBondShare(provider.bond, node.total_bond);
       const operatorFee = Number(node.bond_providers.node_operator_fee);
       // Always use per-node APY calculation based on node.current_award

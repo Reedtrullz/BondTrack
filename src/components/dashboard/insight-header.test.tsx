@@ -55,6 +55,43 @@ describe('InsightHeader', () => {
     expect(screen.queryByRole('button', { name: 'Inspect Risk' })).not.toBeInTheDocument();
   });
 
+  it('presents no-urgent review as informational, not success-confirmed', () => {
+    render(
+      <InsightHeader
+        severity="healthy"
+        statusLabel="No urgent review"
+        diagnosis="Current source responses do not show an urgent provider action."
+        topRisk="No urgent review visible"
+        metrics={[
+          {
+            label: 'Provider exposure',
+            value: 'No urgent',
+            detail: 'No urgent action visible',
+          },
+          { label: 'Bonded', value: '100 RUNE', detail: '1 node' },
+          { label: 'Net APY', value: '1.2%', detail: 'Weighted by bond' },
+        ]}
+        eyebrow="Node"
+        primaryAction={{ label: 'Inspect details', href: '/dashboard/risk?address=thor1abc' }}
+      />
+    );
+
+    const diagnosis = screen.getByLabelText('Node diagnosis');
+    const badge = screen.getByText('No urgent review', { exact: true }).closest('span');
+    const exposureMetric = screen.getByText('No urgent', { exact: true });
+    const action = screen.getByRole('link', { name: 'Inspect details' });
+
+    expect(diagnosis).toHaveClass('border-sky-200/70');
+    expect(diagnosis).not.toHaveClass('border-emerald-200/70');
+    expect(badge).toHaveClass('bg-sky-100');
+    expect(badge).not.toHaveClass('bg-emerald-100');
+    expect(exposureMetric).toHaveClass('text-sky-600');
+    expect(exposureMetric).not.toHaveClass('text-emerald-600');
+    expect(action).toHaveClass('hover:bg-zinc-100');
+    expect(action).not.toHaveClass('border-zinc-200');
+    expect(action).not.toHaveClass('bg-emerald-600/90');
+  });
+
   it('renders state-changing primary actions as buttons', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
@@ -86,6 +123,22 @@ describe('InsightHeader', () => {
     expect(screen.getByText('After operator fees')).toHaveClass('sm:block');
   });
 
+  it('can keep compact metric detail visible when the detail carries decision confidence', () => {
+    render(
+      <InsightHeader
+        {...defaultProps}
+        compactMobileMetrics
+        compactMetricDetailMode="all"
+        primaryAction={{ label: 'Inspect Risk', href: '/dashboard/risk?address=thor1abc' }}
+      />
+    );
+
+    const detail = screen.getByText('After operator fees');
+
+    expect(detail).not.toHaveClass('hidden');
+    expect(detail).not.toHaveClass('sm:block');
+  });
+
   it('uses compact metric values on mobile without dropping precise desktop values', () => {
     render(
       <InsightHeader
@@ -101,5 +154,20 @@ describe('InsightHeader', () => {
 
     expect(screen.getByText('ᚱ152.4K')).toHaveClass('sm:hidden');
     expect(screen.getByText('ᚱ152,412.77')).toHaveClass('hidden', 'sm:inline');
+  });
+
+  it('can use two mobile metric columns when compact values would wrap poorly', () => {
+    render(
+      <InsightHeader
+        {...defaultProps}
+        compactMobileMetrics
+        mobileMetricColumns={2}
+        primaryAction={{ label: 'Inspect Risk', href: '/dashboard/risk?address=thor1abc' }}
+      />
+    );
+
+    const metricGrid = screen.getByText('Weighted APY').closest('.grid');
+    expect(metricGrid).toHaveClass('grid-cols-2');
+    expect(metricGrid).not.toHaveClass('grid-cols-3');
   });
 });

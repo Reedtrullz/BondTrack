@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PnLDashboard } from '../pnl-dashboard';
@@ -185,6 +186,37 @@ describe('PnLDashboard', () => {
     expect(screen.queryByText('$47.50')).not.toBeInTheDocument();
   });
 
+  it('explains when the reward-history baseline is partial because the local action cap was reached', () => {
+    const cappedHistory = {
+      initialBond: 10,
+      currentBond: 30,
+      bondGrowth: 20,
+      firstBondDate: new Date('2024-01-01T00:00:00.000Z'),
+      actionLimit: 1000,
+      loadedActionCount: 1000,
+      totalActionCount: 1001,
+      isPartial: true,
+      isLocalActionCapReached: true,
+    } as ComponentProps<typeof PnLDashboard>['bondHistory'] & { isLocalActionCapReached: true };
+
+    render(
+      <PnLDashboard
+        positions={positions}
+        currentRunePrice={2}
+        entryRunePrice={1.25}
+        address="addr-a"
+        bondHistory={cappedHistory}
+      />
+    );
+
+    const basis = screen.getByLabelText('PnL calculation basis');
+    expect(basis).toHaveTextContent('Initial bond: capped action history');
+    expect(basis).toHaveTextContent('Baseline is capped: Heimdall loaded the most recent 1000 BOND/UNBOND actions out of 1001 before the local reward-history cap.');
+    expect(basis).toHaveTextContent('Auto return cards are withheld; set a manual initial bond before relying on returns.');
+    expect(screen.getAllByText('Set manual baseline for capped history').length).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByText('Auto return cards are withheld until full history loads or you set a manual initial bond.')).not.toBeInTheDocument();
+  });
+
   it('uses a manual baseline override even when action history is partial', async () => {
     localStorage.setItem('heimdall-initial-bond-addr-a', '5');
 
@@ -291,7 +323,7 @@ describe('PnLDashboard', () => {
       />
     );
 
-    expect(screen.getByText(/Current RUNE price stale/)).toBeInTheDocument();
+    expect(screen.getByText(/Current RUNE price stale · updated 2024-01-01 00:00 UTC/)).toBeInTheDocument();
     expect(screen.getByText(/Price PnL and total return use the last Midgard price/)).toBeInTheDocument();
   });
 

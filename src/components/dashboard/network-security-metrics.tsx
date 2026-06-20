@@ -6,7 +6,7 @@ import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { runeToNumber, formatCompactNumber } from '@/lib/utils/formatters';
 import type { BondPosition } from '@/lib/types/node';
 import { Shield, Lock, Activity, TrendingUp, TrendingDown, Minus, Wallet, Users, Zap, Coins, Clock } from 'lucide-react';
-import { getIncentivePendulumModel } from '@/lib/dashboard/risk-context';
+import { getIncentivePendulumModel, type IncentivePendulumLevel } from '@/lib/dashboard/risk-context';
 
 function calculateNetworkHealth(bondToPoolRatio: number): 'healthy' | 'warning' | 'critical' {
   if (bondToPoolRatio >= 1.5) return 'healthy';
@@ -16,7 +16,7 @@ function calculateNetworkHealth(bondToPoolRatio: number): 'healthy' | 'warning' 
 
 function getHealthColor(status: 'healthy' | 'warning' | 'critical'): string {
   switch (status) {
-    case 'healthy': return 'text-emerald-600 dark:text-emerald-400';
+    case 'healthy': return 'text-sky-600 dark:text-sky-400';
     case 'warning': return 'text-orange-600 dark:text-orange-400';
     case 'critical': return 'text-red-600 dark:text-red-400';
   }
@@ -24,39 +24,22 @@ function getHealthColor(status: 'healthy' | 'warning' | 'critical'): string {
 
 function getHealthBgColor(status: 'healthy' | 'warning' | 'critical'): string {
   switch (status) {
-    case 'healthy': return 'bg-emerald-50 dark:bg-emerald-900/20';
+    case 'healthy': return 'bg-sky-50 dark:bg-sky-900/20';
     case 'warning': return 'bg-orange-50 dark:bg-orange-900/20';
     case 'critical': return 'bg-red-50 dark:bg-red-900/20';
   }
 }
 
-function getPendulumStatus(bondToPoolRatio: number): { status: string; icon: React.ReactNode; description: string } {
-  if (bondToPoolRatio >= 2.5) {
-    return {
-      status: 'Well Secured',
-      icon: <TrendingUp className="w-4 h-4" />,
-      description: 'Bond exceeds 2.5x liquidity. Node rewards maximized, LP yields reduced.'
-    };
+function getPendulumIcon(level: IncentivePendulumLevel): React.ReactNode {
+  switch (level) {
+    case 'well-secured':
+      return <TrendingUp className="w-4 h-4" />;
+    case 'healthy':
+      return <Minus className="w-4 h-4" />;
+    case 'building':
+    case 'under-secured':
+      return <TrendingDown className="w-4 h-4" />;
   }
-  if (bondToPoolRatio >= 1.5) {
-    return {
-      status: 'Healthy',
-      icon: <Minus className="w-4 h-4" />,
-      description: 'Bond 1.5-2x liquidity. Balanced reward distribution.'
-    };
-  }
-  if (bondToPoolRatio >= 1.0) {
-    return {
-      status: 'Building',
-      icon: <TrendingDown className="w-4 h-4" />,
-      description: 'Bond > liquidity but below target. More bonding needed for full security.'
-    };
-  }
-  return {
-    status: 'Under-secured',
-    icon: <TrendingDown className="w-4 h-4" />,
-    description: 'Liquidity exceeds bond. Network shifts rewards to nodes to encourage bonding.'
-  };
 }
 
 function parseRawRuneBond(raw: string | number | undefined): bigint {
@@ -94,7 +77,7 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
   const incentivePendulum = getIncentivePendulumModel({ totalBonds, totalLiquidity });
   const bondToPoolRatio = incentivePendulum.bondToPoolRatio;
   const healthStatus = calculateNetworkHealth(bondToPoolRatio);
-  const pendulum = getPendulumStatus(bondToPoolRatio);
+  const pendulumIcon = getPendulumIcon(incentivePendulum.level);
 
   // Calculate user's share of network bonds if positions provided
   const userTotalBond = positions?.reduce((sum, pos) => sum + pos.bondAmount, 0) ?? 0;
@@ -135,13 +118,13 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
       {/* Pendulum Status - The key insight */}
       <div className={`p-3 rounded-lg mb-4 ${getHealthBgColor(healthStatus)}`}>
         <div className="flex items-center gap-2">
-          {pendulum.icon}
+          {pendulumIcon}
           <span className={`font-medium ${getHealthColor(healthStatus)}`}>
-            {pendulum.status}
+            {incentivePendulum.status}
           </span>
         </div>
         <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-          {pendulum.description}
+          {incentivePendulum.description}
         </p>
       </div>
 
@@ -175,7 +158,7 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
           <div className="h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full ${
-                healthStatus === 'healthy' ? 'bg-emerald-500' :
+                healthStatus === 'healthy' ? 'bg-sky-500' :
                 healthStatus === 'warning' ? 'bg-orange-500' : 'bg-red-500'
               }`}
               style={{ width: `${Math.min(bondToPoolRatio * 33, 100)}%` }}
@@ -286,7 +269,7 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
       </div>
 
       <div className="mt-3 text-xs text-zinc-500">
-        Effective security = bottom 2/3 active nodes. Higher = more network security.
+        Effective security = bottom 2/3 active nodes. Higher increases network-level bond coverage, not a provider safety verdict.
       </div>
     </div>
   );

@@ -177,7 +177,7 @@ describe('risk context helpers', () => {
       node: candidate,
       candidateContext: {
         candidateScore: {
-          trustLabel: 'Needs operator whitelist',
+          trustLabel: 'Provider not listed by THORNode',
         },
       },
     });
@@ -245,6 +245,18 @@ describe('risk context helpers', () => {
     });
   });
 
+  it('labels clean bonded positions as no urgent review instead of a health verdict', () => {
+    const summary = summarizeRiskPositions([
+      position({
+        nodeAddress: 'thor1clean',
+      }),
+    ]);
+
+    expect(summary.statusLabel).toBe('No urgent review');
+    expect(summary.statusLabel).not.toMatch(/\bhealthy\b|\bsafe\b/i);
+    expect(summary.statusLabel).not.toMatch(/immediate issue/i);
+  });
+
   it('models incentive pendulum status and reward split from bond and liquidity totals', () => {
     expect(getIncentivePendulumModel({ totalBonds: 300, totalLiquidity: 100 })).toMatchObject({
       bondToPoolRatio: 3,
@@ -252,13 +264,13 @@ describe('risk context helpers', () => {
       lpShare: 25,
       nodeShare: 75,
       progressPercent: 99,
-      status: 'Well Secured',
+      status: 'Bond buffer high',
     });
 
     expect(getIncentivePendulumModel({ totalBonds: 125, totalLiquidity: 100 })).toMatchObject({
       bondToPoolRatio: 1.25,
       level: 'building',
-      status: 'Building',
+      status: 'Bond buffer building',
     });
 
     expect(getIncentivePendulumModel({ totalBonds: 0, totalLiquidity: 100 })).toMatchObject({
@@ -267,8 +279,20 @@ describe('risk context helpers', () => {
       lpShare: 100,
       nodeShare: 0,
       progressPercent: 0,
-      status: 'Under-secured',
+      status: 'Liquidity above bond',
     });
+  });
+
+  it('keeps the incentive pendulum target range framed as context instead of safety', () => {
+    const targetRange = getIncentivePendulumModel({ totalBonds: 250, totalLiquidity: 100 });
+
+    expect(targetRange).toMatchObject({
+      bondToPoolRatio: 2.5,
+      level: 'healthy',
+      status: 'Bond buffer in range',
+    });
+    expect(`${targetRange.status} ${targetRange.description}`).not.toMatch(/\bhealthy\b|well secured|\bsafe\b/i);
+    expect(targetRange.description).toContain('Network-level incentive context');
   });
 
   it('keeps incentive pendulum output finite when network totals are malformed', () => {
@@ -283,7 +307,7 @@ describe('risk context helpers', () => {
       lpShare: 100,
       nodeShare: 0,
       progressPercent: 0,
-      status: 'Under-secured',
+      status: 'Liquidity above bond',
     });
     expect([
       malformed.bondToPoolRatio,

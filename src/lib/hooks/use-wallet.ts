@@ -24,7 +24,13 @@ export interface NetworkMismatch {
   actual: string | null;
 }
 
+interface ConnectOptions {
+  failClosedOnError?: boolean;
+}
+
 const THORCHAIN_CHAIN_ID = THORCHAIN_MAINNET_CHAIN_ID;
+const STALE_SIGNER_REFRESH_ERROR =
+  'Keplr account changed, but Heimdall could not refresh the signer. Reconnect wallet before preview or broadcast.';
 
 interface VultisigWindow {
   thorchain?: {
@@ -86,6 +92,7 @@ export function useWallet() {
   });
 
   const mountedRef = useRef(false);
+  const stateRef = useRef(state);
 
   const getExpectedChainId = useCallback(() => {
     return THORCHAIN_CHAIN_ID;
@@ -154,7 +161,7 @@ export function useWallet() {
     return { address, chainId };
   }, []);
 
-  const connect = useCallback(async (walletType: WalletType) => {
+  const connect = useCallback(async (walletType: WalletType, options: ConnectOptions = {}) => {
     if (!walletType) {
       setState(prev => ({ ...prev, error: 'No wallet selected' }));
       return;
@@ -201,11 +208,27 @@ export function useWallet() {
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Connection failed';
-      setState(prev => ({
-        ...prev,
-        isConnecting: false,
-        error: message,
-      }));
+      if (options.failClosedOnError) {
+        setState({
+          address: null,
+          walletType: null,
+          chainId: null,
+          isConnected: false,
+          isConnecting: false,
+          error: STALE_SIGNER_REFRESH_ERROR,
+        });
+        setNetworkMismatch({
+          hasMismatch: false,
+          expected: getExpectedChainId(),
+          actual: null,
+        });
+      } else {
+        setState(prev => ({
+          ...prev,
+          isConnecting: false,
+          error: message,
+        }));
+      }
     }
   }, [connectKeplr, connectXdefi, connectVultisig, checkNetworkMismatch, getExpectedChainId]);
 
@@ -232,6 +255,10 @@ export function useWallet() {
   }, [connect]);
 
   useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
     if (mountedRef.current) return;
     mountedRef.current = true;
 
@@ -243,6 +270,18 @@ export function useWallet() {
       }
     }
   }, [detectWallet, state.isConnected]);
+
+  useEffect(() => {
+    const handleKeplrKeyStoreChange = () => {
+      const current = stateRef.current;
+      if (current.isConnected && current.walletType === 'keplr') {
+        void connectRef.current('keplr', { failClosedOnError: true });
+      }
+    };
+
+    window.addEventListener('keplr_keystorechange', handleKeplrKeyStoreChange);
+    return () => window.removeEventListener('keplr_keystorechange', handleKeplrKeyStoreChange);
+  }, []);
 
   useEffect(() => {
     if (state.isConnected && state.walletType) {

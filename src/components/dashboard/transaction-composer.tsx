@@ -18,7 +18,6 @@ import {
   generateBondMemo,
   generateUnbondMemo,
 } from '@/lib/transactions/bond';
-import { useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 type Mode = 'BOND' | 'UNBOND';
@@ -31,6 +30,15 @@ interface CopyFeedbackState {
   message: string;
 }
 
+interface PreviewSnapshot {
+  amount: string;
+  memo: string;
+  mode: Mode;
+  nodeAddress: string;
+  walletAddress: string | null;
+  walletType: TransactionPreviewData['walletType'] | null;
+}
+
 const COPY_FEEDBACK_DURATION_MS = 4000;
 const DEFAULT_COPY_FEEDBACK: CopyFeedbackState = {
   action: null,
@@ -38,22 +46,26 @@ const DEFAULT_COPY_FEEDBACK: CopyFeedbackState = {
   message: '',
 };
 const WRONG_NETWORK_MESSAGE = 'Wallet is connected to the wrong network. Switch to THORChain mainnet before preview or broadcast.';
-const CONNECT_WALLET_MESSAGE = 'Connect a wallet when you are ready to preview and broadcast. Memo copy is available without a wallet.';
+const CONNECT_WALLET_MESSAGE = 'Connect a wallet for preview and broadcast. Memo copy stays local for manual wallet review.';
+const WALLET_CHANGED_MESSAGE = 'Connected wallet changed after preview opened. Close and review the transaction with the current wallet before broadcasting.';
 const WALLET_REQUIRED_LABEL = 'Wallet required';
 const STALE_PREVIEW_MESSAGE = 'Transaction details changed after preview opened. Review the form again before broadcasting.';
 const DEFAULT_SOURCE_SAFETY: TransactionSourceSafety = {
   canCopyBondMemo: false,
   canCopyUnbondMemo: false,
   canPreview: false,
-  detail: 'Transaction source confidence was not provided. Reload the transactions page before copying, previewing, or broadcasting.',
+  detail: 'Transaction source check was not provided. Reload the transactions page before copying, previewing, or broadcasting.',
   itemSeverity: 'warning',
-  status: 'Source confidence required',
+  status: 'Source check required',
   value: 'Awaiting THORNode check',
 };
 
 interface TransactionComposerProps {
   positions: BondPosition[];
   address?: string | null;
+  action?: 'bond' | 'unbond';
+  nodeParam?: string | null;
+  amountParam?: string | null;
   onModeChange?: (mode: 'bond' | 'unbond') => void;
   sourceSafety?: TransactionSourceSafety;
 }
@@ -61,15 +73,17 @@ interface TransactionComposerProps {
 export function TransactionComposer({
   positions,
   address,
+  action,
+  nodeParam,
+  amountParam,
   onModeChange,
   sourceSafety = DEFAULT_SOURCE_SAFETY,
 }: TransactionComposerProps) {
   void address;
-  const searchParams = useSearchParams();
-  const paramNode = searchParams?.get('node');
-  const paramAmount = searchParams?.get('amount');
+  const paramNode = nodeParam ?? null;
+  const paramAmount = amountParam ?? null;
   const paramAction = (() => {
-    switch (searchParams?.get('action')?.toLowerCase()) {
+    switch (action) {
       case 'bond':
         return 'BOND' as Mode;
       case 'unbond':
@@ -88,6 +102,7 @@ export function TransactionComposer({
   const [amountToUnbond, setAmountToUnbond] = useState(() => (paramAction === 'UNBOND' && paramAmount ? paramAmount : '0'));
   const [copyFeedback, setCopyFeedback] = useState<CopyFeedbackState>(DEFAULT_COPY_FEEDBACK);
   const [showPreview, setShowPreview] = useState(false);
+  const [previewSnapshot, setPreviewSnapshot] = useState<PreviewSnapshot | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [txResult, setTxResult] = useState<{ success: boolean; txHash?: string; error?: string } | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -100,7 +115,13 @@ export function TransactionComposer({
   });
   const copyFeedbackTimeoutRef = useRef<number | null>(null);
 
-  const { address: walletAddress, walletType, isConnected, isNetworkMismatch } = useWalletContext();
+  const {
+    address: walletAddress,
+    walletType,
+    isConnected,
+    isNetworkMismatch,
+    error: walletError,
+  } = useWalletContext();
 
   const effectiveNodeAddress = nodeAddress || (!touchedFields.nodeAddress ? positions[0]?.nodeAddress ?? '' : '');
 
@@ -166,14 +187,26 @@ export function TransactionComposer({
     return generateUnbondMemo(effectiveNodeAddress, amountToUnbond);
   }, [mode, effectiveNodeAddress, showAdvancedBondFields, bondProviderAddress, nodeOperatorFee, amountToUnbond]);
 
+  const transactionAmount = mode === 'BOND' ? bondAmount || '0' : amountToUnbond;
+
   const previewData: TransactionPreviewData = useMemo(() => ({
     type: mode,
     nodeAddress: effectiveNodeAddress,
-    amount: mode === 'BOND' ? bondAmount || '0' : amountToUnbond,
+    amount: transactionAmount,
     memo,
-    feeNote: 'Confirmed by wallet/network before broadcast',
-    walletType: walletType || 'keplr',
-  }), [mode, effectiveNodeAddress, bondAmount, amountToUnbond, memo, walletType]);
+    feeNote: 'Presented by wallet/network before approval',
+    walletAddress,
+    walletType,
+  }), [mode, effectiveNodeAddress, transactionAmount, memo, walletAddress, walletType]);
+
+  const currentPreviewSnapshot: PreviewSnapshot = useMemo(() => ({
+    amount: transactionAmount,
+    memo,
+    mode,
+    nodeAddress: effectiveNodeAddress,
+    walletAddress,
+    walletType,
+  }), [transactionAmount, memo, mode, effectiveNodeAddress, walletAddress, walletType]);
 
   const clearCopyFeedback = () => {
     if (copyFeedbackTimeoutRef.current !== null) {
@@ -215,7 +248,7 @@ export function TransactionComposer({
       setCopyFeedback({
         action,
         status: 'success',
-        message: 'Memo copied to your clipboard. Paste it into your wallet when you are ready.',
+        message: 'Memo copied to your clipboard. Paste it into your wallet only after reviewing amount, memo, and fee.',
       });
       scheduleCopyFeedbackReset();
     } catch {
@@ -239,6 +272,11 @@ export function TransactionComposer({
       return;
     }
 
+    if (previewBlockerReason) {
+      setTxResult({ success: false, error: previewBlockerReason });
+      return;
+    }
+
     if (!walletAddress || !walletType || !canSubmit) {
       setTxResult({ success: false, error: STALE_PREVIEW_MESSAGE });
       return;
@@ -250,7 +288,7 @@ export function TransactionComposer({
       const params = {
         type: mode,
         nodeAddress: effectiveNodeAddress,
-        amount: mode === 'BOND' ? bondAmount || '0' : amountToUnbond,
+        amount: transactionAmount,
         memo,
         walletType,
       };
@@ -258,7 +296,10 @@ export function TransactionComposer({
         ? await executeBondTransaction(params, walletAddress)
         : await executeUnbondTransaction(params, walletAddress);
       setTxResult(result);
-      if (result.success) setShowPreview(false);
+      if (result.success) {
+        setShowPreview(false);
+        setPreviewSnapshot(null);
+      }
     } catch (err) {
       setTxResult({ success: false, error: err instanceof Error ? err.message : 'Transaction failed' });
     } finally {
@@ -275,16 +316,35 @@ export function TransactionComposer({
   const sourceAllowsPreview = sourceSafety.canPreview;
   const sourceAllowsBondMemo = sourceSafety.canCopyBondMemo;
   const sourceAllowsUnbondMemo = sourceSafety.canCopyUnbondMemo;
+  const walletUnavailableMessage = walletError ?? CONNECT_WALLET_MESSAGE;
 
   const canSubmit = sourceAllowsPreview && isConnected && !isNetworkMismatch && nodeIsValid && (
     mode === 'BOND'
       ? bondAmountIsValid && providerIsValid
       : hasSelectedPosition && canUnbond && unbondAmountIsValid
   );
-  const previewBlockerReason = showPreview && !canSubmit
+  const previewWalletChanged = Boolean(showPreview && previewSnapshot && (
+    previewSnapshot.walletAddress !== currentPreviewSnapshot.walletAddress
+    || previewSnapshot.walletType !== currentPreviewSnapshot.walletType
+  ));
+  const previewDetailsChanged = Boolean(showPreview && previewSnapshot && (
+    previewSnapshot.amount !== currentPreviewSnapshot.amount
+    || previewSnapshot.memo !== currentPreviewSnapshot.memo
+    || previewSnapshot.mode !== currentPreviewSnapshot.mode
+    || previewSnapshot.nodeAddress !== currentPreviewSnapshot.nodeAddress
+  ));
+  const previewBlockerReason = showPreview
     ? isNetworkMismatch
       ? WRONG_NETWORK_MESSAGE
-      : STALE_PREVIEW_MESSAGE
+      : !sourceAllowsPreview
+        ? sourceSafety.detail
+        : !isConnected || !walletAddress || !walletType
+          ? walletUnavailableMessage
+          : previewWalletChanged
+            ? WALLET_CHANGED_MESSAGE
+            : previewDetailsChanged || !canSubmit
+              ? STALE_PREVIEW_MESSAGE
+              : undefined
     : undefined;
 
   const shouldShowNodeError = submitAttempted || touchedFields.nodeAddress;
@@ -297,7 +357,7 @@ export function TransactionComposer({
     : !sourceAllowsPreview
       ? sourceSafety.detail
       : !isConnected
-      ? CONNECT_WALLET_MESSAGE
+      ? walletUnavailableMessage
       : undefined;
   const actionGuidanceId = actionGuidanceMessage ? 'transaction-action-guidance' : undefined;
   const ActionGuidanceIcon = isNetworkMismatch || !sourceAllowsPreview ? AlertTriangle : Info;
@@ -364,20 +424,20 @@ export function TransactionComposer({
       ? !nodeValidation.valid
         ? 'Enter a valid node address before copying a BOND memo.'
         : !sourceAllowsBondMemo
-          ? 'THORNode source confidence must be fresh before copying a BOND memo.'
+          ? 'THORNode source check must pass before copying a BOND memo.'
           : 'Fix advanced BOND memo fields before copying.'
       : !sourceAllowsUnbondMemo
-        ? 'THORNode source confidence must be fresh before copying an UNBOND memo.'
+        ? 'THORNode source check must pass before copying an UNBOND memo.'
       : 'Select an eligible standby node and valid amount before copying an UNBOND memo.';
   const memoReadinessDetail = canCopyMemo
     ? mode === 'BOND'
       ? sourceAllowsPreview
-        ? 'Memo is ready to copy. Your wallet will confirm amount and fees before broadcast.'
-        : 'Memo is ready to copy. Preview and broadcast still wait for fresh THORNode source confidence.'
-      : 'UNBOND memo is ready to copy with the amount encoded in 1e8 base units.'
+        ? 'Memo can be copied for wallet review. Your wallet will present amount and fees before approval/broadcast.'
+        : 'Memo can be copied for wallet review. Preview and broadcast still wait for the THORNode source check to pass.'
+      : 'UNBOND memo can be copied for wallet review; amount is encoded in 1e8 base units.'
     : mode === 'BOND'
       ? !sourceAllowsBondMemo
-        ? 'BOND copy stays disabled until THORNode source confidence is fresh.'
+        ? 'BOND copy stays disabled until the THORNode source check passes.'
         : 'Copy stays disabled until the node address and advanced memo fields are valid.'
       : !sourceAllowsUnbondMemo
         ? 'UNBOND copy stays disabled until THORNode can prove standby eligibility.'
@@ -395,6 +455,7 @@ export function TransactionComposer({
 
     setMode(nextMode);
     setTxResult(null);
+    setPreviewSnapshot(null);
     setSubmitAttempted(false);
     onModeChange?.(normalizedMode);
   };
@@ -406,6 +467,7 @@ export function TransactionComposer({
   const handleOpenPreview = () => {
     setSubmitAttempted(true);
     if (canSubmit) {
+      setPreviewSnapshot(currentPreviewSnapshot);
       setShowPreview(true);
     }
   };
@@ -419,7 +481,7 @@ export function TransactionComposer({
             onClick={() => handleModeChange('BOND')}
             aria-pressed={mode === 'BOND'}
             className={cn('px-4 py-2 rounded-md font-medium transition text-sm',
-              mode === 'BOND' ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100')}
+              mode === 'BOND' ? 'bg-sky-600 text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100')}
           >
             BOND
           </button>
@@ -458,17 +520,17 @@ export function TransactionComposer({
         </div>
       )}
 
-      <div className="bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-5 space-y-5 hover:shadow-md hover:shadow-emerald-500/10 transition-all">
+      <div className="bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-5 space-y-5 hover:shadow-md hover:shadow-sky-500/10 transition-all">
         <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
           {mode === 'BOND' ? (
             <>
               Bond payload minimum: <span className="font-mono text-zinc-700 dark:text-zinc-200">1 RUNE</span>
-              <span className="block mt-1">Network fees are dynamic and confirmed by the wallet before broadcast.</span>
+              <span className="block mt-1">Network fees are dynamic and shown by the wallet before approval/broadcast.</span>
             </>
           ) : (
             <>
               UNBOND uses a zero-RUNE deposit payload.
-              <span className="block mt-1">The requested amount is encoded in the memo in 1e8 base units; wallet/network fees are confirmed before broadcast.</span>
+              <span className="block mt-1">The requested amount is encoded in the memo in 1e8 base units; the wallet presents any network fee before approval/broadcast.</span>
             </>
           )}
         </div>
@@ -652,7 +714,10 @@ export function TransactionComposer({
         <TransactionPreview
           data={previewData}
           onConfirm={handleSignAndBroadcast}
-          onCancel={() => setShowPreview(false)}
+          onCancel={() => {
+            setShowPreview(false);
+            setPreviewSnapshot(null);
+          }}
           isLoading={isSubmitting}
           error={txResult?.error}
           confirmDisabled={Boolean(previewBlockerReason)}

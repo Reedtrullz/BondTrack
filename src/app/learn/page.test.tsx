@@ -10,7 +10,8 @@ describe('LearnPage', () => {
     expect(screen.getByRole('heading', { name: 'Provider playbook' })).toBeInTheDocument();
 
     const triage = screen.getByLabelText('Learning triage');
-    expect(triage).toHaveTextContent('Start with provider exposure scoring');
+    expect(triage).toHaveTextContent('Start with provider exposure review states');
+    expect(triage).not.toHaveTextContent('Start with provider exposure scoring');
     expect(within(triage).getByRole('link', { name: /Open Provider Exposure Guide/i })).toHaveAttribute(
       'href',
       '/learn/health-score-guide'

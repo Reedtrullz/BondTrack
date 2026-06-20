@@ -3,9 +3,14 @@
 import { createContext, createElement, useState, useEffect, useCallback, useRef, useContext } from 'react';
 import type { ReactNode } from 'react';
 import type { BondPosition } from '@/lib/types/node';
+import {
+  DEFAULT_ALERT_PREFERENCES,
+  type AlertPreferences,
+  type AlertType,
+} from '@/lib/alerts/types';
 import { readLocalStorageValue, STORAGE_KEYS, writeLocalStorageValue } from '@/lib/storage/keys';
 
-export type AlertType = 'SLASH_INCREASE' | 'JAIL' | 'CHURN_RISK' | 'NODE_STATUS_CHANGE';
+export type { AlertPreferences, AlertType } from '@/lib/alerts/types';
 
 export interface Alert {
   id: string;
@@ -16,22 +21,8 @@ export interface Alert {
   dismissed: boolean;
 }
 
-export interface AlertPreferences {
-  slashAlerts: boolean;
-  jailAlerts: boolean;
-  churnAlerts: boolean;
-  statusAlerts: boolean;
-}
-
 const STORAGE_KEY = STORAGE_KEYS.alerts;
 const RATE_LIMIT_MS = 5 * 60 * 1000;
-
-const DEFAULT_ALERT_PREFERENCES: AlertPreferences = {
-  slashAlerts: true,
-  jailAlerts: true,
-  churnAlerts: true,
-  statusAlerts: true,
-};
 
 function getStoredAlertState(): {
   alerts: Alert[];
@@ -203,7 +194,7 @@ export function useAlerts() {
     if (currentSlashPoints > previousSlashPoints) {
       const delta = currentSlashPoints - previousSlashPoints;
       triggerAlert('SLASH_INCREASE', nodeAddress,
-        `Node ${nodeAddress.slice(0, 12)}... slashed: +${delta} points`);
+        `Node ${nodeAddress.slice(0, 12)}... slash points increased by ${delta} to ${currentSlashPoints}. Review provider exposure before changing bond.`);
     }
   }, [triggerAlert]);
 
@@ -214,7 +205,7 @@ export function useAlerts() {
   ) => {
     if (currentPosition.isJailed && previousPosition && !previousPosition.isJailed) {
       triggerAlert('JAIL', nodeAddress,
-        `Node ${nodeAddress.slice(0, 12)}... has been jailed: ${currentPosition.jailReason || 'Unknown reason'}`);
+        `Node ${nodeAddress.slice(0, 12)}... entered jail: ${currentPosition.jailReason || 'reason unavailable'}. Review slash, jail, and unbond context before acting.`);
     }
   }, [triggerAlert]);
 
@@ -225,7 +216,7 @@ export function useAlerts() {
   ) => {
     if (previousStatus && currentStatus !== previousStatus) {
       triggerAlert('NODE_STATUS_CHANGE', nodeAddress,
-        `Node ${nodeAddress.slice(0, 12)}... status changed: ${previousStatus} → ${currentStatus}`);
+        `Node ${nodeAddress.slice(0, 12)}... status changed from ${previousStatus} to ${currentStatus}. Review source freshness and provider exposure before acting.`);
     }
   }, [triggerAlert]);
 

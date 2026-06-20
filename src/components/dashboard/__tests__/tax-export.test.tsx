@@ -62,6 +62,22 @@ describe('TaxExport', () => {
     vi.restoreAllMocks();
   });
 
+  it('presents empty LP export state as a current source result', () => {
+    mockUseLpPositions.mockReturnValue({
+      positions: [],
+      isLoading: false,
+      isHistoricalEnrichmentLoading: false,
+      error: undefined,
+    });
+
+    render(<TaxExport address="thor1lpaddress" />);
+
+    expect(screen.getByText('No current LP positions are available for CSV export.')).toBeInTheDocument();
+    expect(screen.getByText(/Midgard returned no active LP pools for this address/i)).toBeInTheDocument();
+    expect(screen.getByText(/not proof of past liquidity activity or pending changes/i)).toBeInTheDocument();
+    expect(screen.queryByText('No LP positions found for this address.')).not.toBeInTheDocument();
+  });
+
   it('disables LP CSV export while historical pricing enrichment is still loading', () => {
     mockUseLpPositions.mockReturnValue({
       positions: [{

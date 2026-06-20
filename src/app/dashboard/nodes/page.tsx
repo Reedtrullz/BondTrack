@@ -15,15 +15,17 @@ import { InsightHeader } from '@/components/dashboard/insight-header';
 import { buildDashboardInsightState } from '@/lib/dashboard/insights';
 import {
   buildNodesPageModel,
-  calculateNodeRiskScore,
+  getNodeReviewState,
   getNodeRowRiskClass,
   isUrgentNodeException,
+  type NodeReviewStateSeverity,
   type NodesSortDirection,
   type NodesSortField,
 } from '@/lib/dashboard/nodes-context';
 import { getCandidateBondSourceSafety } from '@/lib/dashboard/candidate-bond-source-safety';
 import { useApiHealthContext } from '@/lib/hooks/use-api-health';
 import { formatRuneDisplayNumber, formatBasisPoints, formatPercent } from '@/lib/utils/formatters';
+import { cn } from '@/lib/utils';
 
 function isUsableNodeMetric(value: number): boolean {
   return Number.isFinite(value) && value >= 0;
@@ -40,6 +42,13 @@ function formatNodePercent(value: number): string {
 function formatNodeNumber(value: number): string {
   return isUsableNodeMetric(value) ? value.toLocaleString() : '--';
 }
+
+const nodeReviewStateClass: Record<NodeReviewStateSeverity, string> = {
+  critical: 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300',
+  warning: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300',
+  info: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-300',
+  healthy: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300',
+};
 
 function SortHeader({
   label,
@@ -145,7 +154,7 @@ export default function NodesPage() {
           items={nodeInsight.actions.slice(0, 4)}
           title="Node exceptions"
           emptyTitle="No tracked node exceptions"
-          emptyDetail="This address is valid, but no bonded nodes are attached to it yet."
+          emptyDetail="Current THORNode node data does not show bonded nodes for this address. Treat this as the current source result, not proof of address validity or past/pending bond activity."
           compact
         />
         <DashboardCard className="p-5">
@@ -153,7 +162,7 @@ export default function NodesPage() {
             No bonded nodes tracked
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-            Confirm the provider address, prepare a BOND transaction, or use Node Discovery to inspect candidate nodes before committing capital.
+            Confirm the provider address, review source checks, open BOND review, or use Node Discovery to inspect candidate nodes before committing capital.
           </p>
         </DashboardCard>
       </div>
@@ -178,8 +187,8 @@ export default function NodesPage() {
         <ActionQueue
           items={nodeInsight.actions.slice(0, 4)}
           title="Node exceptions"
-          emptyTitle="No node exceptions"
-          emptyDetail="All tracked nodes are active, unjailed, below slash warning thresholds, and clear of churn-risk flags."
+          emptyTitle="No urgent node exception visible"
+          emptyDetail="Current THORNode node data does not show jail, elevated slash, churn-risk, or status exceptions. Routine metrics remain visible below."
           compact
         />
         <div className="flex items-center justify-between gap-3">
@@ -206,7 +215,7 @@ export default function NodesPage() {
           <div>
             <h2 className="text-2xl font-bold text-zinc-950 dark:text-zinc-50">Node Comparison</h2>
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-              Sortable overview of all bonded nodes. Rows are color-coded by review state: red for jailed nodes, amber for elevated slash or provider-review flags.
+              Sortable overview of all bonded nodes. Review state labels name the reason before the full row details.
             </p>
           </div>
         </div>
@@ -214,7 +223,7 @@ export default function NodesPage() {
           className="max-w-full overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800"
           aria-label="Scrollable node comparison"
         >
-          <table className="min-w-[56rem] divide-y divide-zinc-200 dark:divide-zinc-800">
+          <table className="min-w-[62rem] divide-y divide-zinc-200 dark:divide-zinc-800">
             <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-950/60">
               <tr>
                 <SortHeader label="Node Address" field="nodeAddress" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
@@ -223,44 +232,63 @@ export default function NodesPage() {
                 <SortHeader label="APY" field="netAPY" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
                 <SortHeader label="Slash Points" field="slashPoints" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
                 <SortHeader label="Operator Fee" field="operatorFee" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
-                <SortHeader label="Review Score" field="riskScore" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
+                <SortHeader label="Review State" field="riskScore" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-900/50">
-              {sortedPositions.map((position) => (
-                <tr
-                  key={position.nodeAddress}
-                  className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors ${getNodeRowRiskClass(position)}`}
-                  data-urgent-exception={isUrgentNodeException(position) ? 'true' : 'false'}
-                >
-                  <td className="px-4 py-3 font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                    {position.nodeAddress.slice(0, 8)}...{position.nodeAddress.slice(-4)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100">
-                    {position.status}
-                    {position.isJailed && (
-                      <span className="ml-2 inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300">
-                        Jailed
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                    {formatNodeRune(position.bondAmount)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                    {formatNodePercent(position.netAPY)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                    {formatNodeNumber(position.slashPoints)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                    {isUsableNodeMetric(position.operatorFee) ? formatBasisPoints(position.operatorFee) : '--'}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-sm text-zinc-900 dark:text-zinc-100">
-                    {calculateNodeRiskScore(position).toFixed(0)}
-                  </td>
-                </tr>
-              ))}
+              {sortedPositions.map((position) => {
+                const reviewState = getNodeReviewState(position);
+
+                return (
+                  <tr
+                    key={position.nodeAddress}
+                    className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors ${getNodeRowRiskClass(position)}`}
+                    data-urgent-exception={isUrgentNodeException(position) ? 'true' : 'false'}
+                  >
+                    <td className="px-4 py-3 font-mono text-sm text-zinc-900 dark:text-zinc-100">
+                      {position.nodeAddress.slice(0, 8)}...{position.nodeAddress.slice(-4)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100">
+                      {position.status}
+                      {position.isJailed && (
+                        <span className="ml-2 inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                          Jailed
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-sm text-zinc-900 dark:text-zinc-100">
+                      {formatNodeRune(position.bondAmount)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-sm text-zinc-900 dark:text-zinc-100">
+                      {formatNodePercent(position.netAPY)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-sm text-zinc-900 dark:text-zinc-100">
+                      {formatNodeNumber(position.slashPoints)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-sm text-zinc-900 dark:text-zinc-100">
+                      {isUsableNodeMetric(position.operatorFee) ? formatBasisPoints(position.operatorFee) : '--'}
+                    </td>
+                    <td
+                      aria-label={`${reviewState.label} ${reviewState.detail}`}
+                      className="px-4 py-3 text-left text-sm text-zinc-900 dark:text-zinc-100"
+                    >
+                      <div className="flex min-w-44 flex-col items-start gap-1">
+                        <span
+                          className={cn(
+                            'inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold',
+                            nodeReviewStateClass[reviewState.severity]
+                          )}
+                        >
+                          {reviewState.label}
+                        </span>
+                        <span className="max-w-52 text-xs leading-4 text-zinc-500 dark:text-zinc-400">
+                          {reviewState.detail}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

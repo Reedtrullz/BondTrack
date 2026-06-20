@@ -25,6 +25,7 @@ export interface TaxReportResult {
 
 const TAX_ACTION_PAGE_SIZE = NETWORK.MAX_ACTIONS_LIMIT;
 const TAX_ACTION_MAX_PAGES = Math.ceil(10_000 / TAX_ACTION_PAGE_SIZE);
+export const MAX_TAX_DATE_RANGE_DAYS = 366;
 
 const LP_CURRENT_POSITION_ESTIMATE_NOTE =
   'current-position estimate; historical LP add/withdraw reconstruction is not implemented';
@@ -118,6 +119,11 @@ export function parseTaxDateRange(startDate: string, endDate: string): TaxDateRa
 
   if (startMs > endMs) {
     throw new Error('Start date must be before or equal to end date');
+  }
+
+  const rangeDays = Math.floor((endMs - startMs) / 86_400_000) + 1;
+  if (rangeDays > MAX_TAX_DATE_RANGE_DAYS) {
+    throw new Error(`Tax worksheet range cannot exceed ${MAX_TAX_DATE_RANGE_DAYS} days`);
   }
 
   return {

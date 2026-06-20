@@ -2,6 +2,7 @@ import type { RunePriceInterval } from '@/lib/hooks/use-rune-price';
 import type { LpPosition } from '@/lib/types/lp';
 import type { BondPosition } from '@/lib/types/node';
 import { formatRuneFromNumber, formatUsd } from '@/lib/utils/formatters';
+import type { MidgardFreshness } from '@/lib/utils/midgard-time';
 import type { MetricStripItem } from './insights';
 
 export interface PortfolioAllocationDatum {
@@ -27,9 +28,11 @@ export interface BuildPortfolioPageModelInput {
   bondPositions: BondPosition[];
   lpError?: unknown;
   lpPositions: LpPosition[];
+  lpRunePriceFreshness?: MidgardFreshness;
   runePrice: number;
   runePriceHistory: RunePriceInterval[];
   runePriceIsStale: boolean;
+  runePriceUpdatedAt?: Date | null;
 }
 
 const BOND_ALLOCATION_COLOR = '#10b981';
@@ -83,7 +86,7 @@ function getAllocationLabel(totalBondedValueUsd: number, totalLpValueUsd: number
       label: 'Allocation',
       value: 'Mixed',
       detail: 'Bond and LP exposure',
-      severity: 'healthy',
+      severity: 'info',
     };
   }
 
@@ -116,7 +119,47 @@ function getAllocationLabel(totalBondedValueUsd: number, totalLpValueUsd: number
   };
 }
 
-function getLpValuationMetric(lpDataUnavailable: boolean, lpPositions: LpPosition[]): MetricStripItem {
+function getBondExposureMetric(bondPositions: BondPosition[], totalBondedRune: number): MetricStripItem {
+  const jailedCount = bondPositions.filter((position) => position.isJailed).length;
+
+  if (jailedCount > 0) {
+    return {
+      id: 'bond-exposure',
+      label: 'Bond exposure',
+      value: `${jailedCount} urgent`,
+      detail: `${jailedCount} jailed node${jailedCount === 1 ? '' : 's'} need${jailedCount === 1 ? 's' : ''} review before adding bond`,
+      severity: 'critical',
+    };
+  }
+
+  const flaggedCount = bondPositions.filter((position) => (
+    position.requestedToLeave || (position.yieldGuardFlags?.length ?? 0) > 0
+  )).length;
+
+  if (flaggedCount > 0) {
+    return {
+      id: 'bond-exposure',
+      label: 'Bond exposure',
+      value: `${flaggedCount} flagged`,
+      detail: 'Review churn, slash, or leaving signals before adding bond',
+      severity: 'warning',
+    };
+  }
+
+  return {
+    id: 'bond-exposure',
+    label: 'Bond exposure',
+    value: bondPositions.length === 0 ? 'No bond' : `${bondPositions.length} node${bondPositions.length === 1 ? '' : 's'}`,
+    detail: totalBondedRune > 0 ? `${formatRuneFromNumber(totalBondedRune)} tracked` : 'No bonded RUNE',
+    severity: 'info',
+  };
+}
+
+function getLpValuationMetric(
+  lpDataUnavailable: boolean,
+  lpPositions: LpPosition[],
+  lpRunePriceFreshness?: MidgardFreshness
+): MetricStripItem {
   if (lpDataUnavailable) {
     return {
       id: 'lp-valuation',
@@ -148,6 +191,26 @@ function getLpValuationMetric(lpDataUnavailable: boolean, lpPositions: LpPositio
     };
   }
 
+  if (!lpRunePriceFreshness) {
+    return {
+      id: 'lp-valuation',
+      label: 'LP valuation',
+      value: 'Quote unknown',
+      detail: 'LP USD values waiting for RUNE price check',
+      severity: 'warning',
+    };
+  }
+
+  if (lpRunePriceFreshness.isStale) {
+    return {
+      id: 'lp-valuation',
+      label: 'LP valuation',
+      value: 'Quote stale',
+      detail: 'LP USD values use stale RUNE quote',
+      severity: 'warning',
+    };
+  }
+
   const currentOnlyCount = lpPositions.filter((position) => position.pricingSource === 'current-only').length;
   if (currentOnlyCount > 0) {
     return {
@@ -173,9 +236,9 @@ function getLpValuationMetric(lpDataUnavailable: boolean, lpPositions: LpPositio
   return {
     id: 'lp-valuation',
     label: 'LP valuation',
-    value: 'Ready',
-    detail: `${lpPositions.length} LP position${lpPositions.length === 1 ? '' : 's'} included`,
-    severity: 'healthy',
+    value: 'Source-loaded',
+    detail: `${lpPositions.length} THORNode LP value row${lpPositions.length === 1 ? '' : 's'} loaded for review`,
+    severity: 'info',
   };
 }
 
@@ -183,8 +246,10 @@ function buildConfidenceMetrics({
   bondPositions,
   lpDataUnavailable,
   lpPositions,
+  lpRunePriceFreshness,
   runePrice,
   runePriceIsStale,
+  runePriceUpdatedAt,
   totalBondedRune,
   totalBondedValueUsd,
   totalLpValueUsd,
@@ -192,29 +257,43 @@ function buildConfidenceMetrics({
   bondPositions: BondPosition[];
   lpDataUnavailable: boolean;
   lpPositions: LpPosition[];
+  lpRunePriceFreshness?: MidgardFreshness;
   runePrice: number;
   runePriceIsStale: boolean;
+  runePriceUpdatedAt?: Date | null;
   totalBondedRune: number;
   totalBondedValueUsd: number;
   totalLpValueUsd: number;
 }): MetricStripItem[] {
+  const hasRunePrice = runePrice > 0;
+  const hasRunePriceFreshness = Boolean(runePriceUpdatedAt);
+  const runePriceValue = !hasRunePrice
+    ? 'Missing'
+    : runePriceIsStale
+      ? 'Stale'
+      : hasRunePriceFreshness
+        ? 'Recent'
+        : 'Unverified';
+  const runePriceDetail = !hasRunePrice
+    ? 'USD values unavailable'
+    : runePriceIsStale
+      ? 'USD values use last quote'
+      : hasRunePriceFreshness
+        ? `${formatUsd(runePrice, 4, 2)} quote loaded`
+        : `${formatUsd(runePrice, 4, 2)} quote loaded without freshness`;
+  const runePriceSeverity = hasRunePrice && !runePriceIsStale && hasRunePriceFreshness
+    ? 'info'
+    : 'warning';
+
   return [
-    {
-      id: 'bond-exposure',
-      label: 'Bond exposure',
-      value: bondPositions.length === 0 ? 'No bond' : `${bondPositions.length} node${bondPositions.length === 1 ? '' : 's'}`,
-      detail: totalBondedRune > 0 ? `${formatRuneFromNumber(totalBondedRune)} tracked` : 'No bonded RUNE',
-      severity: bondPositions.length > 0 ? 'healthy' : 'info',
-    },
-    getLpValuationMetric(lpDataUnavailable, lpPositions),
+    getBondExposureMetric(bondPositions, totalBondedRune),
+    getLpValuationMetric(lpDataUnavailable, lpPositions, lpRunePriceFreshness),
     {
       id: 'rune-price',
       label: 'RUNE price',
-      value: runePrice > 0 ? (runePriceIsStale ? 'Stale' : 'Fresh') : 'Missing',
-      detail: runePrice > 0
-        ? (runePriceIsStale ? 'USD values use last quote' : `${formatUsd(runePrice, 4, 2)} quote loaded`)
-        : 'USD values unavailable',
-      severity: runePrice > 0 && !runePriceIsStale ? 'healthy' : 'warning',
+      value: runePriceValue,
+      detail: runePriceDetail,
+      severity: runePriceSeverity,
     },
     getAllocationLabel(totalBondedValueUsd, totalLpValueUsd),
   ];
@@ -224,9 +303,11 @@ export function buildPortfolioPageModel({
   bondPositions,
   lpError,
   lpPositions,
+  lpRunePriceFreshness,
   runePrice,
   runePriceHistory,
   runePriceIsStale,
+  runePriceUpdatedAt,
 }: BuildPortfolioPageModelInput): PortfolioPageModel {
   const lpDataUnavailable = Boolean(lpError);
   const effectiveLpPositions = lpDataUnavailable ? [] : lpPositions;
@@ -243,8 +324,10 @@ export function buildPortfolioPageModel({
       bondPositions,
       lpDataUnavailable,
       lpPositions: effectiveLpPositions,
+      lpRunePriceFreshness,
       runePrice,
       runePriceIsStale,
+      runePriceUpdatedAt,
       totalBondedRune,
       totalBondedValueUsd,
       totalLpValueUsd,

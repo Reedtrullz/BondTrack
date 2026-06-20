@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { LpPosition } from '../../lib/types/lp';
 import { formatPercent, formatRuneAmount, formatUsd, formatAmount } from '../../lib/utils/formatters';
-import { normalizeMidgardTimestampToDate } from '@/lib/utils/midgard-time';
+import { formatMidgardDate, normalizeMidgardTimestampToDate } from '@/lib/utils/midgard-time';
 import { LpStatusBadge } from './lp-status-badge';
 
 function getSignedTone(value: number | null | undefined): string {
@@ -45,6 +45,21 @@ function getRedeemQuoteDetail(position: LpPosition): string {
     case 'unavailable':
       return 'THORNode redeem unavailable';
   }
+}
+
+function getEntryPricingDetail(position: LpPosition): string {
+  if (position.pricingSource === 'current-only') {
+    return 'Historical entry unavailable';
+  }
+
+  if (position.pricingSource === 'estimated') {
+    const estimateSource = position.entryRunePriceSource === 'coingecko'
+      ? 'external CoinGecko quote'
+      : 'estimated entry';
+    return `${formatPercent(position.netProfitLossPercent)} · ${estimateSource}`;
+  }
+
+  return formatPercent(position.netProfitLossPercent);
 }
 
 export const LpSummaryCard: React.FC<{
@@ -130,11 +145,7 @@ export const LpSummaryCard: React.FC<{
               : formatUsd(position.netProfitLossUsd, 0)}
           detail={isPositionHistoricalEnriching
             ? 'Historical entry loading'
-            : position.pricingSource === 'current-only'
-              ? 'Historical entry unavailable'
-              : position.pricingSource === 'estimated'
-                ? `${formatPercent(position.netProfitLossPercent)} · estimated entry`
-                : formatPercent(position.netProfitLossPercent)}
+            : getEntryPricingDetail(position)}
           valueClassName={pnlTone}
         />
         <MetricCard 
@@ -168,7 +179,7 @@ export const LpSummaryCard: React.FC<{
         <MetricCard 
           label="Time in Pool" 
           value={timeInPool} 
-          detail={`Added ${normalizeMidgardTimestampToDate(position.dateFirstAdded)?.toLocaleDateString() ?? 'Unknown'}`}
+          detail={`Added ${formatMidgardDate(position.dateFirstAdded, 'Unknown')}`}
         />
       </div>
     </div>
@@ -187,7 +198,7 @@ function MetricCard({ label, value, detail, valueClassName = 'text-zinc-900 dark
     <div className="min-w-0">
       <p className="text-sm text-zinc-500 dark:text-zinc-400 truncate">{label}</p>
       <p className={`text-xl font-semibold font-display truncate ${valueClassName}`} title={value}>{value}</p>
-      {detail ? <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 truncate" title={detail}>{detail}</p> : null}
+      {detail ? <p className="mt-1 text-xs leading-snug text-zinc-500 dark:text-zinc-400 break-words" title={detail}>{detail}</p> : null}
     </div>
   );
 }

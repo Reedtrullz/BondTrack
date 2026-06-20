@@ -20,7 +20,7 @@ const dashboardActions = [
   {
     label: 'Prepare transaction',
     href: '/dashboard/transactions',
-    detail: 'Use wallet-confirmed BOND and UNBOND previews.',
+    detail: 'Review BOND and UNBOND payloads before wallet approval.',
     icon: <WalletCards className="h-4 w-4" aria-hidden="true" />,
   },
 ];
@@ -51,7 +51,7 @@ export default function LearnPage() {
           <div>
             <p className="text-xs font-bold uppercase text-amber-700 dark:text-amber-300">Start here</p>
             <h2 className="mt-1 text-xl font-bold text-zinc-950 dark:text-zinc-50">
-              Start with provider exposure scoring
+              Start with provider exposure review states
             </h2>
             <p className="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
               Use this when {firstRead.useCase}

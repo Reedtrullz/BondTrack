@@ -14,6 +14,8 @@ src/app/
 │   ├── coingecko/[...path]/ # CoinGecko proxy + caching
 │   ├── coinapi/rune-price/ # CoinAPI-backed historical price
 │   ├── address/[address]/  # Midgard bond+action aggregation
+│   ├── notifications/      # Browser push status/subscribe/unsubscribe
+│   ├── internal/notifications/run/ # Token-gated notification monitor trigger
 │   ├── pools/[pool]/       # Pool earnings aggregation
 │   ├── health/             # Health check endpoint
 │   └── tax-report/         # Tax CSV export (server-side)
@@ -31,7 +33,7 @@ src/app/
 │   ├── explorer/           # Network-wide node explorer
 │   ├── changelogs/         # TCC/TCU changelog browser
 │   └── settings/
-│       └── notifications/  # Local browser/in-app alert preferences; email/Telegram are visibly not connected yet
+│       └── notifications/  # Browser push + open-tab alert preferences; email/Telegram are visibly not connected yet
 └── learn/
     ├── layout.tsx          # Learn section layout
     ├── page.tsx            # Learn index
@@ -52,7 +54,7 @@ src/app/
 
 **Pages using `useSearchParams`**: Must be `'use client'` and wrapped in `Suspense`. `dashboard/layout.tsx` provides this.
 
-**API routes**: All proxies use `export const dynamic = 'force-dynamic'`. Rate-limited via `src/lib/api/rate-limit.ts`. Custom endpoints (address, pools, tax-report) aggregate Midgard data server-side. `/api/address/[address]` action amounts expose `amountBaseUnits` (string, 1e8 base units) and `amountRune` (number); do not return raw base units as an unlabeled `amount`.
+**API routes**: All proxies use `export const dynamic = 'force-dynamic'`. Rate-limited via `src/lib/api/rate-limit.ts`. Custom endpoints (address, pools, tax-report, notifications) aggregate or persist server-side state. `/api/address/[address]` accepts checksum-valid THORChain mainnet addresses only, and action amounts expose `amountBaseUnits` (string, 1e8 base units) and `amountRune` (number); do not return raw base units as an unlabeled `amount`.
 
 **Health endpoints**: `/api/health` is local process liveness and returns `{ status, timestamp, version }`. `/api/ready` is deployment readiness and returns `200 { status: "ready", version, checks }` only when THORNode `nodes` and Midgard `v2/health` succeed through runtime server config with `cache: 'no-store'`; otherwise it returns `503 { status: "degraded", version, checks }`. Version: `process.env.VERSION` -> `"unknown"`.
 

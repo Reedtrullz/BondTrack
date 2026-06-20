@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Activity, AlertCircle, AlertTriangle, Bell, Info, Mail, Monitor, RotateCcw, Send, ShieldAlert, Trash2, WifiOff } from 'lucide-react';
+import { Activity, AlertCircle, AlertTriangle, Bell, Info, Mail, Monitor, RadioTower, RotateCcw, Send, ShieldAlert, Trash2, WifiOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useAlertsContext, type Alert, type AlertPreferences, type AlertType } from '@/lib/hooks/use-alerts';
+import { useBackgroundNotifications } from '@/lib/hooks/use-background-notifications';
 import { cn } from '@/lib/utils';
 
 type LocalAlertSetting = {
@@ -120,6 +121,191 @@ function buildAlertRiskHref(address: string | null, nodeAddress: string): string
   params.set('node', nodeAddress);
 
   return `/dashboard/risk?${params.toString()}`;
+}
+
+type BackgroundDeliveryConfidence = 'none' | 'pending' | 'failed' | 'stale' | 'proven';
+
+function getBackgroundDeliveryConfidence(
+  monitor: ReturnType<typeof useBackgroundNotifications>['monitor'],
+  subscriptionCount: number
+): BackgroundDeliveryConfidence {
+  if (subscriptionCount <= 0) return 'none';
+
+  if (!monitor || monitor.uncheckedSubscriptionCount > 0 || monitor.lastCheckedAt === null) {
+    return 'pending';
+  }
+
+  if (monitor.failedSubscriptionCount > 0) {
+    return 'failed';
+  }
+
+  if (monitor.staleSubscriptionCount > 0) {
+    return 'stale';
+  }
+
+  return 'proven';
+}
+
+function backgroundStatusCopy(
+  status: ReturnType<typeof useBackgroundNotifications>['status'],
+  hasAddress: boolean,
+  deliveryConfidence: BackgroundDeliveryConfidence,
+  isBrowserPermissionBlocked: boolean
+) {
+  if (!hasAddress) {
+    return {
+      title: 'Open an address to enable background push.',
+      detail: 'Background delivery is tied to one watched THORChain address at a time.',
+      tone: 'neutral' as const,
+    };
+  }
+
+  switch (status) {
+    case 'loading':
+      return {
+        title: 'Checking background delivery.',
+        detail: 'Heimdall is checking this runtime before offering closed-tab provider alerts.',
+        tone: 'neutral' as const,
+      };
+    case 'unconfigured':
+      return {
+        title: 'Background push unavailable.',
+        detail: 'This Heimdall runtime is missing Web Push keys, so only open-tab alerts can run here.',
+        tone: 'warn' as const,
+      };
+    case 'unsupported':
+      return {
+        title: 'Background push unsupported.',
+        detail: 'This browser does not expose the service worker and Push APIs Heimdall needs for closed-tab delivery.',
+        tone: 'warn' as const,
+      };
+    case 'error':
+      return {
+        title: 'Background push needs review.',
+        detail: 'Heimdall could not confirm the background push subscription state.',
+        tone: 'warn' as const,
+      };
+  }
+
+  if (isBrowserPermissionBlocked) {
+    return {
+      title: 'Browser notification permission blocked.',
+      detail: 'Allow notifications for this site in your browser settings before enabling closed-tab provider exposure alerts.',
+      tone: 'warn' as const,
+    };
+  }
+
+  switch (status) {
+    case 'subscribed':
+      switch (deliveryConfidence) {
+        case 'pending':
+          return {
+            title: 'Background subscription pending verification.',
+            detail: 'This browser is subscribed, but Heimdall has not completed a server monitor check yet.',
+            tone: 'warn' as const,
+          };
+        case 'failed':
+          return {
+            title: 'Background delivery needs review.',
+            detail: 'This browser is subscribed, but the last server monitor check could not prove closed-tab delivery.',
+            tone: 'warn' as const,
+          };
+        case 'stale':
+          return {
+            title: 'Background monitor stale.',
+            detail: 'This browser is subscribed, but the last server monitor check is no longer current.',
+            tone: 'warn' as const,
+          };
+        case 'proven':
+        case 'none':
+          break;
+      }
+
+      return {
+        title: 'Background delivery active.',
+        detail: 'This browser is subscribed for closed-tab provider exposure alerts on the watched address.',
+        tone: 'good' as const,
+      };
+    case 'ready':
+      return {
+        title: 'Background push available.',
+        detail: 'Enable browser push to create a subscription; closed-tab provider alerts are not active until this browser is subscribed and the server monitor checks it.',
+        tone: 'neutral' as const,
+      };
+    case 'expired':
+      return {
+        title: 'Background subscription expired.',
+        detail: 'Re-enable browser push to restore closed-tab provider exposure alerts.',
+        tone: 'warn' as const,
+      };
+    default:
+      return {
+        title: 'Checking background delivery.',
+        detail: 'Heimdall is checking this runtime before offering closed-tab provider alerts.',
+        tone: 'neutral' as const,
+      };
+  }
+}
+
+function formatMonitorAge(timestamp: number): string {
+  const diff = Math.max(0, Date.now() - timestamp);
+  if (diff < 60_000) return 'just now';
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  return `${Math.floor(diff / 86_400_000)}d ago`;
+}
+
+function backgroundMonitorConfidenceCopy(
+  monitor: ReturnType<typeof useBackgroundNotifications>['monitor'],
+  subscriptionCount: number
+): { detail: string; tone: 'good' | 'warn' } | null {
+  if (subscriptionCount <= 0) return null;
+
+  if (!monitor || monitor.uncheckedSubscriptionCount > 0 || monitor.lastCheckedAt === null) {
+    return {
+      detail: 'Awaiting first server monitor check. Closed-tab delivery is subscribed, but not proven yet.',
+      tone: 'warn',
+    };
+  }
+
+  if (monitor.failedSubscriptionCount > 0) {
+    return {
+      detail: `Last server monitor check failed for ${monitor.failedSubscriptionCount} subscribed browser${monitor.failedSubscriptionCount === 1 ? '' : 's'}.`,
+      tone: 'warn',
+    };
+  }
+
+  if (monitor.staleSubscriptionCount > 0) {
+    return {
+      detail: `Last server monitor check is stale (${formatMonitorAge(monitor.lastCheckedAt)}). Closed-tab delivery may be delayed until the monitor catches up.`,
+      tone: 'warn',
+    };
+  }
+
+  return {
+    detail: `Last server monitor check ${formatMonitorAge(monitor.lastCheckedAt)}.`,
+    tone: 'good',
+  };
+}
+
+function inactiveBackgroundActionLabel(
+  status: ReturnType<typeof useBackgroundNotifications>['status'],
+  hasAddress: boolean,
+  isBrowserPermissionBlocked: boolean
+): string | null {
+  if (!hasAddress) return 'Address required';
+
+  switch (status) {
+    case 'loading':
+      return 'Checking status';
+    case 'unconfigured':
+      return 'Server setup required';
+    case 'unsupported':
+      return 'Unsupported browser';
+    default:
+      if (isBrowserPermissionBlocked) return 'Browser setting required';
+      return null;
+  }
 }
 
 function AlertHistoryPanel({
@@ -276,6 +462,37 @@ export default function NotificationPreferences() {
   const renderedAlertHistory = isMounted ? alertHistory : [];
   const address = searchParams.get('address');
   const isBrowserPermissionBlocked = renderedPermission === 'denied';
+  const backgroundNotifications = useBackgroundNotifications(isMounted ? address : null, renderedPreferences);
+  const backgroundDeliveryConfidence = getBackgroundDeliveryConfidence(
+    backgroundNotifications.monitor,
+    backgroundNotifications.subscriptionCount
+  );
+  const backgroundCopy = backgroundStatusCopy(
+    backgroundNotifications.status,
+    Boolean(address),
+    backgroundDeliveryConfidence,
+    isBrowserPermissionBlocked
+  );
+  const backgroundToneClass = backgroundCopy.tone === 'good'
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200'
+    : backgroundCopy.tone === 'warn'
+      ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200'
+      : 'border-zinc-200 bg-white/80 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-300';
+  const backgroundMonitorCopy = backgroundMonitorConfidenceCopy(
+    backgroundNotifications.monitor,
+    backgroundNotifications.subscriptionCount
+  );
+  const inactiveBackgroundLabel = inactiveBackgroundActionLabel(
+    backgroundNotifications.status,
+    Boolean(address),
+    isBrowserPermissionBlocked
+  );
+  const canChangeBackgroundPush = isMounted && Boolean(address) && !inactiveBackgroundLabel;
+  const backgroundActionLabel = backgroundNotifications.status === 'error'
+    ? 'Retry status check'
+    : backgroundNotifications.isSubscribed
+      ? 'Disable background push'
+      : 'Enable background push';
 
   const handleToggle = (id: keyof AlertPreferences, checked: boolean) => {
     if (!isMounted) return;
@@ -293,31 +510,77 @@ export default function NotificationPreferences() {
         </p>
       </div>
 
+      <div
+        className={cn('mb-8 rounded-xl border p-4 text-sm shadow-sm', backgroundToneClass)}
+        data-testid="background-notification-status"
+      >
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex gap-3">
+            {backgroundNotifications.status === 'unsupported' || backgroundNotifications.status === 'unconfigured' ? (
+              <WifiOff className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+            ) : (
+              <RadioTower className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+            )}
+            <div className="space-y-1">
+              <p className="font-semibold">{backgroundCopy.title}</p>
+              <p>{backgroundNotifications.error ?? backgroundNotifications.capability?.reason ?? backgroundCopy.detail}</p>
+              {backgroundNotifications.subscriptionCount > 0 ? (
+                <p className="text-xs opacity-80">
+                  Server subscriptions for this address: {backgroundNotifications.subscriptionCount}
+                </p>
+              ) : null}
+              {backgroundMonitorCopy ? (
+                <div
+                  className={cn(
+                    'mt-3 rounded-lg border p-3 text-xs',
+                    backgroundMonitorCopy.tone === 'good'
+                      ? 'border-emerald-300/70 bg-emerald-100/60 dark:border-emerald-800 dark:bg-emerald-950/40'
+                      : 'border-amber-300/70 bg-amber-100/60 dark:border-amber-800 dark:bg-amber-950/40'
+                  )}
+                  data-testid="background-monitor-confidence"
+                  role="note"
+                >
+                  <p className="font-semibold">Monitor confidence</p>
+                  <p className="mt-1">{backgroundMonitorCopy.detail}</p>
+                </div>
+              ) : null}
+            </div>
+          </div>
+          {inactiveBackgroundLabel ? (
+            <div className="inline-flex h-10 w-full shrink-0 items-center justify-center rounded-lg border border-current/25 bg-white/50 px-4 text-xs font-bold uppercase tracking-wide text-current dark:bg-zinc-950/20 sm:w-auto">
+              {inactiveBackgroundLabel}
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant={backgroundNotifications.isSubscribed || backgroundNotifications.status === 'error' ? 'outline' : 'default'}
+              className="w-full shrink-0 sm:w-auto"
+              disabled={!canChangeBackgroundPush}
+              onClick={() => {
+                if (backgroundNotifications.status === 'error') {
+                  void backgroundNotifications.refresh();
+                  return;
+                }
+
+                void (backgroundNotifications.isSubscribed
+                  ? backgroundNotifications.unsubscribe()
+                  : backgroundNotifications.subscribe());
+              }}
+            >
+              {backgroundActionLabel}
+            </Button>
+          )}
+        </div>
+      </div>
+
       <div className="mb-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
         <div className="flex gap-3">
           <Info className="mt-0.5 h-5 w-5 shrink-0" />
           <div className="space-y-1">
-            <p className="font-semibold">No remote delivery is connected yet.</p>
+            <p className="font-semibold">Email and Telegram are not connected yet.</p>
             <p>
-              Heimdall currently supports local in-app alerts and optional browser notifications only. Email and Telegram
-              inputs are intentionally not shown because Heimdall does not subscribe you, save contact details, or send
-              messages through those channels yet.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div
-        className="mb-8 rounded-xl border border-zinc-200 bg-white/80 p-4 text-sm text-zinc-700 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-300"
-        data-testid="background-notification-status"
-      >
-        <div className="flex gap-3">
-          <WifiOff className="mt-0.5 h-5 w-5 shrink-0 text-zinc-500" aria-hidden="true" />
-          <div className="space-y-1">
-            <p className="font-semibold text-zinc-900 dark:text-zinc-100">Background push is not connected.</p>
-            <p>
-              Heimdall does not yet keep a remote push subscription for this address. If all Heimdall tabs are closed,
-              status changes are checked only when you reopen Heimdall; they are not delivered at the moment they happen.
+              Heimdall supports local alerts and browser push only. Email and Telegram inputs are intentionally not shown
+              because Heimdall does not subscribe you, save contact details, or send messages through those channels yet.
             </p>
           </div>
         </div>
@@ -334,18 +597,18 @@ export default function NotificationPreferences() {
           <CardContent className="space-y-4">
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               Alert preferences are saved automatically in this browser. Heimdall checks your saved address while any
-              Heimdall tab is open; system browser notifications require permission.
+              Heimdall tab is open; closed-tab delivery uses the background push status above.
             </p>
             <div
               className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200"
               data-testid="browser-notification-scope"
               role="note"
             >
-              <p className="font-semibold">Open-tab delivery only</p>
+              <p className="font-semibold">Open-tab fallback</p>
               <p className="mt-1">
                 Desktop browser notifications can usually fire from an open Heimdall tab while you view another tab or
-                app, though background throttling can delay checks. Closed-tab or instant after-update delivery needs
-                server-side Web Push and is not active yet.
+                app, though background throttling can delay checks. Keep background push enabled for delivery after all
+                Heimdall tabs are closed.
               </p>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">

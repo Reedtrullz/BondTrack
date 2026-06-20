@@ -110,4 +110,25 @@ describe('LpNodeRow', () => {
     expect(screen.getByText('Estimated entry pricing')).toBeInTheDocument();
     expect(screen.queryByText('Invalid Date')).not.toBeInTheDocument();
   });
+
+  it('labels external historical RUNE fallback quotes in table rows', () => {
+    render(
+      <table>
+        <tbody>
+          <LpNodeRow
+            position={{
+              ...basePosition,
+              pricingSource: 'estimated',
+              entryRunePriceSource: 'coingecko',
+              netProfitLoss: '+$4.68',
+              netProfitLossUsd: 4.68,
+              netProfitLossPercent: 17.33,
+            }}
+          />
+        </tbody>
+      </table>
+    );
+
+    expect(screen.getByText('External CoinGecko entry quote')).toBeInTheDocument();
+  });
 });

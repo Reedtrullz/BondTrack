@@ -5,7 +5,6 @@ import { Calculator, TrendingUp, Coins, BarChart3, ShieldCheck, AlertTriangle, I
 import { NETWORK } from '@/lib/config';
 import { buildBondSimulatorInsight } from '@/lib/dashboard/bond-simulator-context';
 import { formatRuneFromNumber, formatCompactNumber } from '@/lib/utils/formatters';
-import { getGradeColor, type HealthGrade } from '@/lib/utils/health-score';
 import { InsightHeader } from './insight-header';
 import { MetricStrip } from './metric-strip';
 import type { BondPosition } from '@/lib/types/node';
@@ -34,8 +33,8 @@ interface Preset {
 
 const PRESETS: Record<PresetType, Preset> = {
   conservative: {
-    name: 'Conservative',
-    description: 'Low risk, established nodes, 10% fee',
+    name: 'Conservative inputs',
+    description: '50% manual APY, 10% operator fee, 90-day window',
     bondAmount: 50000,
     lockDays: 90,
     networkApy: 50,
@@ -43,8 +42,8 @@ const PRESETS: Record<PresetType, Preset> = {
     icon: <ShieldCheck className="w-4 h-4 text-emerald-500" />,
   },
   balanced: {
-    name: 'Balanced',
-    description: 'Moderate risk and return, 15% fee',
+    name: 'Balanced inputs',
+    description: '65% manual APY, 15% operator fee, 180-day window',
     bondAmount: 100000,
     lockDays: 180,
     networkApy: 65,
@@ -52,8 +51,8 @@ const PRESETS: Record<PresetType, Preset> = {
     icon: <BarChart3 className="w-4 h-4 text-blue-500" />,
   },
   agressive: {
-    name: 'Aggressive',
-    description: 'Higher APY, newer nodes, 20% fee',
+    name: 'Stress inputs',
+    description: '80% manual APY, 20% operator fee, 365-day window',
     bondAmount: 150000,
     lockDays: 365,
     networkApy: 80,
@@ -134,7 +133,7 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
     [bondAmount, lockDaysNum, networkApyNum, operatorFeeNum]
   );
 
-  // Impact Preview: Calculate health score with new bond
+  // Impact Preview: Reward math can shift bond totals, but node-risk scoring remains a separate source check.
   const impactPreview = useMemo(() => {
     if (!currentPositions || bondAmount <= 0) return null;
 
@@ -147,7 +146,8 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
     return {
       newTotalBond,
       estimatedAPYChange: result && currentAPY !== null ? result.apy - currentAPY : null,
-      projectedHealth: 'B' as HealthGrade, // Simplified
+      riskCheckDetail: 'Review slash, jail, and churn before acting',
+      riskCheckStatus: 'Not modeled',
     };
   }, [currentPositions, bondAmount, result]);
 
@@ -213,7 +213,7 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
           <div className="space-y-1">
             <p className="font-semibold">Scenario estimates, not guarantees</p>
             <p className="text-xs leading-5 text-amber-900/80 dark:text-amber-100/80">
-              Uses simple APY math from the values below. It does not model slashing, jail,
+              Uses manual APY math from the values below. It does not model slashing, jail,
               churn-out, RUNE price changes, reward volatility, or compounding.
             </p>
           </div>
@@ -351,7 +351,7 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <caption className="sr-only">
-                Estimated rewards by period using simple APY math from the current simulator inputs
+                Estimated rewards by period using manual APY math from the current simulator inputs
               </caption>
               <thead>
                 <tr className="text-zinc-500 border-b border-zinc-200 dark:border-zinc-700">
@@ -401,11 +401,12 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-zinc-500">Projected Health</p>
-                  <p className={`font-bold ${
-                    getGradeColor(impactPreview.projectedHealth)
-                  }`}>
-                    {impactPreview.projectedHealth}
+                  <p className="text-xs text-zinc-500">Risk check</p>
+                  <p className="font-semibold text-amber-700 dark:text-amber-300">
+                    {impactPreview.riskCheckStatus}
+                  </p>
+                  <p className="mt-1 text-xs leading-4 text-zinc-500 dark:text-zinc-400">
+                    {impactPreview.riskCheckDetail}
                   </p>
                 </div>
               </div>

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getHealth } from '@/lib/api/midgard';
 import { getAllNodes } from '@/lib/api/thornode';
+import { isDevelopmentMode } from '@/lib/mock-data';
 import { useApiHealth } from '../use-api-health';
 
 vi.mock('@/lib/api/midgard', () => ({
@@ -11,6 +12,10 @@ vi.mock('@/lib/api/midgard', () => ({
 
 vi.mock('@/lib/api/thornode', () => ({
   getAllNodes: vi.fn(),
+}));
+
+vi.mock('@/lib/mock-data', () => ({
+  isDevelopmentMode: vi.fn(() => false),
 }));
 
 describe('useApiHealth', () => {
@@ -24,8 +29,21 @@ describe('useApiHealth', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(isDevelopmentMode).mockReturnValue(false);
     vi.mocked(getHealth).mockResolvedValue({ lastThorNode: { height: 12345678 } });
     vi.mocked(getAllNodes).mockResolvedValue(usableThornodeNodes as never);
+  });
+
+  it('labels explicit mock-data builds without probing live sources', async () => {
+    vi.mocked(isDevelopmentMode).mockReturnValue(true);
+
+    const { result } = renderHook(() => useApiHealth());
+
+    expect(result.current.midgard).toBe('mock');
+    expect(result.current.thornode).toBe('mock');
+    await waitFor(() => expect(result.current.lastChecked).toBeInstanceOf(Date));
+    expect(getHealth).not.toHaveBeenCalled();
+    expect(getAllNodes).not.toHaveBeenCalled();
   });
 
   it('marks source probes so E2E mocks can distinguish health checks from data requests', async () => {

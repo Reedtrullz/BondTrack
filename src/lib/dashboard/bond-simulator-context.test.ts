@@ -14,10 +14,24 @@ describe('buildBondSimulatorInsight', () => {
     });
 
     expect(model.severity).toBe('info');
+    expect(model.statusLabel).toBe('Manual Estimate');
     expect(model.topRisk).toBe('Rewards-only projection');
     expect(model.primaryAction.label).toBe('Verify node risk before bonding');
+    expect(model.headerMetrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: 'Lock period',
+          detail: 'Manual APY window',
+        }),
+      ])
+    );
     expect(model.assumptionMetrics).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          label: 'Estimate model',
+          value: 'Manual APY',
+          detail: 'No live source or compounding',
+        }),
         expect.objectContaining({
           label: 'Risk coverage',
           value: 'Excludes slash and jail',
@@ -26,6 +40,21 @@ describe('buildBondSimulatorInsight', () => {
         expect.objectContaining({
           label: 'Fee input',
           value: '15.00%',
+        }),
+        expect.objectContaining({
+          id: 'minimum-bond',
+          label: 'Minimum bond',
+          value: 'Meets active minimum',
+          detail: 'ᚱ10K threshold only',
+          severity: 'info',
+        }),
+      ])
+    );
+    expect(model.assumptionMetrics).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'minimum-bond',
+          severity: 'healthy',
         }),
       ])
     );
@@ -44,7 +73,23 @@ describe('buildBondSimulatorInsight', () => {
     expect(model.severity).toBe('warning');
     expect(model.statusLabel).toBe('Needs Attention');
     expect(model.topRisk).toBe('Bond amount is below active node minimum');
-    expect(model.diagnosis).toContain('cannot be evaluated as an active-node-ready scenario');
+    expect(model.diagnosis).toContain('cannot be evaluated as an active-node scenario');
+    expect(model.diagnosis).not.toContain('active-node-ready');
+  });
+
+  it('keeps long-lock scenarios in review instead of calling reward math ready', () => {
+    const model = buildBondSimulatorInsight({
+      bondAmountRune: 200_000,
+      currentBondRune: 25_000,
+      lockDays: 365,
+      networkApyPercent: 65,
+      operatorFeeBps: 1500,
+      hasResult: true,
+    });
+
+    expect(model.topRisk).toBe('Long lock window needs risk review');
+    expect(model.diagnosis).toContain('The reward estimate can be reviewed');
+    expect(model.diagnosis).not.toContain('reward math is ready');
   });
 
   it('flags aggressive APY and fee assumptions before showing reward totals', () => {

@@ -3,8 +3,9 @@ import type { MutableRefObject, ReactNode } from 'react';
 import { getHealth } from '@/lib/api/midgard';
 import { getAllNodes } from '@/lib/api/thornode';
 import { assertUsableThornodeNodes } from '@/lib/api/source-validation';
+import { isDevelopmentMode } from '@/lib/mock-data';
 
-export type ApiHealthStatus = 'unknown' | 'healthy' | 'degraded' | 'down';
+export type ApiHealthStatus = 'unknown' | 'healthy' | 'degraded' | 'down' | 'mock';
 
 export interface ApiHealthState {
   midgard: ApiHealthStatus;
@@ -45,8 +46,9 @@ function updateStatusFromFailure(
 }
 
 export function useApiHealth(): ApiHealthState {
-  const [midgardStatus, setMidgardStatus] = useState<ApiHealthStatus>('unknown');
-  const [thornodeStatus, setThornodeStatus] = useState<ApiHealthStatus>('unknown');
+  const useMockData = isDevelopmentMode();
+  const [midgardStatus, setMidgardStatus] = useState<ApiHealthStatus>(useMockData ? 'mock' : 'unknown');
+  const [thornodeStatus, setThornodeStatus] = useState<ApiHealthStatus>(useMockData ? 'mock' : 'unknown');
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
   const [lastSuccessful, setLastSuccessful] = useState<ApiHealthState['lastSuccessful']>({
     midgard: null,
@@ -57,6 +59,12 @@ export function useApiHealth(): ApiHealthState {
   const thornodeFailures = useRef(0);
 
   const checkMidgard = useCallback(async () => {
+    if (useMockData) {
+      setMidgardStatus('mock');
+      setLastChecked(new Date());
+      return;
+    }
+
     try {
       await getHealth({
         cache: 'no-store',
@@ -73,9 +81,15 @@ export function useApiHealth(): ApiHealthState {
     } finally {
       setLastChecked(new Date());
     }
-  }, []);
+  }, [useMockData]);
 
   const checkThornode = useCallback(async () => {
+    if (useMockData) {
+      setThornodeStatus('mock');
+      setLastChecked(new Date());
+      return;
+    }
+
     try {
       const nodes = await getAllNodes({
         cache: 'no-store',
@@ -93,11 +107,15 @@ export function useApiHealth(): ApiHealthState {
     } finally {
       setLastChecked(new Date());
     }
-  }, []);
+  }, [useMockData]);
 
   useEffect(() => {
     checkMidgard();
     checkThornode();
+
+    if (useMockData) {
+      return undefined;
+    }
 
     const midgardInterval = setInterval(checkMidgard, MIDGARD_INTERVAL_MS);
     const thornodeInterval = setInterval(checkThornode, THORNODE_INTERVAL_MS);
@@ -106,7 +124,7 @@ export function useApiHealth(): ApiHealthState {
       clearInterval(midgardInterval);
       clearInterval(thornodeInterval);
     };
-  }, [checkMidgard, checkThornode]);
+  }, [checkMidgard, checkThornode, useMockData]);
 
   return {
     midgard: midgardStatus,

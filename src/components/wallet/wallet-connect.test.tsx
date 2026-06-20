@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WalletConnect } from './wallet-connect';
 
+const STALE_SIGNER_REFRESH_ERROR =
+  'Keplr account changed, but Heimdall could not refresh the signer. Reconnect wallet before preview or broadcast.';
+
 const walletMocks = vi.hoisted(() => ({
   connect: vi.fn(),
   disconnect: vi.fn(),
@@ -93,6 +96,48 @@ describe('WalletConnect', () => {
 
     await user.click(keplr);
     expect(walletMocks.connect).toHaveBeenCalledWith('keplr');
+  });
+
+  it('surfaces disconnected wallet errors before opening the menu', () => {
+    walletMocks.state.availableWallets = 'keplr';
+    walletMocks.state.error = STALE_SIGNER_REFRESH_ERROR;
+
+    render(<WalletConnect />);
+
+    const trigger = screen.getByTestId('wallet-connect-button');
+    expect(trigger).toHaveAccessibleDescription(STALE_SIGNER_REFRESH_ERROR);
+    expect(screen.getByRole('status')).toHaveTextContent(STALE_SIGNER_REFRESH_ERROR);
+    expect(screen.queryByRole('menu', { name: 'Wallet connection options' })).not.toBeInTheDocument();
+  });
+
+  it('makes wallet network mismatch actionable', async () => {
+    walletMocks.state.address = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
+    walletMocks.state.availableWallets = 'keplr';
+    walletMocks.state.chainId = 'cosmoshub-4';
+    walletMocks.state.error = 'Network mismatch: Expected thorchain-1, got cosmoshub-4';
+    walletMocks.state.isConnected = false;
+    walletMocks.state.isNetworkMismatch = true;
+    walletMocks.state.networkMismatch = {
+      actual: 'cosmoshub-4',
+      expected: 'thorchain-1',
+      hasMismatch: true,
+    };
+    walletMocks.state.walletType = 'keplr';
+    const user = userEvent.setup();
+
+    render(<WalletConnect />);
+
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('Wallet network mismatch');
+    expect(alert).toHaveTextContent('Wallet reports cosmoshub-4; THORChain mainnet expects thorchain-1.');
+    expect(alert).toHaveTextContent('Switch to THORChain mainnet before preview or broadcast.');
+    expect(screen.queryByText('Network mismatch')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Reconnect wallet' }));
+    expect(walletMocks.connect).toHaveBeenCalledWith('keplr');
+
+    await user.click(screen.getByRole('button', { name: 'Clear wallet state' }));
+    expect(walletMocks.disconnect).toHaveBeenCalled();
   });
 
   it('closes the wallet menu with Escape and returns focus to the trigger', async () => {

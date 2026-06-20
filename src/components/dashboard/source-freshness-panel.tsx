@@ -1,12 +1,14 @@
 'use client';
 
-import { AlertCircle, CheckCircle2, Clock3, HelpCircle, WifiOff } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock3, HelpCircle, Info, WifiOff } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { formatFreshnessAge, type SourceFreshness, type SourceStatus } from '@/lib/dashboard/insights';
 
 interface SourceFreshnessPanelProps {
   sources: SourceFreshness[];
+  ariaLabel?: string;
+  id?: string;
   now?: Date;
   title?: string;
   compact?: boolean;
@@ -18,9 +20,9 @@ const statusConfig: Record<SourceStatus, {
   className: string;
 }> = {
   fresh: {
-    label: 'Fresh',
+    label: 'Responding',
     icon: <CheckCircle2 className="h-4 w-4" aria-hidden="true" />,
-    className: 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-200',
+    className: 'border-cyan-200 bg-cyan-50 text-cyan-900 dark:border-cyan-900/60 dark:bg-cyan-950/20 dark:text-cyan-200',
   },
   stale: {
     label: 'Stale',
@@ -37,10 +39,17 @@ const statusConfig: Record<SourceStatus, {
     icon: <HelpCircle className="h-4 w-4" aria-hidden="true" />,
     className: 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-zinc-300',
   },
+  demo: {
+    label: 'Demo',
+    icon: <Info className="h-4 w-4" aria-hidden="true" />,
+    className: 'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/20 dark:text-sky-200',
+  },
 };
 
 export function SourceFreshnessPanel({
   sources,
+  ariaLabel,
+  id,
   now = new Date(),
   title = 'Source freshness',
   compact = false,
@@ -49,17 +58,24 @@ export function SourceFreshnessPanel({
     const staleCount = sources.filter((source) => source.status === 'stale').length;
     const degradedCount = sources.filter((source) => source.status === 'degraded').length;
     const unknownCount = sources.filter((source) => source.status === 'unknown').length;
+    const demoCount = sources.filter((source) => source.status === 'demo').length;
     const issueLabels = [
       degradedCount > 0 ? `${degradedCount} degraded` : null,
       staleCount > 0 ? `${staleCount} stale` : null,
       unknownCount > 0 ? `${unknownCount} unknown` : null,
+      demoCount > 0 ? 'Demo data' : null,
     ].filter((label): label is string => Boolean(label));
-    const summaryLabel = issueLabels.length > 0 ? issueLabels.join(' · ') : 'All fresh';
+    const summaryLabel = sources.length === 0
+      ? 'No checks yet'
+      : issueLabels.length > 0
+        ? issueLabels.join(' · ')
+        : 'Checks responding';
 
     return (
       <section
-        className="rounded-2xl border border-zinc-200 bg-white/90 p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80"
-        aria-label="Source confidence"
+        id={id}
+        className="scroll-mt-24 rounded-2xl border border-zinc-200 bg-white/90 p-2.5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80"
+        aria-label={ariaLabel ?? 'Source checks'}
         data-variant="compact"
       >
         <div className="flex items-center justify-between gap-3">
@@ -67,7 +83,7 @@ export function SourceFreshnessPanel({
             <AlertCircle className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden="true" />
             <div className="min-w-0">
               <h2 className="text-sm font-bold text-zinc-950 dark:text-zinc-50">{title}</h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">Data source confidence</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Data source checks</p>
             </div>
           </div>
           <span className="shrink-0 rounded-full border border-zinc-200 px-2 py-0.5 text-[11px] font-bold text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
@@ -75,13 +91,13 @@ export function SourceFreshnessPanel({
           </span>
         </div>
 
-        <div className="mt-3 grid grid-cols-3 gap-2">
+        <div className="mt-2 grid grid-cols-3 gap-2">
           {sources.map((source) => {
             const config = statusConfig[source.status];
             return (
               <div
                 key={source.source}
-                className="min-w-0 rounded-xl border border-zinc-200 bg-zinc-50/70 p-2 dark:border-zinc-800 dark:bg-zinc-950/30"
+                className="min-w-0 rounded-xl border border-zinc-200 bg-zinc-50/70 p-1.5 dark:border-zinc-800 dark:bg-zinc-950/30"
               >
                 <div className="truncate text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
                   {source.source}
@@ -91,7 +107,7 @@ export function SourceFreshnessPanel({
                   <span className="truncate">{config.label}</span>
                 </span>
                 <div className="mt-1 truncate text-[10px] text-zinc-500 dark:text-zinc-400">
-                  {formatFreshnessAge(source.lastSuccess, now)}
+                  {source.status === 'demo' ? 'Local fixture' : formatFreshnessAge(source.lastSuccess, now)}
                 </div>
               </div>
             );
@@ -102,13 +118,17 @@ export function SourceFreshnessPanel({
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white/90 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80" aria-label={title}>
+    <section
+      id={id}
+      className="scroll-mt-24 rounded-2xl border border-zinc-200 bg-white/90 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80"
+      aria-label={ariaLabel ?? title}
+    >
       <div className="mb-4 flex items-start gap-2">
         <AlertCircle className="mt-0.5 h-4 w-4 text-zinc-400" aria-hidden="true" />
         <div>
           <h2 className="text-lg font-bold text-zinc-950 dark:text-zinc-50">{title}</h2>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Confidence for the readings on this screen.
+            Freshness and availability checks for the readings on this screen.
           </p>
         </div>
       </div>
@@ -129,7 +149,7 @@ export function SourceFreshnessPanel({
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
-                <span>Last success: {formatFreshnessAge(source.lastSuccess, now)}</span>
+                <span>{source.status === 'demo' ? 'Mode: local fixture' : `Last success: ${formatFreshnessAge(source.lastSuccess, now)}`}</span>
                 {typeof source.latencyMs === 'number' ? <span>{source.latencyMs}ms</span> : null}
               </div>
               {source.detail ? (

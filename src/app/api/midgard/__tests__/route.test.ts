@@ -250,6 +250,78 @@ describe('/api/midgard proxy', () => {
     warn.mockRestore();
   });
 
+  it('does not normalize ambiguous THORName misses when an upstream request fails', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    mockFetch
+      .mockRejectedValueOnce(new TypeError('network down'))
+      .mockResolvedValueOnce({ ok: false, status: 404 } as unknown as Response);
+
+    const request = createRequest('v2/thorname/rlookup/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz', {
+      origin: 'https://bond.thorchain.no',
+    });
+    const response = await GET(request, {
+      params: Promise.resolve({
+        path: ['v2', 'thorname', 'rlookup', 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz'],
+      }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: 'All Midgard endpoints failed' });
+    expectProxyErrorHeaders(response);
+    expect(warn).toHaveBeenCalledWith(
+      'All Midgard endpoints failed',
+      expect.objectContaining({ path: 'v2/thorname/rlookup/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz' })
+    );
+    warn.mockRestore();
+  });
+
+  it('normalizes missing member records as an empty LP result without warning', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    mockFetch
+      .mockResolvedValueOnce({ ok: false, status: 404 } as unknown as Response)
+      .mockResolvedValueOnce({ ok: false, status: 404 } as unknown as Response);
+
+    const request = createRequest('v2/member/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz', {
+      origin: 'https://bond.thorchain.no',
+    });
+    const response = await GET(request, {
+      params: Promise.resolve({
+        path: ['v2', 'member', 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz'],
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ pools: [] });
+    expectProxySuccessHeaders(response);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('does not normalize ambiguous member misses when an upstream request fails', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    mockFetch
+      .mockRejectedValueOnce(new TypeError('network down'))
+      .mockResolvedValueOnce({ ok: false, status: 404 } as unknown as Response);
+
+    const request = createRequest('v2/member/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz', {
+      origin: 'https://bond.thorchain.no',
+    });
+    const response = await GET(request, {
+      params: Promise.resolve({
+        path: ['v2', 'member', 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz'],
+      }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: 'All Midgard endpoints failed' });
+    expectProxyErrorHeaders(response);
+    expect(warn).toHaveBeenCalledWith(
+      'All Midgard endpoints failed',
+      expect.objectContaining({ path: 'v2/member/thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz' })
+    );
+    warn.mockRestore();
+  });
+
   it('does not expose upstream base URLs or detail arrays when all upstreams fail', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     mockFetch

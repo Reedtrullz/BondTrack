@@ -4,7 +4,7 @@ Shared reference for Heimdall and tcwiki. Use this before changing THORChain API
 
 ## Scope
 
-- Heimdall is the canonical private/operator dashboard.
+- Heimdall is the canonical provider-exposure command center for THORChain bond providers and liquidity providers.
 - tcwiki is the public knowledge layer.
 - Both projects may show THORChain live data, but neither should invent precision or silently change units at UI boundaries.
 

@@ -143,6 +143,14 @@ export function formatUsd(value: number | null | undefined, maximumFractionDigit
   return getUsdFormatter(maximumFractionDigits, minimumFractionDigits).format(value);
 }
 
+export function formatUtcDateTime(date: Date | null | undefined): string {
+  if (!(date instanceof Date) || !Number.isFinite(date.getTime())) {
+    return '--';
+  }
+
+  return `${date.toISOString().slice(0, 16).replace('T', ' ')} UTC`;
+}
+
 export function formatRuneDisplayNumber(value: number | null | undefined, decimals = 2): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return '--';

@@ -4,7 +4,7 @@ import type { BondPosition } from '@/lib/types/node';
 import { canUnbondNode } from '@/lib/transactions/bond';
 
 export type TransactionAction = 'bond' | 'unbond';
-export type TransactionPreflightSeverity = 'ready' | 'info' | 'warning' | 'critical';
+export type TransactionPreflightSeverity = 'checked' | 'info' | 'warning' | 'critical';
 
 export interface TransactionPreflightItem {
   id: string;
@@ -12,6 +12,11 @@ export interface TransactionPreflightItem {
   value: string;
   detail: string;
   severity: TransactionPreflightSeverity;
+}
+
+export interface TransactionPreflightPrimaryAction {
+  href: '#transaction-composer' | '#transaction-source-confidence';
+  label: 'Open composer' | 'Review source checks';
 }
 
 export interface TransactionPreflightWalletState {
@@ -27,6 +32,7 @@ export interface TransactionPreflightModel {
   detail: string;
   eligibleUnbondPositions: BondPosition[];
   items: TransactionPreflightItem[];
+  primaryAction: TransactionPreflightPrimaryAction;
   severity: TransactionPreflightSeverity;
   source: TransactionSourceSafety;
   status: string;
@@ -82,7 +88,7 @@ function getPreflightSeverity({
   if (isNetworkMismatch) return 'critical';
   if (!source.canPreview) return source.itemSeverity;
   if (action === 'unbond' && eligibleUnbondCount === 0) return 'warning';
-  if (isConnected) return 'ready';
+  if (isConnected) return 'info';
   return 'info';
 }
 
@@ -102,8 +108,8 @@ function getPreflightStatus({
   if (isNetworkMismatch) return 'Wrong network';
   if (!source.canPreview) return source.status;
   if (action === 'unbond' && eligibleUnbondCount === 0) return 'No eligible standby node';
-  if (isConnected) return 'Ready to preview';
-  return 'Prepare memo first';
+  if (isConnected) return 'Review before broadcast';
+  return 'Review memo first';
 }
 
 function getPreflightDetail({
@@ -129,9 +135,23 @@ function getPreflightDetail({
     return 'UNBOND can only proceed from a standby node. Review node status before signing.';
   }
   if (isConnected) {
-    return 'Wallet is connected; Heimdall still shows a preview before broadcast.';
+    return 'Wallet is connected. Review the memo here, then approve only if the wallet presents payload, memo, amount, and network fee that match.';
   }
-  return 'Memo copy can be prepared without a wallet. Connect only when you are ready to preview and broadcast.';
+  return 'Review and copy the memo without connecting a wallet. Connect only for preview and broadcast.';
+}
+
+function getPreflightPrimaryAction(source: TransactionSourceSafety): TransactionPreflightPrimaryAction {
+  if (!source.canPreview) {
+    return {
+      href: '#transaction-source-confidence',
+      label: 'Review source checks',
+    };
+  }
+
+  return {
+    href: '#transaction-composer',
+    label: 'Open composer',
+  };
 }
 
 export function getTransactionSourceSafety({
@@ -146,7 +166,7 @@ export function getTransactionSourceSafety({
       canPreview: false,
       detail: 'Waiting for THORNode positions before copying, previewing, or broadcasting a transaction.',
       itemSeverity: 'info',
-      status: 'Checking source confidence',
+      status: 'Checking source',
       value: 'THORNode pending',
     };
   }
@@ -156,7 +176,7 @@ export function getTransactionSourceSafety({
       canCopyBondMemo: false,
       canCopyUnbondMemo: false,
       canPreview: false,
-      detail: 'THORNode positions failed to load. Do not copy, preview, or broadcast until source confidence is fresh.',
+      detail: 'THORNode positions failed to load. Do not copy, preview, or broadcast until the THORNode source check passes.',
       itemSeverity: 'warning',
       status: 'Eligibility unavailable',
       value: 'THORNode failed',
@@ -168,9 +188,9 @@ export function getTransactionSourceSafety({
       canCopyBondMemo: false,
       canCopyUnbondMemo: false,
       canPreview: false,
-      detail: 'THORNode source confidence is degraded. Do not copy, preview, or broadcast until source confidence is fresh.',
+      detail: 'THORNode source check is degraded. Do not copy, preview, or broadcast until the THORNode source check passes.',
       itemSeverity: 'warning',
-      status: 'Source confidence degraded',
+      status: 'Source check degraded',
       value: `THORNode ${thornodeStatus}`,
     };
   }
@@ -180,10 +200,22 @@ export function getTransactionSourceSafety({
       canCopyBondMemo: false,
       canCopyUnbondMemo: false,
       canPreview: false,
-      detail: 'THORNode source confidence has not completed yet. Wait for a fresh source check before copying, preview, or broadcast.',
+      detail: 'THORNode source check has not completed yet. Wait for current THORNode positions before copying, preview, or broadcast.',
       itemSeverity: 'info',
-      status: 'Source confidence pending',
+      status: 'Source check pending',
       value: 'THORNode pending',
+    };
+  }
+
+  if (thornodeStatus === 'mock') {
+    return {
+      canCopyBondMemo: false,
+      canCopyUnbondMemo: false,
+      canPreview: false,
+      detail: 'Local mock data is enabled. Do not copy, preview, or broadcast BOND or UNBOND transactions from demo data.',
+      itemSeverity: 'warning',
+      status: 'Demo data only',
+      value: 'THORNode mock',
     };
   }
 
@@ -191,10 +223,10 @@ export function getTransactionSourceSafety({
     canCopyBondMemo: true,
     canCopyUnbondMemo: true,
     canPreview: true,
-    detail: 'THORNode positions are available for node status and unbond eligibility checks.',
-    itemSeverity: 'ready',
-    status: 'Source verified',
-    value: 'THORNode fresh',
+    detail: 'THORNode positions loaded for node status and unbond eligibility. Wallet still presents the final payload and fee for your approval.',
+    itemSeverity: 'checked',
+    status: 'Source check passed',
+    value: 'THORNode checked',
   };
 }
 
@@ -244,11 +276,11 @@ export function buildTransactionPreflightModel({
         detail: action === 'bond'
           ? 'Adds RUNE with a THORChain MsgDeposit memo.'
           : 'Uses a zero-RUNE deposit; amount is encoded in memo base units.',
-        severity: action === 'bond' ? 'ready' : eligibleUnbondCount > 0 ? 'ready' : 'warning',
+        severity: action === 'bond' ? 'info' : eligibleUnbondCount > 0 ? 'checked' : 'warning',
       },
       {
         id: 'source',
-        label: 'Source confidence',
+        label: 'Source checks',
         value: source.value,
         detail: source.detail,
         severity: source.itemSeverity,
@@ -264,9 +296,9 @@ export function buildTransactionPreflightModel({
         detail: wallet.isNetworkMismatch
           ? `Switch to ${wallet.networkMismatch.expected} before broadcast.`
           : wallet.isConnected
-            ? `${wallet.walletType?.toUpperCase() ?? 'Wallet'} connected for preview.`
-            : 'Required for preview and broadcast; memo copy does not require a wallet once source confidence is fresh.',
-        severity: wallet.isNetworkMismatch ? 'critical' : wallet.isConnected ? 'ready' : 'info',
+            ? `${wallet.walletType?.toUpperCase() ?? 'Wallet'} connected; wallet must present final payload before approval.`
+            : 'Required for preview and broadcast; memo copy stays local after the THORNode source check passes.',
+        severity: wallet.isNetworkMismatch ? 'critical' : wallet.isConnected ? 'checked' : 'info',
       },
       {
         id: 'dashboard-address',
@@ -275,7 +307,7 @@ export function buildTransactionPreflightModel({
         detail: dashboardAddress
           ? 'Used only for watched positions and history context.'
           : 'No watched address is selected for context.',
-        severity: dashboardAddress ? 'ready' : 'warning',
+        severity: dashboardAddress ? 'checked' : 'warning',
       },
       {
         id: 'eligibility',
@@ -290,19 +322,20 @@ export function buildTransactionPreflightModel({
         detail: action === 'bond'
           ? source.canCopyBondMemo
             ? 'Confirm the node address before copying or signing.'
-            : 'THORNode must be fresh before Heimdall allows BOND memo copy, preview, or broadcast.'
+            : 'THORNode source check must pass before Heimdall allows BOND memo copy, preview, or broadcast.'
           : !source.canCopyUnbondMemo
-            ? 'THORNode must be fresh before Heimdall can prove standby eligibility.'
+            ? 'THORNode positions must load before Heimdall can prove standby eligibility.'
           : eligibleUnbondCount > 0
             ? 'Only standby nodes can be selected for UNBOND.'
             : 'No standby node is available from this watched address.',
         severity: action === 'bond'
-          ? source.canPreview ? 'ready' : source.itemSeverity
+          ? source.canPreview ? 'info' : source.itemSeverity
           : !source.canCopyUnbondMemo
             ? source.itemSeverity
-            : eligibleUnbondCount > 0 ? 'ready' : 'warning',
+            : eligibleUnbondCount > 0 ? 'checked' : 'warning',
       },
     ],
+    primaryAction: getPreflightPrimaryAction(source),
     severity,
     source,
     status,

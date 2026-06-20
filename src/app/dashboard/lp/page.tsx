@@ -21,19 +21,19 @@ function formatSignedUsd(value: number): string {
 }
 
 function getLpIssueDiagnosis(issue: MetricStripItem, totalValue: string): string {
-  const issueDetail = issue.detail ?? 'Review source confidence before acting';
+  const issueDetail = issue.detail ?? 'Review source checks before acting';
 
   switch (issue.id) {
     case 'lp-redeem-quotes':
-      return `${issue.value} LP redeem quote confidence. ${issue.detail ?? 'THORNode redeem quotes are not confirmed'}. Total LP value is ${totalValue}; treat withdrawable amounts as estimated until THORNode confirms them.`;
+      return `${issue.value} LP redeem quote checks. ${issue.detail ?? 'THORNode redeem quotes are not confirmed'}. Total LP value is ${totalValue}; treat withdrawable amounts as estimated until THORNode confirms them.`;
     case 'current-only-lp-values':
       return `${issue.value} current-only LP position${issue.value === '1' ? '' : 's'} ${issueDetail.toLowerCase()}. Total LP value is ${totalValue}, but aggregate P/L and LP vs HODL exclude positions without historical entry pricing.`;
     case 'estimated-lp-values':
       return `${issue.value} LP position${issue.value === '1' ? ' uses' : 's use'} estimated entry pricing. Total LP value is ${totalValue}, but estimated performance stays out of aggregate P/L.`;
     case 'lp-price-feed':
-      return `RUNE price confidence is ${issue.value.toLowerCase()}. Total LP value is ${totalValue}; treat USD values as advisory until the quote recovers.`;
-    case 'trusted-lp-values':
-      return `No LP position has historical entry pricing yet. Total LP value is ${totalValue}, but aggregate performance is withheld until trusted entry pricing is available.`;
+      return `RUNE price checks are ${issue.value.toLowerCase()}. Total LP value is ${totalValue}; treat USD values as advisory until the quote recovers.`;
+    case 'historical-lp-values':
+      return `No LP position has historical entry pricing yet. Total LP value is ${totalValue}, but aggregate performance is withheld until source-loaded entry pricing is available.`;
     default:
       return `${issue.label} is ${issue.value.toLowerCase()}. ${issueDetail}`;
   }
@@ -54,14 +54,14 @@ export default function LpPage() {
   const totalLpValue = formatUsd(pageModel.totalLpValueUsd);
   const lpDiagnosis = primaryConfidenceIssue
     ? getLpIssueDiagnosis(primaryConfidenceIssue, totalLpValue)
-    : `All LP positions have historical entry pricing and current RUNE price confidence. Total LP value is ${totalLpValue}; aggregate P/L and LP vs HODL are ready for review.`;
+    : `LP positions have historical entry pricing and current RUNE price checks. Total LP value is ${totalLpValue}; aggregate P/L and LP vs HODL are app-calculated review metrics, not source-confirmed balances.`;
   const lpTopRisk = primaryConfidenceIssue
     ? `${primaryConfidenceIssue.label}: ${primaryConfidenceIssue.value}`
-    : 'LP performance is historically priced';
-  const lpHeaderSeverity = primaryConfidenceIssue?.severity ?? 'healthy';
+    : 'LP review inputs loaded';
+  const lpHeaderSeverity = primaryConfidenceIssue?.severity ?? 'info';
   const lpStatusLabel = primaryConfidenceIssue
     ? primaryConfidenceIssue.severity === 'info' ? 'Review Estimates' : 'Needs Attention'
-    : 'Trusted';
+    : 'Inputs loaded';
   const handleReviewLpConfidence = () => {
     window.setTimeout(() => {
       const confidencePanel = document.getElementById('lp-data-confidence');
@@ -81,7 +81,14 @@ export default function LpPage() {
     }, 0);
   };
   const confidenceStrip = (
-    <MetricStrip id="lp-data-confidence" metrics={pageModel.confidenceMetrics} title="LP data confidence" />
+    <MetricStrip
+      compactDetailMode="all"
+      compactMobileColumns={3}
+      id="lp-data-confidence"
+      metrics={pageModel.confidenceMetrics}
+      mobileDensity="compact"
+      title="LP data checks"
+    />
   );
 
   return (
@@ -129,7 +136,7 @@ export default function LpPage() {
             Enter a THORChain address
           </h3>
           <p className="mt-2 text-zinc-500">
-            Paste an address to inspect source-backed liquidity positions.
+            Paste an address to inspect current LP positions and source checks.
           </p>
         </div>
       ) : isLoading ? (
@@ -160,18 +167,18 @@ export default function LpPage() {
               metrics={[
                 { label: 'Total LP value', value: totalLpValue, detail: pageModel.totalValueDetail },
                 {
-                  label: 'Trusted P/L',
-                  value: pageModel.hasTrustedHistoricalPerformance ? formatSignedUsd(pageModel.totalPnlUsd) : pageModel.performancePendingLabel,
+                  label: 'Historical P/L',
+                  value: pageModel.hasHistoricalPerformance ? formatSignedUsd(pageModel.totalPnlUsd) : pageModel.performancePendingLabel,
                   detail: pageModel.aggregatePnlDetail,
                 },
                 {
                   label: 'LP vs HODL',
-                  value: pageModel.hasTrustedHistoricalPerformance ? formatSignedUsd(pageModel.totalIlUsd) : pageModel.performancePendingLabel,
+                  value: pageModel.hasHistoricalPerformance ? formatSignedUsd(pageModel.totalIlUsd) : pageModel.performancePendingLabel,
                   detail: pageModel.aggregateIlDetail,
                 },
               ]}
               primaryAction={primaryConfidenceIssue
-                ? { label: 'Review LP confidence', href: '#lp-data-confidence', onClick: handleReviewLpConfidence }
+                ? { label: 'Review LP checks', href: '#lp-data-confidence', onClick: handleReviewLpConfidence }
                 : { label: 'Review positions', href: '#lp-positions-tabs', onClick: handleReviewLpPositions }}
               eyebrow="LP performance"
               compactMobileMetrics
@@ -235,22 +242,22 @@ export default function LpPage() {
       ) : (
         /* Empty State */
         <>
+          <div className="mb-6">
+            {confidenceStrip}
+          </div>
           <div className="rounded-xl border border-zinc-200 bg-white/80 p-8 text-center shadow-md backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/80">
             <Coins className="mx-auto mb-4 h-12 w-12 text-zinc-400" />
             <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
-              No LP positions found
+              No current LP positions shown
             </h3>
             <p className="mt-2 text-zinc-500">
               {address
-                ? 'This address has no active liquidity positions.'
+                ? 'Midgard member lookup returned no active LP pools for this address.'
                 : 'Connect a wallet to view your LP positions.'}
             </p>
             <p className="mt-1 text-sm text-zinc-400">
-              Successful member lookup — the address is valid but has no LP positions.
+              Treat this as the current source result, not proof of past liquidity activity or pending changes.
             </p>
-          </div>
-          <div className="mt-6">
-            {confidenceStrip}
           </div>
         </>
       )}

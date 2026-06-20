@@ -178,6 +178,24 @@ function buildMockRuneHistory(nowMs = Date.now()) {
   };
 }
 
+function buildMockRuneHistoryWithoutTimestamp() {
+  return {
+    meta: {
+      startTime: '',
+      endTime: '',
+      startRunePriceUSD: '1.50',
+      endRunePriceUSD: '1.50',
+    },
+    intervals: [
+      {
+        startTime: '',
+        endTime: '',
+        runePriceUSD: '1.50',
+      },
+    ],
+  };
+}
+
 function buildHistoricalRuneHistory(fromSeconds: number, toSeconds: number) {
   const startMs = fromSeconds * 1000;
   const endMs = toSeconds * 1000;
@@ -201,6 +219,29 @@ function buildHistoricalRuneHistory(fromSeconds: number, toSeconds: number) {
   };
 }
 
+function buildInvalidHistoricalRuneHistory(fromSeconds: number, toSeconds: number) {
+  const startMs = fromSeconds * 1000;
+  const endMs = toSeconds * 1000;
+  const startTime = toMidgardNanoseconds(startMs);
+  const endTime = toMidgardNanoseconds(endMs);
+
+  return {
+    meta: {
+      startTime,
+      endTime,
+      startRunePriceUSD: '0',
+      endRunePriceUSD: '0',
+    },
+    intervals: [
+      {
+        startTime,
+        endTime,
+        runePriceUSD: 'not-a-price',
+      },
+    ],
+  };
+}
+
 const mockPoolHistory = {
   intervals: [
     {
@@ -218,9 +259,13 @@ const mockPoolHistory = {
   ],
 };
 
-type LpMockScenario = 'historical' | 'mixed-confidence' | 'redeem-degraded' | 'empty';
+type LpMockScenario = 'historical' | 'mixed-confidence' | 'current-only' | 'redeem-degraded' | 'external-price-fallback' | 'empty';
 
-async function setupMocks(page: Page, scenario: LpMockScenario = 'historical') {
+async function setupMocks(
+  page: Page,
+  scenario: LpMockScenario = 'historical',
+  options: { runeHistoryMissingTimestamp?: boolean } = {}
+) {
   await page.route('**/api/thorchain/**', async (route) => {
     const url = new URL(route.request().url());
 
@@ -312,8 +357,14 @@ async function setupMocks(page: Page, scenario: LpMockScenario = 'historical') {
       const toSeconds = toParam === null ? Number.NaN : Number(toParam);
       await route.fulfill({
         json: Number.isFinite(fromSeconds) && Number.isFinite(toSeconds)
-          ? buildHistoricalRuneHistory(fromSeconds, toSeconds)
-          : buildMockRuneHistory(),
+          ? scenario === 'current-only'
+            ? { meta: {}, intervals: [] }
+            : scenario === 'external-price-fallback'
+            ? buildInvalidHistoricalRuneHistory(fromSeconds, toSeconds)
+            : buildHistoricalRuneHistory(fromSeconds, toSeconds)
+          : options.runeHistoryMissingTimestamp
+            ? buildMockRuneHistoryWithoutTimestamp()
+            : buildMockRuneHistory(),
       });
       return;
     }
@@ -333,9 +384,37 @@ async function setupMocks(page: Page, scenario: LpMockScenario = 'historical') {
 
     await route.fulfill({ status: 404, json: { error: `Unhandled Midgard mock: ${url.pathname}` } });
   });
+
+  await page.route('**/api/coingecko/**', async (route) => {
+    const url = new URL(route.request().url());
+
+    if (scenario === 'external-price-fallback' && url.pathname === '/api/coingecko/coins/thorchain/market_chart/range') {
+      await route.fulfill({
+        json: {
+          prices: [
+            [1700000000000, 1.5],
+          ],
+        },
+      });
+      return;
+    }
+
+    await route.fulfill({ status: 404, json: { error: `Unhandled CoinGecko mock: ${url.pathname}` } });
+  });
 }
 
 test.describe('LP IL dashboard', () => {
+  test('frames the missing-address shell without wallet or LP source overclaims', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 740 });
+    await page.goto('/dashboard/lp');
+
+    await expect(page.getByLabel('Address required diagnosis')).toContainText('Choose a watched THORChain address to start triage');
+    await expect(page.getByText(/wallet connection is only needed later for wallet-presented transaction review/i)).toBeVisible();
+    await expect(page.getByText(/transaction confirmation/i)).toHaveCount(0);
+    await expect(page.getByText(/source-backed liquidity positions/i)).toHaveCount(0);
+    await expect(page.getByText(/inspect live liquidity positions/i)).toHaveCount(0);
+  });
+
   test('shows the IL column and at least one row', async ({ page }) => {
     await setupMocks(page);
     await page.goto(`/dashboard/lp?address=${MOCK_ADDRESS}`);
@@ -343,8 +422,15 @@ test.describe('LP IL dashboard', () => {
     // The LP page heading is "LP Positions" (h1). Use exact match to avoid matching other headings.
     await expect(page.getByRole('heading', { name: 'LP Positions', exact: true })).toBeVisible();
     const diagnosis = page.getByLabel('LP performance diagnosis');
-    await expect(diagnosis).toContainText('LP performance is historically priced');
+    await expect(diagnosis).toContainText('Inputs loaded');
+    await expect(diagnosis).toHaveClass(/border-sky-200/);
+    await expect(diagnosis).not.toHaveClass(/border-emerald-200/);
+    await expect(diagnosis).toContainText('LP review inputs loaded');
+    await expect(diagnosis).toContainText('app-calculated review metrics, not source-confirmed balances');
+    await expect(diagnosis).not.toContainText('LP performance uses source-backed pricing');
+    await expect(diagnosis).not.toContainText('Source-backed');
     await expect(diagnosis.getByRole('button', { name: 'Review positions' })).toBeVisible();
+    await expect(diagnosis).not.toContainText('Trusted');
     await expect(diagnosis.getByText('LP vs HODL', { exact: true })).toBeVisible();
     await expect(diagnosis).toContainText('LP value minus HODL value for historical positions');
     await expect(page.getByText('Total Impermanent Loss')).toHaveCount(0);
@@ -360,6 +446,59 @@ test.describe('LP IL dashboard', () => {
     await page.getByRole('tab', { name: 'My Positions (1)', exact: true }).click();
     const positionsPanel = page.getByRole('tabpanel', { name: 'My Positions (1)' });
     await expect(positionsPanel.getByRole('link', { name: 'BTC.BTC', exact: true })).toBeVisible();
+  });
+
+  test('keeps source-loaded LP data-check evidence readable on mobile', async ({ page }) => {
+    await setupMocks(page, 'historical');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/dashboard/lp?address=${MOCK_ADDRESS}`);
+
+    await expect(page.getByRole('heading', { name: 'LP Positions', exact: true })).toBeVisible();
+    const diagnosis = page.getByLabel('LP performance diagnosis');
+    const confidence = page.getByLabel('LP data checks');
+
+    await expect(diagnosis).toContainText('Inputs loaded');
+    await expect(diagnosis).toHaveClass(/border-sky-200/);
+    await expect(diagnosis).not.toHaveClass(/border-emerald-200/);
+    await expect(confidence).toContainText('Historical entry pricing loaded');
+    await expect(confidence).toContainText('Updated');
+
+    const lpEvidenceLayout = await page.evaluate(() => {
+      const confidencePanel = document.querySelector('section[aria-label="LP data checks"]');
+      const elements = confidencePanel ? Array.from(confidencePanel.querySelectorAll('*')) : [];
+      const timestampDetail = elements.find((element) => element.textContent?.trim().startsWith('Updated '));
+      const historicalDetail = elements.find((element) => element.textContent?.trim() === 'Historical entry pricing loaded');
+      const viewportWidth = window.innerWidth;
+      const box = (element: Element | undefined | null) => {
+        const rect = element?.getBoundingClientRect();
+        return rect ? { top: rect.top, bottom: rect.bottom, width: rect.width } : null;
+      };
+      const overflowing = Array.from(document.querySelectorAll('main *'))
+        .filter((element) => {
+          const rect = element.getBoundingClientRect();
+          return rect.width > 0 && (rect.left < -1 || rect.right > viewportWidth + 1);
+        })
+        .map((element) => element.textContent?.replace(/\s+/g, ' ').trim().slice(0, 80));
+
+      return {
+        confidence: box(confidencePanel),
+        historicalClass: historicalDetail?.getAttribute('class') ?? '',
+        historicalDetail: historicalDetail?.textContent?.trim() ?? '',
+        timestampClass: timestampDetail?.getAttribute('class') ?? '',
+        timestampDetail: timestampDetail?.textContent?.trim() ?? '',
+        viewportHeight: window.innerHeight,
+        overflowing,
+      };
+    });
+
+    expect(lpEvidenceLayout.confidence).not.toBeNull();
+    expect(lpEvidenceLayout.confidence!.top).toBeLessThan(lpEvidenceLayout.viewportHeight);
+    expect(lpEvidenceLayout.confidence!.bottom).toBeLessThanOrEqual(lpEvidenceLayout.viewportHeight);
+    expect(lpEvidenceLayout.timestampDetail).toContain('Updated');
+    expect(lpEvidenceLayout.timestampClass).not.toContain('line-clamp-1');
+    expect(lpEvidenceLayout.historicalDetail).toBe('Historical entry pricing loaded');
+    expect(lpEvidenceLayout.historicalClass).not.toContain('line-clamp-1');
+    expect(lpEvidenceLayout.overflowing).toEqual([]);
   });
 
   test('shows an inline LP CSV export failure without opening a browser dialog', async ({ page }) => {
@@ -386,7 +525,7 @@ test.describe('LP IL dashboard', () => {
     expect(dialogs).toEqual([]);
   });
 
-  test('labels aggregate LP performance exclusions for mixed pricing confidence', async ({ page }) => {
+  test('labels aggregate LP performance exclusions for mixed pricing checks', async ({ page }) => {
     await setupMocks(page, 'mixed-confidence');
     await page.goto(`/dashboard/lp?address=${MOCK_ADDRESS}`);
 
@@ -394,28 +533,79 @@ test.describe('LP IL dashboard', () => {
     const diagnosis = page.getByLabel('LP performance diagnosis');
     await expect(diagnosis).toContainText('Current-only: 1');
     await expect(diagnosis).toContainText('1 current-only LP position history unavailable');
-    await expect(diagnosis.getByRole('button', { name: 'Review LP confidence' })).toBeVisible();
-    await expect(diagnosis.getByText('Current value includes all pools; 1 estimated position and 1 current-only position need confidence review')).toBeVisible();
+    await expect(diagnosis.getByRole('button', { name: 'Review LP checks' })).toBeVisible();
+    await expect(diagnosis.getByText('Current value includes all pools; 1 estimated position and 1 current-only position need source check review')).toBeVisible();
     await expect(diagnosis.getByText(/from historical positions; 1 estimated position and 1 current-only position excluded/)).toHaveCount(2);
   });
 
-  test('shows no-position diagnosis before LP confidence details on mobile', async ({ page }) => {
+  test('withholds aggregate LP performance review without decision-ready copy when history is unavailable', async ({ page }) => {
+    await setupMocks(page, 'current-only');
+    await page.goto(`/dashboard/lp?address=${MOCK_ADDRESS}`);
+
+    await expect(page.getByRole('heading', { name: 'LP Positions', exact: true })).toBeVisible();
+    const diagnosis = page.getByLabel('LP performance diagnosis');
+    await expect(diagnosis).toContainText('Current-only: 1');
+    await expect(diagnosis).toContainText('1 current-only LP position history unavailable');
+    await expect(diagnosis.getByText('Historical entry pricing required for aggregate performance review')).toHaveCount(2);
+    await expect(diagnosis).not.toContainText(/decision-ready|\bready\b|\bsafe\b/i);
+  });
+
+  test('labels CoinGecko historical RUNE fallback as estimated LP performance', async ({ page }) => {
+    await setupMocks(page, 'external-price-fallback');
+    await page.goto(`/dashboard/lp?address=${MOCK_ADDRESS}`);
+
+    await expect(page.getByRole('heading', { name: 'LP Positions', exact: true })).toBeVisible();
+    const diagnosis = page.getByLabel('LP performance diagnosis');
+    await expect(diagnosis).toContainText('Estimated values: 1');
+    await expect(diagnosis).toContainText('1 LP position uses estimated entry pricing');
+    await expect(diagnosis).toContainText('estimated performance stays out of aggregate P/L');
+    await expect(diagnosis).not.toContainText('LP performance uses source-backed pricing');
+    await expect(page.getByText('external CoinGecko quote')).toBeVisible();
+  });
+
+  test('labels malformed current RUNE quote freshness as unverified for LP values', async ({ page }) => {
+    await setupMocks(page, 'historical', { runeHistoryMissingTimestamp: true });
+    await page.goto(`/dashboard/lp?address=${MOCK_ADDRESS}`);
+
+    await expect(page.getByRole('heading', { name: 'LP Positions', exact: true })).toBeVisible();
+    const diagnosis = page.getByLabel('LP performance diagnosis');
+    await expect(diagnosis).toContainText('RUNE price: Unverified');
+    await expect(diagnosis).toContainText('RUNE price checks are unverified');
+    await expect(diagnosis).toContainText('Current value uses an unverified RUNE price');
+
+    const confidence = page.getByLabel('LP data checks');
+    await expect(confidence).toContainText('RUNE price');
+    await expect(confidence).toContainText('Unverified');
+    await expect(confidence).toContainText('Quote loaded without freshness');
+    // e2e-selector-order-ok: verifies degraded check cards sort ahead of healthy cards
+    const firstConfidenceCard = confidence.locator('.grid > div').first();
+    await expect(firstConfidenceCard).toContainText('RUNE price');
+    await expect(firstConfidenceCard).toContainText('Unverified');
+    await expect(confidence).not.toContainText('RUNE price Stale');
+    await expect(confidence).not.toContainText('RUNE price Fresh');
+  });
+
+  test('shows LP check details before an empty current-source claim on mobile', async ({ page }) => {
     await setupMocks(page, 'empty');
     await page.setViewportSize({ width: 390, height: 740 });
     await page.goto(`/dashboard/lp?address=${MOCK_ADDRESS}`);
 
-    const emptyHeading = page.getByRole('heading', { name: 'No LP positions found' });
-    const confidence = page.getByLabel('LP data confidence');
+    const emptyHeading = page.getByRole('heading', { name: 'No current LP positions shown' });
+    const confidence = page.getByLabel('LP data checks');
     await expect(emptyHeading).toBeVisible();
     await expect(confidence).toBeVisible();
     await expect(confidence).toContainText('RUNE price');
     await expect(confidence).toContainText('Not used');
+    await expect(page.getByText('Midgard member lookup returned no active LP pools for this address.')).toBeVisible();
+    await expect(page.getByText('Treat this as the current source result, not proof of past liquidity activity or pending changes.')).toBeVisible();
+    await expect(page.getByText(/address is valid/i)).toHaveCount(0);
+    await expect(page.getByText(/successful member lookup/i)).toHaveCount(0);
 
     const layout = await page.evaluate(() => {
       const emptyHeading = Array.from(document.querySelectorAll('h3')).find((heading) =>
-        heading.textContent?.includes('No LP positions found')
+        heading.textContent?.includes('No current LP positions shown')
       );
-      const confidence = document.querySelector('section[aria-label="LP data confidence"]');
+      const confidence = document.querySelector('section[aria-label="LP data checks"]');
       const viewportWidth = window.innerWidth;
       const box = (element: Element | null) => {
         const rect = element?.getBoundingClientRect();
@@ -439,22 +629,23 @@ test.describe('LP IL dashboard', () => {
 
     expect(layout.empty).not.toBeNull();
     expect(layout.confidence).not.toBeNull();
-    expect(layout.empty!.top).toBeLessThan(layout.confidence!.top);
+    expect(layout.confidence!.top).toBeLessThan(layout.empty!.top);
+    expect(layout.confidence!.bottom).toBeLessThanOrEqual(layout.viewportHeight);
     expect(layout.empty!.top).toBeLessThan(layout.viewportHeight);
     expect(layout.overflowing).toEqual([]);
   });
 
-  test('keeps degraded redeem quote confidence before LP details on mobile', async ({ page }) => {
+  test('keeps degraded redeem quote checks before LP details on mobile', async ({ page }) => {
     await setupMocks(page, 'redeem-degraded');
     await page.setViewportSize({ width: 390, height: 740 });
     await page.goto(`/dashboard/lp?address=${MOCK_ADDRESS}`);
 
     const diagnosis = page.getByLabel('LP performance diagnosis');
-    const confidence = page.getByLabel('LP data confidence');
+    const confidence = page.getByLabel('LP data checks');
 
     await expect(diagnosis).toContainText('Redeem quotes: Degraded');
     await expect(diagnosis).toContainText('treat withdrawable amounts as estimated');
-    await expect(diagnosis.getByRole('button', { name: 'Review LP confidence' })).toBeVisible();
+    await expect(diagnosis.getByRole('button', { name: 'Review LP checks' })).toBeVisible();
     await expect(confidence).toContainText('Redeem quotes');
     await expect(confidence).toContainText('1 derived position redeem quote');
     await expect(page.getByText('Estimated withdrawable RUNE')).toBeVisible();
@@ -477,7 +668,7 @@ test.describe('LP IL dashboard', () => {
 
       return {
         diagnosis: box('section[aria-label="LP performance diagnosis"]'),
-        confidence: box('section[aria-label="LP data confidence"]'),
+        confidence: box('section[aria-label="LP data checks"]'),
         tabs: box('[role="tablist"]'),
         viewportHeight: window.innerHeight,
         viewportWidth,

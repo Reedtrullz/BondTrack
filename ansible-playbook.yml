@@ -32,13 +32,21 @@
         source: pull
         force_source: yes  # verify the immutable deploy tag is present in GHCR
 
+    - name: Ensure Heimdall data directory exists
+      ansible.builtin.file:
+        path: /opt/apps/heimdall/data
+        state: directory
+        owner: "1000"
+        group: "1000"
+        mode: "0700"
+
     - name: Stop and remove existing container
       community.docker.docker_container:
         name: "{{ container_name }}"
         state: absent
 
     - name: Start new container
-      no_log: "{{ vault_coinapi_key | default('', true) | length > 0 }}"
+      no_log: "{{ (vault_coinapi_key | default('', true) | length > 0) or (web_push_vapid_private_key | default('', true) | length > 0) or (heimdall_notification_runner_token | default('', true) | length > 0) }}"
       community.docker.docker_container:
         name: "{{ container_name }}"
         image: "{{ docker_image_repository }}:{{ image_tag }}"
@@ -46,6 +54,8 @@
         restart_policy: unless-stopped
         ports:
           - "127.0.0.1:3001:3000"
+        volumes:
+          - "/opt/apps/heimdall/data:/data"
         log_driver: "json-file"
         log_options:
           max-size: "10m"
@@ -76,6 +86,12 @@
           MIDGARD_FALLBACK_URL: "{{ midgard_fallback | default('https://midgard.thorchain.network') }}"
           TRUST_PROXY_HEADERS: "{{ trust_proxy_headers | default('true') }}"
           TRUST_X_FORWARDED_FOR: "{{ trust_x_forwarded_for | default('false') }}"
+          HEIMDALL_DATA_DIR: "/data"
+          NOTIFICATION_POLL_INTERVAL_MS: "{{ notification_poll_interval_ms | default('60000') }}"
+          WEB_PUSH_VAPID_PUBLIC_KEY: "{{ web_push_vapid_public_key | default('', true) }}"
+          WEB_PUSH_VAPID_PRIVATE_KEY: "{{ web_push_vapid_private_key | default('', true) }}"
+          WEB_PUSH_CONTACT: "{{ web_push_contact | default('mailto:alerts@bond.thorchain.no') }}"
+          HEIMDALL_NOTIFICATION_RUNNER_TOKEN: "{{ heimdall_notification_runner_token | default('', true) }}"
           # Existing Ansible Vault variable; do not store or log the value in docs.
           COINAPI_KEY: "{{ vault_coinapi_key | default('', true) }}"
 
@@ -98,7 +114,7 @@
         - previous_image == "none"
 
     - name: Rollback to previous image on failure
-      no_log: "{{ vault_coinapi_key | default('', true) | length > 0 }}"
+      no_log: "{{ (vault_coinapi_key | default('', true) | length > 0) or (web_push_vapid_private_key | default('', true) | length > 0) or (heimdall_notification_runner_token | default('', true) | length > 0) }}"
       community.docker.docker_container:
         name: "{{ container_name }}"
         image: "{{ previous_image }}"
@@ -106,6 +122,8 @@
         restart_policy: unless-stopped
         ports:
           - "127.0.0.1:3001:3000"
+        volumes:
+          - "/opt/apps/heimdall/data:/data"
         log_driver: "json-file"
         log_options:
           max-size: "10m"
@@ -135,6 +153,12 @@
           MIDGARD_FALLBACK_URL: "{{ midgard_fallback | default('https://midgard.thorchain.network') }}"
           TRUST_PROXY_HEADERS: "{{ trust_proxy_headers | default('true') }}"
           TRUST_X_FORWARDED_FOR: "{{ trust_x_forwarded_for | default('false') }}"
+          HEIMDALL_DATA_DIR: "/data"
+          NOTIFICATION_POLL_INTERVAL_MS: "{{ notification_poll_interval_ms | default('60000') }}"
+          WEB_PUSH_VAPID_PUBLIC_KEY: "{{ web_push_vapid_public_key | default('', true) }}"
+          WEB_PUSH_VAPID_PRIVATE_KEY: "{{ web_push_vapid_private_key | default('', true) }}"
+          WEB_PUSH_CONTACT: "{{ web_push_contact | default('mailto:alerts@bond.thorchain.no') }}"
+          HEIMDALL_NOTIFICATION_RUNNER_TOKEN: "{{ heimdall_notification_runner_token | default('', true) }}"
           COINAPI_KEY: "{{ vault_coinapi_key | default('', true) }}"
       when:
         - readiness_check is not succeeded or readiness_check.json.status != "ready"

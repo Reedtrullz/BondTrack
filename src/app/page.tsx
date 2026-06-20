@@ -106,8 +106,8 @@ export default function Home() {
               />
               <TrustBoundary
                 icon={<WalletCards className="h-4 w-4" aria-hidden="true" />}
-                title="Wallet confirms transactions"
-                detail="BOND and UNBOND payloads require wallet preview and confirmation before broadcast."
+                title="Wallet approval stays external"
+                detail="BOND and UNBOND payloads open in your wallet for final review; approve only if memo, amount, network, and fee match."
               />
               <TrustBoundary
                 icon={<RadioTower className="h-4 w-4" aria-hidden="true" />}

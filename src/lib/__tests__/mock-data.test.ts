@@ -1,5 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { isDevelopmentMode } from '../mock-data';
+import {
+  MOCK_ACTIVE_NODE_ADDRESS,
+  MOCK_ACTIVE_OPERATOR_ADDRESS,
+  MOCK_BOND_POSITIONS,
+  MOCK_MEMBER_DATA,
+  MOCK_NODES,
+  MOCK_PROVIDER_ADDRESS,
+  MOCK_SECONDARY_PROVIDER_ADDRESS,
+  MOCK_STANDBY_NODE_ADDRESS,
+  MOCK_STANDBY_OPERATOR_ADDRESS,
+  isDevelopmentMode,
+} from '../mock-data';
+import { validateTHORChainAddress } from '../utils/address-validation';
 
 describe('isDevelopmentMode', () => {
   beforeEach(() => {
@@ -29,5 +41,42 @@ describe('isDevelopmentMode', () => {
   it('should return false when NODE_ENV is "test" and NEXT_PUBLIC_USE_MOCK_DATA is not set', () => {
     vi.stubEnv('NODE_ENV', 'test');
     expect(isDevelopmentMode()).toBe(false);
+  });
+});
+
+describe('mock dashboard data', () => {
+  it('uses checksum-valid THORChain account addresses', () => {
+    const canonicalMockAddresses = [
+      MOCK_PROVIDER_ADDRESS,
+      MOCK_SECONDARY_PROVIDER_ADDRESS,
+      MOCK_ACTIVE_NODE_ADDRESS,
+      MOCK_STANDBY_NODE_ADDRESS,
+      MOCK_ACTIVE_OPERATOR_ADDRESS,
+      MOCK_STANDBY_OPERATOR_ADDRESS,
+    ];
+    const mockAddresses = [
+      ...canonicalMockAddresses,
+      MOCK_MEMBER_DATA.runeAddress,
+      ...MOCK_BOND_POSITIONS.map((position) => position.nodeAddress),
+      ...MOCK_NODES.map((node) => node.address),
+    ];
+
+    expect(canonicalMockAddresses).toHaveLength(new Set(canonicalMockAddresses).size);
+
+    for (const address of mockAddresses) {
+      expect(validateTHORChainAddress(address)).toMatchObject({
+        valid: true,
+        prefix: 'thor',
+      });
+    }
+  });
+
+  it('keeps the demo provider address aligned with LP and node mock data', () => {
+    expect(MOCK_MEMBER_DATA.runeAddress).toBe(MOCK_PROVIDER_ADDRESS);
+    expect(MOCK_NODES.map((node) => node.address)).toEqual([MOCK_ACTIVE_NODE_ADDRESS]);
+    expect(MOCK_BOND_POSITIONS.map((position) => position.nodeAddress)).toEqual([
+      MOCK_ACTIVE_NODE_ADDRESS,
+      MOCK_STANDBY_NODE_ADDRESS,
+    ]);
   });
 });

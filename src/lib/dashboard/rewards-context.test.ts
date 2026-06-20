@@ -25,7 +25,7 @@ function position(overrides: Partial<BondPosition> = {}): BondPosition {
 }
 
 function history(overrides: Partial<BondHistory> = {}): BondHistory {
-  return {
+  const mergedHistory = {
     bondGrowth: 0,
     currentBond: 100_000,
     firstBondAmount: 25_000,
@@ -36,12 +36,18 @@ function history(overrides: Partial<BondHistory> = {}): BondHistory {
     loadedActionCount: 12,
     totalActionCount: 12,
     isPartial: false,
+    isLocalActionCapReached: false,
     ...overrides,
+  };
+
+  return {
+    ...mergedHistory,
+    isLocalActionCapReached: mergedHistory.isLocalActionCapReached ?? false,
   };
 }
 
 describe('buildRewardsPageModel', () => {
-  it('uses node-level APY as the trusted basis when positions include node APY', () => {
+  it('uses node-level APY as an informational estimate basis when positions include node APY', () => {
     const model = buildRewardsPageModel({
       actionsError: undefined,
       bondHistory: null,
@@ -60,11 +66,14 @@ describe('buildRewardsPageModel', () => {
     });
     expect(model.confidenceMetrics).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'reward-history', value: 'Current-only', detail: 'No bond action history', severity: 'warning' }),
-      expect.objectContaining({ id: 'apy-basis', value: 'Node-level', detail: '12.00% weighted from 1 node', severity: 'healthy' }),
+      expect.objectContaining({ id: 'apy-basis', value: 'Node-level', detail: '12.00% node-weighted estimate from 1 node', severity: 'info' }),
       expect.objectContaining({ id: 'rune-price', value: 'Missing', detail: 'USD returns unavailable', severity: 'warning' }),
       expect.objectContaining({ id: 'forecast', value: 'Estimated', detail: 'Simple projection from node APY', severity: 'info' }),
       expect.objectContaining({ id: 'tax-export', value: 'Limited', detail: 'Current bond only', severity: 'warning' }),
     ]));
+    expect(model.confidenceMetrics.find((metric) => metric.id === 'apy-basis')).not.toEqual(
+      expect.objectContaining({ severity: 'healthy' })
+    );
     expect(model.primaryConfidenceIssue).toEqual(expect.objectContaining({
       id: 'reward-history',
       value: 'Current-only',
@@ -80,6 +89,7 @@ describe('buildRewardsPageModel', () => {
       positions: [position({ netAPY: 0 })],
       runePrice: 0.6,
       runePriceIsStale: false,
+      runePriceUpdatedAt: new Date('2026-06-12T00:00:00.000Z'),
     });
 
     expect(model.hasNodeApy).toBe(false);
@@ -88,11 +98,42 @@ describe('buildRewardsPageModel', () => {
     expect(model.confidenceMetrics).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'apy-basis', value: 'Network fallback', detail: '<0.01% THORNode fallback', severity: 'info' }),
       expect.objectContaining({ id: 'forecast', value: 'Estimated', detail: 'Simple projection from network fallback', severity: 'info' }),
-      expect.objectContaining({ id: 'rune-price', value: 'Fresh', detail: 'Current quote loaded', severity: 'healthy' }),
+      expect.objectContaining({ id: 'rune-price', value: 'Recent', detail: 'Recent quote loaded', severity: 'info' }),
     ]));
   });
 
-  it('blocks forecast confidence when neither node nor network APY is usable', () => {
+  it('does not mark a numeric non-stale RUNE quote fresh when freshness is missing', () => {
+    const model = buildRewardsPageModel({
+      actionsError: undefined,
+      bondHistory: history(),
+      isLoadingActions: false,
+      networkBondingAPY: '0.20',
+      positions: [position()],
+      runePrice: 0.6,
+      runePriceIsStale: false,
+    });
+
+    expect(model.runePriceMetric).toEqual({
+      value: '$0.60',
+      detail: 'Quote loaded without freshness',
+    });
+    expect(model.confidenceMetrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'rune-price',
+        value: 'Unverified',
+        detail: 'Quote loaded without freshness',
+        severity: 'warning',
+      }),
+    ]));
+    expect(model.confidenceMetrics).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'rune-price',
+        value: 'Recent',
+      }),
+    ]));
+  });
+
+  it('blocks forecast checks when neither node nor network APY is usable', () => {
     const model = buildRewardsPageModel({
       actionsError: undefined,
       bondHistory: null,
@@ -119,6 +160,7 @@ describe('buildRewardsPageModel', () => {
       positions: [position()],
       runePrice: 0.6,
       runePriceIsStale: true,
+      runePriceUpdatedAt: new Date('2026-06-12T00:00:00.000Z'),
     });
 
     expect(model.runePriceMetric).toEqual({
@@ -132,7 +174,7 @@ describe('buildRewardsPageModel', () => {
     ]));
   });
 
-  it('marks reward history and tax worksheet ready only when bond action history is present', () => {
+  it('marks complete reward history as source-loaded while keeping tax worksheet in review', () => {
     const model = buildRewardsPageModel({
       actionsError: undefined,
       bondHistory: history(),
@@ -141,12 +183,27 @@ describe('buildRewardsPageModel', () => {
       positions: [position()],
       runePrice: 0.6,
       runePriceIsStale: false,
+      runePriceUpdatedAt: new Date('2026-06-12T00:00:00.000Z'),
     });
 
     expect(model.confidenceMetrics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'reward-history', value: 'Trusted', detail: 'Bond actions loaded', severity: 'healthy' }),
-      expect.objectContaining({ id: 'tax-export', value: 'Ready', detail: 'FIFO worksheet rows from bond history', severity: 'healthy' }),
+      expect.objectContaining({
+        id: 'reward-history',
+        value: 'Source-loaded',
+        detail: 'Bond action rows loaded; returns are app-calculated review metrics',
+        severity: 'info',
+      }),
+      expect.objectContaining({ id: 'tax-export', value: 'Review', detail: 'Bond history rows available; not filing-ready', severity: 'info' }),
     ]));
+    expect(model.confidenceMetrics.find((metric) => metric.id === 'reward-history')).not.toEqual(
+      expect.objectContaining({ value: 'Trusted' })
+    );
+    expect(model.confidenceMetrics.find((metric) => metric.id === 'reward-history')).not.toEqual(
+      expect.objectContaining({ value: 'Source-backed' })
+    );
+    expect(model.confidenceMetrics.find((metric) => metric.id === 'tax-export')).not.toEqual(
+      expect.objectContaining({ value: 'Ready' })
+    );
     expect(model.primaryConfidenceIssue).toBeUndefined();
   });
 
@@ -159,6 +216,7 @@ describe('buildRewardsPageModel', () => {
       positions: [position()],
       runePrice: 0.6,
       runePriceIsStale: false,
+      runePriceUpdatedAt: new Date('2026-06-12T00:00:00.000Z'),
     });
 
     expect(model.confidenceMetrics).toEqual(expect.arrayContaining([
@@ -178,6 +236,46 @@ describe('buildRewardsPageModel', () => {
     expect(model.primaryConfidenceIssue).toEqual(expect.objectContaining({
       id: 'reward-history',
       value: 'Partial',
+    }));
+  });
+
+  it('calls out when reward history is capped locally before Midgard count is exhausted', () => {
+    const cappedHistory = history({
+      actionLimit: 1000,
+      loadedActionCount: 1000,
+      totalActionCount: 1001,
+      isPartial: true,
+    }) as BondHistory & { isLocalActionCapReached: boolean };
+    cappedHistory.isLocalActionCapReached = true;
+
+    const model = buildRewardsPageModel({
+      actionsError: undefined,
+      bondHistory: cappedHistory,
+      isLoadingActions: false,
+      networkBondingAPY: '0.20',
+      positions: [position()],
+      runePrice: 0.6,
+      runePriceIsStale: false,
+      runePriceUpdatedAt: new Date('2026-06-12T00:00:00.000Z'),
+    });
+
+    expect(model.confidenceMetrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'reward-history',
+        value: 'Capped',
+        detail: 'Local 1000-action cap reached; set a manual baseline before relying on returns',
+        severity: 'warning',
+      }),
+      expect.objectContaining({
+        id: 'tax-export',
+        value: 'Review',
+        detail: 'Local action cap reached; worksheet may omit older bond history',
+        severity: 'warning',
+      }),
+    ]));
+    expect(model.primaryConfidenceIssue).toEqual(expect.objectContaining({
+      id: 'reward-history',
+      value: 'Capped',
     }));
   });
 });

@@ -3,6 +3,7 @@ import { expect, test, type Page } from './fixtures';
 const MOCK_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz';
 const MOCK_SECONDARY_ADDRESS = 'thor1otherprovider123456789abcdef';
 const MOCK_CANDIDATE_ADDRESS = 'thor1candidateaccess123456789abcdef';
+const MOCK_STRONG_CANDIDATE_ADDRESS = 'thor1strongcandidate0000000000000000000000';
 
 const mockNodes = [
   {
@@ -73,6 +74,18 @@ const mockCandidateNode = {
   missing_blocks: 0,
 };
 
+const mockStrongWhitelistedCandidateNode = {
+  ...mockCandidateNode,
+  node_address: MOCK_STRONG_CANDIDATE_ADDRESS,
+  total_bond: '1000000000000',
+  slash_points: 0,
+  current_award: '20000000000',
+  bond_providers: {
+    node_operator_fee: '500',
+    providers: [{ bond_address: MOCK_ADDRESS, bond: '0' }],
+  },
+};
+
 const mockNetwork = {
   activeBonds: ['150000000000000', '100000000000000'],
   activeNodeCount: '2',
@@ -106,7 +119,7 @@ async function setupMocks(page: Page) {
     const url = new URL(route.request().url());
 
     if (url.pathname === '/api/thorchain/thorchain/nodes') {
-      await route.fulfill({ json: [...mockNodes, mockCandidateNode] });
+      await route.fulfill({ json: [...mockNodes, mockCandidateNode, mockStrongWhitelistedCandidateNode] });
       return;
     }
 
@@ -175,11 +188,19 @@ test.describe('Risk dashboard', () => {
     await expect(securityGauge).toContainText('Midgard reading');
     await expect(securityGauge).toContainText('freshness shown in source status');
     await expect(page.getByText('Live network', { exact: true })).toHaveCount(0);
-    await expect(securityGauge).toContainText('healthy');
+    await expect(securityGauge).toContainText('In range');
+    await expect(securityGauge).toContainText('Bond buffer in range');
+    await expect(securityGauge).toContainText('Network-level bond coverage, not a provider safety verdict');
+    await expect(securityGauge).not.toContainText(/\bhealthy\b|well secured|\bsafe\b/i);
     await expect(securityGauge.getByLabel('Bond-to-pool ratio')).toHaveText('2.50x');
+
+    await expect(securityGauge.getByText('In range', { exact: true })).toHaveClass(/bg-sky-50/);
+    await expect(securityGauge.getByText('In range', { exact: true })).not.toHaveClass(/bg-emerald-50/);
+    await expect(securityGauge.getByLabel('Bond-to-pool ratio')).toHaveClass(/text-sky-600/);
+    await expect(securityGauge.getByLabel('Bond-to-pool ratio')).not.toHaveClass(/text-emerald-600/);
   });
 
-  test('labels churn non-risk nodes as outside the churn-risk band', async ({ page }) => {
+  test('labels churn non-risk nodes as outside the review band without safe copy', async ({ page }) => {
     await page.getByLabel('Provider risk diagnosis').getByRole('link', { name: 'Review slash exposure' }).click();
 
     const focusedContext = page.getByLabel('Focused node risk context');
@@ -188,7 +209,8 @@ test.describe('Risk dashboard', () => {
     await focusedContext.getByTestId('focused-bonded-primary-button').click();
 
     await expect(page.getByRole('heading', { name: 'Churn-Out Risk', exact: true })).toBeVisible();
-    await expect(page.getByText('Outside Band')).toBeVisible();
+    await expect(page.getByText('Outside Review Band')).toBeVisible();
+    await expect(page.getByText('Outside Band', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Safe', { exact: true })).toHaveCount(0);
   });
 
@@ -318,25 +340,27 @@ test.describe('Risk dashboard', () => {
     const primaryAction = focusedContext.getByTestId('focused-risk-primary-action');
     const inlineEvidence = focusedContext.getByTestId('focused-risk-inline-evidence');
     const primaryLink = focusedContext.getByTestId('focused-risk-primary-link');
-    const scoreEvidence = focusedContext.getByTestId('focused-risk-score-evidence');
+    const candidateEvidence = focusedContext.getByTestId('focused-risk-score-evidence');
     const metricDetails = focusedContext.getByTestId('focused-risk-metric-details');
     const metrics = focusedContext.getByTestId('focused-risk-candidate-metrics');
 
     await expect(focusedContext).toContainText('Provider access review');
     await expect(focusedContext).toContainText('Avoid candidate');
-    await expect(primaryAction).toContainText('Ask operator to whitelist');
-    await expect(primaryAction).toContainText('Do not bond until this address is whitelisted.');
-    await expect(inlineEvidence).toContainText('THORNode: All score inputs present.');
-    await expect(inlineEvidence).toContainText('Capacity: Whitelist needed.');
+    await expect(focusedContext).not.toContainText(/\d+\/100/);
+    await expect(primaryAction).toContainText('Ask operator to add provider');
+    await expect(primaryAction).toContainText('Do not bond until THORNode lists this address as a bond provider.');
+    await expect(primaryAction).not.toContainText(/whitelist|whitelisted/i);
+    await expect(inlineEvidence).toContainText('THORNode: All candidate inputs present.');
+    await expect(inlineEvidence).toContainText('Capacity: Provider not listed by THORNode.');
     await expect(primaryLink).toContainText('Compare alternatives');
     await expect(primaryLink).toHaveAttribute(
       'href',
       `/dashboard/explorer?address=${MOCK_ADDRESS}&node=${MOCK_CANDIDATE_ADDRESS}`
     );
-    await expect(scoreEvidence).toContainText('Score evidence · THORNode');
-    await expect(scoreEvidence).toContainText('Watched address is not listed; operator whitelist is required.');
+    await expect(candidateEvidence).toContainText('Candidate evidence · THORNode');
+    await expect(candidateEvidence).toContainText('Watched address is not listed as a THORNode bond provider.');
     await expect(metricDetails).toContainText('Operational details');
-    await expect(metricDetails).toContainText('Whitelist needed · Slash 150 · Fee 25.0%');
+    await expect(metricDetails).toContainText('Provider not listed by THORNode · Slash 150 · Fee 25.0%');
     await expect(metrics).not.toBeVisible();
     await expect(page.getByLabel('Provider exposure review')).toHaveCount(0);
     const otherQueue = page.getByLabel('Other provider reviews');
@@ -403,12 +427,40 @@ test.describe('Risk dashboard', () => {
     expect(openOverflow).toEqual([]);
   });
 
-  test('keeps mobile alert drilldowns diagnosis-first with source confidence visible', async ({ page }) => {
+  test('frames strong whitelisted focused candidates as review states before BOND memo review', async ({ page }) => {
+    await page.goto(`/dashboard/risk?address=${MOCK_ADDRESS}&node=${MOCK_STRONG_CANDIDATE_ADDRESS}`);
+
+    const focusedContext = page.getByLabel('Focused node risk context');
+    const primaryAction = focusedContext.getByTestId('focused-risk-primary-action');
+    const primaryLink = focusedContext.getByTestId('focused-risk-primary-link');
+
+    await expect(focusedContext).toBeVisible();
+    await expect(focusedContext).toContainText('Strong candidate');
+    await expect(focusedContext).not.toContainText(/\d+\/100/);
+    await expect(primaryAction).toContainText('Review before BOND memo');
+    await expect(primaryAction).toContainText('Candidate evidence and THORNode-listed provider access support reviewing a BOND memo');
+    await expect(primaryAction).not.toContainText('Candidate evidence and provider access support reviewing a BOND memo');
+    await expect(primaryAction).toContainText('not a safety guarantee');
+    await expect(primaryAction).not.toContainText('memo prep');
+    await expect(primaryAction).not.toContainText('Watched address is already listed as a provider and the candidate score is strong.');
+    await expect(primaryAction).not.toContainText('Ready');
+    await expect(primaryLink).toContainText('Review BOND memo');
+    await expect(primaryLink).toHaveAttribute(
+      'href',
+      `/dashboard/transactions?address=${MOCK_ADDRESS}&action=bond&node=${MOCK_STRONG_CANDIDATE_ADDRESS}`
+    );
+    await expect(focusedContext.getByRole('link', { name: 'Prepare BOND memo' })).toBeHidden();
+    await expect(focusedContext.getByTestId('focused-risk-inline-evidence')).toContainText(
+      'THORNode: All candidate inputs present. Capacity: Provider listed by THORNode.'
+    );
+  });
+
+  test('keeps mobile alert drilldowns diagnosis-first with source checks visible', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/dashboard/risk?address=${MOCK_ADDRESS}&node=thor1noderisk123456789abcdef`);
 
     const diagnosis = page.getByLabel('Provider risk diagnosis');
-    const sourceConfidence = page.getByRole('region', { name: 'Source confidence' });
+    const sourceConfidence = page.getByRole('region', { name: 'Source checks' });
     const focusedContext = page.getByLabel('Focused node risk context');
     const primaryAction = focusedContext.getByTestId('focused-bonded-primary-action');
     const inlineEvidence = focusedContext.getByTestId('focused-bonded-inline-evidence');
@@ -438,7 +490,7 @@ test.describe('Risk dashboard', () => {
       return {
         viewportHeight: window.innerHeight,
         diagnosis: box('section[aria-label="Provider risk diagnosis"]'),
-        sourceConfidence: box('section[aria-label="Source confidence"]'),
+        sourceConfidence: box('section[aria-label="Source checks"]'),
         focusedContext: box('section[aria-label="Focused node risk context"]'),
         focusedAction: box('[data-testid="focused-bonded-primary-action"]'),
         focusedButton: box('[data-testid="focused-bonded-primary-button"]'),

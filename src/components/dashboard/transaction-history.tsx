@@ -5,6 +5,7 @@ import { useTransactionHistory } from '@/lib/hooks/use-transaction-history';
 import { formatRuneDisplayNumber } from '@/lib/utils/formatters';
 import { isValidTHORChainAddress } from '@/lib/utils/address-validation';
 import { Database, ExternalLink } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface TransactionHistoryProps {
   address: string | null;
@@ -34,29 +35,62 @@ function TransactionHistorySource({
   transactionCount,
   loadedAt,
   historyLimit,
+  historyActionCap,
+  loadedActionCount,
+  totalActionCount,
+  isPartial,
+  isLocalActionCapReached,
+  canLoadMore,
+  isLoadingMore,
+  loadMoreError,
+  stalePageResetCount,
+  onLoadMore,
 }: {
   transactionCount: number;
   loadedAt: Date | null;
   historyLimit: number;
+  historyActionCap: number;
+  loadedActionCount: number;
+  totalActionCount: number | null;
+  isPartial: boolean;
+  isLocalActionCapReached: boolean;
+  canLoadMore: boolean;
+  isLoadingMore: boolean;
+  loadMoreError: unknown;
+  stalePageResetCount: number;
+  onLoadMore: () => void;
 }) {
   const actionLabel = transactionCount === 1
-    ? '1 matching BOND/UNBOND action rendered.'
+    ? `1 matching BOND/UNBOND action rendered${isPartial ? ' from the recent window' : ''}.`
     : transactionCount > 1
-      ? `${transactionCount} matching BOND/UNBOND actions rendered.`
+      ? `${transactionCount} matching BOND/UNBOND actions rendered${isPartial ? ' from the recent window' : ''}.`
       : 'No matching recent actions returned.';
+  const sourceTitle = isPartial ? 'Partial Midgard window' : 'Midgard actions';
+  const sourceDetail = isPartial
+    ? totalActionCount !== null
+      ? `Loaded ${loadedActionCount} of ${totalActionCount} recent Midgard actions before filtering to BOND/UNBOND. Use this as recent context, not complete history.`
+      : `Loaded the latest ${loadedActionCount} Midgard actions before filtering to BOND/UNBOND. Use this as recent context, not complete history.`
+    : totalActionCount !== null && loadedActionCount >= totalActionCount && loadedActionCount > historyLimit
+      ? `Loaded all ${totalActionCount} reported Midgard actions before filtering to BOND/UNBOND.`
+    : `Shows up to ${historyLimit} recent Midgard actions and filters to BOND/UNBOND. Empty results do not prove older history is absent.`;
 
   return (
     <section
       aria-label="Transaction history source"
-      className="rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-3 text-sky-950 dark:border-sky-900/60 dark:bg-sky-950/20 dark:text-sky-100"
+      className={cn(
+        'rounded-lg border px-3 py-3',
+        isPartial
+          ? 'border-amber-200 bg-amber-50/70 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100'
+          : 'border-sky-200 bg-sky-50/70 text-sky-950 dark:border-sky-900/60 dark:bg-sky-950/20 dark:text-sky-100'
+      )}
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 gap-2">
           <Database className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <div className="min-w-0">
-            <p className="text-sm font-semibold">Midgard actions</p>
+            <p className="text-sm font-semibold">{sourceTitle}</p>
             <p className="mt-1 text-xs leading-5 opacity-85">
-              Shows up to {historyLimit} recent Midgard actions and filters to BOND/UNBOND. Empty results do not prove older history is absent.
+              {sourceDetail}
             </p>
           </div>
         </div>
@@ -65,6 +99,35 @@ function TransactionHistorySource({
         </span>
       </div>
       <p className="mt-2 text-xs font-medium opacity-90">{actionLabel}</p>
+      {isLocalActionCapReached || stalePageResetCount > 0 || canLoadMore || isLoadingMore || loadMoreError ? (
+        <div className="mt-3 space-y-2">
+          {isLocalActionCapReached ? (
+            <p role="status" className="text-xs font-medium">
+              Local history cap reached. Heimdall keeps the latest {historyActionCap} Midgard actions loaded locally for responsiveness. Use this as recent context, not complete history.
+            </p>
+          ) : null}
+          {stalePageResetCount > 0 ? (
+            <p role="status" className="text-xs font-medium">
+              Midgard refreshed its recent action window, so previously loaded older pages were cleared. Load older actions again before treating history as complete.
+            </p>
+          ) : null}
+          {loadMoreError ? (
+            <p role="alert" className="text-xs font-medium text-red-700 dark:text-red-300">
+              Older Midgard actions could not be loaded. Keep treating this as partial history.
+            </p>
+          ) : null}
+          {canLoadMore || isLoadingMore ? (
+            <button
+              type="button"
+              onClick={onLoadMore}
+              disabled={isLoadingMore}
+              className="inline-flex min-h-9 w-full items-center justify-center rounded-lg border border-current/20 bg-white/70 px-3 py-2 text-xs font-bold transition hover:bg-white/90 disabled:cursor-wait disabled:opacity-70 dark:bg-zinc-950/30 dark:hover:bg-zinc-900/60"
+            >
+              {isLoadingMore ? 'Loading older Midgard actions...' : 'Load older Midgard actions'}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -89,7 +152,23 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
   }, [address]);
 
   const selectedAddressIsValid = selectedAddress ? isValidTHORChainAddress(selectedAddress) : false;
-  const { transactions, isLoading, error, loadedAt, historyLimit } = useTransactionHistory(selectedAddressIsValid ? selectedAddress : null);
+  const {
+    transactions,
+    isLoading,
+    error,
+    loadedAt,
+    historyLimit,
+    historyActionCap,
+    loadedActionCount,
+    totalActionCount,
+    isPartial,
+    isLocalActionCapReached,
+    canLoadMore,
+    isLoadingMore,
+    loadMoreError,
+    stalePageResetCount,
+    loadOlderActions,
+  } = useTransactionHistory(selectedAddressIsValid ? selectedAddress : null);
   const showSourceContext = selectedAddressIsValid && !isLoading && !error && loadedAt !== null;
 
   const handleSearch = (event?: React.FormEvent) => {
@@ -158,6 +237,16 @@ export function TransactionHistory({ address }: TransactionHistoryProps) {
           transactionCount={transactions.length}
           loadedAt={loadedAt}
           historyLimit={historyLimit}
+          historyActionCap={historyActionCap}
+          loadedActionCount={loadedActionCount}
+          totalActionCount={totalActionCount}
+          isPartial={isPartial}
+          isLocalActionCapReached={isLocalActionCapReached}
+          canLoadMore={canLoadMore}
+          isLoadingMore={isLoadingMore}
+          loadMoreError={loadMoreError}
+          stalePageResetCount={stalePageResetCount}
+          onLoadMore={loadOlderActions}
         />
       ) : null}
 

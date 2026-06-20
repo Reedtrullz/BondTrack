@@ -21,6 +21,8 @@ interface InsightHeaderProps {
   };
   eyebrow?: string;
   compactMobileMetrics?: boolean;
+  compactMetricDetailMode?: 'hidden' | 'all';
+  mobileMetricColumns?: 2 | 3;
 }
 
 const severityConfig: Record<InsightSeverity, {
@@ -70,14 +72,22 @@ export function InsightHeader({
   primaryAction,
   eyebrow = 'Command center',
   compactMobileMetrics = false,
+  compactMetricDetailMode = 'hidden',
+  mobileMetricColumns = 3,
 }: InsightHeaderProps) {
-  const config = severityConfig[severity];
+  const presentationSeverity = severity === 'healthy' && statusLabel === 'No urgent review'
+    ? 'info'
+    : severity;
+  const isNoUrgentReview = statusLabel === 'No urgent review';
+  const config = severityConfig[presentationSeverity];
   const Heading = headingLevel === 1 ? 'h1' : 'h2';
-  const actionVariant = severity === 'critical'
+  const actionVariant = isNoUrgentReview
+    ? 'ghost'
+    : presentationSeverity === 'critical'
     ? 'destructive'
-    : severity === 'warning'
+    : presentationSeverity === 'warning'
       ? 'primary'
-      : severity === 'info'
+      : presentationSeverity === 'info'
         ? 'outline'
         : 'success';
 
@@ -127,7 +137,16 @@ export function InsightHeader({
         )}
       </div>
 
-      <div className={cn('grid sm:mt-5 sm:grid-cols-3', compactMobileMetrics ? 'mt-3 grid-cols-3 gap-2 sm:gap-3' : 'mt-5 grid-cols-1 gap-3')}>
+      <div
+        className={cn(
+          'grid sm:mt-5 sm:grid-cols-3',
+          compactMobileMetrics
+            ? mobileMetricColumns === 2
+              ? 'mt-3 grid-cols-2 gap-2 sm:gap-3'
+              : 'mt-3 grid-cols-3 gap-2 sm:gap-3'
+            : 'mt-5 grid-cols-1 gap-3'
+        )}
+      >
         {metrics.map((metric) => (
           <div
             key={`${metric.label}:${metric.value}`}
@@ -148,7 +167,14 @@ export function InsightHeader({
               )}
             </div>
             {metric.detail ? (
-              <div className={cn('mt-1 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400', compactMobileMetrics ? 'hidden sm:block' : null)}>{metric.detail}</div>
+              <div
+                className={cn(
+                  'mt-1 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400',
+                  compactMobileMetrics && compactMetricDetailMode === 'hidden' ? 'hidden sm:block' : null
+                )}
+              >
+                {metric.detail}
+              </div>
             ) : null}
           </div>
         ))}

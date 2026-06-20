@@ -52,6 +52,7 @@ ENV PORT=3000
 ENV VERSION=${VERSION}
 
 RUN id -u node >/dev/null 2>&1 || useradd -m node
+RUN mkdir -p /data && chown node:node /data
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static

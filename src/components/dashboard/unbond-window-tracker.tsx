@@ -102,7 +102,7 @@ export function UnbondWindowTracker({ positions }: { positions: BondPosition[] }
 
   const activeNodes = nodesWithUnbondStatus.filter(n => n.status === 'Active');
   const standbyNodes = nodesWithUnbondStatus.filter(n => n.status === 'Standby');
-  const canUnbondCount = standbyNodes.filter(n => n.canUnbond).length;
+  const windowOpenCount = standbyNodes.filter(n => n.canUnbond).length;
   const cannotUnbondCount = standbyNodes.filter(n => !n.canUnbond).length;
   const nonSigningCount = nodesWithUnbondStatus.filter(n => !n.isSigning).length;
 
@@ -123,18 +123,18 @@ export function UnbondWindowTracker({ positions }: { positions: BondPosition[] }
           <div className="text-lg font-bold text-zinc-600 dark:text-zinc-400">{activeNodes.length}</div>
           <div className="text-xs text-zinc-500">Active</div>
         </div>
-        <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-900/20 text-center">
-          <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{canUnbondCount}</div>
-          <div className="text-xs text-emerald-600 dark:text-emerald-400">Can Unbond</div>
+        <div className="p-2 rounded bg-sky-50 dark:bg-sky-950/30 text-center">
+          <div className="text-lg font-bold text-sky-700 dark:text-sky-300">{windowOpenCount}</div>
+          <div className="text-xs text-sky-700 dark:text-sky-300">Window Open</div>
         </div>
-        <div className="p-2 rounded bg-red-50 dark:bg-red-900/20 text-center">
-          <div className="text-lg font-bold text-red-600 dark:text-red-400">{cannotUnbondCount + activeNodes.length}</div>
-          <div className="text-xs text-red-600 dark:text-red-400">Locked</div>
+        <div className="p-2 rounded bg-zinc-100 dark:bg-zinc-800 text-center">
+          <div className="text-lg font-bold text-zinc-600 dark:text-zinc-400">{cannotUnbondCount + activeNodes.length}</div>
+          <div className="text-xs text-zinc-600 dark:text-zinc-400">Window Closed</div>
         </div>
       </div>
 
       <div className="text-xs text-zinc-500 mb-3">
-        {nonSigningCount} nodes not signing • unbond window opens on next churn
+        {nonSigningCount} nodes not signing • window status updates after churn
       </div>
 
       <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -153,14 +153,20 @@ export function UnbondWindowTracker({ positions }: { positions: BondPosition[] }
                 </div>
               )}
               {node.canUnbond ? (
-                <div className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                <div className="flex items-center gap-1 text-xs text-sky-700 dark:text-sky-300">
                   <Unlock className="w-3 h-3" />
-                  <span>Open</span>
+                  <span>Window open</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1 text-xs text-red-500">
+                <div
+                  className={
+                    node.status === 'Active'
+                      ? 'flex items-center gap-1 text-xs text-zinc-600 dark:text-zinc-400'
+                      : 'flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300'
+                  }
+                >
                   <Lock className="w-3 h-3" />
-                  <span>{node.status === 'Active' ? 'Active' : 'No Sign'}</span>
+                  <span>{node.status === 'Active' ? 'Window closed' : 'No signer'}</span>
                 </div>
               )}
             </div>
@@ -169,7 +175,7 @@ export function UnbondWindowTracker({ positions }: { positions: BondPosition[] }
       </div>
 
       <div className="mt-3 text-xs text-zinc-500">
-        Standby nodes with signer membership can unbond • Active nodes cannot unbond
+        Standby nodes with signer membership have an open UNBOND window; wallet confirmation is still required. Active nodes remain closed until churn.
       </div>
     </div>
   );

@@ -22,7 +22,7 @@ export interface RiskPositionSummary {
   providerReviewCount: number;
   slashNodeCount: number;
   standbyCount: number;
-  statusLabel: 'Healthy' | 'Review Needed' | 'Action Needed';
+  statusLabel: 'No urgent review' | 'Review Needed' | 'Action Needed';
   totalBonded: number;
 }
 
@@ -35,7 +35,7 @@ export interface IncentivePendulumModel {
   lpShare: number;
   nodeShare: number;
   progressPercent: number;
-  status: 'Well Secured' | 'Healthy' | 'Building' | 'Under-secured';
+  status: 'Bond buffer high' | 'Bond buffer in range' | 'Bond buffer building' | 'Liquidity above bond';
 }
 
 export type FocusedNodeRiskContext =
@@ -111,14 +111,14 @@ export function summarizeRiskPositions(positions: BondPosition[]): RiskPositionS
     slashNodeCount > 0 ||
     standbyCount > 0 ||
     healthScore < NETWORK.HEALTH_SCORE_THRESHOLDS.healthy;
-  const isHealthy =
+  const hasNoUrgentReview =
     healthScore >= NETWORK.HEALTH_SCORE_THRESHOLDS.healthy &&
     !hasActionNeeded &&
     !hasProviderReview;
   const statusLabel = hasActionNeeded
     ? 'Action Needed'
-    : isHealthy
-    ? 'Healthy'
+    : hasNoUrgentReview
+    ? 'No urgent review'
       : 'Review Needed';
 
   return {
@@ -156,47 +156,47 @@ export function getIncentivePendulumModel({
   if (bondToPoolRatio > NETWORK.BOND_TO_POOL_THRESHOLDS.healthy) {
     return {
       bondToPoolRatio,
-      description: 'Bond exceeds 2.5x liquidity. Node rewards maximized, LP yields reduced.',
+      description: 'Network-level incentive context: bond is above the target range compared with liquidity; still review node-specific slash, jail, and churn signals.',
       level: 'well-secured',
       lpShare,
       nodeShare,
       progressPercent,
-      status: 'Well Secured',
+      status: 'Bond buffer high',
     };
   }
 
   if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.building) {
     return {
       bondToPoolRatio,
-      description: 'Bond 1.5-2x liquidity. Balanced reward distribution.',
+      description: 'Network-level incentive context: bond sits inside the target range compared with liquidity; this is not a provider safety verdict.',
       level: 'healthy',
       lpShare,
       nodeShare,
       progressPercent,
-      status: 'Healthy',
+      status: 'Bond buffer in range',
     };
   }
 
   if (bondToPoolRatio >= NETWORK.BOND_TO_POOL_THRESHOLDS.underSecured) {
     return {
       bondToPoolRatio,
-      description: 'Bond > liquidity but below target. More bonding needed for full security.',
+      description: 'Network-level incentive context: bond is above liquidity but below the target range; node-specific risk still determines provider exposure.',
       level: 'building',
       lpShare,
       nodeShare,
       progressPercent,
-      status: 'Building',
+      status: 'Bond buffer building',
     };
   }
 
   return {
     bondToPoolRatio,
-    description: 'Liquidity exceeds bond. Network shifts rewards to nodes to encourage bonding.',
+    description: 'Network-level incentive context: liquidity exceeds bond; review network context and node-specific risk before changing exposure.',
     level: 'under-secured',
     lpShare,
     nodeShare,
     progressPercent,
-    status: 'Under-secured',
+    status: 'Liquidity above bond',
   };
 }
 

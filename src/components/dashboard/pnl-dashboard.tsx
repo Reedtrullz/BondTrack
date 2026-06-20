@@ -11,6 +11,7 @@ import {
   removeLocalStorageValue,
   writeLocalStorageValue,
 } from '@/lib/storage/keys';
+import { formatUtcDateTime } from '@/lib/utils/formatters';
 
 interface PnLDashboardProps {
   positions: BondPosition[];
@@ -33,6 +34,7 @@ interface PnLDashboardProps {
     firstBondDate?: Date | null;
     actionLimit?: number;
     isPartial?: boolean;
+    isLocalActionCapReached?: boolean;
     loadedActionCount?: number;
     totalActionCount?: number | null;
   } | null;
@@ -177,6 +179,7 @@ export function PnLDashboard({
   const hasManualInitialBond = manualInitialBond !== null;
   const hasActionInitialBond = (bondHistory?.initialBond ?? 0) > 0;
   const hasPartialActionHistory = bondHistory?.isPartial === true;
+  const isLocalActionCapReached = bondHistory?.isLocalActionCapReached === true;
   const hasTrustedActionInitialBond = hasActionInitialBond && !hasPartialActionHistory;
   const hasHistoricalInitialBond = hasManualInitialBond || hasTrustedActionInitialBond;
   const effectiveInitialBond = manualInitialBond ?? (hasTrustedActionInitialBond ? bondHistory?.initialBond ?? 0 : 0);
@@ -196,7 +199,7 @@ export function PnLDashboard({
     return currentRunePriceValue;
   }, [manualEntryPrice, historicalEntryPrice, earningsHistoryEntryPrice, currentRunePriceValue]);
   const currentRunePriceTrustLabel = currentRunePriceIsStale
-    ? `Current RUNE price stale${currentRunePriceUpdatedAt ? ` · updated ${currentRunePriceUpdatedAt.toLocaleString()}` : ''}`
+    ? `Current RUNE price stale${currentRunePriceUpdatedAt ? ` · updated ${formatUtcDateTime(currentRunePriceUpdatedAt)}` : ''}`
     : null;
   const canCalculateReturn = hasHistoricalInitialBond && effectiveInitialBond > 0 && effectiveEntryPrice !== null && currentRunePriceValue !== null;
   
@@ -231,13 +234,17 @@ export function PnLDashboard({
     : actionsError
       ? 'History unavailable; set manually'
       : hasPartialActionHistory
-        ? 'Set manual baseline for partial history'
+        ? isLocalActionCapReached
+          ? 'Set manual baseline for capped history'
+          : 'Set manual baseline for partial history'
       : 'Set initial bond to track';
   const initialBondSource = manualInitialBond !== null
     ? 'manual override'
     : hasActionInitialBond
       ? hasPartialActionHistory
-        ? 'partial action history'
+        ? isLocalActionCapReached
+          ? 'capped action history'
+          : 'partial action history'
         : 'action history'
       : isLoadingActions
         ? 'loading action history'
@@ -299,10 +306,15 @@ export function PnLDashboard({
         </div>
         {hasPartialActionHistory ? (
           <p className="mt-2 border-t border-amber-200/70 pt-2 text-amber-700 dark:border-amber-900/50 dark:text-amber-300">
-            Baseline is partial: Midgard returned the most recent {bondHistory?.loadedActionCount ?? bondHistory?.actionLimit ?? 50} BOND/UNBOND actions
-            {typeof bondHistory?.totalActionCount === 'number' ? ` out of ${bondHistory.totalActionCount}` : ''}. {hasManualInitialBond
-              ? 'Manual initial bond is overriding partial history for this view.'
-              : 'Auto return cards are withheld until full history loads or you set a manual initial bond.'}
+            {isLocalActionCapReached
+              ? 'Baseline is capped: Heimdall loaded'
+              : 'Baseline is partial: Midgard returned'} the most recent {bondHistory?.loadedActionCount ?? bondHistory?.actionLimit ?? 50} BOND/UNBOND actions
+            {typeof bondHistory?.totalActionCount === 'number' ? ` out of ${bondHistory.totalActionCount}` : ''}
+            {isLocalActionCapReached ? ' before the local reward-history cap' : ''}. {hasManualInitialBond
+              ? `Manual initial bond is overriding ${isLocalActionCapReached ? 'capped' : 'partial'} history for this view.`
+              : isLocalActionCapReached
+                ? 'Auto return cards are withheld; set a manual initial bond before relying on returns.'
+                : 'Auto return cards are withheld until full history loads or you set a manual initial bond.'}
           </p>
         ) : null}
       </section>

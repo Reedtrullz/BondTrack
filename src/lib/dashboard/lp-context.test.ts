@@ -52,7 +52,7 @@ function lpPosition(overrides: Partial<LpPosition> = {}): LpPosition {
 }
 
 describe('buildLpPageModel', () => {
-  it('separates trusted historical performance from estimated and current-only LP values', () => {
+  it('separates historical performance from estimated and current-only LP values', () => {
     const model = buildLpPageModel({
       isHistoricalEnrichmentLoading: false,
       isLoading: false,
@@ -91,19 +91,20 @@ describe('buildLpPageModel', () => {
     });
 
     expect(model.totalLpValueUsd).toBe(153.68);
-    expect(model.trustedHistoricalCount).toBe(1);
+    expect(model.historicalEntryCount).toBe(1);
     expect(model.estimatedCount).toBe(1);
     expect(model.currentOnlyCount).toBe(1);
-    expect(model.hasUntrustedPerformance).toBe(true);
+    expect(model.hasNonHistoricalPerformance).toBe(true);
     expect(model.performancePendingLabel).toBe('Historical only');
-    expect(model.totalValueDetail).toBe('Current value includes all pools; 1 estimated position and 1 current-only position need confidence review');
+    expect(model.totalValueDetail).toBe('Current value includes all pools; 1 estimated position and 1 current-only position need source check review');
     expect(model.aggregatePnlDetail).toBe('+$4.68 from historical positions; 1 estimated position and 1 current-only position excluded');
     expect(model.aggregateIlDetail).toBe('+$0.18 from historical positions; 1 estimated position and 1 current-only position excluded');
     expect(model.confidenceMetrics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'trusted-lp-values', value: '1', severity: 'healthy' }),
+      expect.objectContaining({ id: 'historical-lp-values', value: '1', severity: 'info' }),
+      expect.objectContaining({ id: 'historical-lp-values', label: 'Historical values', detail: 'Historical entry pricing loaded' }),
       expect.objectContaining({ id: 'estimated-lp-values', value: '1', detail: 'Excluded from aggregate P/L', severity: 'info' }),
       expect.objectContaining({ id: 'current-only-lp-values', value: '1', detail: 'History unavailable', severity: 'warning' }),
-      expect.objectContaining({ id: 'lp-price-feed', value: 'Fresh', severity: 'healthy' }),
+      expect.objectContaining({ id: 'lp-price-feed', value: 'Recent', severity: 'info' }),
     ]));
     expect(model.primaryConfidenceIssue).toEqual(expect.objectContaining({
       id: 'current-only-lp-values',
@@ -165,7 +166,7 @@ describe('buildLpPageModel', () => {
       runePriceFreshness: undefined,
     });
 
-    expect(model.hasUntrustedPerformance).toBe(true);
+    expect(model.hasNonHistoricalPerformance).toBe(true);
     expect(model.performancePendingLabel).toBe('Enriching...');
     expect(model.aggregatePnlDetail).toBe('Historical entry pricing is still loading');
     expect(model.aggregateIlDetail).toBe('Historical entry pricing is still loading');
@@ -175,7 +176,33 @@ describe('buildLpPageModel', () => {
     ]));
   });
 
-  it('labels RUNE price confidence without implying fresh values before data exists', () => {
+  it('withholds aggregate performance without calling missing history a safety boundary', () => {
+    const model = buildLpPageModel({
+      isHistoricalEnrichmentLoading: false,
+      isLoading: false,
+      positions: [
+        lpPosition({
+          entryAssetPriceUsd: null,
+          entryRunePriceUsd: null,
+          impermanentLossPercent: null,
+          impermanentLossUsd: null,
+          impermanentLossValue: null,
+          netProfitLoss: 'Current value only',
+          netProfitLossPercent: null,
+          netProfitLossUsd: null,
+          pricingSource: 'current-only',
+        }),
+      ],
+      runePriceFreshness: undefined,
+    });
+
+    expect(model.aggregatePnlDetail).toBe('Historical entry pricing required for aggregate performance review');
+    expect(model.aggregateIlDetail).toBe('Historical entry pricing required for aggregate performance review');
+    expect(model.aggregatePnlDetail).not.toMatch(/decision-ready|\bready\b|\bsafe\b/i);
+    expect(model.aggregateIlDetail).not.toMatch(/decision-ready|\bready\b|\bsafe\b/i);
+  });
+
+  it('labels RUNE price checks without implying fresh values before data exists', () => {
     expect(buildLpPageModel({
       isHistoricalEnrichmentLoading: false,
       isLoading: true,
@@ -197,6 +224,62 @@ describe('buildLpPageModel', () => {
     expect(buildLpPageModel({
       isHistoricalEnrichmentLoading: false,
       isLoading: false,
+      positions: [],
+      runePriceFreshness: undefined,
+    }).confidenceMetrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'historical-lp-values',
+        value: 'Not used',
+        detail: 'No LP positions',
+        severity: 'info',
+      }),
+    ]));
+
+    expect(buildLpPageModel({
+      isHistoricalEnrichmentLoading: false,
+      isLoading: false,
+      positions: [lpPosition()],
+      runePriceFreshness: {
+        ageMs: null,
+        isStale: true,
+        staleAfterMs: 129_600_000,
+        updatedAt: null,
+        updatedAtTimestampSeconds: null,
+      },
+    }).confidenceMetrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'lp-price-feed',
+        value: 'Unverified',
+        detail: 'Quote loaded without freshness',
+        severity: 'warning',
+      }),
+    ]));
+
+    const unverifiedQuoteModel = buildLpPageModel({
+      isHistoricalEnrichmentLoading: false,
+      isLoading: false,
+      positions: [lpPosition()],
+      runePriceFreshness: {
+        ageMs: null,
+        isStale: true,
+        staleAfterMs: 129_600_000,
+        updatedAt: null,
+        updatedAtTimestampSeconds: null,
+      },
+    });
+    expect(unverifiedQuoteModel.totalValueDetail).toBe('Current value uses an unverified RUNE price');
+    expect(unverifiedQuoteModel.confidenceMetrics[0]).toEqual(expect.objectContaining({
+      id: 'lp-price-feed',
+      value: 'Unverified',
+    }));
+    expect(unverifiedQuoteModel.primaryConfidenceIssue).toEqual(expect.objectContaining({
+      id: 'lp-price-feed',
+      value: 'Unverified',
+    }));
+
+    expect(buildLpPageModel({
+      isHistoricalEnrichmentLoading: false,
+      isLoading: false,
       positions: [lpPosition()],
       runePriceFreshness: {
         ageMs: 200_000_000,
@@ -206,7 +289,12 @@ describe('buildLpPageModel', () => {
         updatedAtTimestampSeconds: 1704067200,
       },
     }).confidenceMetrics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'lp-price-feed', value: 'Stale', severity: 'warning' }),
+      expect.objectContaining({
+        id: 'lp-price-feed',
+        value: 'Stale',
+        detail: 'Updated 2024-01-01 00:00 UTC',
+        severity: 'warning',
+      }),
     ]));
   });
 
@@ -227,5 +315,31 @@ describe('buildLpPageModel', () => {
     expect(model.primaryConfidenceIssue).toBeUndefined();
     expect(model.aggregatePnlDetail).toBe('+$4.68 from historical positions');
     expect(model.aggregateIlDetail).toBe('LP value minus HODL value for historical positions');
+  });
+
+  it('labels fully loaded LP checks as informational review inputs instead of health verdicts', () => {
+    const model = buildLpPageModel({
+      isHistoricalEnrichmentLoading: false,
+      isLoading: false,
+      positions: [lpPosition()],
+      runePriceFreshness: {
+        ageMs: 1_000,
+        isStale: false,
+        staleAfterMs: 129_600_000,
+        updatedAt: new Date('2026-06-12T10:00:00.000Z'),
+        updatedAtTimestampSeconds: 1781258400,
+      },
+    });
+
+    expect(model.confidenceMetrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'lp-redeem-quotes', value: 'Confirmed', severity: 'info' }),
+      expect.objectContaining({ id: 'historical-lp-values', value: '1', severity: 'info' }),
+      expect.objectContaining({ id: 'estimated-lp-values', value: '0', severity: 'info' }),
+      expect.objectContaining({ id: 'current-only-lp-values', value: '0', severity: 'info' }),
+      expect.objectContaining({ id: 'lp-price-feed', value: 'Recent', severity: 'info' }),
+    ]));
+    expect(model.confidenceMetrics).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ severity: 'healthy' }),
+    ]));
   });
 });

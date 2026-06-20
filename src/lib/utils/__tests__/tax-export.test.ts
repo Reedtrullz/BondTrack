@@ -272,6 +272,14 @@ describe('parseTaxDateRange', () => {
     expect(() => parseTaxDateRange('04/24/2024', '2024-04-25')).toThrow('YYYY-MM-DD');
     expect(() => parseTaxDateRange('2024-04-25', '2024-04-24')).toThrow('before or equal');
   });
+
+  it('caps tax worksheet exports to one leap-year sized tax period', () => {
+    expect(parseTaxDateRange('2024-01-01', '2024-12-31')).toEqual({
+      startTimestamp: 1704067200,
+      endTimestamp: 1735689599,
+    });
+    expect(() => parseTaxDateRange('2023-01-01', '2024-01-02')).toThrow('cannot exceed 366 days');
+  });
 });
 
 describe('exportToCSV', () => {

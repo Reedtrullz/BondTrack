@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AlertTriangle, CheckCircle2, Info, ShieldCheck, WalletCards } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info, WalletCards } from 'lucide-react';
 import { TransactionComposer } from '@/components/dashboard/transaction-composer';
 import { TransactionHistory } from '@/components/dashboard/transaction-history';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
@@ -22,17 +22,32 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
 const preflightSeverityClass: Record<TransactionPreflightSeverity, string> = {
-  ready: 'border-emerald-200 bg-emerald-50/80 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-200',
+  checked: 'border-cyan-200 bg-cyan-50/80 text-cyan-900 dark:border-cyan-900/60 dark:bg-cyan-950/20 dark:text-cyan-200',
   info: 'border-sky-200 bg-sky-50/80 text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/20 dark:text-sky-200',
   warning: 'border-amber-200 bg-amber-50/80 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200',
   critical: 'border-red-200 bg-red-50/80 text-red-800 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-200',
 };
 
+function getPreflightItemIcon(item: { id: string; severity: TransactionPreflightSeverity }) {
+  if (item.severity === 'critical' || item.severity === 'warning') return AlertTriangle;
+  if (item.id === 'wallet') return WalletCards;
+  if (item.severity === 'checked') return CheckCircle2;
+  return Info;
+}
+
 export default function TransactionsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const address = searchParams.get('address');
-  const action = parseTransactionAction(searchParams.get('action'));
+  const actionParam = searchParams.get('action');
+  const nodeParam = searchParams.get('node');
+  const amountParam = searchParams.get('amount');
+  const routeAction = parseTransactionAction(actionParam);
+  const [selectedAction, setSelectedAction] = useState<TransactionAction>(routeAction);
+
+  useEffect(() => {
+    setSelectedAction(routeAction);
+  }, [routeAction]);
 
   const { positions, isLoading: positionsLoading, error: positionsError } = useBondPositions(address);
   const { addresses: watchlist } = useWatchlist();
@@ -41,7 +56,7 @@ export default function TransactionsPage() {
   useBondHistory(address);
 
   const preflight = buildTransactionPreflightModel({
-    actionParam: searchParams.get('action'),
+    actionParam: selectedAction,
     dashboardAddress: address,
     positions,
     source: {
@@ -61,8 +76,8 @@ export default function TransactionsPage() {
     ? AlertTriangle
     : preflight.severity === 'warning'
       ? AlertTriangle
-      : preflight.severity === 'ready'
-        ? ShieldCheck
+      : preflight.severity === 'checked'
+        ? CheckCircle2
         : Info;
   const PreflightIcon = preflightIcon;
   const transactionSources = buildSourceFreshness(apiHealth, { includeRunePriceSource: false });
@@ -70,18 +85,25 @@ export default function TransactionsPage() {
   const syncTransactionMode = useCallback((nextAction: TransactionAction) => {
     const params = new URLSearchParams(searchParams.toString());
 
+    setSelectedAction(nextAction);
     params.set('action', nextAction);
     params.delete('amount');
 
-    router.replace(`/dashboard/transactions?${params.toString()}`, { scroll: false });
+    const nextHref = `/dashboard/transactions?${params.toString()}`;
+    router.replace(nextHref, { scroll: false });
+    try {
+      window.history.replaceState(null, '', nextHref);
+    } catch {
+      // Next router state is the source of truth; this fallback only keeps the visible URL aligned.
+    }
   }, [router, searchParams]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-5">
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Transactions</h1>
         <p className="hidden max-w-3xl text-sm leading-6 text-zinc-500 dark:text-zinc-400 sm:block">
-          Prepare THORChain BOND and UNBOND deposit memos, then let the connected wallet confirm the final payload and network fee before broadcast.
+          Generate and review THORChain BOND and UNBOND deposit memos, then use the connected wallet for final payload and network-fee review before approval/broadcast.
         </p>
       </div>
 
@@ -104,36 +126,46 @@ export default function TransactionsPage() {
             </div>
           </div>
           <a
-            href="#transaction-composer"
+            href={preflight.primaryAction.href}
             className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-current/20 bg-white/60 px-3 text-xs font-bold text-current shadow-sm transition hover:bg-white/80 dark:bg-zinc-950/30 dark:hover:bg-zinc-900/60"
           >
-            Open composer
+            {preflight.primaryAction.label}
           </a>
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:grid-cols-3 xl:grid-cols-5">
-          {preflight.items.map((item) => (
-            <div
-              key={item.id}
-              className={cn(
-                'rounded-xl border bg-white/70 p-2.5 dark:bg-zinc-950/30 sm:p-3',
-                preflightSeverityClass[item.severity]
-              )}
-            >
-              <div className="flex items-center gap-2 text-xs font-bold uppercase opacity-75">
-                {item.id === 'wallet' ? <WalletCards className="h-3.5 w-3.5" aria-hidden="true" /> : <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />}
-                {item.label}
+        <div className="mt-3 grid grid-cols-3 gap-1.5 sm:mt-4 sm:gap-2 xl:grid-cols-5">
+          {preflight.items.map((item) => {
+            const ItemIcon = getPreflightItemIcon(item);
+
+            return (
+              <div
+                key={item.id}
+                className={cn(
+                  'min-w-0 rounded-xl border bg-white/70 p-2 dark:bg-zinc-950/30 sm:p-3',
+                  preflightSeverityClass[item.severity]
+                )}
+              >
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase leading-3 opacity-75 sm:gap-2 sm:text-xs sm:leading-4">
+                  <ItemIcon className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden="true" />
+                  <span className="min-w-0 break-words">{item.label}</span>
+                </div>
+                <div className="mt-1 break-words text-xs font-bold leading-4 sm:text-sm">{item.value}</div>
+                <p className="mt-1 hidden text-xs leading-4 opacity-80 sm:block">{item.detail}</p>
               </div>
-              <div className="mt-1 truncate text-sm font-bold">{item.value}</div>
-              <p className="mt-1 hidden text-xs leading-4 opacity-80 sm:block">{item.detail}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
-      <SourceFreshnessPanel sources={transactionSources} compact title="Transaction source confidence" />
+      <SourceFreshnessPanel
+        ariaLabel="Transaction source checks"
+        id="transaction-source-confidence"
+        sources={transactionSources}
+        compact
+        title="Transaction source checks"
+      />
       
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] lg:gap-6">
         <section
           id="transaction-composer"
           aria-label="Transaction composer"
@@ -144,16 +176,19 @@ export default function TransactionsPage() {
               Transaction Composer
             </h2>
             <span
-              className={action === 'bond'
-                ? 'inline-flex items-center rounded-full border border-emerald-200/70 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase text-emerald-600 dark:border-emerald-800/60 dark:bg-emerald-900/20 dark:text-emerald-400'
+              className={selectedAction === 'bond'
+                ? 'inline-flex items-center rounded-full border border-sky-200/70 bg-sky-50 px-2.5 py-1 text-[11px] font-semibold uppercase text-sky-700 dark:border-sky-800/60 dark:bg-sky-900/20 dark:text-sky-300'
                 : 'inline-flex items-center rounded-full border border-amber-200/70 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold uppercase text-amber-700 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-400'}
             >
-              {action === 'bond' ? 'Bond mode' : 'Unbond mode'}
+              {selectedAction === 'bond' ? 'Bond mode' : 'Unbond mode'}
             </span>
           </div>
           <TransactionComposer
             positions={positions}
             address={address}
+            action={selectedAction}
+            nodeParam={nodeParam}
+            amountParam={amountParam}
             onModeChange={syncTransactionMode}
             sourceSafety={preflight.source}
           />

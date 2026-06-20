@@ -239,7 +239,94 @@ describe('dashboard insights', () => {
     ]));
   });
 
-  it('can omit RUNE price source confidence on pages that do not use USD values', () => {
+  it('describes a loaded RUNE quote without freshness as unverified', () => {
+    const sources = buildSourceFreshness(apiHealth(), {
+      runePriceQuoteAvailable: true,
+    });
+
+    expect(sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source: 'RUNE price',
+        status: 'unknown',
+        detail: 'Price quote loaded without freshness; USD values are unverified.',
+      }),
+    ]));
+  });
+
+  it('describes mock-data source checks as demo data without adding source actions', () => {
+    const mockApiHealth = apiHealth({
+      midgard: 'mock',
+      thornode: 'mock',
+      lastSuccessful: {
+        midgard: null,
+        thornode: null,
+      },
+    });
+    const sources = buildSourceFreshness(mockApiHealth, { includeRunePriceSource: false });
+
+    expect(sources).toEqual([
+      expect.objectContaining({
+        source: 'THORNode',
+        status: 'demo',
+        detail: 'Local mock data is enabled. Values are illustrative and are not live THORChain readings.',
+      }),
+      expect.objectContaining({
+        source: 'Midgard',
+        status: 'demo',
+      }),
+    ]);
+
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      positions: [bondPosition()],
+      apiHealth: mockApiHealth,
+      includeRunePriceSource: false,
+      now: NOW,
+    });
+
+    expect(state.sources.every((source) => source.status === 'demo')).toBe(true);
+    expect(state.actions.some((item) => item.id.startsWith('source:'))).toBe(false);
+  });
+
+  it('does not call a demo-data portfolio healthy when no simulated action is visible', () => {
+    const mockApiHealth = apiHealth({
+      midgard: 'mock',
+      thornode: 'mock',
+      lastSuccessful: {
+        midgard: null,
+        thornode: null,
+      },
+    });
+
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      positions: [bondPosition()],
+      apiHealth: mockApiHealth,
+      includeRunePriceSource: false,
+      now: NOW,
+    });
+
+    expect(state.severity).toBe('info');
+    expect(state.statusLabel).toBe('Demo');
+    expect(state.topRisk).toBe('Demo data only');
+    expect(state.diagnosis).toBe(
+      'Local mock data is illustrative. Use live THORNode and Midgard source checks before concluding this provider has no live issues.'
+    );
+    expect(state.primaryAction).toEqual({
+      label: 'Review source checks',
+      href: '/dashboard?address=thor1provider#source-confidence',
+    });
+    expect(state.headerMetrics[0]).toEqual({
+      label: 'Provider exposure',
+      value: 'Demo',
+      detail: 'Local mock fixture; not a live provider exposure reading.',
+    });
+    expect(state.topRisk).not.toBe('No provider review needed');
+    expect(state.diagnosis).not.toBe('Current source responses show no provider action needed.');
+    expect(state.diagnosis).not.toContain('deciding no provider review is needed');
+  });
+
+  it('can omit RUNE price source checks on pages that do not use USD values', () => {
     const sources = buildSourceFreshness(apiHealth(), { includeRunePriceSource: false });
 
     expect(sources.map((source) => source.source)).toEqual(['THORNode', 'Midgard']);
@@ -251,7 +338,7 @@ describe('dashboard insights', () => {
         id: 'source:midgard:degraded',
         source: 'Midgard',
         href: '/dashboard?address=thor1provider#source-confidence',
-        primaryAction: 'Review source confidence',
+        primaryAction: 'Review source checks',
       }),
     ], {
       label: 'Open BOND',
@@ -265,12 +352,12 @@ describe('dashboard insights', () => {
     });
   });
 
-  it('routes the generic BOND action to THORNode source confidence when present', () => {
+  it('routes the generic BOND action to THORNode source checks when present', () => {
     const sourceAction = action({
       id: 'source:thornode:degraded',
       source: 'THORNode',
       href: '/dashboard?address=thor1provider#source-confidence',
-      primaryAction: 'Review source confidence',
+      primaryAction: 'Review source checks',
     });
 
     const resolved = resolveThornodeGatedBondAction([sourceAction], {
@@ -280,7 +367,7 @@ describe('dashboard insights', () => {
 
     expect(resolved).toEqual({
       kind: 'source-confidence',
-      label: 'Review source confidence',
+      label: 'Review source checks',
       href: '/dashboard?address=thor1provider#source-confidence',
       sourceAction,
     });
@@ -297,10 +384,10 @@ describe('dashboard insights', () => {
 
     expect(state.severity).toBe('info');
     expect(state.statusLabel).toBe('No Bond');
-    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Start by confirming the address or preparing a BOND transaction.');
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Start by confirming the address or opening BOND review.');
     expect(state.topRisk).toBe('No bonded positions detected');
     expect(state.primaryAction).toEqual({
-      label: 'Open Bond Composer',
+      label: 'Open BOND review',
       href: '/dashboard/transactions?address=thor1provider',
     });
     expect(state.headerMetrics[0]).toEqual({
@@ -320,7 +407,7 @@ describe('dashboard insights', () => {
     });
 
     expect(state.statusLabel).toBe('No Bond');
-    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Start by confirming the address or preparing a BOND transaction.');
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Start by confirming the address or opening BOND review.');
     expect(state.topRisk).toBe('No bonded positions detected');
     expect(state.actions.map((item) => item.title)).not.toContain('RUNE price is unknown');
     expect(state.sources.map((source) => source.source)).toEqual(['THORNode', 'Midgard']);
@@ -342,10 +429,10 @@ describe('dashboard insights', () => {
     });
 
     expect(state.statusLabel).toBe('No Bond');
-    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Start by confirming the address or preparing a BOND transaction.');
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Start by confirming the address or opening BOND review.');
     expect(state.topRisk).toBe('No bonded positions detected');
     expect(state.primaryAction).toEqual({
-      label: 'Open Bond Composer',
+      label: 'Open BOND review',
       href: '/dashboard/transactions?address=thor1provider',
     });
     expect(state.actions).toEqual(expect.arrayContaining([
@@ -356,7 +443,7 @@ describe('dashboard insights', () => {
     ]));
   });
 
-  it('routes no-bond BOND entry to source confidence when THORNode confidence is degraded', () => {
+  it('routes no-bond BOND entry to source checks when THORNode confidence is degraded', () => {
     const state = buildDashboardInsightState({
       address: 'thor1provider',
       now: NOW,
@@ -372,22 +459,23 @@ describe('dashboard insights', () => {
     });
 
     expect(state.statusLabel).toBe('No Bond');
-    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Confirm the address, then wait for fresh THORNode source confidence before preparing a BOND transaction.');
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Confirm the address, then wait for the THORNode source check to pass before opening BOND review.');
+    expect(state.diagnosis).not.toMatch(/fresh/i);
     expect(state.topRisk).toBe('No bonded positions detected');
     expect(state.primaryAction).toEqual({
-      label: 'Review source confidence',
+      label: 'Review source checks',
       href: '/dashboard?address=thor1provider#source-confidence',
     });
     expect(state.actions).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'source:thornode:degraded',
         source: 'THORNode',
-        primaryAction: 'Review source confidence',
+        primaryAction: 'Review source checks',
       }),
     ]));
   });
 
-  it.each(['down', 'unknown'] as const)('routes no-bond BOND entry to source confidence when THORNode confidence is %s', (thornode) => {
+  it.each(['down', 'unknown'] as const)('routes no-bond BOND entry to source checks when THORNode confidence is %s', (thornode) => {
     const state = buildDashboardInsightState({
       address: 'thor1provider',
       now: NOW,
@@ -403,15 +491,16 @@ describe('dashboard insights', () => {
     });
 
     expect(state.statusLabel).toBe('No Bond');
-    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Confirm the address, then wait for fresh THORNode source confidence before preparing a BOND transaction.');
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Confirm the address, then wait for the THORNode source check to pass before opening BOND review.');
+    expect(state.diagnosis).not.toMatch(/fresh/i);
     expect(state.primaryAction).toEqual({
-      label: 'Review source confidence',
+      label: 'Review source checks',
       href: '/dashboard?address=thor1provider#source-confidence',
     });
     expect(state.actions).toEqual(expect.arrayContaining([
       expect.objectContaining({
         source: 'THORNode',
-        primaryAction: 'Review source confidence',
+        primaryAction: 'Review source checks',
       }),
     ]));
   });
@@ -437,7 +526,121 @@ describe('dashboard insights', () => {
     ]));
   });
 
-  it('describes a healthy bonded portfolio as current source responses, not absolute live safety', () => {
+  it('labels command-center USD bond detail when it uses a stale RUNE quote', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth(),
+      positions: [bondPosition({ bondAmount: 12_500 })],
+      runePrice: 2,
+      runePriceIsStale: true,
+      runePriceUpdatedAt: new Date('2026-06-10T00:00:00.000Z'),
+    });
+
+    expect(state.metrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'total-bond',
+        detail: '$25,000 · stale quote',
+      }),
+    ]));
+  });
+
+  it('labels command-center LP value detail when it uses a stale RUNE quote', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth(),
+      positions: [bondPosition()],
+      lpPositions: [lpPosition({ currentTotalValueUsd: 200 })],
+      runePrice: 2,
+      runePriceIsStale: true,
+      runePriceUpdatedAt: new Date('2026-06-10T00:00:00.000Z'),
+    });
+
+    expect(state.metrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'lp-value',
+        value: '$200',
+        detail: '1 pool · stale quote',
+      }),
+    ]));
+  });
+
+  it('labels command-center USD metrics when RUNE quote freshness is unknown', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth(),
+      positions: [bondPosition({ bondAmount: 12_500 })],
+      lpPositions: [lpPosition({ currentTotalValueUsd: 200 })],
+      runePrice: 2,
+      runePriceIsStale: false,
+      runePriceUpdatedAt: null,
+    });
+
+    expect(state.sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source: 'RUNE price',
+        status: 'unknown',
+        detail: 'Price quote loaded without freshness; USD values are unverified.',
+      }),
+    ]));
+    expect(state.metrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'total-bond',
+        detail: '$25,000 · quote unverified',
+      }),
+      expect.objectContaining({
+        id: 'lp-value',
+        value: '$200',
+        detail: '1 pool · quote unverified',
+      }),
+    ]));
+  });
+
+  it('does not claim zero recent bond events were loaded as an event set', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth(),
+      positions: [bondPosition()],
+      recentTransactionCount: 0,
+    });
+
+    expect(state.metrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'recent-transactions',
+        value: '0',
+        detail: 'No bond events found in loaded history',
+        severity: 'info',
+      }),
+    ]));
+    expect(state.metrics.find((metric) => metric.id === 'recent-transactions')).not.toEqual(
+      expect.objectContaining({ detail: 'Bond events loaded' })
+    );
+  });
+
+  it('marks recent bond events as pending while transaction history is still loading', () => {
+    const state = buildDashboardInsightState({
+      address: 'thor1provider',
+      now: NOW,
+      apiHealth: apiHealth(),
+      positions: [bondPosition()],
+      recentTransactionCount: 0,
+      recentTransactionStatus: 'loading',
+    });
+
+    expect(state.metrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'recent-transactions',
+        value: '--',
+        detail: 'Loading bond events',
+        severity: 'info',
+      }),
+    ]));
+  });
+
+  it('describes a no-urgent bonded portfolio as current source responses, not absolute live safety', () => {
     const state = buildDashboardInsightState({
       address: 'thor1provider',
       now: NOW,
@@ -446,9 +649,23 @@ describe('dashboard insights', () => {
       runePriceUpdatedAt: NOW,
     });
 
-    expect(state.statusLabel).toBe('Healthy');
-    expect(state.diagnosis).toBe('Current source responses show no provider action needed.');
+    expect(state.statusLabel).toBe('No urgent review');
+    expect(state.statusLabel).not.toBe('Healthy');
+    expect(state.topRisk).toBe('No urgent review visible');
+    expect(state.primaryAction).toEqual({
+      label: 'Inspect details',
+      href: '/dashboard/risk?address=thor1provider',
+    });
+    expect(state.primaryAction.label).not.toBe('Review exposure');
+    expect(state.diagnosis).toBe('Current source responses do not show an urgent provider action.');
+    expect(state.headerMetrics[0]).toEqual(expect.objectContaining({
+      label: 'Provider exposure',
+      value: 'No urgent',
+      detail: 'No urgent action visible · Current node inputs show no jail, elevated slash, churn, or status issue',
+    }));
     expect(state.diagnosis).not.toContain('current live data');
+    expect(state.diagnosis).not.toContain('no provider action needed');
+    expect(state.topRisk).not.toBe('No provider review needed');
   });
 
   it('builds a critical diagnosis from jail and keeps churn/slash actions per node', () => {
@@ -470,7 +687,7 @@ describe('dashboard insights', () => {
     expect(state.headerMetrics[0]).toEqual(expect.objectContaining({
       label: 'Provider exposure',
       value: 'Action',
-      detail: 'Score 35/100 · The node is currently in jail and may not be earning.',
+      detail: 'Action required · The node is currently in jail and may not be earning.',
     }));
     expect(state.actions.map((item) => item.id)).toEqual(expect.arrayContaining([
       'jail:thor1criticalnode000000000000000000000000000',
@@ -514,7 +731,7 @@ describe('dashboard insights', () => {
     expect(state.headerMetrics[0]).toEqual(expect.objectContaining({
       label: 'Provider exposure',
       value: 'Review',
-      detail: 'Score 75/100 · This position is not in active validator status.',
+      detail: 'Review needed · This position is not in active validator status.',
     }));
     expect(state.actions).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -525,7 +742,7 @@ describe('dashboard insights', () => {
     ]));
   });
 
-  it('does not call a bonded portfolio healthy while source confidence is unknown', () => {
+  it('does not call a bonded portfolio healthy while source checks are unknown', () => {
     const state = buildDashboardInsightState({
       address: 'thor1provider',
       now: NOW,
@@ -551,7 +768,7 @@ describe('dashboard insights', () => {
     ]));
   });
 
-  it('routes degraded source actions to source confidence with source-specific consequences', () => {
+  it('routes degraded source actions to source checks with source-specific consequences', () => {
     const state = buildDashboardInsightState({
       address: 'thor1provider',
       now: NOW,
@@ -571,11 +788,13 @@ describe('dashboard insights', () => {
         id: 'source:midgard:degraded',
         source: 'Midgard',
         title: 'Midgard is degraded',
+        detail: 'Recent probe failed; using last successful data where available.',
         impact: 'Do not use reward history, LP performance, or transaction history for final decisions until Midgard recovers.',
         href: '/dashboard?address=thor1provider#source-confidence',
-        primaryAction: 'Review source confidence',
+        primaryAction: 'Review source checks',
       }),
     ]));
+    expect(state.actions.map((action) => action.detail).join(' ')).not.toContain('Source confidence is not fully fresh');
   });
 
   it('does not call a portfolio healthy while LP performance is current-only or estimated', () => {
@@ -601,8 +820,16 @@ describe('dashboard insights', () => {
       expect.objectContaining({
         id: 'lp:estimated-pricing',
         severity: 'warning',
+        detail: 'Estimated LP P/L is shown per pool and excluded from aggregate totals that require historical entry prices.',
+        impact: 'Use only source-loaded entry-price rows for aggregate LP performance decisions.',
       }),
     ]));
+    expect(state.actions.find((item) => item.id === 'lp:estimated-pricing')).not.toEqual(expect.objectContaining({
+      detail: expect.stringMatching(/trusted/i),
+    }));
+    expect(state.actions.find((item) => item.id === 'lp:estimated-pricing')).not.toEqual(expect.objectContaining({
+      impact: expect.stringMatching(/trusted/i),
+    }));
   });
 
   it('adds an LP confidence action when redeem quotes are not THORNode-confirmed', () => {
@@ -626,7 +853,7 @@ describe('dashboard insights', () => {
         id: 'lp:redeem-quotes-degraded',
         severity: 'warning',
         source: 'LP',
-        primaryAction: 'Review LP confidence',
+        primaryAction: 'Review LP checks',
         impact: 'Do not treat estimated withdrawable amounts as claimable before acting on an LP position.',
       }),
     ]));
@@ -648,7 +875,7 @@ describe('dashboard insights', () => {
     expect(state.statusLabel).toBe('Review Needed');
     expect(state.headerMetrics[0]).toEqual(expect.objectContaining({
       value: 'Review',
-      detail: 'Score 95/100 · This node is flagged as one of the lowest-bonded positions in your set.',
+      detail: 'Review needed · This node is flagged as one of the lowest-bonded positions in your set.',
     }));
   });
 
@@ -705,7 +932,7 @@ describe('dashboard insights', () => {
     expect(state.headerMetrics[0]).toEqual(expect.objectContaining({
       label: 'Provider exposure',
       value: 'Review',
-      detail: 'Score 65/100 · 284,890 slash points are above the provider-review threshold.',
+      detail: 'Review needed · 284,890 slash points are above the provider-review threshold.',
     }));
     expect(state.actions).toEqual(expect.arrayContaining([
       expect.objectContaining({

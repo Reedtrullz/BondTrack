@@ -51,7 +51,7 @@ export function normalizeMidgardTimestampToDate(rawTimestamp: string | number | 
 
 export function formatMidgardDate(rawTimestamp: string | number | bigint | null | undefined, fallback = '--'): string {
   const date = normalizeMidgardTimestampToDate(rawTimestamp);
-  return date ? date.toLocaleDateString() : fallback;
+  return date ? date.toISOString().slice(0, 10) : fallback;
 }
 
 export function getMidgardDataFreshness(

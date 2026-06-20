@@ -24,6 +24,7 @@ interface BuildRewardsPageModelInput {
   positions: BondPosition[];
   runePrice: number;
   runePriceIsStale: boolean;
+  runePriceUpdatedAt?: Date | null;
 }
 
 export function normalizeApyPercent(raw: string | number | undefined): number | undefined {
@@ -33,17 +34,62 @@ export function normalizeApyPercent(raw: string | number | undefined): number | 
   return value > 1 ? value : value * 100;
 }
 
-function getRunePriceMetric(price: number, isStale: boolean) {
+function hasKnownQuoteFreshness(updatedAt: Date | null | undefined): boolean {
+  return updatedAt instanceof Date && Number.isFinite(updatedAt.getTime());
+}
+
+function getRunePriceMetric(price: number, isStale: boolean, updatedAt?: Date | null) {
   if (price > 0) {
+    if (!hasKnownQuoteFreshness(updatedAt)) {
+      return {
+        value: formatUsd(price, 4, 2),
+        detail: 'Quote loaded without freshness',
+      };
+    }
+
     return {
       value: formatUsd(price, 4, 2),
-      detail: isStale ? 'Stale quote' : 'Fresh quote',
+      detail: isStale ? 'Stale quote' : 'Recent quote',
     };
   }
 
   return {
     value: '--',
     detail: isStale ? 'No quote loaded' : 'Waiting for quote',
+  };
+}
+
+function getRunePriceConfidenceMetric(
+  price: number,
+  isStale: boolean,
+  updatedAt?: Date | null
+): MetricStripItem {
+  if (price <= 0) {
+    return {
+      id: 'rune-price',
+      label: 'RUNE price',
+      value: 'Missing',
+      detail: 'USD returns unavailable',
+      severity: 'warning',
+    };
+  }
+
+  if (!hasKnownQuoteFreshness(updatedAt)) {
+    return {
+      id: 'rune-price',
+      label: 'RUNE price',
+      value: 'Unverified',
+      detail: 'Quote loaded without freshness',
+      severity: 'warning',
+    };
+  }
+
+  return {
+    id: 'rune-price',
+    label: 'RUNE price',
+    value: isStale ? 'Stale' : 'Recent',
+    detail: isStale ? 'Price returns use last quote' : 'Recent quote loaded',
+    severity: isStale ? 'warning' : 'info',
   };
 }
 
@@ -69,8 +115,8 @@ function getApyBasisMetric({
       id: 'apy-basis',
       label: 'APY basis',
       value: 'Node-level',
-      detail: `${formatPercent(weightedApy)} weighted from ${positionCount} node${positionCount === 1 ? '' : 's'}`,
-      severity: 'healthy',
+      detail: `${formatPercent(weightedApy)} node-weighted estimate from ${positionCount} node${positionCount === 1 ? '' : 's'}`,
+      severity: 'info',
     };
   }
 
@@ -105,6 +151,14 @@ function hasPartialBondActionHistory(bondHistory?: BondHistory | null): boolean 
   return bondHistory?.isPartial === true;
 }
 
+function hasLocalActionCapReached(bondHistory?: BondHistory | null): boolean {
+  return bondHistory?.isLocalActionCapReached === true;
+}
+
+function getActionCapDetail(bondHistory?: BondHistory | null): string {
+  return `Local ${bondHistory?.actionLimit ?? bondHistory?.loadedActionCount ?? 1000}-action cap reached; set a manual baseline before relying on returns`;
+}
+
 function getPrimaryConfidenceIssue(metrics: MetricStripItem[]): MetricStripItem | undefined {
   return metrics.find((metric) => metric.severity === 'critical' || metric.severity === 'warning');
 }
@@ -117,12 +171,14 @@ export function buildRewardsPageModel({
   positions,
   runePrice,
   runePriceIsStale,
+  runePriceUpdatedAt,
 }: BuildRewardsPageModelInput): RewardsPageModel {
   const networkApy = normalizeApyPercent(networkBondingAPY);
   const weightedApy = calculateWeightedApy(positions, networkApy ?? 0);
   const hasNodeApy = positions.some((position) => Number.isFinite(position.netAPY) && position.netAPY > 0);
   const hasHistory = hasBondActionHistory(bondHistory);
   const hasPartialHistory = hasPartialBondActionHistory(bondHistory);
+  const isHistoryCapped = hasLocalActionCapReached(bondHistory);
   const rewardHistoryMetric: MetricStripItem = isLoadingActions
     ? {
         id: 'reward-history',
@@ -139,6 +195,14 @@ export function buildRewardsPageModel({
           detail: 'Using current bond baseline',
           severity: 'warning',
         }
+      : isHistoryCapped
+        ? {
+            id: 'reward-history',
+            label: 'Reward history',
+            value: 'Capped',
+            detail: getActionCapDetail(bondHistory),
+            severity: 'warning',
+          }
       : hasHistory && hasPartialHistory
         ? {
             id: 'reward-history',
@@ -151,9 +215,9 @@ export function buildRewardsPageModel({
         ? {
             id: 'reward-history',
             label: 'Reward history',
-            value: 'Trusted',
-            detail: 'Bond actions loaded',
-            severity: 'healthy',
+            value: 'Source-loaded',
+            detail: 'Bond action rows loaded; returns are app-calculated review metrics',
+            severity: 'info',
           }
         : {
             id: 'reward-history',
@@ -178,6 +242,14 @@ export function buildRewardsPageModel({
           detail: 'Worksheet may include history warnings',
           severity: 'warning',
         }
+      : isHistoryCapped
+        ? {
+            id: 'tax-export',
+            label: 'Tax worksheet',
+            value: 'Review',
+            detail: 'Local action cap reached; worksheet may omit older bond history',
+            severity: 'warning',
+          }
       : hasHistory && hasPartialHistory
         ? {
             id: 'tax-export',
@@ -190,9 +262,9 @@ export function buildRewardsPageModel({
         ? {
             id: 'tax-export',
             label: 'Tax worksheet',
-            value: 'Ready',
-            detail: 'FIFO worksheet rows from bond history',
-            severity: 'healthy',
+            value: 'Review',
+            detail: 'Bond history rows available; not filing-ready',
+            severity: 'info',
           }
         : {
             id: 'tax-export',
@@ -210,15 +282,7 @@ export function buildRewardsPageModel({
       weightedApy,
       positionCount: positions.length,
     }),
-    {
-      id: 'rune-price',
-      label: 'RUNE price',
-      value: runePrice > 0 ? (runePriceIsStale ? 'Stale' : 'Fresh') : 'Missing',
-      detail: runePrice > 0
-        ? (runePriceIsStale ? 'Price returns use last quote' : 'Current quote loaded')
-        : 'USD returns unavailable',
-      severity: runePrice > 0 && !runePriceIsStale ? 'healthy' : 'warning',
-    },
+    getRunePriceConfidenceMetric(runePrice, runePriceIsStale, runePriceUpdatedAt),
     {
       id: 'forecast',
       label: 'Forecast',
@@ -238,7 +302,7 @@ export function buildRewardsPageModel({
     hasNodeApy,
     networkApy,
     primaryConfidenceIssue: getPrimaryConfidenceIssue(confidenceMetrics),
-    runePriceMetric: getRunePriceMetric(runePrice, runePriceIsStale),
+    runePriceMetric: getRunePriceMetric(runePrice, runePriceIsStale, runePriceUpdatedAt),
     weightedApy,
   };
 }

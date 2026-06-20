@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBondDetails, getActions } from '@/lib/api/midgard';
+import type { ActionRaw, ActionsResponseRaw } from '@/lib/api/midgard';
 import { noStorePrivateHeaders } from '@/lib/api/cors';
 import { checkRateLimit, getClientIp } from '@/lib/api/rate-limit';
-import { isValidTHORChainAddress } from '@/lib/utils/address-validation';
+import { normalizeTHORChainMainnetAddress } from '@/lib/utils/address-validation';
+import { NETWORK } from '@/lib/config';
 
 // Increase default limit to get more history for tax calculations
 const DEFAULT_ACTION_LIMIT = 500;
@@ -23,6 +25,39 @@ function parseActionLimit(value: string | null): number | string {
   return parsed;
 }
 
+async function getPaginatedActions(address: string, actionLimit: number): Promise<ActionsResponseRaw> {
+  const actions: ActionRaw[] = [];
+  let totalActionCount: number | null = null;
+
+  for (let offset = 0; offset < actionLimit; offset += NETWORK.MAX_ACTIONS_LIMIT) {
+    const remaining = actionLimit - actions.length;
+    const pageLimit = Math.min(NETWORK.MAX_ACTIONS_LIMIT, remaining);
+    const page = await getActions(address, pageLimit, undefined, 'type', offset);
+    const pageActions = page.actions ?? [];
+
+    if (totalActionCount === null) {
+      const parsedCount = Number(page.count);
+      totalActionCount = Number.isFinite(parsedCount) && parsedCount >= 0 ? parsedCount : null;
+    }
+
+    actions.push(...pageActions.slice(0, pageLimit));
+
+    if (
+      pageActions.length < pageLimit ||
+      pageActions.length === 0 ||
+      actions.length >= actionLimit ||
+      (totalActionCount !== null && actions.length >= totalActionCount)
+    ) {
+      break;
+    }
+  }
+
+  return {
+    actions,
+    count: totalActionCount !== null ? String(totalActionCount) : String(actions.length),
+  };
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ address: string }> }
@@ -41,6 +76,11 @@ export async function GET(
       return NextResponse.json({ error: limit }, { status: 400, headers: noStorePrivateHeaders(request) });
     }
 
+    const normalizedAddress = normalizeTHORChainMainnetAddress(address);
+    if (!normalizedAddress) {
+      return NextResponse.json({ error: 'A valid THORChain mainnet address is required' }, { status: 400, headers: noStorePrivateHeaders(request) });
+    }
+
     // Rate limit
     const clientIp = getClientIp(request);
     const rateLimit = checkRateLimit(`address:${clientIp}`, MAX_REQUESTS, WINDOW_MS);
@@ -57,14 +97,9 @@ export async function GET(
       );
     }
 
-    // Validate THORChain address format
-    if (!isValidTHORChainAddress(address)) {
-      return NextResponse.json({ error: 'Invalid THORChain address format' }, { status: 400, headers: noStorePrivateHeaders(request) });
-    }
-
     const [bondDetails, actions] = await Promise.all([
-      getBondDetails(address),
-      getActions(address, limit)
+      getBondDetails(normalizedAddress),
+      getPaginatedActions(normalizedAddress, limit)
     ]);
 
     const bondActions = actions.actions.filter(action => {
@@ -101,7 +136,7 @@ export async function GET(
     }).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
     return NextResponse.json({
-      address,
+      address: normalizedAddress,
       bondDetails,
       actions: parsedActions,
       totalBond: bondDetails.totalBonded,

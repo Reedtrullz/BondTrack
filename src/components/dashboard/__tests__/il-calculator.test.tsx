@@ -40,7 +40,7 @@ describe('IlCalculator', () => {
     expect(result).toHaveTextContent('Estimated loss');
     expect(result).toHaveTextContent('Estimated, not source-confirmed');
     expect(result).toHaveTextContent('Review before withdrawing');
-    expect(result).toHaveTextContent('LP source confidence');
+    expect(result).toHaveTextContent('LP source checks');
     expect(result).not.toHaveTextContent('live LP confidence');
   });
 });

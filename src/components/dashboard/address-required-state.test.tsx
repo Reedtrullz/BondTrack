@@ -41,6 +41,8 @@ describe('AddressRequiredState', () => {
     expect(screen.getByText('Public read-only')).toBeInTheDocument();
     expect(screen.getByText('Freshness after lookup')).toBeInTheDocument();
     expect(screen.getByText('Wallet stays separate')).toBeInTheDocument();
+    expect(screen.getByText(/wallet connection is only needed later for wallet-presented transaction review/i)).toBeInTheDocument();
+    expect(screen.queryByText(/transaction confirmation/i)).not.toBeInTheDocument();
     expect(lookup).not.toBeNull();
     expect(diagnosis.compareDocumentPosition(lookup!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });

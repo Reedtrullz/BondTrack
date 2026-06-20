@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatMidgardDate,
   getMidgardDataFreshness,
   normalizeMidgardTimestampToDate,
   normalizeMidgardTimestampToSeconds,
@@ -18,6 +19,11 @@ describe('Midgard timestamp normalization', () => {
 
   it('defensively handles millisecond fixtures without treating them as nanoseconds', () => {
     expect(normalizeMidgardTimestampToSeconds(1700000000000)).toBe(1700000000);
+  });
+
+  it('formats Midgard dates without locale-dependent hydration drift', () => {
+    expect(formatMidgardDate('1700000000')).toBe('2023-11-14');
+    expect(formatMidgardDate('not-a-date', 'Unknown')).toBe('Unknown');
   });
 
   it('rejects invalid and ambiguous oversized timestamps instead of rendering misleading dates', () => {

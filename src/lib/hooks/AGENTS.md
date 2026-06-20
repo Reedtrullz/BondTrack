@@ -1,6 +1,6 @@
 # SWR Hooks — Data Fetching Layer
 
-**27 hooks** — all follow `useSWR<T>(key, fetcher, options)` pattern. Return `{ data, isLoading, error }` plus derived values.
+**28 hooks** — all follow `useSWR<T>(key, fetcher, options)` pattern or route-local browser capability state. Return `{ data, isLoading, error }` plus derived values where applicable.
 
 ## WHERE TO LOOK
 | Need | File |
@@ -26,6 +26,7 @@
 | Wallet balance | `use-wallet-balance.ts` — connected wallet RUNE balance |
 | Yield benchmarks | `use-yield-benchmarks.ts` — network APY percentiles |
 | Alerts | `use-alerts.ts` — provider-backed dashboard alert state and generated actionable alerts |
+| Background notifications | `use-background-notifications.ts` — service worker + Push API subscription state backed by `/api/notifications/*` |
 | Pending transactions | `use-pending-transactions.ts` — in-flight tx tracking |
 
 ## REFRESH INTERVALS

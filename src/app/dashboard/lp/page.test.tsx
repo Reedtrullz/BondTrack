@@ -125,7 +125,7 @@ describe('LpDashboardPage', () => {
     expect(retry).toHaveBeenCalledTimes(1);
   });
 
-  it('shows a clear empty state when no LP positions exist', async () => {
+  it('shows LP data checks before presenting an empty current-source result', async () => {
     mockUseLpPositions.mockReturnValue({
       positions: [],
       isLoading: false,
@@ -136,14 +136,20 @@ describe('LpDashboardPage', () => {
 
     render(<LpDashboardPage />);
 
-    expect(await screen.findByText('No LP positions found')).toBeInTheDocument();
-    expect(screen.getByText(/successful member lookup/i)).toBeInTheDocument();
-    const emptyHeading = screen.getByRole('heading', { name: 'No LP positions found' });
-    const confidence = screen.getByLabelText('LP data confidence');
-    expect(emptyHeading.compareDocumentPosition(confidence) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(await screen.findByText('No current LP positions shown')).toBeInTheDocument();
+    expect(screen.getByText(/Midgard member lookup returned no active LP pools/i)).toBeInTheDocument();
+    expect(screen.getByText(/current source result, not proof of past liquidity activity or pending changes/i)).toBeInTheDocument();
+    expect(screen.queryByText(/address is valid/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/successful member lookup/i)).not.toBeInTheDocument();
+    const emptyHeading = screen.getByRole('heading', { name: 'No current LP positions shown' });
+    const confidence = screen.getByLabelText('LP data checks');
+    expect(confidence.compareDocumentPosition(emptyHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(confidence).getByText('RUNE price')).toBeInTheDocument();
     expect(within(confidence).getAllByText('Not used').length).toBeGreaterThanOrEqual(1);
     expect(within(confidence).getByText('No LP values')).toBeInTheDocument();
+    expect(within(confidence).getByText('Historical values')).toBeInTheDocument();
+    expect(within(confidence).getAllByText('No LP positions').length).toBeGreaterThanOrEqual(1);
+    expect(within(confidence).queryByText('Historical entry pricing loaded')).not.toBeInTheDocument();
     expect(within(confidence).queryByText('Fresh')).not.toBeInTheDocument();
   });
 
@@ -160,10 +166,10 @@ describe('LpDashboardPage', () => {
 
     expect(await screen.findByText('Checking LP positions')).toBeInTheDocument();
     expect(screen.getByText(/Waiting for Midgard member data/)).toBeInTheDocument();
-    expect(screen.queryByText('No LP positions found')).not.toBeInTheDocument();
+    expect(screen.queryByText('No current LP positions shown')).not.toBeInTheDocument();
 
     const loadingHeading = screen.getByRole('heading', { name: 'Checking LP positions' });
-    const confidence = screen.getByLabelText('LP data confidence');
+    const confidence = screen.getByLabelText('LP data checks');
     expect(loadingHeading.compareDocumentPosition(confidence) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(confidence).getByText('RUNE price')).toBeInTheDocument();
     expect(within(confidence).getAllByText('Pending').length).toBeGreaterThanOrEqual(1);
@@ -182,10 +188,11 @@ describe('LpDashboardPage', () => {
     render(<LpDashboardPage />);
 
     expect(await screen.findByText('Enter a THORChain address')).toBeInTheDocument();
-    expect(screen.getByText(/paste an address to inspect source-backed liquidity positions/i)).toBeInTheDocument();
+    expect(screen.getByText(/paste an address to inspect current LP positions and source checks/i)).toBeInTheDocument();
+    expect(screen.queryByText(/source-backed liquidity positions/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/inspect live liquidity positions/i)).not.toBeInTheDocument();
     expect(screen.queryByText('No LP positions found')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('LP data confidence')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('LP data checks')).not.toBeInTheDocument();
   });
 
   it('renders the usd portfolio hero instead of the mixed-unit summary cards', async () => {
@@ -201,15 +208,29 @@ describe('LpDashboardPage', () => {
     render(<LpDashboardPage />);
 
     const diagnosis = await screen.findByLabelText('LP performance diagnosis');
-    expect(within(diagnosis).getByRole('heading', { name: 'LP performance is historically priced' })).toBeInTheDocument();
+    expect(within(diagnosis).getByText('Inputs loaded')).toBeInTheDocument();
+    expect(diagnosis).toHaveClass('border-sky-200/70');
+    expect(diagnosis).not.toHaveClass('border-emerald-200/70');
+    expect(within(diagnosis).getByText('Inputs loaded')).toHaveClass('bg-sky-100');
+    expect(within(diagnosis).getByText('Inputs loaded')).not.toHaveClass('bg-emerald-100');
+    expect(within(diagnosis).getByRole('heading', { name: 'LP review inputs loaded' })).toBeInTheDocument();
+    expect(within(diagnosis).getByText(/app-calculated review metrics, not source-confirmed balances/i)).toBeInTheDocument();
+    expect(within(diagnosis).queryByRole('heading', { name: 'LP performance uses source-backed pricing' })).not.toBeInTheDocument();
+    expect(within(diagnosis).queryByText('Source-backed')).not.toBeInTheDocument();
     expect(within(diagnosis).getByRole('button', { name: 'Review positions' })).toBeInTheDocument();
     expect(within(diagnosis).getByText('Total LP value')).toBeInTheDocument();
-    expect(within(diagnosis).getByText('Trusted P/L')).toBeInTheDocument();
+    expect(within(diagnosis).getByText('Historical P/L')).toBeInTheDocument();
+    expect(within(diagnosis).queryByText('Trusted P/L')).not.toBeInTheDocument();
+    expect(within(diagnosis).queryByText('Trusted')).not.toBeInTheDocument();
     expect(screen.getByText('Positions')).toBeInTheDocument();
     expect(screen.getByText('Last Activity')).toBeInTheDocument();
     expect(screen.queryByText('ASSET 2 Deposit')).not.toBeInTheDocument();
     expect(screen.queryByText('Total Withdrawable')).not.toBeInTheDocument();
     expect(screen.getByText(/BTC\.BTC summary/i)).toBeInTheDocument();
+
+    const confidence = await screen.findByLabelText('LP data checks');
+    expect(within(confidence).getByText('Updated 2026-06-12 10:00 UTC')).not.toHaveClass('line-clamp-1');
+    expect(within(confidence).getByText('Historical entry pricing loaded')).not.toHaveClass('line-clamp-1');
   });
 
   it('labels aggregate IL as LP versus HODL instead of implying every signed value is a loss', async () => {
@@ -229,7 +250,7 @@ describe('LpDashboardPage', () => {
     expect(screen.queryByText('Total Impermanent Loss')).not.toBeInTheDocument();
   });
 
-  it('shows stale RUNE price confidence when LP current values use stale Midgard price data', async () => {
+  it('shows stale RUNE price checks when LP current values use stale Midgard price data', async () => {
     mockUseLpPositions.mockReturnValue({
       positions: [basePosition],
       isLoading: false,
@@ -247,7 +268,7 @@ describe('LpDashboardPage', () => {
 
     render(<LpDashboardPage />);
 
-    const confidence = await screen.findByLabelText('LP data confidence');
+    const confidence = await screen.findByLabelText('LP data checks');
     expect(within(confidence).getByText('RUNE price')).toBeInTheDocument();
     expect(within(confidence).getByText('Stale')).toBeInTheDocument();
   });
@@ -264,14 +285,45 @@ describe('LpDashboardPage', () => {
 
     render(<LpDashboardPage />);
 
-    const confidence = await screen.findByLabelText('LP data confidence');
+    const confidence = await screen.findByLabelText('LP data checks');
     expect(within(confidence).getByText('RUNE price')).toBeInTheDocument();
     expect(within(confidence).getByText('Unknown')).toBeInTheDocument();
     expect(within(confidence).getByText('No Midgard quote loaded')).toBeInTheDocument();
     expect(within(confidence).queryByText('Fresh')).not.toBeInTheDocument();
   });
 
-  it('shows current-only confidence when any position lacks historical pricing', async () => {
+  it('labels LP USD values as unverified when the RUNE quote has no freshness timestamp', async () => {
+    mockUseLpPositions.mockReturnValue({
+      positions: [basePosition],
+      isLoading: false,
+      state: 'ready',
+      error: undefined,
+      retry: vi.fn(),
+      runePriceFreshness: {
+        updatedAt: null,
+        updatedAtTimestampSeconds: null,
+        ageMs: null,
+        isStale: true,
+        staleAfterMs: 129_600_000,
+      },
+    });
+
+    render(<LpDashboardPage />);
+
+    const diagnosis = await screen.findByLabelText('LP performance diagnosis');
+    expect(within(diagnosis).getByRole('heading', { name: 'RUNE price: Unverified' })).toBeInTheDocument();
+    expect(within(diagnosis).getByText(/RUNE price checks are unverified/i)).toBeInTheDocument();
+    expect(within(diagnosis).getByText('Current value uses an unverified RUNE price')).toBeInTheDocument();
+
+    const confidence = await screen.findByLabelText('LP data checks');
+    expect(within(confidence).getByText('RUNE price')).toBeInTheDocument();
+    expect(within(confidence).getByText('Unverified')).toBeInTheDocument();
+    expect(within(confidence).getByText('Quote loaded without freshness')).toBeInTheDocument();
+    expect(within(confidence).queryByText('Fresh')).not.toBeInTheDocument();
+    expect(within(confidence).queryByText('Stale')).not.toBeInTheDocument();
+  });
+
+  it('shows current-only checks when any position lacks historical pricing', async () => {
     mockUseLpPositions.mockReturnValue({
       positions: [{
         ...basePosition,
@@ -301,15 +353,17 @@ describe('LpDashboardPage', () => {
     const diagnosis = await screen.findByLabelText('LP performance diagnosis');
     expect(within(diagnosis).getByRole('heading', { name: 'Current-only: 1' })).toBeInTheDocument();
     expect(within(diagnosis).getByText(/1 current-only LP position history unavailable/i)).toBeInTheDocument();
-    expect(within(diagnosis).getByRole('button', { name: 'Review LP confidence' })).toBeInTheDocument();
+    expect(within(diagnosis).getAllByText('Historical entry pricing required for aggregate performance review')).toHaveLength(2);
+    expect(diagnosis).not.toHaveTextContent(/decision-ready|\bready\b|\bsafe\b/i);
+    expect(within(diagnosis).getByRole('button', { name: 'Review LP checks' })).toBeInTheDocument();
     expect(within(diagnosis).queryByRole('button', { name: 'Review positions' })).not.toBeInTheDocument();
-    const confidence = await screen.findByLabelText('LP data confidence');
+    const confidence = await screen.findByLabelText('LP data checks');
     expect(within(confidence).getByText('Current-only')).toBeInTheDocument();
     expect(within(confidence).getByText('History unavailable')).toBeInTheDocument();
     expect(screen.getAllByText('Incomplete').length).toBeGreaterThanOrEqual(2);
   });
 
-  it('prioritizes degraded redeem quote confidence before LP position detail', async () => {
+  it('prioritizes degraded redeem quote checks before LP position detail', async () => {
     mockUseLpPositions.mockReturnValue({
       positions: [{
         ...basePosition,
@@ -328,8 +382,8 @@ describe('LpDashboardPage', () => {
     const diagnosis = await screen.findByLabelText('LP performance diagnosis');
     expect(within(diagnosis).getByRole('heading', { name: 'Redeem quotes: Degraded' })).toBeInTheDocument();
     expect(within(diagnosis).getByText(/treat withdrawable amounts as estimated/i)).toBeInTheDocument();
-    expect(within(diagnosis).getByRole('button', { name: 'Review LP confidence' })).toBeInTheDocument();
-    const confidence = screen.getByLabelText('LP data confidence');
+    expect(within(diagnosis).getByRole('button', { name: 'Review LP checks' })).toBeInTheDocument();
+    const confidence = screen.getByLabelText('LP data checks');
     expect(within(confidence).getByText('Redeem quotes')).toBeInTheDocument();
     expect(within(confidence).getByText('1 derived position redeem quote')).toBeInTheDocument();
   });
@@ -376,7 +430,7 @@ describe('LpDashboardPage', () => {
 
     const diagnosis = await screen.findByLabelText('LP performance diagnosis');
     expect(within(diagnosis).getByText('Total LP value')).toBeInTheDocument();
-    expect(within(diagnosis).getByText('Current value includes all pools; 1 estimated position and 1 current-only position need confidence review')).toBeInTheDocument();
+    expect(within(diagnosis).getByText('Current value includes all pools; 1 estimated position and 1 current-only position need source check review')).toBeInTheDocument();
     expect(within(diagnosis).getByText('+$4.68 from historical positions; 1 estimated position and 1 current-only position excluded')).toBeInTheDocument();
     expect(within(diagnosis).getByText('+$0.18 from historical positions; 1 estimated position and 1 current-only position excluded')).toBeInTheDocument();
   });
@@ -407,7 +461,7 @@ describe('LpDashboardPage', () => {
 
     render(<LpDashboardPage />);
 
-    const confidence = await screen.findByLabelText('LP data confidence');
+    const confidence = await screen.findByLabelText('LP data checks');
     expect(within(confidence).getByText('Current-only')).toBeInTheDocument();
     expect(within(confidence).getByText('Enriching now')).toBeInTheDocument();
     expect(screen.getAllByText('Enriching...')).toHaveLength(2);

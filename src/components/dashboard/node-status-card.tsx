@@ -1,11 +1,12 @@
 import type { BondPosition } from '@/lib/types/node';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { AlertTriangle, Shield, Server, Info, PlusCircle, MinusCircle } from 'lucide-react';
-import { calculatePortfolioHealth, getGradeColor } from '@/lib/utils/health-score';
+import { AlertTriangle, Shield, Server, Info, Eye, MinusCircle } from 'lucide-react';
+import { calculatePortfolioHealth } from '@/lib/utils/health-score';
 import { useId, useState } from 'react';
 import Link from 'next/link';
 import { formatBasisPoints, formatRuneDisplayNumber } from '@/lib/utils/formatters';
 import { getCandidateBondSourceSafety, type CandidateBondSourceSafety } from '@/lib/dashboard/candidate-bond-source-safety';
+import { getProviderExposureReviewState } from '@/lib/dashboard/provider-exposure-review';
 import { isUrgentNodeException } from '@/lib/dashboard/nodes-context';
 import { canUnbondNode } from '@/lib/transactions/bond';
 import { buildBondMemoHref, buildNodeRiskHref } from '@/lib/dashboard/hrefs';
@@ -23,10 +24,16 @@ const DEFAULT_SOURCE_SAFETY = getCandidateBondSourceSafety('unknown');
 
 export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURCE_SAFETY }: NodeStatusCardProps) {
   const health = calculatePortfolioHealth([position]);
+  const reviewState = getProviderExposureReviewState(health);
   const scoreTooltipId = useId();
   const [isScoreTooltipOpen, setIsScoreTooltipOpen] = useState(false);
   const slashSeverity = getSlashSeverity(position.slashPoints);
   const hasElevatedSlash = hasSlashReviewSignal(position.slashPoints);
+  const slashExposureClass = slashSeverity.level === 'critical'
+    ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
+    : slashSeverity.level === 'warning'
+      ? 'bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400'
+      : 'bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300';
   const requiresBondReview = isUrgentNodeException(position);
   const unbondEligibility = canUnbondNode(position);
   const canPrepareUnbond = sourceSafety.canPrepareBond && unbondEligibility.canUnbond;
@@ -37,12 +44,12 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
     ? {
         detail: sourceSafety.detail,
         href: buildNodeRiskHref(address, position.nodeAddress, 'risk-source-confidence'),
-        label: 'Review source confidence',
+        label: 'Review source checks',
         statusLabel: sourceSafety.statusLabel,
       }
     : requiresBondReview
       ? {
-          detail: 'This node is flagged for provider review. Check jail, slash, churn, and yield-guard context before preparing a BOND memo.',
+          detail: 'This node is flagged for provider review. Check jail, slash, churn, and yield-guard context before opening BOND memo review.',
           href: buildNodeRiskHref(address, position.nodeAddress),
           label: 'Review exposure first',
           statusLabel: 'Provider review required',
@@ -63,13 +70,17 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
           >
             <button
               type="button"
-              className={`rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:bg-zinc-800 dark:focus-visible:ring-offset-zinc-950 ${getGradeColor(health.grade)}`}
-              aria-label={`Provider exposure grade ${health.grade}: ${health.reason}`}
+              className={cn(
+                'inline-flex max-w-36 items-center gap-1 rounded bg-zinc-100 px-2 py-1 text-[11px] font-semibold leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:bg-zinc-800 dark:focus-visible:ring-offset-zinc-950',
+                reviewState.className
+              )}
+              aria-label={`Provider exposure evidence: ${health.reason}`}
               aria-describedby={isScoreTooltipOpen ? scoreTooltipId : undefined}
               onFocus={() => setIsScoreTooltipOpen(true)}
               onBlur={() => setIsScoreTooltipOpen(false)}
             >
-              {health.grade}
+              <Shield className="h-3 w-3 shrink-0" aria-hidden="true" />
+              <span className="truncate">{reviewState.label}</span>
             </button>
             {isScoreTooltipOpen && (
               <div id={scoreTooltipId} role="tooltip" className="absolute bottom-full right-0 z-50 mb-2 w-52 rounded border border-zinc-800 bg-zinc-900 p-2 text-[10px] text-white shadow-xl">
@@ -77,6 +88,7 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
                   <Info className="w-3 h-3" />
                   Provider Exposure
                 </div>
+                <p className="mb-1 font-semibold leading-relaxed text-white">{reviewState.label}</p>
                 <p className="leading-relaxed text-zinc-300">{health.reason}</p>
                 <div className="absolute -bottom-1 right-1/2 translate-x-1/2 w-2 h-2 bg-zinc-900 rotate-45" />
               </div>
@@ -111,7 +123,7 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
         </div>
       </div>
 
-      {/* Transaction prep actions */}
+      {/* Transaction review actions */}
       <div className="grid grid-cols-1 gap-2 border-t border-zinc-100 pt-2 dark:border-zinc-800 sm:grid-cols-2">
         {bondReviewAction ? (
           <Link
@@ -124,10 +136,10 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
         ) : (
           <Link
             href={buildBondMemoHref(address, position.nodeAddress, 'bond')}
-            className="inline-flex min-h-10 min-w-0 items-center justify-center gap-1 rounded bg-emerald-50 px-2 py-2 text-center text-[11px] font-bold uppercase leading-tight text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+            className="inline-flex min-h-10 min-w-0 items-center justify-center gap-1 rounded border border-zinc-200 bg-zinc-50 px-2 py-2 text-center text-[11px] font-bold uppercase leading-tight text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
-            <PlusCircle className="h-3 w-3 shrink-0" />
-            Prepare BOND Memo
+            <Eye className="h-3 w-3 shrink-0" />
+            Review BOND Memo
           </Link>
         )}
         {canPrepareUnbond && (
@@ -136,7 +148,7 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
             className="inline-flex min-h-10 min-w-0 items-center justify-center gap-1 rounded bg-amber-50 px-2 py-2 text-center text-[11px] font-bold uppercase leading-tight text-amber-700 transition-colors hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40"
           >
             <MinusCircle className="h-3 w-3 shrink-0" />
-            Prepare UNBOND Memo
+            Review UNBOND Memo
           </Link>
         )}
         {unbondUnavailableReason && (
@@ -149,6 +161,11 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
           <p className="text-xs leading-5 text-zinc-600 dark:text-zinc-400 sm:col-span-2">
             <span className="font-semibold text-zinc-800 dark:text-zinc-200">{bondReviewAction.statusLabel}: </span>
             {bondReviewAction.detail}
+          </p>
+        )}
+        {!bondReviewAction && (
+          <p className="text-xs leading-5 text-zinc-600 dark:text-zinc-400 sm:col-span-2">
+            Review the generated memo and wallet payload before signing; source checks do not make a transaction safe by themselves.
           </p>
         )}
       </div>
@@ -168,7 +185,7 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
       )}
 
       {hasElevatedSlash && (
-        <div className="flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded text-xs text-orange-600 dark:text-orange-400">
+        <div className={cn("flex items-center gap-2 p-2 rounded text-xs", slashExposureClass)}>
           <Server className="w-3.5 h-3.5 shrink-0" />
           <span>{slashSeverity.label} slash exposure ({position.slashPoints.toLocaleString()} points)</span>
         </div>

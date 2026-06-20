@@ -100,6 +100,29 @@ describe('useBondPositions', () => {
 
     expect(result.current.positions).toEqual([]);
   });
+
+  it('does not treat zero-bond provider listings as active bond positions', async () => {
+    const zeroBondListing = {
+      ...mockNodes[0],
+      node_address: 'thor1zerobondlisting',
+      total_bond: '1000000000000',
+      bond_providers: {
+        node_operator_fee: '500',
+        providers: [{ bond_address: 'thor1user123456789abcdef', bond: '0' }],
+      },
+    };
+    vi.mocked(thornode.getAllNodes).mockResolvedValueOnce([
+      zeroBondListing,
+      mockNodes[0],
+    ] as unknown as thornode.NodeRaw[]);
+    vi.mocked(midgard.getHealth).mockResolvedValueOnce({ lastThorNode: { height: 12345678 } });
+
+    const { result } = renderHook(() => useBondPositions('thor1user123456789abcdef'), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.positions.map((position) => position.nodeAddress)).toEqual(['thor1abc123def456']);
+  });
+
   it('extracts bond positions for user address', async () => {
     vi.mocked(thornode.getAllNodes).mockResolvedValueOnce(mockNodes as unknown as thornode.NodeRaw[]);
     vi.mocked(midgard.getHealth).mockResolvedValueOnce({ lastThorNode: { height: 12345678 } });

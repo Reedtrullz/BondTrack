@@ -123,8 +123,8 @@ deploy story — see [Reedtrullz/inebotten-discord](https://github.com/Reedtrull
 ```
 Heimdall/
 ├── src/
-│   ├── app/                    # Next.js App Router (16 pages + 9 API routes)
-│   │   ├── api/                # Server-side proxies/checks: thorchain, midgard, coingecko, coinapi, health, ready, pools, address, tax-report
+│   ├── app/                    # Next.js App Router (16 pages + 13 API routes)
+│   │   ├── api/                # Server-side proxies/checks: thorchain, midgard, coingecko, coinapi, health, ready, pools, address, tax-report, notifications
 │   │   ├── dashboard/          # 11 areas + settings/notifications: portfolio, overview, nodes, rewards, risk, transactions, lp, simulator, explorer, changelogs, settings
 │   │   └── learn/              # Educational content + dynamic [slug] articles
 │   ├── components/

@@ -52,7 +52,7 @@ export function buildBondSimulatorInsight({
   const portfolioAfterRune = currentBondRune + Math.max(0, bondAmountRune);
 
   let severity: InsightSeverity = 'info';
-  let statusLabel = 'Estimate Ready';
+  let statusLabel = 'Manual Estimate';
   let topRisk = 'Rewards-only projection';
   let diagnosis = 'This scenario estimates reward flow only. Verify node risk before bonding because slash points, jail status, churn risk, RUNE price changes, and compounding are outside the model.';
   let primaryAction = {
@@ -73,7 +73,7 @@ export function buildBondSimulatorInsight({
     severity = 'warning';
     statusLabel = 'Needs Attention';
     topRisk = 'Bond amount is below active node minimum';
-    diagnosis = `This ${formatRuneCompact(bondAmountRune)} scenario cannot be evaluated as an active-node-ready scenario until it meets the current ${formatRuneCompact(minimumBondRune)} minimum bond.`;
+    diagnosis = `This ${formatRuneCompact(bondAmountRune)} scenario cannot be evaluated as an active-node scenario until it meets the current ${formatRuneCompact(minimumBondRune)} minimum bond.`;
     primaryAction = {
       label: 'Raise bond amount',
       href: '#simulator-inputs',
@@ -89,7 +89,7 @@ export function buildBondSimulatorInsight({
     };
   } else if (longLockWindow) {
     topRisk = 'Long lock window needs risk review';
-    diagnosis = 'The reward math is ready, but a long lock period makes slash, jail, churn, and liquidity risk more important than the headline reward total.';
+    diagnosis = 'The reward estimate can be reviewed, but a long lock period makes slash, jail, churn, and liquidity risk more important than the headline reward total.';
   }
 
   return {
@@ -107,7 +107,7 @@ export function buildBondSimulatorInsight({
       {
         label: 'Lock period',
         value: `${Math.max(0, lockDays)}d`,
-        detail: longLockWindow ? 'Long horizon' : 'Simple APY window',
+        detail: longLockWindow ? 'Long horizon' : 'Manual APY window',
       },
       {
         label: 'Portfolio after',
@@ -119,8 +119,8 @@ export function buildBondSimulatorInsight({
       {
         id: 'estimate-model',
         label: 'Estimate model',
-        value: 'Simple APY',
-        detail: 'No compounding or price path',
+        value: 'Manual APY',
+        detail: 'No live source or compounding',
         severity: 'info',
       },
       {
@@ -140,9 +140,11 @@ export function buildBondSimulatorInsight({
       {
         id: 'minimum-bond',
         label: 'Minimum bond',
-        value: belowMinimumBond ? 'Below minimum' : 'Meets minimum',
-        detail: formatRuneCompact(minimumBondRune),
-        severity: belowMinimumBond ? 'warning' : 'healthy',
+        value: belowMinimumBond ? 'Below minimum' : 'Meets active minimum',
+        detail: belowMinimumBond
+          ? formatRuneCompact(minimumBondRune)
+          : `${formatRuneCompact(minimumBondRune)} threshold only`,
+        severity: belowMinimumBond ? 'warning' : 'info',
       },
     ],
   };
