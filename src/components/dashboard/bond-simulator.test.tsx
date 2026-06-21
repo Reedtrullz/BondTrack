@@ -180,4 +180,79 @@ describe('BondSimulator trust copy', () => {
     expect(screen.getByText('Risk check')).toBeInTheDocument();
     expect(screen.getByText('Not modeled')).toBeInTheDocument();
   });
+
+  it('withholds reward projections when operator fee exceeds 100 percent', async () => {
+    const user = userEvent.setup();
+
+    render(<BondSimulator currentPositions={[]} />);
+
+    await user.clear(screen.getByLabelText('Operator Fee (bps)'));
+    await user.type(screen.getByLabelText('Operator Fee (bps)'), '12000');
+
+    const diagnosis = screen.getByLabelText('Simulator scenario diagnosis');
+    const assumptions = screen.getByLabelText('Simulation assumptions');
+
+    expect(diagnosis).toHaveTextContent('Operator fee input is impossible');
+    expect(diagnosis).toHaveTextContent('Operator fee must be between 0% and 100%');
+    expect(within(assumptions).getByText('Invalid')).toBeInTheDocument();
+    expect(within(assumptions).getByText('0% to 100% only')).toBeInTheDocument();
+    expect(screen.queryByText('Est. Daily Reward')).not.toBeInTheDocument();
+    expect(screen.queryByText('Est. Total Reward')).not.toBeInTheDocument();
+    expect(screen.getByText('Fix operator fee before Heimdall will calculate reward estimates.')).toBeInTheDocument();
+    expect(screen.queryByText(/-\d/)).not.toBeInTheDocument();
+  });
+
+  it('treats a blank APY field as missing input without turning it into zero percent', async () => {
+    const user = userEvent.setup();
+
+    render(<BondSimulator currentPositions={[]} />);
+
+    await user.clear(screen.getByLabelText('Est. Network APY (%)'));
+
+    const diagnosis = screen.getByLabelText('Simulator scenario diagnosis');
+    const assumptions = screen.getByLabelText('Simulation assumptions');
+
+    expect(diagnosis).toHaveTextContent('Network APY input is missing');
+    expect(diagnosis).toHaveTextContent('Enter an estimated network APY');
+    expect(within(assumptions).getByText('Missing APY')).toBeInTheDocument();
+    expect(within(assumptions).getByText('Enter estimated APY')).toBeInTheDocument();
+    expect(screen.getByLabelText('Est. Network APY (%)')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByText('Enter an estimated network APY before calculating reward estimates.')).toBeInTheDocument();
+    expect(screen.getByText('Enter estimated network APY before Heimdall will calculate reward estimates.')).toBeInTheDocument();
+    expect(screen.queryByText('Est. Daily Reward')).not.toBeInTheDocument();
+    expect(screen.queryByText('Est. Total Reward')).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Est. Network APY (%)'), '0');
+
+    expect(screen.getByLabelText('Est. Network APY (%)')).toHaveAttribute('aria-invalid', 'false');
+    expect(screen.getByText('Est. Daily Reward')).toBeInTheDocument();
+    expect(screen.queryByText('Missing APY')).not.toBeInTheDocument();
+  });
+
+  it('treats a blank operator fee field as missing input without turning it into zero fee', async () => {
+    const user = userEvent.setup();
+
+    render(<BondSimulator currentPositions={[]} />);
+
+    await user.clear(screen.getByLabelText('Operator Fee (bps)'));
+
+    const diagnosis = screen.getByLabelText('Simulator scenario diagnosis');
+    const assumptions = screen.getByLabelText('Simulation assumptions');
+
+    expect(diagnosis).toHaveTextContent('Operator fee input is missing');
+    expect(diagnosis).toHaveTextContent('Enter an operator fee');
+    expect(within(assumptions).getByText('Missing')).toBeInTheDocument();
+    expect(within(assumptions).getByText('Enter 0% to 100%')).toBeInTheDocument();
+    expect(screen.getByLabelText('Operator Fee (bps)')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByText('Enter an operator fee between 0 and 10,000 bps.')).toBeInTheDocument();
+    expect(screen.getByText('Enter operator fee before Heimdall will calculate reward estimates.')).toBeInTheDocument();
+    expect(screen.queryByText('Est. Daily Reward')).not.toBeInTheDocument();
+    expect(screen.queryByText('Est. Total Reward')).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Operator Fee (bps)'), '0');
+
+    expect(screen.getByLabelText('Operator Fee (bps)')).toHaveAttribute('aria-invalid', 'false');
+    expect(screen.getByText('Est. Daily Reward')).toBeInTheDocument();
+    expect(screen.queryByText('Enter operator fee before Heimdall will calculate reward estimates.')).not.toBeInTheDocument();
+  });
 });

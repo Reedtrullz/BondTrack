@@ -9,6 +9,7 @@ interface BuildBondSimulatorInsightInput {
   networkApyPercent: number;
   operatorFeeBps: number;
   hasResult: boolean;
+  missingInput?: 'network-apy' | 'operator-fee' | null;
 }
 
 export interface BondSimulatorInsightModel {
@@ -26,6 +27,7 @@ export interface BondSimulatorInsightModel {
 
 const HIGH_APY_THRESHOLD = 100;
 const HIGH_OPERATOR_FEE_BPS = 5000;
+const MAX_OPERATOR_FEE_BPS = 10_000;
 
 function formatRuneCompact(value: number): string {
   const compact = formatCompactNumber(Math.max(0, value)).replace(/\.0([KMBT])$/, '$1');
@@ -43,9 +45,11 @@ export function buildBondSimulatorInsight({
   networkApyPercent,
   operatorFeeBps,
   hasResult,
+  missingInput = null,
 }: BuildBondSimulatorInsightInput): BondSimulatorInsightModel {
   const minimumBondRune = NETWORK.MINIMUM_BOND_RUNE / 1e8;
   const belowMinimumBond = bondAmountRune > 0 && bondAmountRune < minimumBondRune;
+  const invalidOperatorFee = operatorFeeBps > MAX_OPERATOR_FEE_BPS;
   const invalidInputs = !hasResult || bondAmountRune <= 0 || lockDays <= 0;
   const aggressiveAssumptions = networkApyPercent > HIGH_APY_THRESHOLD || operatorFeeBps > HIGH_OPERATOR_FEE_BPS;
   const longLockWindow = lockDays >= 365;
@@ -60,7 +64,34 @@ export function buildBondSimulatorInsight({
     href: '#simulator-assumptions',
   };
 
-  if (invalidInputs) {
+  if (invalidOperatorFee) {
+    severity = 'warning';
+    statusLabel = 'Needs Attention';
+    topRisk = 'Operator fee input is impossible';
+    diagnosis = 'Operator fee must be between 0% and 100% before Heimdall can calculate reward estimates. Correct the fee input, then review node risk separately before acting.';
+    primaryAction = {
+      label: 'Fix operator fee',
+      href: '#simulator-inputs',
+    };
+  } else if (missingInput === 'network-apy') {
+    severity = 'warning';
+    statusLabel = 'Needs Attention';
+    topRisk = 'Network APY input is missing';
+    diagnosis = 'Enter an estimated network APY before Heimdall can calculate reward estimates. Use an explicit 0% only when you mean to model a zero-return scenario.';
+    primaryAction = {
+      label: 'Enter APY estimate',
+      href: '#simulator-inputs',
+    };
+  } else if (missingInput === 'operator-fee') {
+    severity = 'warning';
+    statusLabel = 'Needs Attention';
+    topRisk = 'Operator fee input is missing';
+    diagnosis = 'Enter an operator fee before Heimdall can calculate reward estimates. Use an explicit 0 bps only when the operator fee is intentionally zero.';
+    primaryAction = {
+      label: 'Enter operator fee',
+      href: '#simulator-inputs',
+    };
+  } else if (invalidInputs) {
     severity = 'warning';
     statusLabel = 'Needs Attention';
     topRisk = 'Simulator needs positive bond and lock inputs';
@@ -119,9 +150,9 @@ export function buildBondSimulatorInsight({
       {
         id: 'estimate-model',
         label: 'Estimate model',
-        value: 'Manual APY',
-        detail: 'No live source or compounding',
-        severity: 'info',
+        value: missingInput === 'network-apy' ? 'Missing APY' : 'Manual APY',
+        detail: missingInput === 'network-apy' ? 'Enter estimated APY' : 'No live source or compounding',
+        severity: missingInput === 'network-apy' ? 'warning' : 'info',
       },
       {
         id: 'risk-coverage',
@@ -133,9 +164,17 @@ export function buildBondSimulatorInsight({
       {
         id: 'fee-input',
         label: 'Fee input',
-        value: formatOperatorFee(operatorFeeBps),
-        detail: 'Applied against rewards',
-        severity: operatorFeeBps > HIGH_OPERATOR_FEE_BPS ? 'warning' : 'info',
+        value: missingInput === 'operator-fee'
+          ? 'Missing'
+          : invalidOperatorFee
+            ? 'Invalid'
+            : formatOperatorFee(operatorFeeBps),
+        detail: missingInput === 'operator-fee'
+          ? 'Enter 0% to 100%'
+          : invalidOperatorFee
+            ? '0% to 100% only'
+            : 'Applied against rewards',
+        severity: missingInput === 'operator-fee' || operatorFeeBps > HIGH_OPERATOR_FEE_BPS ? 'warning' : 'info',
       },
       {
         id: 'minimum-bond',

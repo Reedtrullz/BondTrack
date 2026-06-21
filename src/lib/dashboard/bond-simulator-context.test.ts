@@ -113,4 +113,92 @@ describe('buildBondSimulatorInsight', () => {
       ])
     );
   });
+
+  it('treats operator fees above 100 percent as invalid instead of aggressive assumptions', () => {
+    const model = buildBondSimulatorInsight({
+      bondAmountRune: 200_000,
+      currentBondRune: 25_000,
+      lockDays: 180,
+      networkApyPercent: 65,
+      operatorFeeBps: 12_000,
+      hasResult: false,
+    });
+
+    expect(model.severity).toBe('warning');
+    expect(model.statusLabel).toBe('Needs Attention');
+    expect(model.topRisk).toBe('Operator fee input is impossible');
+    expect(model.diagnosis).toContain('Operator fee must be between 0% and 100%');
+    expect(model.diagnosis).not.toContain('stress case');
+    expect(model.primaryAction).toEqual({ label: 'Fix operator fee', href: '#simulator-inputs' });
+    expect(model.assumptionMetrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'fee-input',
+          label: 'Fee input',
+          value: 'Invalid',
+          detail: '0% to 100% only',
+          severity: 'warning',
+        }),
+      ])
+    );
+  });
+
+  it('treats a missing manual APY as missing input instead of a zero-percent estimate', () => {
+    const model = buildBondSimulatorInsight({
+      bondAmountRune: 200_000,
+      currentBondRune: 25_000,
+      lockDays: 180,
+      networkApyPercent: 0,
+      operatorFeeBps: 1_500,
+      hasResult: false,
+      missingInput: 'network-apy',
+    });
+
+    expect(model.severity).toBe('warning');
+    expect(model.statusLabel).toBe('Needs Attention');
+    expect(model.topRisk).toBe('Network APY input is missing');
+    expect(model.diagnosis).toContain('Enter an estimated network APY');
+    expect(model.diagnosis).not.toContain('zero-percent');
+    expect(model.primaryAction).toEqual({ label: 'Enter APY estimate', href: '#simulator-inputs' });
+    expect(model.assumptionMetrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'estimate-model',
+          label: 'Estimate model',
+          value: 'Missing APY',
+          detail: 'Enter estimated APY',
+          severity: 'warning',
+        }),
+      ])
+    );
+  });
+
+  it('treats a missing operator fee as missing input instead of a zero-fee estimate', () => {
+    const model = buildBondSimulatorInsight({
+      bondAmountRune: 200_000,
+      currentBondRune: 25_000,
+      lockDays: 180,
+      networkApyPercent: 65,
+      operatorFeeBps: 0,
+      hasResult: false,
+      missingInput: 'operator-fee',
+    });
+
+    expect(model.severity).toBe('warning');
+    expect(model.statusLabel).toBe('Needs Attention');
+    expect(model.topRisk).toBe('Operator fee input is missing');
+    expect(model.diagnosis).toContain('Enter an operator fee');
+    expect(model.primaryAction).toEqual({ label: 'Enter operator fee', href: '#simulator-inputs' });
+    expect(model.assumptionMetrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'fee-input',
+          label: 'Fee input',
+          value: 'Missing',
+          detail: 'Enter 0% to 100%',
+          severity: 'warning',
+        }),
+      ])
+    );
+  });
 });

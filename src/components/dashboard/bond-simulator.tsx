@@ -61,13 +61,15 @@ const PRESETS: Record<PresetType, Preset> = {
   },
 };
 
+const MAX_OPERATOR_FEE_BPS = 10_000;
+
 function simulateBond(
   bondAmount: number,
   lockDays: number,
   networkApy: number,
   operatorFeeBps: number
 ): SimulationResult | null {
-  if (bondAmount <= 0 || lockDays <= 0) return null;
+  if (bondAmount <= 0 || lockDays <= 0 || operatorFeeBps > MAX_OPERATOR_FEE_BPS) return null;
 
   const churns = Math.floor(lockDays / 2.5);
   const apyDecimal = networkApy / 100;
@@ -127,10 +129,18 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
     const val = parseInt(operatorFee, 10);
     return isNaN(val) || val < 0 ? 0 : val;
   }, [operatorFee]);
+  const hasMissingNetworkApy = networkApy.trim() === '';
+  const hasMissingOperatorFee = operatorFee.trim() === '';
+  const hasImpossibleOperatorFee = !hasMissingOperatorFee && operatorFeeNum > MAX_OPERATOR_FEE_BPS;
+  const missingInput = hasMissingNetworkApy
+    ? 'network-apy'
+    : hasMissingOperatorFee
+      ? 'operator-fee'
+      : null;
 
   const result = useMemo(
-    () => simulateBond(bondAmount, lockDaysNum, networkApyNum, operatorFeeNum),
-    [bondAmount, lockDaysNum, networkApyNum, operatorFeeNum]
+    () => missingInput ? null : simulateBond(bondAmount, lockDaysNum, networkApyNum, operatorFeeNum),
+    [bondAmount, lockDaysNum, missingInput, networkApyNum, operatorFeeNum]
   );
 
   // Reward-only impact: reward math can shift bond totals, but node-risk scoring remains a separate source check.
@@ -164,10 +174,12 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
     networkApyPercent: networkApyNum,
     operatorFeeBps: operatorFeeNum,
     hasResult: Boolean(result),
+    missingInput,
   }), [
     bondAmount,
     currentBondRune,
     lockDaysNum,
+    missingInput,
     networkApyNum,
     operatorFeeNum,
     result,
@@ -281,6 +293,11 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
 
         <div>
           <label htmlFor="simulator-network-apy" className="block text-xs text-zinc-500 mb-1.5">Est. Network APY (%)</label>
+          {hasMissingNetworkApy && (
+            <p id="simulator-network-apy-error" className="mb-1 text-xs text-amber-600 dark:text-amber-400">
+              Enter an estimated network APY before calculating reward estimates.
+            </p>
+          )}
           <input
             id="simulator-network-apy"
             type="number"
@@ -289,6 +306,8 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
             min="0"
             max="100"
             step="0.1"
+            aria-invalid={hasMissingNetworkApy}
+            aria-describedby={hasMissingNetworkApy ? 'simulator-network-apy-error' : undefined}
             className="w-full px-3 py-2 text-sm rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="65"
           />
@@ -296,6 +315,13 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
 
         <div>
           <label htmlFor="simulator-operator-fee" className="block text-xs text-zinc-500 mb-1.5">Operator Fee (bps)</label>
+          {(hasMissingOperatorFee || hasImpossibleOperatorFee) && (
+            <p id="simulator-operator-fee-error" className="mb-1 text-xs text-amber-600 dark:text-amber-400">
+              {hasMissingOperatorFee
+                ? 'Enter an operator fee between 0 and 10,000 bps.'
+                : 'Operator fee cannot exceed 10,000 bps (100%).'}
+            </p>
+          )}
           <input
             id="simulator-operator-fee"
             type="number"
@@ -304,6 +330,8 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
             min="0"
             max="10000"
             step="50"
+            aria-invalid={hasMissingOperatorFee || hasImpossibleOperatorFee}
+            aria-describedby={hasMissingOperatorFee || hasImpossibleOperatorFee ? 'simulator-operator-fee-error' : undefined}
             className="w-full px-3 py-2 text-sm rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="1500"
           />
@@ -419,7 +447,13 @@ export function BondSimulator({ currentPositions }: BondSimulatorProps) {
         </div>
       ) : (
         <div className="h-[120px] flex items-center justify-center text-zinc-400 text-sm">
-          Enter bond amount and lock period to simulate
+          {hasMissingNetworkApy
+            ? 'Enter estimated network APY before Heimdall will calculate reward estimates.'
+            : hasMissingOperatorFee
+              ? 'Enter operator fee before Heimdall will calculate reward estimates.'
+              : hasImpossibleOperatorFee
+                ? 'Fix operator fee before Heimdall will calculate reward estimates.'
+                : 'Enter bond amount and lock period to simulate'}
         </div>
       )}
     </div>

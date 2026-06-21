@@ -305,4 +305,134 @@ test.describe("Portfolio Page", () => {
     });
     expect(diagnosisBeforeInput).toBe(true);
   });
+
+  test("withholds simulator reward projections for impossible operator fees", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 740 });
+    await page.goto(`/dashboard/simulator?address=${MOCK_ADDRESS}`);
+
+    await page.getByLabel("Operator Fee (bps)").fill("12000");
+
+    const diagnosis = page.getByLabel("Simulator scenario diagnosis");
+    const assumptions = page.getByLabel("Simulation assumptions");
+    const inlineFeeError = page.getByText("Operator fee cannot exceed 10,000 bps (100%).");
+
+    await expect(diagnosis).toContainText("Operator fee input is impossible");
+    await expect(diagnosis).toContainText("Operator fee must be between 0% and 100%");
+    await expect(diagnosis.getByRole("link", { name: "Fix operator fee" })).toHaveAttribute("href", "#simulator-inputs");
+    await expect(assumptions).toContainText("Fee input");
+    await expect(assumptions).toContainText("Invalid");
+    await expect(assumptions).toContainText("0% to 100% only");
+    await expect(page.getByLabel("Operator Fee (bps)")).toHaveAttribute("aria-invalid", "true");
+    await expect(inlineFeeError).toBeVisible();
+    await expect(page.getByText("Fix operator fee before Heimdall will calculate reward estimates.")).toBeVisible();
+    await expect(page.getByText("Est. Daily Reward")).toHaveCount(0);
+    await expect(page.getByText("Est. Total Reward")).toHaveCount(0);
+    await expect(page.getByText(/-\d+\.\d+ RUNE/)).toHaveCount(0);
+
+    const layout = await page.evaluate(() => {
+      const box = (selector: string) => {
+        const element = document.querySelector(selector);
+        const rect = element?.getBoundingClientRect();
+        return rect ? { top: rect.top, bottom: rect.bottom } : null;
+      };
+
+      return {
+        viewportHeight: window.innerHeight,
+        viewportWidth: window.innerWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        feeInput: box("#simulator-operator-fee"),
+        feeError: box("#simulator-operator-fee-error"),
+      };
+    });
+
+    expect(layout.feeInput).not.toBeNull();
+    expect(layout.feeError).not.toBeNull();
+    expect(layout.feeError!.bottom).toBeLessThan(layout.feeInput!.top);
+    expect(layout.feeError!.top).toBeGreaterThanOrEqual(0);
+    expect(layout.feeInput!.top).toBeLessThan(layout.viewportHeight);
+    expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
+  });
+
+  test("withholds simulator reward projections for missing APY and fee inputs", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 740 });
+    await page.goto(`/dashboard/simulator?address=${MOCK_ADDRESS}`);
+
+    const diagnosis = page.getByLabel("Simulator scenario diagnosis");
+    const assumptions = page.getByLabel("Simulation assumptions");
+    const apyInput = page.getByLabel("Est. Network APY (%)");
+    const feeInput = page.getByLabel("Operator Fee (bps)");
+
+    await apyInput.fill("");
+
+    await expect(diagnosis).toContainText("Network APY input is missing");
+    await expect(diagnosis.getByRole("link", { name: "Enter APY estimate" })).toHaveAttribute("href", "#simulator-inputs");
+    await expect(assumptions).toContainText("Missing APY");
+    await expect(assumptions).toContainText("Enter estimated APY");
+    await expect(apyInput).toHaveAttribute("aria-invalid", "true");
+    await expect(page.getByText("Enter an estimated network APY before calculating reward estimates.")).toBeVisible();
+    await expect(page.getByText("Enter estimated network APY before Heimdall will calculate reward estimates.")).toBeVisible();
+    await expect(page.getByText("Est. Daily Reward")).toHaveCount(0);
+    await expect(page.getByText("Est. Total Reward")).toHaveCount(0);
+
+    const missingApyLayout = await page.evaluate(() => {
+      const box = (selector: string) => {
+        const element = document.querySelector(selector);
+        const rect = element?.getBoundingClientRect();
+        return rect ? { top: rect.top, bottom: rect.bottom } : null;
+      };
+
+      return {
+        viewportWidth: window.innerWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        apyInput: box("#simulator-network-apy"),
+        apyError: box("#simulator-network-apy-error"),
+      };
+    });
+
+    expect(missingApyLayout.apyInput).not.toBeNull();
+    expect(missingApyLayout.apyError).not.toBeNull();
+    expect(missingApyLayout.apyError!.bottom).toBeLessThan(missingApyLayout.apyInput!.top);
+    expect(missingApyLayout.documentWidth).toBeLessThanOrEqual(missingApyLayout.viewportWidth + 1);
+
+    await apyInput.fill("0");
+    await expect(apyInput).toHaveAttribute("aria-invalid", "false");
+    await expect(page.getByText("Est. Daily Reward")).toBeVisible();
+
+    await feeInput.fill("");
+
+    await expect(diagnosis).toContainText("Operator fee input is missing");
+    await expect(diagnosis.getByRole("link", { name: "Enter operator fee" })).toHaveAttribute("href", "#simulator-inputs");
+    await expect(assumptions).toContainText("Fee input");
+    await expect(assumptions).toContainText("Missing");
+    await expect(assumptions).toContainText("Enter 0% to 100%");
+    await expect(feeInput).toHaveAttribute("aria-invalid", "true");
+    await expect(page.getByText("Enter an operator fee between 0 and 10,000 bps.")).toBeVisible();
+    await expect(page.getByText("Enter operator fee before Heimdall will calculate reward estimates.")).toBeVisible();
+    await expect(page.getByText("Est. Daily Reward")).toHaveCount(0);
+    await expect(page.getByText("Est. Total Reward")).toHaveCount(0);
+
+    const missingFeeLayout = await page.evaluate(() => {
+      const box = (selector: string) => {
+        const element = document.querySelector(selector);
+        const rect = element?.getBoundingClientRect();
+        return rect ? { top: rect.top, bottom: rect.bottom } : null;
+      };
+
+      return {
+        viewportWidth: window.innerWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        feeInput: box("#simulator-operator-fee"),
+        feeError: box("#simulator-operator-fee-error"),
+      };
+    });
+
+    expect(missingFeeLayout.feeInput).not.toBeNull();
+    expect(missingFeeLayout.feeError).not.toBeNull();
+    expect(missingFeeLayout.feeError!.bottom).toBeLessThan(missingFeeLayout.feeInput!.top);
+    expect(missingFeeLayout.documentWidth).toBeLessThanOrEqual(missingFeeLayout.viewportWidth + 1);
+
+    await feeInput.fill("0");
+    await expect(feeInput).toHaveAttribute("aria-invalid", "false");
+    await expect(page.getByText("Est. Daily Reward")).toBeVisible();
+  });
 });
