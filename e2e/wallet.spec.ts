@@ -212,6 +212,41 @@ test.describe('Wallet Connection', () => {
     await chooseWallet(page, 'keplr');
 
     await expect(page.getByTestId('wallet-account-menu-button')).toHaveAccessibleName(/Keplr wallet thor1q.*7qn4/);
+    await expect(page.getByTestId('wallet-balance-status')).toContainText('Wallet balance:');
+    await expect(page.getByTestId('wallet-balance-status')).toContainText('ᚱ0.00');
+  });
+
+  test('marks malformed connected-wallet balance unavailable', async ({ page, context }) => {
+    const mockAddress = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
+    await page.route('**/api/thorchain/cosmos/bank/v1beta1/balances/**', async (route) => {
+      const url = new URL(route.request().url());
+
+      if (url.pathname !== `/api/thorchain/cosmos/bank/v1beta1/balances/${mockAddress}`) {
+        await route.fulfill({ status: 404, json: { error: `Unhandled wallet balance mock: ${url.pathname}` } });
+        return;
+      }
+
+      await route.fulfill({
+        json: {
+          balances: [{ denom: 'rune', amount: 'not-a-rune-base-unit-amount' }],
+          pagination: { next_key: null, total: '1' },
+        },
+      });
+    });
+    await context.addInitScript((address) => {
+      (window as unknown as Record<string, unknown>).keplr = {
+        enable: async () => {},
+        getChainId: async () => 'thorchain-1',
+        getKey: async () => ({ bech32Address: address }),
+      };
+    }, mockAddress);
+
+    await gotoWalletPage(page);
+    await openWalletMenu(page);
+    await chooseWallet(page, 'keplr');
+
+    await expect(page.getByTestId('wallet-account-menu-button')).toHaveAccessibleName(/Keplr wallet thor1q.*7qn4/);
+    await expect(page.getByTestId('wallet-balance-status')).toHaveText('Wallet balance unavailable');
   });
 
   test('disconnect clears connection state', async ({ page, context }) => {

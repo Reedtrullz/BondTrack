@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   reverseLookup: vi.fn(),
   walletAddress: null as string | null,
   walletBalance: null as number | null,
+  walletBalanceStatus: 'idle' as 'idle' | 'loading' | 'available' | 'unavailable',
+  walletBalanceLoading: false,
   useWalletBalance: vi.fn(),
   apiHealth: {
     midgard: 'healthy',
@@ -65,7 +67,11 @@ vi.mock('@/lib/hooks/use-wallet', () => ({
 vi.mock('@/lib/hooks/use-wallet-balance', () => ({
   useWalletBalance: (address: string | null) => {
     mocks.useWalletBalance(address);
-    return { balance: mocks.walletBalance, isLoading: false };
+    return {
+      balance: mocks.walletBalance,
+      isLoading: mocks.walletBalanceLoading,
+      status: mocks.walletBalanceStatus,
+    };
   },
 }));
 
@@ -78,6 +84,8 @@ describe('DashboardShell', () => {
     vi.clearAllMocks();
     mocks.walletAddress = null;
     mocks.walletBalance = null;
+    mocks.walletBalanceStatus = 'idle';
+    mocks.walletBalanceLoading = false;
     mocks.apiHealth = {
       midgard: 'healthy',
       thornode: 'healthy',
@@ -342,6 +350,7 @@ describe('DashboardShell', () => {
   it('shows the connected wallet balance instead of querying the watched dashboard address', async () => {
     mocks.walletAddress = 'thor1walletbalanceaddressxxxxxxxxxxxxxxxxxxxxx';
     mocks.walletBalance = 12.34;
+    mocks.walletBalanceStatus = 'available';
     mocks.reverseLookup.mockResolvedValueOnce({ entry: null });
 
     render(
@@ -353,7 +362,61 @@ describe('DashboardShell', () => {
     await screen.findByText('Dashboard content');
     expect(mocks.useWalletBalance).toHaveBeenCalledWith(mocks.walletAddress);
     expect(mocks.useWalletBalance).not.toHaveBeenCalledWith(mocks.address);
-    expect(screen.getByText(/Wallet:/)).toHaveTextContent('Wallet:');
-    expect(screen.getByText(/Wallet:/)).toHaveTextContent('12.34');
+    expect(screen.getByTestId('wallet-balance-status')).toHaveTextContent('Wallet balance:');
+    expect(screen.getByTestId('wallet-balance-status')).toHaveTextContent('12.34');
+  });
+
+  it('shows zero connected wallet balance instead of hiding the balance row', async () => {
+    mocks.walletAddress = 'thor1zerowalletbalanceaddressxxxxxxxxxxxxxxxx';
+    mocks.walletBalance = 0;
+    mocks.walletBalanceStatus = 'available';
+    mocks.reverseLookup.mockResolvedValueOnce({ entry: null });
+
+    render(
+      <DashboardShell>
+        <div>Dashboard content</div>
+      </DashboardShell>
+    );
+
+    await screen.findByText('Dashboard content');
+
+    expect(screen.getByTestId('wallet-balance-status')).toHaveTextContent('Wallet balance:');
+    expect(screen.getByTestId('wallet-balance-status')).toHaveTextContent('ᚱ0.00');
+  });
+
+  it('surfaces unavailable connected wallet balance instead of silently hiding source failure', async () => {
+    mocks.walletAddress = 'thor1unavailablebalanceaddressxxxxxxxxxxxxxxx';
+    mocks.walletBalance = null;
+    mocks.walletBalanceStatus = 'unavailable';
+    mocks.reverseLookup.mockResolvedValueOnce({ entry: null });
+
+    render(
+      <DashboardShell>
+        <div>Dashboard content</div>
+      </DashboardShell>
+    );
+
+    await screen.findByText('Dashboard content');
+
+    expect(screen.getByTestId('wallet-balance-status')).toHaveTextContent('Wallet balance unavailable');
+  });
+
+  it('labels pending connected wallet balance without implying a zero balance', async () => {
+    mocks.walletAddress = 'thor1loadingbalanceaddressxxxxxxxxxxxxxxxxxxx';
+    mocks.walletBalance = null;
+    mocks.walletBalanceStatus = 'loading';
+    mocks.walletBalanceLoading = true;
+    mocks.reverseLookup.mockResolvedValueOnce({ entry: null });
+
+    render(
+      <DashboardShell>
+        <div>Dashboard content</div>
+      </DashboardShell>
+    );
+
+    await screen.findByText('Dashboard content');
+
+    expect(screen.getByTestId('wallet-balance-status')).toHaveTextContent('Wallet balance checking');
+    expect(screen.getByTestId('wallet-balance-status')).not.toHaveTextContent('ᚱ0.00');
   });
 });

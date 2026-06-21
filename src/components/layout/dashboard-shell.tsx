@@ -181,7 +181,7 @@ export function DashboardShell({
   const [now, setNow] = useState<number | null>(null);
   const { midgard, thornode, lastChecked, lastSuccessful } = useApiHealthContext();
   const { address: walletAddress } = useWalletContext();
-  const { balance } = useWalletBalance(walletAddress);
+  const { balance, status: walletBalanceStatus } = useWalletBalance(walletAddress);
 
   const hasAddress = requireAddress ? !!address : true;
 
@@ -263,9 +263,19 @@ export function DashboardShell({
                   <p className="text-[10px] sm:text-xs md:text-sm text-zinc-500 font-mono mt-0.5 truncate" title={address}>
                     {thorName || truncateAddress(address)}
                   </p>
-                  {balance !== null && balance > 0 && (
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 block">
-                      Wallet: <span className="font-mono">{formatRuneFromNumber(balance)}</span>
+                  {walletAddress && walletBalanceStatus !== 'idle' && (
+                    <span
+                      data-testid="wallet-balance-status"
+                      className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 block"
+                      aria-live="polite"
+                    >
+                      {walletBalanceStatus === 'loading' && 'Wallet balance checking'}
+                      {walletBalanceStatus === 'unavailable' && 'Wallet balance unavailable'}
+                      {walletBalanceStatus === 'available' && (
+                        <>
+                          Wallet balance: <span className="font-mono">{formatRuneFromNumber(balance ?? 0)}</span>
+                        </>
+                      )}
                     </span>
                   )}
                   <span
