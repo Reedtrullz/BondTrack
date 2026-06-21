@@ -157,7 +157,7 @@ export default function NodesPage() {
             No bonded nodes tracked
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-            Confirm the provider address, review source checks, open BOND review, or use Node Discovery to inspect candidate nodes before committing capital.
+            Confirm the provider address, review source checks, review the BOND memo, or use Node Discovery to inspect candidate nodes before committing capital.
           </p>
         </DashboardCard>
       </div>

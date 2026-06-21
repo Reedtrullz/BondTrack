@@ -130,7 +130,7 @@ export default function RewardsPage() {
     runePriceUpdatedAt,
   ]);
   const bondComposerAction = resolveThornodeGatedBondAction(rewardsInsight.actions, {
-    label: 'Open BOND review',
+    label: 'Review BOND memo',
     href: address
       ? `/dashboard/transactions?address=${encodeURIComponent(address)}`
       : '/dashboard/transactions',
@@ -289,13 +289,13 @@ export default function RewardsPage() {
         tone: 'warning' as const,
         title: 'Bond position result needs source check',
         description: 'No active bond-provider position is visible yet, but THORNode position evidence is degraded or unavailable, so do not treat the missing bond position as final.',
-        detail: 'Confirm the address, then wait until THORNode positions are responding before opening BOND review.',
+        detail: 'Confirm the address, then wait until THORNode positions are responding before reviewing any BOND memo.',
       }
     : {
         tone: 'empty' as const,
         title: 'No active bond-provider position visible',
         description: 'Current THORNode node data does not show this address as an active bond provider. Treat this as the current source result, not a guarantee about past or pending bond activity.',
-        detail: 'If you intend to add bond, open BOND review after confirming the address and node operator.',
+        detail: 'If you intend to add bond, review the BOND memo after confirming the address and node operator.',
       };
 
   return (

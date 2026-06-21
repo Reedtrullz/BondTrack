@@ -564,7 +564,7 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
   ]));
   const mostSevereAction = actions[0];
   const noBondAction = resolveThornodeGatedBondAction(actions, {
-    label: 'Open BOND review',
+    label: 'Review BOND memo',
     href: buildHref('/dashboard/transactions', input.address),
   });
   const noBondPrimaryAction = { label: noBondAction.label, href: noBondAction.href };
@@ -590,8 +590,8 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
           ? 'Review Needed'
           : 'No urgent review';
   const noBondDiagnosis = noBondAction.kind === 'source-confidence'
-    ? 'No active bond-provider position was found for this address. Confirm the address, then wait until THORNode is responding before opening BOND review.'
-    : 'No active bond-provider position was found for this address. Start by confirming the address or opening BOND review.';
+    ? 'No active bond-provider position was found for this address. Confirm the address, then wait until THORNode is responding before reviewing any BOND memo.'
+    : 'No active bond-provider position was found for this address. Start by confirming the address, then review the BOND memo before signing.';
   const demoDiagnosis = 'Local mock data is illustrative. Use live THORNode and Midgard source checks before concluding this provider has no live issues.';
   const diagnosis = hasDemoSource
     ? demoDiagnosis

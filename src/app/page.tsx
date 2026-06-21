@@ -47,7 +47,7 @@ export default function Home() {
                 </h1>
                 <p className="max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400 sm:text-base">
                   Enter a bond provider address, then inspect node risk, rewards,
-                  source freshness, and transaction readiness from one read-only dashboard.
+                  source freshness, and wallet transaction review context from one read-only dashboard.
                 </p>
               </div>
             </div>

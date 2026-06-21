@@ -21,6 +21,8 @@ test.describe('Homepage', () => {
       name: 'Start with a bond provider address',
       exact: true,
     })).toBeVisible();
+    await expect(main).toContainText('source freshness, and wallet transaction review context');
+    await expect(main).not.toContainText('transaction readiness');
   });
 
   test('displays address input field', async ({ page }) => {

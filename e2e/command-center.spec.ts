@@ -192,7 +192,7 @@ test.describe('Dashboard command center', () => {
     const nextTransaction = page.getByRole('region', { name: 'Transaction review' });
 
     await expect(diagnosis.getByText('No Bond', { exact: true })).toBeVisible();
-    await expect(diagnosis).toContainText('wait until THORNode is responding before opening BOND review');
+    await expect(diagnosis).toContainText('wait until THORNode is responding before reviewing any BOND memo');
     await expect(diagnosis).not.toContainText('wait for fresh THORNode source confidence');
     await expect(diagnosis).not.toContainText('source check to pass');
     await expect(diagnosis.getByRole('link', { name: 'Review source checks' })).toHaveAttribute(
@@ -207,6 +207,10 @@ test.describe('Dashboard command center', () => {
     await expect(nextTransaction.getByRole('link', { name: 'Review BOND memo' })).toHaveCount(0);
     await expect(nextTransaction.getByRole('link', { name: 'Review UNBOND memo' })).toHaveCount(0);
     await expect(page.getByLabel('Provider review queue')).toContainText('THORNode is degraded');
+    const providerExposure = page.getByRole('region', { name: 'Provider exposure summary' });
+    await expect(providerExposure).toContainText('Bonded-node exposure was not loaded from THORNode.');
+    await expect(providerExposure).toContainText('Review source checks before treating this address as unbonded.');
+    await expect(providerExposure).not.toContainText('No bonded nodes found for this address.');
   });
 
   test('keeps subpage diagnosis headings subordinate to the page title', async ({ page }) => {
@@ -321,7 +325,7 @@ test.describe('Dashboard command center', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Rewards', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Bond position result needs source check', exact: true })).toBeVisible();
     await expect(page.getByText('No active bond-provider position is visible yet, but THORNode position evidence is degraded or unavailable, so do not treat the missing bond position as final.')).toBeVisible();
-    await expect(page.getByText('Confirm the address, then wait until THORNode positions are responding before opening BOND review.')).toBeVisible();
+    await expect(page.getByText('Confirm the address, then wait until THORNode positions are responding before reviewing any BOND memo.')).toBeVisible();
     await expect(page.getByText(/source check to pass/i)).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'No bonded positions found', exact: true })).toHaveCount(0);
     await expect(page.getByText(/queried successfully/i)).toHaveCount(0);
@@ -339,10 +343,10 @@ test.describe('Dashboard command center', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Rewards', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'No active bond-provider position visible', exact: true })).toBeVisible();
     await expect(page.getByText('Current THORNode node data does not show this address as an active bond provider. Treat this as the current source result, not a guarantee about past or pending bond activity.')).toBeVisible();
-    await expect(page.getByText('If you intend to add bond, open BOND review after confirming the address and node operator.')).toBeVisible();
+    await expect(page.getByText('If you intend to add bond, review the BOND memo after confirming the address and node operator.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'No bonded positions found', exact: true })).toHaveCount(0);
     await expect(page.getByText(/queried successfully/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Open BOND review', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Review BOND memo', exact: true })).toBeVisible();
   });
 
   test('keeps rewards data checks fully scannable in the first mobile viewport', async ({ page }) => {
@@ -533,7 +537,7 @@ test.describe('Dashboard command center', () => {
     await expect(page.getByLabel('Node diagnosis')).toBeVisible();
     await expect(page.getByLabel('Node diagnosis').getByText('No Bond', { exact: true })).toBeVisible();
     await expect(page.getByLabel('Node diagnosis').getByText('No bonded positions detected')).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Open BOND review' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Review BOND memo' })).toBeVisible();
     await expect(page.getByText('No bonded nodes tracked')).toBeVisible();
     await expect(page.getByText(/current THORNode node data does not show bonded nodes for this address/i)).toBeVisible();
     await expect(page.getByText(/current source result, not proof of address validity or past\/pending bond activity/i)).toBeVisible();

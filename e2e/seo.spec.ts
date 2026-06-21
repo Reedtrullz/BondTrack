@@ -17,12 +17,17 @@ test.describe('Canonical production identity', () => {
     expect(robotsText).not.toContain('https://thorchain.no');
   });
 
-  test('manifest uses the Heimdall branded app icon', async ({ request }) => {
+  test('manifest uses conservative Heimdall product identity', async ({ request }) => {
     const response = await request.get('/manifest.webmanifest');
     expect(response.ok()).toBe(true);
 
-    const manifest = await response.json() as { icons?: Array<{ src?: string }> };
+    const manifest = await response.json() as {
+      description?: string;
+      icons?: Array<{ src?: string }>;
+    };
     expect(manifest.icons?.map((icon) => icon.src)).toContain('/heimdall-icon.svg');
     expect(manifest.icons?.map((icon) => icon.src)).not.toContain('/file.svg');
+    expect(manifest.description).toMatch(/\bsource-checked\b/i);
+    expect(manifest.description).not.toMatch(/\breal[- ]?time\b/i);
   });
 });

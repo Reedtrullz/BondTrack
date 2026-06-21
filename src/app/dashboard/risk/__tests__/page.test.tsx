@@ -258,7 +258,7 @@ describe('RiskPage', () => {
 
     expect(screen.getByLabelText('Provider risk diagnosis')).toHaveTextContent('No Bond');
     expect(screen.getByLabelText('Provider risk diagnosis')).toHaveTextContent('No bonded positions detected');
-    expect(within(screen.getByLabelText('Provider risk diagnosis')).getByRole('link', { name: 'Open BOND review' })).toHaveAttribute(
+    expect(within(screen.getByLabelText('Provider risk diagnosis')).getByRole('link', { name: 'Review BOND memo' })).toHaveAttribute(
       'href',
       '/dashboard/transactions?address=thor1mocknode000000000000000000000000000000'
     );

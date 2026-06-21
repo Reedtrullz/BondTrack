@@ -116,6 +116,36 @@ export default function DashboardPage() {
     lpPositions.length === 0 &&
     !lpPositionsLoading &&
     !hasDemoSource;
+  const providerExposureEmptyState = (() => {
+    if (
+      apiHealth.thornode === 'degraded' ||
+      apiHealth.thornode === 'down' ||
+      apiHealth.thornode === 'unknown'
+    ) {
+      return {
+        title: 'Bonded-node exposure was not loaded from THORNode.',
+        detail: 'Review source checks before treating this address as unbonded.',
+        className: 'border-amber-200 bg-amber-50/70 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100',
+        detailClassName: 'text-amber-800 dark:text-amber-200',
+      };
+    }
+
+    if (hasDemoSource) {
+      return {
+        title: 'Demo node exposure only.',
+        detail: 'Local fixtures cannot prove this provider has no live bonded nodes.',
+        className: 'border-sky-200 bg-sky-50/70 text-sky-900 dark:border-sky-900/60 dark:bg-sky-950/20 dark:text-sky-100',
+        detailClassName: 'text-sky-800 dark:text-sky-200',
+      };
+    }
+
+    return {
+      title: 'No bonded nodes loaded from current THORNode responses.',
+      detail: 'Confirm the address and source freshness before treating this address as unbonded.',
+      className: 'border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950/30 dark:text-zinc-300',
+      detailClassName: 'text-zinc-500 dark:text-zinc-400',
+    };
+  })();
   const emptyQueueTitle = hasDemoSource
     ? 'Demo data only'
     : hasNoLoadedProviderExposure
@@ -161,7 +191,7 @@ export default function DashboardPage() {
       <MetricStrip metrics={insight.metrics} />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <DashboardCard className="p-5">
+        <DashboardCard className="p-5" role="region" aria-label="Provider exposure summary">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold text-zinc-950 dark:text-zinc-50">Provider exposure first</h2>
@@ -179,8 +209,11 @@ export default function DashboardPage() {
           </div>
 
           {topNodes.length === 0 ? (
-            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950/30 dark:text-zinc-400">
-              No bonded nodes found for this address.
+            <div className={cn('rounded-xl border p-4 text-sm', providerExposureEmptyState.className)}>
+              <p className="font-semibold">{providerExposureEmptyState.title}</p>
+              <p className={cn('mt-1 leading-5', providerExposureEmptyState.detailClassName)}>
+                {providerExposureEmptyState.detail}
+              </p>
             </div>
           ) : (
             <div className="space-y-2">

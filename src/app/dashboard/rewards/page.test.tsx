@@ -168,7 +168,7 @@ describe('RewardsPage', () => {
     expect(screen.getByRole('heading', { name: 'No active bond-provider position visible' })).toBeVisible();
     expect(screen.getByText(/current THORNode node data does not show this address as an active bond provider/i)).toBeVisible();
 
-    await user.click(screen.getByRole('button', { name: 'Open BOND review' }));
+    await user.click(screen.getByRole('button', { name: 'Review BOND memo' }));
 
     expect(mocks.router.push).toHaveBeenCalledWith(
       '/dashboard/transactions?address=thor1rewardaddress'
@@ -200,7 +200,7 @@ describe('RewardsPage', () => {
     expect(screen.getByText(/THORNode position evidence is degraded or unavailable/i)).toBeVisible();
     expect(screen.getByText(/wait until THORNode positions are responding/i)).toBeVisible();
     expect(screen.queryByText(/source check to pass/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Open BOND review' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Review BOND memo' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Review source checks' }));
 
     expect(mocks.router.push).toHaveBeenCalledWith(

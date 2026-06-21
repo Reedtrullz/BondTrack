@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     default: "Heimdall | THORChain Investment Command Center",
     template: "%s | Heimdall",
   },
-  description: "The all-seeing guardian of your THORChain node infrastructure.",
+  description: "Source-checked THORChain command center for bond providers, node operators, and serious LPs.",
   manifest: '/manifest.webmanifest',
 };
 

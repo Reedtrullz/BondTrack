@@ -384,10 +384,10 @@ describe('dashboard insights', () => {
 
     expect(state.severity).toBe('info');
     expect(state.statusLabel).toBe('No Bond');
-    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Start by confirming the address or opening BOND review.');
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Start by confirming the address, then review the BOND memo before signing.');
     expect(state.topRisk).toBe('No bonded positions detected');
     expect(state.primaryAction).toEqual({
-      label: 'Open BOND review',
+      label: 'Review BOND memo',
       href: '/dashboard/transactions?address=thor1provider',
     });
     expect(state.headerMetrics[0]).toEqual({
@@ -407,7 +407,7 @@ describe('dashboard insights', () => {
     });
 
     expect(state.statusLabel).toBe('No Bond');
-    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Start by confirming the address or opening BOND review.');
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Start by confirming the address, then review the BOND memo before signing.');
     expect(state.topRisk).toBe('No bonded positions detected');
     expect(state.actions.map((item) => item.title)).not.toContain('RUNE price is unknown');
     expect(state.sources.map((source) => source.source)).toEqual(['THORNode', 'Midgard']);
@@ -429,10 +429,10 @@ describe('dashboard insights', () => {
     });
 
     expect(state.statusLabel).toBe('No Bond');
-    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Start by confirming the address or opening BOND review.');
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Start by confirming the address, then review the BOND memo before signing.');
     expect(state.topRisk).toBe('No bonded positions detected');
     expect(state.primaryAction).toEqual({
-      label: 'Open BOND review',
+      label: 'Review BOND memo',
       href: '/dashboard/transactions?address=thor1provider',
     });
     expect(state.actions).toEqual(expect.arrayContaining([
@@ -459,7 +459,7 @@ describe('dashboard insights', () => {
     });
 
     expect(state.statusLabel).toBe('No Bond');
-    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Confirm the address, then wait until THORNode is responding before opening BOND review.');
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Confirm the address, then wait until THORNode is responding before reviewing any BOND memo.');
     expect(state.diagnosis).not.toMatch(/fresh|pass/i);
     expect(state.topRisk).toBe('No bonded positions detected');
     expect(state.primaryAction).toEqual({
@@ -491,7 +491,7 @@ describe('dashboard insights', () => {
     });
 
     expect(state.statusLabel).toBe('No Bond');
-    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Confirm the address, then wait until THORNode is responding before opening BOND review.');
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Confirm the address, then wait until THORNode is responding before reviewing any BOND memo.');
     expect(state.diagnosis).not.toMatch(/fresh|pass/i);
     expect(state.primaryAction).toEqual({
       label: 'Review source checks',

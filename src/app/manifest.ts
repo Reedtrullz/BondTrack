@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'Heimdall — THORChain Dashboard',
     short_name: 'Heimdall',
     description:
-      'Real-time THORChain bond provider exposure, LP, and rewards dashboard.',
+      'Source-checked THORChain command center for bond provider exposure, LP context, rewards scenarios, and wallet transaction review.',
     start_url: '/',
     display: 'standalone',
     background_color: '#0a0a0a',

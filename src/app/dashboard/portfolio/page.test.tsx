@@ -105,7 +105,7 @@ vi.mock('@/lib/dashboard/insights', async (importOriginal) => {
             topRisk: 'No bonded positions detected',
             headerMetrics: [],
             primaryAction: {
-              label: 'Open BOND review',
+              label: 'Review BOND memo',
               href: '/dashboard/transactions?address=thor1portfolioaddress&action=bond',
             },
             actions: mocks.insightActions.current,
@@ -286,7 +286,7 @@ describe('PortfolioPage', () => {
       '/dashboard?address=thor1portfolioaddress#source-confidence'
     );
     const diagnosis = screen.getByLabelText('Portfolio diagnosis');
-    expect(diagnosis).toHaveTextContent('wait until THORNode is responding before opening BOND review');
+    expect(diagnosis).toHaveTextContent('wait until THORNode is responding before reviewing any BOND memo');
     expect(diagnosis).not.toHaveTextContent(/fresh THORNode source confidence|source check to pass/i);
     expect(screen.queryByRole('link', { name: 'Review UNBOND Memo' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Prepare UNBOND Memo' })).not.toBeInTheDocument();

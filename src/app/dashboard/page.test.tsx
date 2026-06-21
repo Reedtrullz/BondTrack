@@ -295,7 +295,7 @@ describe('DashboardPage', () => {
 
     const diagnosis = screen.getByLabelText('Command center diagnosis');
     expect(within(diagnosis).getByText('No Bond', { exact: true })).toBeVisible();
-    expect(within(diagnosis).getByText(/wait until THORNode is responding before opening BOND review/)).toBeVisible();
+    expect(within(diagnosis).getByText(/wait until THORNode is responding before reviewing any BOND memo/)).toBeVisible();
     expect(diagnosis).not.toHaveTextContent(/fresh THORNode source confidence|source check to pass/i);
     expect(within(diagnosis).getByRole('link', { name: 'Review source checks' })).toHaveAttribute(
       'href',
@@ -310,6 +310,11 @@ describe('DashboardPage', () => {
     expect(within(nextTransaction).queryByRole('link', { name: 'Open BOND' })).not.toBeInTheDocument();
     expect(within(nextTransaction).queryByRole('link', { name: 'Review BOND memo' })).not.toBeInTheDocument();
     expect(within(nextTransaction).queryByRole('link', { name: 'Review UNBOND memo' })).not.toBeInTheDocument();
+
+    const providerExposure = screen.getByRole('region', { name: 'Provider exposure summary' });
+    expect(providerExposure).toHaveTextContent('Bonded-node exposure was not loaded from THORNode.');
+    expect(providerExposure).toHaveTextContent('Review source checks before treating this address as unbonded.');
+    expect(providerExposure).not.toHaveTextContent('No bonded nodes found for this address.');
   });
 
   it('hides command-center UNBOND when a bonded position exists but THORNode confidence is degraded', () => {
