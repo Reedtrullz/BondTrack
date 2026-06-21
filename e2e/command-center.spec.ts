@@ -421,8 +421,27 @@ test.describe('Dashboard command center', () => {
     await mockDashboardApis(page, DEFAULT_DASHBOARD_ADDRESS);
     await page.goto(`/dashboard/rewards?address=${DEFAULT_DASHBOARD_ADDRESS}`);
 
+    await page.getByRole('tab', { name: 'Fees' }).click();
+    const feeScenario = page.getByRole('region', { name: 'Personal fee scenario' });
+    await expect(feeScenario.getByText('Monthly fee scenario only; not realized rewards')).toBeVisible();
+    await expect(feeScenario.getByText('Estimated gross rewards')).toBeVisible();
+    await expect(feeScenario.getByText('Estimated net after operator fee')).toBeVisible();
+    await expect(feeScenario.getByText('Estimated monthly leakage')).toBeVisible();
+    await expect(feeScenario.getByText('Gross Rewards', { exact: true })).toHaveCount(0);
+    await expect(feeScenario.getByText('Net Take-home', { exact: true })).toHaveCount(0);
+
     await page.getByRole('tab', { name: 'Forecast' }).click();
-    await expect(page.getByRole('heading', { name: 'Compound Growth Forecast' })).toBeVisible();
+    const growthScenario = page.getByRole('region', { name: 'Compound growth scenario' });
+    await expect(growthScenario.getByRole('heading', { name: 'Compound Growth Forecast' })).toBeVisible();
+    await expect(growthScenario.getByText('Scenario estimate only, not realized rewards')).toBeVisible();
+    await expect(growthScenario.getByText('Estimated compound gain (1Y)')).toBeVisible();
+    await expect(growthScenario.getByText('Scenario gain from compounding; not realized rewards')).toBeVisible();
+    await expect(growthScenario.getByText('Estimated 12M balance')).toBeVisible();
+    await expect(growthScenario.getByText('Scenario balance after 12 months; not wallet-confirmed')).toBeVisible();
+    await expect(growthScenario.getByText('APY scenario')).toBeVisible();
+    await expect(growthScenario.getByText('Compound Gains (1Y)', { exact: true })).toHaveCount(0);
+    await expect(growthScenario.getByText('Forecasted Balance', { exact: true })).toHaveCount(0);
+    await expect(growthScenario.getByText('Yield Efficiency', { exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Historical blend' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Realistic Mode' })).toHaveCount(0);
 

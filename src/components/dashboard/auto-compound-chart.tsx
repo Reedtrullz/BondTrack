@@ -82,12 +82,16 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
   );
 
   return (
-    <div className="p-8 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm">
+    <div
+      className="p-8 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm"
+      role="region"
+      aria-label="Compound growth scenario"
+    >
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
         <div>
           <h3 className="text-xs font-bold text-zinc-400 uppercase mb-1">Compound Growth Forecast</h3>
           <p className="text-sm text-zinc-500">
-            Projected 1Y estimate ({useHistoricalBaseline ? 'historical blend' : 'current APY basis'})
+            Scenario estimate only, not realized rewards ({useHistoricalBaseline ? 'historical blend' : 'current APY basis'})
           </p>
         </div>
         
@@ -247,8 +251,8 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
         </ResponsiveContainer>
       </div>
       <ChartDataTable
-        caption={`12-month compound growth forecast in ${viewMode.toUpperCase()}`}
-        columns={['Month', 'Passive HODL', 'Compounded balance']}
+        caption={`12-month compound growth scenario in ${viewMode.toUpperCase()}`}
+        columns={['Month', 'No-compound baseline', 'Scenario balance']}
         rows={projectionData.map((point) => [
           point.month,
           viewMode === 'usd' ? formatUsd(point.passive) : formatRuneFromNumber(point.passive),
@@ -260,39 +264,39 @@ export function AutoCompoundChart({ positions, weightedApy }: CompoundGrowthFore
         <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800/50">
           <div className="flex items-center gap-2 text-zinc-400 mb-2">
             <Coins className="w-3.5 h-3.5" />
-            <span className="text-[10px] font-bold uppercase">Compound Gains (1Y)</span>
+            <span className="text-[10px] font-bold uppercase">Estimated compound gain (1Y)</span>
           </div>
           <div className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
             +{viewMode === 'usd' ? formatUsd(compoundGainsValue) : formatRuneFromNumber(compoundGainsValue)}
           </div>
           <div className="text-[10px] text-zinc-500 mt-1">
-            Additional {viewMode === 'usd' ? 'value' : 'RUNE'} from compounding
+            Scenario gain from compounding; not realized rewards
           </div>
         </div>
 
         <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800/50">
           <div className="flex items-center gap-2 text-zinc-400 mb-2">
             <TrendingUp className="w-3.5 h-3.5" />
-            <span className="text-[10px] font-bold uppercase">Forecasted Balance</span>
+            <span className="text-[10px] font-bold uppercase">Estimated 12M balance</span>
           </div>
           <div className="text-xl font-bold font-mono text-zinc-900 dark:text-zinc-100">
             {finalEntry ? (viewMode === 'usd' ? formatUsd(finalEntry.active) : formatRuneFromNumber(finalEntry.active)) : '0.00'}
           </div>
           <div className="text-[10px] text-zinc-500 mt-1">
-            Estimated total after 12 months
+            Scenario balance after 12 months; not wallet-confirmed
           </div>
         </div>
 
         <div className="p-4 rounded-xl bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100/50 dark:border-emerald-800/30 flex flex-col justify-center">
           <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-1">
             <Zap className="w-3.5 h-3.5" />
-            <span className="text-[10px] font-bold uppercase">Yield Efficiency</span>
+            <span className="text-[10px] font-bold uppercase">APY scenario</span>
           </div>
           <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
             {forecastApy.toFixed(2)}%
           </div>
           <div className="text-[10px] text-emerald-600/60 mt-1 flex items-center gap-1">
-            Using {useHistoricalBaseline ? '180d historical blend' : 'current APY'}
+            Using {useHistoricalBaseline ? '180d historical blend' : 'current APY estimate'}
             <Info className="w-3 h-3" />
           </div>
         </div>

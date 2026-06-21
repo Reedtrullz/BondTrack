@@ -43,6 +43,19 @@ const positions: BondPosition[] = [
 ];
 
 describe('AutoCompoundChart trust copy', () => {
+  it('labels forecast totals as scenario estimates instead of realized reward outcomes', () => {
+    render(<AutoCompoundChart positions={positions} weightedApy={12} />);
+
+    expect(screen.getByText('Estimated compound gain (1Y)')).toBeInTheDocument();
+    expect(screen.getByText('Scenario gain from compounding; not realized rewards')).toBeInTheDocument();
+    expect(screen.getByText('Estimated 12M balance')).toBeInTheDocument();
+    expect(screen.getByText('Scenario balance after 12 months; not wallet-confirmed')).toBeInTheDocument();
+    expect(screen.getByText('APY scenario')).toBeInTheDocument();
+    expect(screen.queryByText('Compound Gains (1Y)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Forecasted Balance')).not.toBeInTheDocument();
+    expect(screen.queryByText('Yield Efficiency')).not.toBeInTheDocument();
+  });
+
   it('frames USD forecasts as price scenarios instead of live moon targets', async () => {
     const user = userEvent.setup();
 

@@ -41,6 +41,18 @@ const mockPositions: BondPosition[] = [
 ];
 
 describe('PersonalFeeAudit', () => {
+  it('labels monthly reward amounts as estimates instead of realized take-home', () => {
+    render(<PersonalFeeAudit positions={mockPositions} />);
+
+    expect(screen.getByText('Estimated gross rewards')).toBeInTheDocument();
+    expect(screen.getByText('Estimated net after operator fee')).toBeInTheDocument();
+    expect(screen.getByText('Estimated monthly leakage')).toBeInTheDocument();
+    expect(screen.getByText(/not realized rewards/i)).toBeInTheDocument();
+    expect(screen.queryByText('Gross Rewards')).not.toBeInTheDocument();
+    expect(screen.queryByText('Net Take-home')).not.toBeInTheDocument();
+    expect(screen.queryByText('Monthly Leakage')).not.toBeInTheDocument();
+  });
+
   it('calculates and displays correct total fee leakage for multiple positions', () => {
     render(<PersonalFeeAudit positions={mockPositions} />);
     
