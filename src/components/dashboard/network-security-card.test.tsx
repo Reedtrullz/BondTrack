@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { NetworkSecurityCard } from './network-security-card';
 
 describe('NetworkSecurityCard', () => {
-  it('labels network security as a source-backed reading instead of an unconditional live claim', () => {
+  it('labels network security as a network-scoped source reading instead of a provider all-clear', () => {
     render(
       <NetworkSecurityCard
         ratio={1.5}
@@ -18,15 +18,15 @@ describe('NetworkSecurityCard', () => {
 
     expect(gauge).toBeInTheDocument();
     expect(screen.getByLabelText('Bond-to-pool ratio')).toHaveTextContent('1.50x');
-    expect(gauge).toHaveTextContent('In range');
+    expect(gauge).toHaveTextContent('Network in range');
     expect(gauge).toHaveTextContent('Bond buffer in range');
     expect(gauge).toHaveTextContent('Network-level bond coverage, not a provider safety verdict');
     expect(screen.getByText('Midgard reading')).toBeInTheDocument();
     expect(screen.getByText('freshness shown in source status')).toBeInTheDocument();
     expect(screen.queryByText('Live network')).not.toBeInTheDocument();
-    expect(gauge).not.toHaveTextContent(/\bhealthy\b|well secured|\bsafe\b/i);
+    expect(gauge).not.toHaveTextContent(/\bhealthy\b|well secured|\bsafe\b|provider in range/i);
 
-    const badge = screen.getByText('In range').closest('span');
+    const badge = screen.getByText('Network in range').closest('span');
     expect(badge).toHaveClass('bg-sky-50');
     expect(badge).not.toHaveClass('bg-emerald-50');
     expect(screen.getByLabelText('Bond-to-pool ratio')).toHaveClass('text-sky-600');

@@ -40,10 +40,12 @@ describe('ActionQueue', () => {
     const emptyState = detail.parentElement;
 
     expect(screen.getByText('No urgent provider review visible')).toBeInTheDocument();
+    expect(screen.getByText('0 visible')).toBeInTheDocument();
     expect(detail).toBeInTheDocument();
     expect(emptyState).toHaveClass('text-sky-800');
     expect(detail).toHaveClass('text-sky-700');
     expect(emptyState).not.toHaveClass('text-emerald-800');
+    expect(screen.queryByText('0 open')).not.toBeInTheDocument();
     expect(screen.queryByText('No provider review needed')).not.toBeInTheDocument();
     expect(screen.queryByText('Current sources do not show a node, source, or LP check issue that needs provider review.')).not.toBeInTheDocument();
     expect(screen.queryByText('Current sources do not show a node, source, or LP confidence issue that needs provider review.')).not.toBeInTheDocument();
@@ -74,6 +76,8 @@ describe('ActionQueue', () => {
     render(<ActionQueue items={actions} now={now} mobileCompact />);
     const queue = screen.getByRole('region', { name: 'Provider review queue' });
 
+    expect(queue).toHaveTextContent('2 visible');
+    expect(queue).not.toHaveTextContent('2 open');
     expect(queue).toHaveTextContent('Ranked by provider exposure, not by visual noise.');
     expect(queue).not.toHaveTextContent('Ranked by provider exposure.Ranked by provider exposure, not by visual noise.');
     expect(screen.getByText(actions[0].title)).not.toHaveClass('truncate');

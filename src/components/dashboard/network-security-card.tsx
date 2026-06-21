@@ -43,12 +43,12 @@ function getHealthStyles(health: NetworkSecurityHealth) {
 function getHealthLabel(health: NetworkSecurityHealth): string {
   switch (health) {
     case 'healthy':
-      return 'In range';
+      return 'Network in range';
     case 'warning':
-      return 'Below target';
+      return 'Network below target';
     case 'at-risk':
     default:
-      return 'At risk';
+      return 'Network at risk';
   }
 }
 

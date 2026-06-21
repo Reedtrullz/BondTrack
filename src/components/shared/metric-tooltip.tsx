@@ -57,7 +57,8 @@ export const METRIC_EXPLANATIONS = {
   netEarnings: 'Your share of network earnings based on your bond share. Varies with network activity.',
   runePrice: 'Current price of THORChain\'s native token (RUNE) in USD. Updates when the price source refreshes.',
   operatorFee: 'Fee (in basis points) that node operators take from your earnings. 1000 BPS = 10%.',
-  yieldGuard: 'Flags indicating current-source-backed risks: High Slash, Lowest Bond, Oldest, or Leaving.',
+  yieldGuard:
+    'Flags from current source checks: High Slash, Lowest Bond, Oldest, or Leaving. Review source freshness before acting.',
   churnRisk: 'Nodes closest to being churned out (replaced). Monitor these to avoid downtime.',
   bondShare: 'Your percentage of the total bond on a node. Higher share = more earnings.',
 };

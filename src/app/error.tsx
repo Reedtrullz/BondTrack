@@ -28,8 +28,8 @@ export default function ErrorBoundary({
           Something went wrong
         </h2>
         <p className="max-w-md text-sm text-zinc-500 dark:text-zinc-400">
-          Heimdall hit an unexpected error rendering this page. The
-          source-backed dashboard views are independent; try again or reload.
+          Heimdall hit an unexpected error rendering this page. Other dashboard
+          views use separate source checks; try again or reload.
         </p>
         {error.digest && (
           <p className="font-mono text-xs text-zinc-400">digest: {error.digest}</p>

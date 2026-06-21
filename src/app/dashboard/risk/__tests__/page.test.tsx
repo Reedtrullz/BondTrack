@@ -198,6 +198,21 @@ describe('RiskPage', () => {
     expect(riskSummary).not.toHaveTextContent('Well Secured');
   });
 
+  it('frames an empty risk queue as current source visibility instead of an all-clear', () => {
+    render(<RiskPage />);
+
+    const riskQueue = screen.getByRole('region', { name: 'Provider exposure review' });
+
+    expect(riskQueue).toHaveTextContent('0 visible');
+    expect(riskQueue).not.toHaveTextContent('0 open');
+    expect(riskQueue).toHaveTextContent('No current risk item visible');
+    expect(riskQueue).toHaveTextContent(
+      'Current source checks show no jail, slash exposure, churn-risk, or source-check issue. Keep source freshness in view before acting.'
+    );
+    expect(riskQueue).not.toHaveTextContent('Risk queue is clear');
+    expect(riskQueue).not.toHaveTextContent('No jail, slash exposure, churn-risk, or source-check issue is visible now.');
+  });
+
   it('labels the active-position KPI as active set state instead of earning state', () => {
     render(<RiskPage />);
 
@@ -442,7 +457,8 @@ describe('RiskPage', () => {
     render(<RiskPage />);
 
     const otherQueue = screen.getByLabelText('Other provider reviews');
-    expect(otherQueue).toHaveTextContent('1 open');
+    expect(otherQueue).toHaveTextContent('1 visible');
+    expect(otherQueue).not.toHaveTextContent('1 open');
     expect(otherQueue).toHaveTextContent('is Standby');
     expect(otherQueue).not.toHaveTextContent('has elevated slash points');
   });

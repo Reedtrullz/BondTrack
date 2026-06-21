@@ -90,7 +90,7 @@ export function ActionQueue({
           </p>
         </div>
         <span className="rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-          {items.length} open
+          {items.length} visible
         </span>
       </div>
 

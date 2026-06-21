@@ -86,6 +86,20 @@ const mockStrongWhitelistedCandidateNode = {
   },
 };
 
+const mockCleanProviderNode = {
+  ...mockNodes[0],
+  slash_points: 0,
+  current_award: '5000000000',
+};
+
+const mockLowerBondReferenceNode = {
+  ...mockCandidateNode,
+  node_address: 'thor1lowbondreference123456789abcdef',
+  total_bond: '1000000000000',
+  slash_points: 0,
+  current_award: '5000000000',
+};
+
 const mockNetwork = {
   activeBonds: ['150000000000000', '100000000000000'],
   activeNodeCount: '2',
@@ -114,12 +128,20 @@ const mockNetwork = {
   poolActivationCountdown: '28800',
 };
 
-async function setupMocks(page: Page) {
+type RiskMockOptions = {
+  network?: typeof mockNetwork;
+  nodes?: unknown[];
+};
+
+async function setupMocks(page: Page, options: RiskMockOptions = {}) {
+  const nodes = options.nodes ?? [...mockNodes, mockCandidateNode, mockStrongWhitelistedCandidateNode];
+  const network = options.network ?? mockNetwork;
+
   await page.route('**/api/thorchain/**', async (route) => {
     const url = new URL(route.request().url());
 
     if (url.pathname === '/api/thorchain/thorchain/nodes') {
-      await route.fulfill({ json: [...mockNodes, mockCandidateNode, mockStrongWhitelistedCandidateNode] });
+      await route.fulfill({ json: nodes });
       return;
     }
 
@@ -156,13 +178,34 @@ async function setupMocks(page: Page) {
     }
 
     if (url.pathname === '/api/midgard/v2/network') {
-      await route.fulfill({ json: mockNetwork });
+      await route.fulfill({ json: network });
       return;
     }
 
     await route.fulfill({ status: 404, json: { error: `Unhandled Midgard mock: ${url.pathname}` } });
   });
 }
+
+test.describe('Risk dashboard empty queue', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupMocks(page, { nodes: [mockCleanProviderNode, mockLowerBondReferenceNode] });
+    await page.goto(`/dashboard/risk?address=${MOCK_ADDRESS}`);
+  });
+
+  test('frames an empty risk queue as current source visibility instead of all-clear copy', async ({ page }) => {
+    const riskQueue = page.getByLabel('Provider exposure review');
+
+    await expect(riskQueue).toBeVisible();
+    await expect(riskQueue).toContainText('0 visible');
+    await expect(riskQueue).not.toContainText('0 open');
+    await expect(riskQueue).toContainText('No current risk item visible');
+    await expect(riskQueue).toContainText(
+      'Current source checks show no jail, slash exposure, churn-risk, or source-check issue. Keep source freshness in view before acting.'
+    );
+    await expect(riskQueue).not.toContainText('Risk queue is clear');
+    await expect(riskQueue).not.toContainText('No jail, slash exposure, churn-risk, or source-check issue is visible now.');
+  });
+});
 
 test.describe('Risk dashboard', () => {
   test.beforeEach(async ({ page }) => {
@@ -188,14 +231,14 @@ test.describe('Risk dashboard', () => {
     await expect(securityGauge).toContainText('Midgard reading');
     await expect(securityGauge).toContainText('freshness shown in source status');
     await expect(page.getByText('Live network', { exact: true })).toHaveCount(0);
-    await expect(securityGauge).toContainText('In range');
+    await expect(securityGauge).toContainText('Network in range');
     await expect(securityGauge).toContainText('Bond buffer in range');
     await expect(securityGauge).toContainText('Network-level bond coverage, not a provider safety verdict');
-    await expect(securityGauge).not.toContainText(/\bhealthy\b|well secured|\bsafe\b/i);
+    await expect(securityGauge).not.toContainText(/\bhealthy\b|well secured|\bsafe\b|provider in range/i);
     await expect(securityGauge.getByLabel('Bond-to-pool ratio')).toHaveText('2.50x');
 
-    await expect(securityGauge.getByText('In range', { exact: true })).toHaveClass(/bg-sky-50/);
-    await expect(securityGauge.getByText('In range', { exact: true })).not.toHaveClass(/bg-emerald-50/);
+    await expect(securityGauge.getByText('Network in range', { exact: true })).toHaveClass(/bg-sky-50/);
+    await expect(securityGauge.getByText('Network in range', { exact: true })).not.toHaveClass(/bg-emerald-50/);
     await expect(securityGauge.getByLabel('Bond-to-pool ratio')).toHaveClass(/text-sky-600/);
     await expect(securityGauge.getByLabel('Bond-to-pool ratio')).not.toHaveClass(/text-emerald-600/);
   });

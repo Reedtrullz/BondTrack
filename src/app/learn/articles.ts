@@ -182,7 +182,7 @@ export const articles: LearnArticle[] = [
       {
         heading: 'Using the IL Calculator',
         body: [
-          'Use the [LP Page](/dashboard/lp) to inspect source-backed positions and model impermanent loss. Treat calculator output as a decision aid, not a source-confirmed balance.',
+          'Use the [LP Page](/dashboard/lp) to inspect source-loaded LP rows, source freshness, and impermanent-loss estimates. Treat calculator output as a decision aid, not a source-confirmed balance.',
         ],
       },
     ],

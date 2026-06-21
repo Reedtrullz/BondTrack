@@ -1127,8 +1127,8 @@ export default function RiskPage() {
         <ActionQueue
           items={visibleRiskActions}
           title={actionQueueTitle}
-          emptyTitle="Risk queue is clear"
-          emptyDetail="No jail, slash exposure, churn-risk, or source-check issue is visible now."
+          emptyTitle="No current risk item visible"
+          emptyDetail="Current source checks show no jail, slash exposure, churn-risk, or source-check issue. Keep source freshness in view before acting."
           compact
         />
       ) : null}

@@ -86,9 +86,10 @@ describe('learn article renderer', () => {
 
     const sections = screen.getByLabelText('Article sections');
     expect(sections).toHaveTextContent('current price data');
-    expect(sections).toHaveTextContent('inspect source-backed positions');
+    expect(sections).toHaveTextContent('inspect source-loaded LP rows');
     expect(sections).not.toHaveTextContent('live price data');
     expect(sections).not.toHaveTextContent('inspect live positions');
+    expect(sections).not.toHaveTextContent('source-backed positions');
   });
 
   it('frames LP confidence as source-loaded review material instead of trusted certainty', async () => {
