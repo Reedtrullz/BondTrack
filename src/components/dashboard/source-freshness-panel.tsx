@@ -91,21 +91,23 @@ export function SourceFreshnessPanel({
           </span>
         </div>
 
-        <div className="mt-1.5 grid grid-cols-3 gap-1.5 sm:mt-2 sm:gap-2">
+        <div className="mt-1.5 grid grid-cols-1 gap-1.5 min-[360px]:grid-cols-2 sm:mt-2 sm:grid-cols-3 sm:gap-2">
           {sources.map((source) => {
             const config = statusConfig[source.status];
             return (
               <div
                 key={source.source}
-                className="min-w-0 rounded-xl border border-zinc-200 bg-zinc-50/70 p-1 dark:border-zinc-800 dark:bg-zinc-950/30 sm:p-1.5"
+                className="min-w-0 rounded-xl border border-zinc-200 bg-zinc-50/70 p-2 dark:border-zinc-800 dark:bg-zinc-950/30 sm:p-1.5"
               >
-                <div className="truncate text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
-                  {source.source}
+                <div className="flex min-w-0 flex-wrap items-center justify-between gap-1.5 sm:block">
+                  <div className="truncate text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
+                    {source.source}
+                  </div>
+                  <span className={cn('inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-bold sm:mt-1 sm:max-w-full', config.className)}>
+                    <span className="shrink-0">{config.icon}</span>
+                    <span data-testid="source-status-label" className="whitespace-nowrap">{config.label}</span>
+                  </span>
                 </div>
-                <span className={cn('mt-1 inline-flex max-w-full items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-bold', config.className)}>
-                  <span className="shrink-0">{config.icon}</span>
-                  <span className="truncate">{config.label}</span>
-                </span>
                 <div className="mt-1 truncate text-[10px] text-zinc-500 dark:text-zinc-400">
                   {source.status === 'demo' ? 'Local fixture' : formatFreshnessAge(source.lastSuccess, now)}
                 </div>

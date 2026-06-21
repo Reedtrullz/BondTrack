@@ -45,6 +45,18 @@ test.describe('Mobile critical release path', () => {
         const rect = element?.getBoundingClientRect();
         return rect ? { top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height } : null;
       };
+      const sourceStatusOverflow = Array.from(
+        document.querySelectorAll('section[aria-label="Source checks"] [data-testid="source-status-label"]')
+      )
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          return {
+            text: element.textContent?.replace(/\s+/g, ' ').trim(),
+            clipped: rect.width > 0 && element.scrollWidth > element.clientWidth + 1,
+          };
+        })
+        .filter((entry) => entry.clipped)
+        .map((entry) => entry.text);
 
       return {
         viewportHeight: window.innerHeight,
@@ -54,6 +66,7 @@ test.describe('Mobile critical release path', () => {
         sourceConfidence: box('section[aria-label="Source checks"]'),
         actions: box('section[aria-label="Provider review queue"]'),
         firstAction: box('section[aria-label="Provider review queue"] article'),
+        sourceStatusOverflow,
       };
     });
 
@@ -67,6 +80,7 @@ test.describe('Mobile critical release path', () => {
     expect(layout.actions!.top).toBeLessThan(layout.viewportHeight);
     expect(layout.firstAction!.height).toBeLessThan(140);
     expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
+    expect(layout.sourceStatusOverflow).toEqual([]);
   });
 
   test('keeps portfolio bond labels readable without mobile overflow', async ({ page }) => {

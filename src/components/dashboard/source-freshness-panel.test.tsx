@@ -51,6 +51,14 @@ describe('SourceFreshnessPanel', () => {
     expect(summary).not.toHaveTextContent('Price quote available for USD conversions.');
   });
 
+  it('keeps compact source status labels readable instead of truncating trust state text', () => {
+    render(<SourceFreshnessPanel sources={sources()} now={NOW} compact />);
+
+    for (const statusLabel of screen.getAllByText('Responding')) {
+      expect(statusLabel).not.toHaveClass('truncate');
+    }
+  });
+
   it('summarizes stale and degraded source states without relying on color alone', () => {
     render(
       <SourceFreshnessPanel

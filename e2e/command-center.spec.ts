@@ -1055,6 +1055,7 @@ test.describe('Dashboard command center', () => {
           configured: true,
           monitor: {
             checkedSubscriptionCount: 1,
+            expiredSubscriptionCount: 0,
             failedSubscriptionCount: 0,
             lastCheckedAt,
             staleAfterMs: 300_000,
