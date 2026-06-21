@@ -15,6 +15,8 @@
     "start": "npm run start:standalone",
     "start:standalone": "npm run prepare:standalone && node .next/standalone/server.js",
     "check:native-prebuild-pins": "node scripts/check-native-prebuild-pins.mjs",
+    "audit:prod": "npm audit --omit=dev --audit-level=moderate",
+    "audit:high": "npm audit --audit-level=high",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

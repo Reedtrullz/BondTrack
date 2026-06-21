@@ -33,7 +33,9 @@ jobs:
       - uses: ./.github/actions/install-deps
       - run: npm run check:native-prebuild-pins
       # Moderate+ production vulnerabilities should fail CI; omit dev deps to avoid tool noise.
-      - run: npm audit --omit=dev --audit-level=moderate
+      - run: npm run audit:prod
+      # High+ vulnerabilities anywhere in the tree should fail CI, including dev-tool advisories.
+      - run: npm run audit:high
       - run: npm run lint -- --max-warnings=0
       - run: npm run typecheck
       - run: npm test
