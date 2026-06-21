@@ -1092,7 +1092,7 @@ export default function RiskPage() {
   const actionQueueTitle = focusedNodeAddress ? 'Other provider reviews' : 'Provider exposure review';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Risk</h1>
       <InsightHeader
         severity={riskInsight.severity}

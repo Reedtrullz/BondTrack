@@ -132,7 +132,7 @@ export default function NodesPage() {
 
   if (positions.length === 0) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Nodes</h1>
         <InsightHeader
           severity={nodeInsight.severity}
@@ -166,7 +166,7 @@ export default function NodesPage() {
 
   return (
     <div className="space-y-8">
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Nodes</h1>
         <InsightHeader
           severity={nodeInsight.severity}
