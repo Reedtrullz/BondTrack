@@ -9,13 +9,20 @@ import React from 'react';
 
 interface NetworkAverages {
   avgBond: number;
-  avgSlashPoints: number;
-  avgOperatorFee: number;
   activeNodeCount: number;
+  bondSampleCount: number;
+  excludedBondNodeCount: number;
 }
 
 function isPositiveFinite(value: number): boolean {
   return Number.isFinite(value) && value > 0;
+}
+
+function parseUsableBondAmount(raw: string | number | undefined): number | null {
+  if (typeof raw === 'string' && !/^\d+$/.test(raw.trim())) return null;
+
+  const value = rawRuneToDisplayNumber(raw);
+  return isPositiveFinite(value) ? value : null;
 }
 
 function ComparisonIndicator({ userValue, avgValue, format }: { userValue: number; avgValue: number; format: (v: number) => string }) {
@@ -60,15 +67,16 @@ export function NetworkComparisonTable({ address }: { address: string | null }) 
     if (!allNodes || allNodes.length === 0) return null;
     const activeNodes = allNodes.filter(n => n.status === 'Active');
     if (activeNodes.length === 0) return null;
-    const totalBond = activeNodes.reduce((sum, n) => sum + rawRuneToDisplayNumber(n.total_bond), 0);
-    const totalSlash = activeNodes.reduce((sum, n) => sum + n.slash_points, 0);
-    const totalFee = activeNodes.reduce((sum, n) => sum + Number(n.bond_providers?.node_operator_fee || 0), 0);
-    const count = activeNodes.length;
+    const usableBondValues = activeNodes
+      .map((n) => parseUsableBondAmount(n.total_bond))
+      .filter((value): value is number => value !== null);
+    const totalBond = usableBondValues.reduce((sum, value) => sum + value, 0);
+
     return {
-      avgBond: totalBond / count,
-      avgSlashPoints: totalSlash / count,
-      avgOperatorFee: totalFee / count,
-      activeNodeCount: count,
+      avgBond: usableBondValues.length > 0 ? totalBond / usableBondValues.length : 0,
+      activeNodeCount: activeNodes.length,
+      bondSampleCount: usableBondValues.length,
+      excludedBondNodeCount: activeNodes.length - usableBondValues.length,
     };
   }, [allNodes]);
 
@@ -77,12 +85,21 @@ export function NetworkComparisonTable({ address }: { address: string | null }) 
 
   const formatRune = (v: number) => formatRuneDisplayNumber(v, 2);
   const formatAverageRune = (v: number) => isPositiveFinite(v) ? `${formatRune(v)} RUNE` : '--';
+  const networkAverageLabel = networkAverages.excludedBondNodeCount > 0
+    ? `${networkAverages.bondSampleCount} of ${networkAverages.activeNodeCount} active nodes with usable bond data`
+    : `${networkAverages.activeNodeCount} active nodes`;
+  const excludedNodeNoun = networkAverages.excludedBondNodeCount === 1 ? 'node' : 'nodes';
 
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Network Comparison</h2>
-        <p className="text-sm text-zinc-500">Your nodes vs network averages ({networkAverages.activeNodeCount} active nodes)</p>
+        <p className="text-sm text-zinc-500">Your nodes vs network averages ({networkAverageLabel})</p>
+        {networkAverages.excludedBondNodeCount > 0 ? (
+          <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+            {networkAverages.excludedBondNodeCount} active {excludedNodeNoun} had unusable bond source data and {networkAverages.excludedBondNodeCount === 1 ? 'was' : 'were'} excluded from the bond average.
+          </p>
+        ) : null}
       </div>
       <div className="grid gap-3 md:hidden" aria-label="Mobile network comparison summary">
         {positions.map((pos) => (

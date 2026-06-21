@@ -135,4 +135,19 @@ describe('NetworkComparisonTable', () => {
     expect(within(desktopTable).getByText('Comparison unavailable')).toBeInTheDocument();
     expect(screen.queryByText(/Infinity|NaN|\+0\.0%/)).not.toBeInTheDocument();
   });
+
+  it('excludes malformed active-node bond rows from the network average and labels the partial sample', () => {
+    allNodesMock[1].total_bond = 'not-a-number';
+
+    render(<NetworkComparisonTable address="thor1bondprovider" />);
+
+    expect(screen.getByText('Your nodes vs network averages (1 of 2 active nodes with usable bond data)')).toBeInTheDocument();
+    expect(screen.getByText('1 active node had unusable bond source data and was excluded from the bond average.')).toBeInTheDocument();
+
+    const desktopTable = screen.getByRole('table');
+    expect(within(desktopTable).getAllByText('1,000.00 RUNE').length).toBeGreaterThanOrEqual(2);
+    expect(within(desktopTable).getByText('0.00 RUNE (0.0%)')).toBeInTheDocument();
+    expect(within(desktopTable).queryByText('500.00 RUNE')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Infinity|NaN/)).not.toBeInTheDocument();
+  });
 });
