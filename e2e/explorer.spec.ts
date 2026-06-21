@@ -35,7 +35,8 @@ test.describe('Node explorer', () => {
     const scoreEvidence = candidateCard.getByTestId('candidate-score-evidence');
     await expect(candidateCard).not.toContainText(/\d+\/100/);
     await expect(recommendation).toContainText('Avoid direct bond');
-    await expect(recommendation).toContainText('Review risk context before opening BOND memo review');
+    await expect(recommendation).toContainText('Review risk context before reviewing any BOND memo');
+    await expect(recommendation).not.toContainText('opening BOND memo review');
     await expect(scoreEvidence).toContainText('Candidate evidence · THORNode');
     await expect(scoreEvidence).toContainText('5/5 inputs usable');
     await expect(scoreEvidence).toContainText('Capacity: Watched address is not listed as a THORNode bond provider.');
@@ -220,7 +221,8 @@ test.describe('Node explorer', () => {
 
     await expect(qualitySummary).toContainText('1 direct-bond candidate waiting on THORNode source check');
     await expect(qualitySummary).toContainText('THORNode candidate source check is degraded');
-    await expect(decision).toContainText('Wait for THORNode source check before BOND review');
+    await expect(decision).toContainText('Wait for THORNode source check before reviewing any BOND memo');
+    await expect(decision).not.toContainText('before BOND review');
     await expect(decision).toContainText('Source degraded');
     await expect(decision).toContainText('THORNode candidate source check is degraded');
     await expect(decision.getByRole('link', { name: 'Review source checks' })).toHaveAttribute(

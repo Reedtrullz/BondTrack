@@ -172,7 +172,8 @@ export function InsightHeader({
             {metric.detail ? (
               <div
                 className={cn(
-                  'mt-1 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400',
+                  'mt-1 text-xs text-zinc-500 dark:text-zinc-400',
+                  compactMobileMetrics && compactMetricDetailMode === 'all' ? 'line-clamp-none' : 'line-clamp-2',
                   compactMobileMetrics && compactMetricDetailMode === 'hidden' ? 'hidden sm:block' : null
                 )}
               >

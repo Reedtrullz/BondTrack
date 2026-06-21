@@ -204,7 +204,7 @@ function buildExplorerDecision({
       metrics,
       severity: sourceSafety.severity,
       statusLabel: sourceSafety.statusLabel,
-      topRisk: 'Wait for THORNode source check before BOND review',
+      topRisk: 'Wait for THORNode source check before reviewing any BOND memo',
     };
   }
 
@@ -224,7 +224,7 @@ function buildExplorerDecision({
     return {
       action: 'review-risk',
       candidate: topCandidate,
-      diagnosis: `The best visible candidate is still Avoid-rated because ${firstReason.toLowerCase()}. Review risk evidence before opening BOND memo review.`,
+      diagnosis: `The best visible candidate is still Avoid-rated because ${firstReason.toLowerCase()}. Review risk evidence before reviewing any BOND memo.`,
       metrics,
       severity: 'critical',
       statusLabel: 'Avoid',
@@ -236,7 +236,7 @@ function buildExplorerDecision({
     return {
       action: 'review-access',
       candidate: topCandidate,
-      diagnosis: `${candidateLabel} is the strongest visible candidate, but ${topCandidate.candidateScore.trustLabel.toLowerCase()}. Confirm provider access before opening BOND memo review.`,
+      diagnosis: `${candidateLabel} is the strongest visible candidate, but ${topCandidate.candidateScore.trustLabel.toLowerCase()}. Confirm provider access before reviewing any BOND memo.`,
       metrics,
       severity: 'warning',
       statusLabel: 'Review Access',

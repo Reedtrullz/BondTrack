@@ -153,7 +153,8 @@ describe('NodeStatusCard', () => {
     );
     expect(screen.getByText(/Provider review required:/i)).toBeInTheDocument();
     expect(screen.getByText(/flagged for provider review/i)).toBeInTheDocument();
-    expect(screen.getByText(/Check jail, slash, churn, and yield-guard context before opening BOND memo review/i)).toBeInTheDocument();
+    expect(screen.getByText(/Check jail, slash, churn, and yield-guard context before reviewing any BOND memo/i)).toBeInTheDocument();
+    expect(screen.queryByText(/opening BOND memo review/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/before preparing a BOND memo/i)).not.toBeInTheDocument();
   });
 

@@ -46,7 +46,7 @@ function getCandidateRecommendation(
   if (node.candidateScore.quality === 'Avoid') {
     return {
       title: 'Avoid direct bond',
-      detail: `${primaryReason}. Review risk context before opening BOND memo review.`,
+      detail: `${primaryReason}. Review risk context before reviewing any BOND memo.`,
       tone: 'critical',
     };
   }
@@ -55,8 +55,8 @@ function getCandidateRecommendation(
     return {
       title: 'Confirm provider access first',
       detail: node.candidateScore.capacityTrust === 'needs_whitelist'
-        ? 'The watched address is not listed as a THORNode bond provider. Ask the operator to add or confirm provider access before opening BOND memo review.'
-        : 'Direct-bond access is not confirmed for this address. Inspect risk context before opening BOND memo review.',
+        ? 'The watched address is not listed as a THORNode bond provider. Ask the operator to add or confirm provider access before reviewing any BOND memo.'
+        : 'Direct-bond access is not confirmed for this address. Inspect risk context before reviewing any BOND memo.',
       tone: 'warning',
     };
   }
@@ -64,7 +64,7 @@ function getCandidateRecommendation(
   if (node.candidateScore.quality === 'Watch') {
     return {
       title: 'Review before bonding',
-      detail: `${primaryReason}. Confirm the trade-off before opening BOND memo review.`,
+      detail: `${primaryReason}. Confirm the trade-off before reviewing any BOND memo.`,
       tone: 'warning',
     };
   }

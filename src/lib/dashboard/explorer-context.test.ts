@@ -144,7 +144,7 @@ describe('buildExplorerPageModel', () => {
       candidate: expect.objectContaining({ node_address: 'thor1clean' }),
       severity: 'warning',
       statusLabel: 'Source degraded',
-      topRisk: 'Wait for THORNode source check before BOND review',
+      topRisk: 'Wait for THORNode source check before reviewing any BOND memo',
     }));
     expect(model.decision.diagnosis).toContain('lists the watched address as a bond provider');
     expect(model.decision.diagnosis).toContain('THORNode candidate source check is degraded');
@@ -188,7 +188,7 @@ describe('buildExplorerPageModel', () => {
       candidate: expect.objectContaining({ node_address: 'thor1clean' }),
       severity: 'info',
       statusLabel: 'Source pending',
-      topRisk: 'Wait for THORNode source check before BOND review',
+      topRisk: 'Wait for THORNode source check before reviewing any BOND memo',
     }));
     expect(model.decision.diagnosis).toContain('THORNode candidate source check has not completed yet');
     expect(model.decision.diagnosis).toContain('before reviewing or copying any BOND memo');

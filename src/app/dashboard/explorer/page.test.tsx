@@ -253,7 +253,8 @@ describe('ExplorerPage', () => {
     expect(sourceConfidence).toHaveTextContent('THORNode');
     expect(sourceConfidence).toHaveTextContent('Degraded');
     expect(qualitySummary).toHaveTextContent('1 direct-bond candidate waiting on THORNode source check');
-    expect(decision).toHaveTextContent('Wait for THORNode source check before BOND review');
+    expect(decision).toHaveTextContent('Wait for THORNode source check before reviewing any BOND memo');
+    expect(decision).not.toHaveTextContent('before BOND review');
     expect(decision).toHaveTextContent('Source degraded');
     expect(within(decision).getByRole('link', { name: 'Review source checks' })).toHaveAttribute(
       'href',

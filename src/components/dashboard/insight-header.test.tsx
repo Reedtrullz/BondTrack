@@ -137,6 +137,8 @@ describe('InsightHeader', () => {
 
     expect(detail).not.toHaveClass('hidden');
     expect(detail).not.toHaveClass('sm:block');
+    expect(detail).toHaveClass('line-clamp-none');
+    expect(detail).not.toHaveClass('line-clamp-2');
   });
 
   it('uses compact metric values on mobile without dropping precise desktop values', () => {

@@ -247,7 +247,8 @@ describe('NodeExplorer', () => {
 
     expect(screen.getByText('Avoid candidate')).toBeInTheDocument();
     expect(screen.getByTestId('candidate-recommendation')).toHaveTextContent('Avoid direct bond');
-    expect(screen.getByTestId('candidate-recommendation')).toHaveTextContent('Review risk context before opening BOND memo review');
+    expect(screen.getByTestId('candidate-recommendation')).toHaveTextContent('Review risk context before reviewing any BOND memo');
+    expect(screen.getByTestId('candidate-recommendation')).not.toHaveTextContent('opening BOND memo review');
     expect(screen.getByTestId('candidate-recommendation')).not.toHaveTextContent('before preparing any BOND memo');
     expect(screen.getAllByTestId('candidate-risk-reason').map((signal) => signal.textContent)).toEqual([
       '180 slash points',
@@ -284,7 +285,8 @@ describe('NodeExplorer', () => {
 
     expect(screen.getByText('Strong candidate')).toBeInTheDocument();
     expect(screen.getByTestId('candidate-recommendation')).toHaveTextContent('Confirm provider access first');
-    expect(screen.getByTestId('candidate-recommendation')).toHaveTextContent('Ask the operator to add or confirm provider access before opening BOND memo review');
+    expect(screen.getByTestId('candidate-recommendation')).toHaveTextContent('Ask the operator to add or confirm provider access before reviewing any BOND memo');
+    expect(screen.getByTestId('candidate-recommendation')).not.toHaveTextContent('opening BOND memo review');
     expect(screen.getByTestId('candidate-recommendation')).not.toHaveTextContent(/whitelist/i);
     expect(screen.getByTestId('candidate-recommendation')).not.toHaveTextContent('before preparing a BOND memo');
     expect(screen.queryByRole('link', { name: /Prepare BOND Memo/i })).not.toBeInTheDocument();

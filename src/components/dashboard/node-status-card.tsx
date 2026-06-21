@@ -49,7 +49,7 @@ export function NodeStatusCard({ position, address, sourceSafety = DEFAULT_SOURC
       }
     : requiresBondReview
       ? {
-          detail: 'This node is flagged for provider review. Check jail, slash, churn, and yield-guard context before opening BOND memo review.',
+          detail: 'This node is flagged for provider review. Check jail, slash, churn, and yield-guard context before reviewing any BOND memo.',
           href: buildNodeRiskHref(address, position.nodeAddress),
           label: 'Review exposure first',
           statusLabel: 'Provider review required',
