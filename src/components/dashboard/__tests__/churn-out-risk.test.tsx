@@ -19,6 +19,7 @@ interface NodeRanking {
   isAtRisk: boolean;
   totalNodes: number;
   bondRank: number;
+  excludedActiveNodeCount?: number;
 }
 
 const mockRankings: NodeRanking[] = [
@@ -243,6 +244,21 @@ describe('ChurnOutRisk', () => {
 
       expect(screen.getByText('No active nodes are in the churn-risk band right now.')).toBeInTheDocument();
       expect(screen.queryByText(/safe/i)).not.toBeInTheDocument();
+    });
+
+    it('discloses active nodes excluded from churn rank because bond source data is unusable', () => {
+      mockUseNodeRankings.mockReturnValue([
+        {
+          ...mockRankings[1],
+          totalNodes: 2,
+          excludedActiveNodeCount: 1,
+        },
+      ]);
+
+      render(<ChurnOutRisk positions={[mockPositions[1]]} />);
+
+      expect(screen.getByText('1 active node had unusable bond source data and was excluded from churn-risk rank.')).toBeInTheDocument();
+      expect(screen.getByText('#50/2')).toBeInTheDocument();
     });
   });
 

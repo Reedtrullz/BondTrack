@@ -3,7 +3,7 @@ import { getAllNodes, type NodeRaw } from '@/lib/api/thornode';
 import { getHealth } from '@/lib/api/midgard';
 import { extractBondPositions, type BondPosition, type YieldGuardFlag } from '@/lib/types/node';
 import { NETWORK } from '@/lib/config';
-import { runeToNumber } from '@/lib/utils/formatters';
+import { rawRuneToPositiveDisplayNumber } from '@/lib/utils/formatters';
 import {
   MOCK_ACTIVE_OPERATOR_ADDRESS,
   MOCK_BOND_POSITIONS,
@@ -70,7 +70,13 @@ function getYieldGuardFlags(
   if (activeNodes.length === 0) return flags;
 
   const maxSlash = Math.max(...activeNodes.map((n) => n.slash_points));
-  const minBond = Math.min(...activeNodes.map((n) => runeToNumber(n.total_bond)));
+  const usableBondByNodeAddress = new Map(
+    activeNodes
+      .map((node) => [node.node_address, rawRuneToPositiveDisplayNumber(node.total_bond)] as const)
+      .filter((entry): entry is readonly [string, number] => entry[1] !== null)
+  );
+  const usableBondValues = [...usableBondByNodeAddress.values()];
+  const minBond = usableBondValues.length > 0 ? Math.min(...usableBondValues) : null;
   const oldestStatusSince = Math.min(...activeNodes.map((n) => n.status_since));
 
   for (const pos of positions) {
@@ -78,11 +84,11 @@ function getYieldGuardFlags(
     const node = allNodes.find((n) => n.node_address === pos.nodeAddress);
     if (!node || node.status !== 'Active') continue;
 
-    const totalBond = runeToNumber(node.total_bond);
+    const totalBond = usableBondByNodeAddress.get(node.node_address);
     if (node.slash_points >= maxSlash && maxSlash > 0) {
       nodeFlags.push('highest_slash');
     }
-    if (totalBond <= minBond) {
+    if (totalBond !== undefined && minBond !== null && totalBond <= minBond) {
       nodeFlags.push('lowest_bond');
     }
     if (node.status_since <= oldestStatusSince) {

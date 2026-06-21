@@ -98,6 +98,18 @@ export function rawRuneToDisplayNumber(raw: string | number | undefined): number
   }
 }
 
+export function rawRuneToPositiveDisplayNumber(raw: string | number | undefined): number | null {
+  try {
+    const parsed = parseRawRuneToBigInt(raw);
+    if (parsed === null || parsed <= 0n) return null;
+
+    const value = Number(parsed) / RUNE_DIVISOR_NUMBER;
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 /** @deprecated Prefer rawRuneToDisplayNumber() to make display-only precision loss explicit. */
 export function runeToNumber(raw: string | number | undefined): number {
   return rawRuneToDisplayNumber(raw);

@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useAllNodes } from '@/lib/hooks/use-all-nodes';
 import { useBondPositions } from '@/lib/hooks/use-bond-positions';
-import { rawRuneToDisplayNumber, formatRuneDisplayNumber } from '@/lib/utils/formatters';
+import { rawRuneToPositiveDisplayNumber, formatRuneDisplayNumber } from '@/lib/utils/formatters';
 import { ArrowUp, ArrowDown, Minus } from 'lucide-react';
 import React from 'react';
 
@@ -16,13 +16,6 @@ interface NetworkAverages {
 
 function isPositiveFinite(value: number): boolean {
   return Number.isFinite(value) && value > 0;
-}
-
-function parseUsableBondAmount(raw: string | number | undefined): number | null {
-  if (typeof raw === 'string' && !/^\d+$/.test(raw.trim())) return null;
-
-  const value = rawRuneToDisplayNumber(raw);
-  return isPositiveFinite(value) ? value : null;
 }
 
 function ComparisonIndicator({ userValue, avgValue, format }: { userValue: number; avgValue: number; format: (v: number) => string }) {
@@ -68,7 +61,7 @@ export function NetworkComparisonTable({ address }: { address: string | null }) 
     const activeNodes = allNodes.filter(n => n.status === 'Active');
     if (activeNodes.length === 0) return null;
     const usableBondValues = activeNodes
-      .map((n) => parseUsableBondAmount(n.total_bond))
+      .map((n) => rawRuneToPositiveDisplayNumber(n.total_bond))
       .filter((value): value is number => value !== null);
     const totalBond = usableBondValues.reduce((sum, value) => sum + value, 0);
 

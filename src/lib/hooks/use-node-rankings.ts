@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { useAllNodes } from './use-all-nodes';
 import { type BondPosition } from '@/lib/types/node';
-import { runeToNumber } from '@/lib/utils/formatters';
+import type { NodeRaw } from '@/lib/api/thornode';
+import { rawRuneToPositiveDisplayNumber } from '@/lib/utils/formatters';
 
 export interface NodeRanking {
   nodeAddress: string;
@@ -10,6 +11,7 @@ export interface NodeRanking {
   percentile: number;
   isAtRisk: boolean;
   bondRank: number;
+  excludedActiveNodeCount?: number;
 }
 
 /**
@@ -25,13 +27,17 @@ export function useNodeRankings(positions: BondPosition[]): NodeRanking[] {
       return [];
     }
 
-    const activeNodes = allNodes
-      .filter((node) => node.status === 'Active')
+    const allActiveNodes = allNodes.filter((node) => node.status === 'Active');
+    const activeNodes = allActiveNodes
+      .map((node) => ({
+        node,
+        totalBond: rawRuneToPositiveDisplayNumber(node.total_bond),
+      }))
+      .filter((entry): entry is { node: NodeRaw; totalBond: number } => entry.totalBond !== null)
       .sort((a, b) => {
-        const bondA = runeToNumber(a.total_bond);
-        const bondB = runeToNumber(b.total_bond);
-        return bondB - bondA;
+        return b.totalBond - a.totalBond;
       });
+    const excludedActiveNodeCount = allActiveNodes.length - activeNodes.length;
 
     const totalNodes = activeNodes.length;
     if (totalNodes === 0) {
@@ -42,13 +48,16 @@ export function useNodeRankings(positions: BondPosition[]): NodeRanking[] {
 
     return positions.map((position) => {
       const rank = activeNodes.findIndex(
-        (node) => node.node_address === position.nodeAddress
+        (entry) => entry.node.node_address === position.nodeAddress
       ) + 1;
       const bondRank = rank > 0 ? rank : 0;
-      const nodeTotalBond = position.totalBond;
-      const nodesWithLessBond = activeNodes.filter(
-        (node) => runeToNumber(node.total_bond) < nodeTotalBond
-      ).length;
+      const matchedActiveNode = activeNodes.find((entry) => entry.node.node_address === position.nodeAddress);
+      const nodeTotalBond = matchedActiveNode?.totalBond ?? (
+        Number.isFinite(position.totalBond) && position.totalBond > 0 ? position.totalBond : null
+      );
+      const nodesWithLessBond = nodeTotalBond !== null
+        ? activeNodes.filter((entry) => entry.totalBond < nodeTotalBond).length
+        : 0;
       const percentile = totalNodes > 1 && bondRank > 0
         ? Math.round((nodesWithLessBond / (totalNodes - 1)) * 100)
         : bondRank > 0 ? 100 : 0;
@@ -62,6 +71,7 @@ export function useNodeRankings(positions: BondPosition[]): NodeRanking[] {
         percentile,
         isAtRisk,
         bondRank,
+        excludedActiveNodeCount,
       };
     });
   }, [allNodes, positions]);

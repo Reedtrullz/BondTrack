@@ -9,6 +9,7 @@ import {
   formatRuneFromNumber,
   formatUtcDateTime,
   formatUsd,
+  rawRuneToPositiveDisplayNumber,
   rawRuneToDisplayNumber,
   runeToNumber,
 } from './formatters';
@@ -38,6 +39,13 @@ describe('THORChain unit formatting regressions', () => {
     expect(rawRuneToDisplayNumber('not-a-number')).toBe(0);
     expect(rawRuneToDisplayNumber('900719925474099312345')).toBeGreaterThan(9007199254);
     expect(rawRuneToDisplayNumber('1'.padEnd(400, '0'))).toBe(0);
+  });
+
+  it('parses only positive usable raw RUNE values when source rows drive risk samples', () => {
+    expect(rawRuneToPositiveDisplayNumber('100000000')).toBe(1);
+    expect(rawRuneToPositiveDisplayNumber('0')).toBeNull();
+    expect(rawRuneToPositiveDisplayNumber('not-a-number')).toBeNull();
+    expect(rawRuneToPositiveDisplayNumber('1'.padEnd(400, '0'))).toBeNull();
   });
 
   it('keeps decimal APY and display-percent values on separate formatter paths', () => {

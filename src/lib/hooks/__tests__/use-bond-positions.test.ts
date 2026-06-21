@@ -155,6 +155,33 @@ describe('useBondPositions', () => {
     expect(result.current.positions[0].yieldGuardFlags).not.toContain('overbonded');
   });
 
+  it('ignores unusable active-node bond rows when deriving lowest-bond yield guard flags', async () => {
+    vi.mocked(thornode.getAllNodes).mockResolvedValueOnce([
+      mockNodes[0],
+      mockNodes[1],
+      {
+        ...mockNodes[1],
+        node_address: 'thor1malformedtotalbond',
+        total_bond: 'not-a-number',
+        bond_providers: {
+          node_operator_fee: '1500',
+          providers: [
+            { bond_address: 'thor1otherprovider', bond: '100000000000' },
+          ],
+        },
+      },
+    ] as unknown as thornode.NodeRaw[]);
+    vi.mocked(midgard.getHealth).mockResolvedValueOnce({ lastThorNode: { height: 12345678 } });
+
+    const { result } = renderHook(() => useBondPositions('thor1user123456789abcdef'), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const lowestUsableBondPosition = result.current.positions.find(
+      (position) => position.nodeAddress === 'thor1abc123def456'
+    );
+    expect(lowestUsableBondPosition?.yieldGuardFlags).toContain('lowest_bond');
+  });
+
   it('handles error state', async () => {
     vi.mocked(thornode.getAllNodes).mockRejectedValueOnce(new Error('API error'));
     vi.mocked(midgard.getHealth).mockResolvedValueOnce({ lastThorNode: { height: 12345678 } });

@@ -56,6 +56,11 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
   const atRiskNodes = nodesWithRank.filter((n) => n.isAtRisk);
   const outsideBandNodes = nodesWithRank.filter((n) => !n.isAtRisk);
   const isLoading = rankings.length === 0 && positions.length > 0;
+  const excludedActiveNodeCount = Math.max(
+    0,
+    ...rankings.map((ranking) => ranking.excludedActiveNodeCount ?? 0)
+  );
+  const excludedNodeNoun = excludedActiveNodeCount === 1 ? 'node' : 'nodes';
 
   if (error || showError) {
     return (
@@ -150,11 +155,16 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
       <div className="text-xs text-zinc-500 mb-3">
         Your active nodes sorted by bond • Bottom 33% are treated as the churn-risk band
       </div>
+      {excludedActiveNodeCount > 0 ? (
+        <p className="mb-3 text-xs text-amber-700 dark:text-amber-300">
+          {excludedActiveNodeCount} active {excludedNodeNoun} had unusable bond source data and {excludedActiveNodeCount === 1 ? 'was' : 'were'} excluded from churn-risk rank.
+        </p>
+      ) : null}
 
       <div className="space-y-2 max-h-64 overflow-y-auto">
         {nodesWithRank.map((node) => (
-          <div key={node.nodeAddress} className="flex items-center justify-between p-2 rounded bg-zinc-50 dark:bg-zinc-800/50 text-sm">
-            <div className="flex items-center gap-2">
+          <div key={node.nodeAddress} className="flex flex-col gap-2 rounded bg-zinc-50 p-2 text-sm dark:bg-zinc-800/50 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-2">
               <span className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
                 {node.nodeAddress.slice(0, 12)}...{node.nodeAddress.slice(-6)}
               </span>
@@ -162,7 +172,7 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
                 <AlertTriangle className="w-3 h-3 text-amber-500" />
               )}
             </div>
-            <div className="flex items-center gap-3 text-xs">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:justify-end">
               <span className="text-zinc-500">{formatRuneFromNumber(node.totalBond)} RUNE</span>
               <span className={node.isAtRisk ? 'text-amber-700 dark:text-amber-300 font-medium' : 'text-sky-700 dark:text-sky-300'}>
                 #{node.rank}/{node.totalNodes}
