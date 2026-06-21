@@ -1,5 +1,5 @@
 import type { BondPosition } from '@/lib/types/node';
-import { formatRuneFromNumber } from '@/lib/utils/formatters';
+import { formatBasisPoints, formatPercent, formatRuneFromNumber } from '@/lib/utils/formatters';
 
 function escapeCsvValue(value: string | number | boolean | null | undefined): string {
   const normalized = value === null || value === undefined ? '' : String(value);
@@ -9,6 +9,22 @@ function escapeCsvValue(value: string | number | boolean | null | undefined): st
   }
 
   return normalized;
+}
+
+function isFiniteNonNegative(value: number): boolean {
+  return Number.isFinite(value) && value >= 0;
+}
+
+function formatCsvRune(value: number): string {
+  return isFiniteNonNegative(value) ? formatRuneFromNumber(value) : '--';
+}
+
+function formatCsvPercent(value: number): string {
+  return isFiniteNonNegative(value) ? formatPercent(value) : '--';
+}
+
+function formatCsvInteger(value: number): string {
+  return isFiniteNonNegative(value) ? value.toFixed(0) : '--';
 }
 
 export function generateBondCsv(positions: BondPosition[]): string {
@@ -27,11 +43,11 @@ export function generateBondCsv(positions: BondPosition[]): string {
   const rows = positions.map((position) => [
     position.nodeAddress,
     position.status,
-    formatRuneFromNumber(position.bondAmount),
-    `${position.bondSharePercent.toFixed(2)}%`,
-    `${position.netAPY.toFixed(2)}%`,
-    position.slashPoints.toFixed(0),
-    `${(position.operatorFee / 100).toFixed(2)}%`,
+    formatCsvRune(position.bondAmount),
+    formatCsvPercent(position.bondSharePercent),
+    formatCsvPercent(position.netAPY),
+    formatCsvInteger(position.slashPoints),
+    formatBasisPoints(position.operatorFee, 2),
     position.isJailed ? 'Yes' : 'No',
     position.version,
   ].map(escapeCsvValue).join(','));

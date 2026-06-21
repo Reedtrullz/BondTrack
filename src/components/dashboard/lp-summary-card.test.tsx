@@ -161,4 +161,22 @@ describe('LpSummaryCard', () => {
     expect(screen.getByText(/external CoinGecko quote/i)).toBeInTheDocument();
     expect(screen.getByText(/external CoinGecko quote/i)).not.toHaveClass('truncate');
   });
+
+  it('marks malformed LP amount fields unavailable instead of rendering them as zero balances', () => {
+    const { container } = render(
+      <LpSummaryCard
+        position={{
+          ...basePosition,
+          runeDeposit: 'not-a-rune-amount',
+          asset2Deposit: 'not-an-asset-amount',
+          runeWithdrawable: 'not-a-withdrawable-rune-amount',
+          asset2Withdrawable: 'not-a-withdrawable-asset-amount',
+        }}
+      />
+    );
+
+    expect(screen.getAllByText('--').length).toBeGreaterThanOrEqual(4);
+    expect(container).not.toHaveTextContent('ᚱ0.00');
+    expect(container).not.toHaveTextContent(/ATOM Deposited\s+0\.00/);
+  });
 });

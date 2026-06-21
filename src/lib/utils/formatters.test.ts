@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatAmount,
+  formatBasisPoints,
   formatDecimalPercent,
   formatPercent,
   formatRuneAmount,
   formatRuneDisplayNumber,
+  formatRuneFromNumber,
   formatUtcDateTime,
   formatUsd,
   rawRuneToDisplayNumber,
@@ -18,6 +21,18 @@ describe('THORChain unit formatting regressions', () => {
     expect(formatRuneAmount('123456789', 4)).toBe('ᚱ1.2345');
   });
 
+  it('does not turn malformed RUNE display amounts into real-looking zeroes', () => {
+    expect(formatAmount('0')).toBe('0.00');
+    expect(formatRuneAmount('0')).toBe('ᚱ0.00');
+    expect(formatAmount('not-a-number')).toBe('--');
+    expect(formatAmount(undefined)).toBe('--');
+    expect(formatRuneAmount('not-a-number')).toBe('--');
+    expect(formatRuneAmount(undefined)).toBe('--');
+    expect(formatRuneFromNumber(Number.NaN)).toBe('--');
+    expect(formatRuneFromNumber(Number.POSITIVE_INFINITY)).toBe('--');
+    expect(formatRuneFromNumber(-1)).toBe('--');
+  });
+
   it('names display-only BigInt-to-number conversion and handles edge values safely', () => {
     expect(rawRuneToDisplayNumber(undefined)).toBe(0);
     expect(rawRuneToDisplayNumber('not-a-number')).toBe(0);
@@ -29,6 +44,15 @@ describe('THORChain unit formatting regressions', () => {
     expect(formatDecimalPercent(0.125)).toBe('12.50%');
     expect(formatPercent(12.5)).toBe('12.50%');
     expect(formatPercent(0.125)).toBe('0.13%');
+  });
+
+  it('formats operator-fee basis points without turning bad source data into percentages', () => {
+    expect(formatBasisPoints(500)).toBe('5.0%');
+    expect(formatBasisPoints('2500')).toBe('25.0%');
+    expect(formatBasisPoints('')).toBe('--');
+    expect(formatBasisPoints('not-a-fee')).toBe('--');
+    expect(formatBasisPoints(Number.NaN)).toBe('--');
+    expect(formatBasisPoints(Number.POSITIVE_INFINITY)).toBe('--');
   });
 
   it('centralizes USD display formatting and invalid-value fallback', () => {

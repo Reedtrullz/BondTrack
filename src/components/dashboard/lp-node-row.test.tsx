@@ -131,4 +131,27 @@ describe('LpNodeRow', () => {
 
     expect(screen.getByText('External CoinGecko entry quote')).toBeInTheDocument();
   });
+
+  it('marks malformed LP row amount fields unavailable instead of rendering them as zero balances', () => {
+    const { container } = render(
+      <table>
+        <tbody>
+          <LpNodeRow
+            position={{
+              ...basePosition,
+              runeDeposit: 'not-a-rune-amount',
+              asset2Deposit: 'not-an-asset-amount',
+              runeWithdrawable: 'not-a-withdrawable-rune-amount',
+              asset2Withdrawable: 'not-a-withdrawable-asset-amount',
+            }}
+          />
+        </tbody>
+      </table>
+    );
+
+    expect(screen.getAllByText((_content, element) => element?.textContent === 'RUNE: --')).toHaveLength(2);
+    expect(screen.getAllByText((_content, element) => element?.textContent === 'ATOM: --')).toHaveLength(2);
+    expect(container).not.toHaveTextContent('ᚱ0.00');
+    expect(container).not.toHaveTextContent(/ATOM:\s+0\.00/);
+  });
 });

@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import type { BondPosition, YieldGuardFlag } from '@/lib/types/node';
-import { formatRuneDisplayNumber, formatRuneFromNumber, formatPercent } from '@/lib/utils/formatters';
+import { formatBasisPoints, formatRuneDisplayNumber, formatRuneFromNumber, formatPercent } from '@/lib/utils/formatters';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Badge } from '@/components/shared/badge';
 import { AlertTriangle, TrendingDown, Clock, UserMinus, Inbox } from 'lucide-react';
@@ -71,6 +71,10 @@ function formatPositionRune(value: number): string {
 
 function formatPositionPercent(value: number): string {
   return isUsablePositionNumber(value) ? formatPercent(value) : '--';
+}
+
+function formatPositionBasisPoints(value: number): string {
+  return formatBasisPoints(value);
 }
 
 function getShareBarWidth(value: number): string {
@@ -173,7 +177,7 @@ export function PositionTable({ positions }: PositionTableProps) {
               <div className="flex items-center justify-between gap-3">
                 <div className="text-xs text-zinc-500">Fee</div>
                 <div className="font-mono text-sm text-zinc-600 dark:text-zinc-400">
-                  {pos.operatorFeeFormatted}
+                  {formatPositionBasisPoints(pos.operatorFee)}
                 </div>
               </div>
               <div className="flex items-center justify-between gap-3">
@@ -195,7 +199,7 @@ export function PositionTable({ positions }: PositionTableProps) {
       </div>
 
       <div className="hidden md:block overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-        <table className="w-full text-sm min-w-[640px]">
+        <table aria-label="Bonded positions table" className="w-full text-sm min-w-[640px]">
           <thead className="bg-zinc-50 dark:bg-zinc-900 sticky top-0">
             <tr className="border-b border-zinc-200 dark:border-zinc-800">
               <th className="px-3 py-3 text-left font-medium text-zinc-500 whitespace-nowrap">Node</th>
@@ -253,7 +257,7 @@ export function PositionTable({ positions }: PositionTableProps) {
                   </div>
                 </td>
                 <td className="px-3 py-3 text-right text-zinc-600 dark:text-zinc-400 whitespace-nowrap align-middle">
-                  {pos.operatorFeeFormatted}
+                  {formatPositionBasisPoints(pos.operatorFee)}
                 </td>
                 <td className="px-3 py-3 text-right font-medium text-emerald-600 whitespace-nowrap align-middle">
                   {formatPositionPercent(pos.netAPY)}

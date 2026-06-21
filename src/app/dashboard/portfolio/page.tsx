@@ -297,7 +297,7 @@ export default function PortfolioPage() {
       />
 
       {/* Main 2-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(46rem,1.15fr)_minmax(20rem,0.85fr)]">
         {/* Left: Bond Positions */}
         <DashboardCard title="Bond Positions">
           <PositionTable positions={bondPositions} />

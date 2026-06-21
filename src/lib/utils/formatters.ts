@@ -35,7 +35,11 @@ function getNumberFormatter(maximumFractionDigits: number, minimumFractionDigits
 
 function parseRawRuneToBigInt(raw: string | number | undefined): bigint | null {
   if (raw === undefined || raw === null) return null;
-  if (typeof raw === 'string') return BigInt(raw);
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!/^\d+$/.test(trimmed)) return null;
+    return BigInt(trimmed);
+  }
   if (typeof raw === 'number' && isFinite(raw)) return BigInt(Math.round(raw));
   return null;
 }
@@ -45,10 +49,10 @@ function parseRawRuneToBigInt(raw: string | number | undefined): bigint | null {
  */
 export function formatAmount(raw: string | number | undefined, decimals = 2): string {
   try {
-    if (raw === undefined || raw === null) return '0.00';
+    if (raw === undefined || raw === null) return '--';
     
     const bigIntAmount = parseRawRuneToBigInt(raw);
-    if (bigIntAmount === null) return '0.00';
+    if (bigIntAmount === null || bigIntAmount < 0n) return '--';
 
     const whole = bigIntAmount / RUNE_DIVISOR;
     const fraction = bigIntAmount % RUNE_DIVISOR;
@@ -59,7 +63,7 @@ export function formatAmount(raw: string | number | undefined, decimals = 2): st
     if (decimals === 0) return wholeStr;
     return `${wholeStr}.${fractionStr}`;
   } catch {
-    return '0.00';
+    return '--';
   }
 }
 
@@ -67,7 +71,8 @@ export function formatAmount(raw: string | number | undefined, decimals = 2): st
  * Format a RUNE amount with the ᚱ symbol prefix.
  */
 export function formatRuneAmount(raw: string | number | undefined, decimals = 2): string {
-  return `ᚱ${formatAmount(raw, decimals)}`;
+  const formatted = formatAmount(raw, decimals);
+  return formatted === '--' ? '--' : `ᚱ${formatted}`;
 }
 
 /**
@@ -107,6 +112,7 @@ export function numberToRune(num: number): string {
 }
 
 export function formatRuneFromNumber(num: number, decimals = 2): string {
+  if (!Number.isFinite(num) || num < 0) return '--';
   return formatRuneAmount(numberToRune(num), decimals);
 }
 
@@ -120,9 +126,20 @@ export function formatRuneWithUnit(raw: string, decimals = 2): string {
 /**
  * Format basis points as percentage.
  */
-export function formatBasisPoints(bps: string | number): string {
-  const num = typeof bps === 'string' ? Number(bps) : bps;
-  return `${(num / 100).toFixed(1)}%`;
+export function formatBasisPoints(bps: string | number | null | undefined, digits = 1): string {
+  if (bps === null || bps === undefined) return '--';
+
+  let num: number;
+  if (typeof bps === 'string') {
+    const trimmed = bps.trim();
+    num = trimmed === '' ? Number.NaN : Number(trimmed);
+  } else {
+    num = bps;
+  }
+
+  if (!Number.isFinite(num) || num < 0 || num > 10000) return '--';
+
+  return `${(num / 100).toFixed(digits)}%`;
 }
 
 /**

@@ -65,6 +65,18 @@ const emptyMemberDetails = {
   pools: [],
 };
 
+const malformedAmountMemberDetails = {
+  pools: [
+    {
+      ...mockMemberDetails.pools[0],
+      runeDeposit: 'not-a-rune-deposit',
+      assetDeposit: 'not-an-asset-deposit',
+      runeAdded: 'not-added-rune',
+      assetAdded: 'not-added-asset',
+    },
+  ],
+};
+
 const mockPools = [
   {
     asset: 'BTC.BTC',
@@ -259,7 +271,7 @@ const mockPoolHistory = {
   ],
 };
 
-type LpMockScenario = 'historical' | 'mixed-confidence' | 'current-only' | 'redeem-degraded' | 'external-price-fallback' | 'empty';
+type LpMockScenario = 'historical' | 'mixed-confidence' | 'current-only' | 'redeem-degraded' | 'external-price-fallback' | 'malformed-amounts' | 'empty';
 
 async function setupMocks(
   page: Page,
@@ -300,6 +312,25 @@ async function setupMocks(
       }
 
       const pool = liquidityProviderPath[1];
+      if (scenario === 'malformed-amounts') {
+        await route.fulfill({
+          json: {
+            rune_address: MOCK_ADDRESS,
+            asset_address: 'bc1portfolioasset123456',
+            rune_deposit_value: 'not-a-rune-deposit-value',
+            asset_deposit_value: 'not-an-asset-deposit-value',
+            rune_redeem_value: 'not-a-rune-redeem-value',
+            asset_redeem_value: 'not-an-asset-redeem-value',
+            units: '1000',
+            pending_rune: '0',
+            pending_asset: '0',
+            last_add_height: 12340000,
+            last_withdraw_height: 0,
+          },
+        });
+        return;
+      }
+
       await route.fulfill({
         json: {
           rune_address: MOCK_ADDRESS,
@@ -338,6 +369,8 @@ async function setupMocks(
       await route.fulfill({
         json: scenario === 'empty'
           ? emptyMemberDetails
+          : scenario === 'malformed-amounts'
+            ? malformedAmountMemberDetails
           : scenario === 'mixed-confidence'
             ? mixedConfidenceMemberDetails
             : mockMemberDetails,
@@ -446,6 +479,21 @@ test.describe('LP IL dashboard', () => {
     await page.getByRole('tab', { name: 'My Positions (1)', exact: true }).click();
     const positionsPanel = page.getByRole('tabpanel', { name: 'My Positions (1)' });
     await expect(positionsPanel.getByRole('link', { name: 'BTC.BTC', exact: true })).toBeVisible();
+  });
+
+  test('marks malformed LP source amounts unavailable instead of zero balances', async ({ page }) => {
+    await setupMocks(page, 'malformed-amounts');
+    await page.goto(`/dashboard/lp?address=${MOCK_ADDRESS}`);
+
+    await expect(page.getByRole('heading', { name: 'LP Positions', exact: true })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'RUNE Deposited metric', exact: true })).toContainText('--');
+    await expect(page.getByRole('group', { name: 'BTC Deposited metric', exact: true })).toContainText('--');
+    await expect(page.getByRole('group', { name: 'Claimable RUNE metric', exact: true })).toContainText('--');
+    await expect(page.getByRole('group', { name: 'Claimable BTC metric', exact: true })).toContainText('--');
+
+    const visibleText = await page.locator('body').innerText();
+    expect(visibleText).not.toMatch(/ᚱ0\.00|NaN|Infinity/);
+    expect(visibleText).not.toMatch(/BTC Deposited\s+0\.00|Claimable BTC\s+0\.00/);
   });
 
   test('keeps source-loaded LP data-check evidence readable on mobile', async ({ page }) => {

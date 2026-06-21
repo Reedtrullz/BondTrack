@@ -476,6 +476,17 @@ test.describe('Portfolio dashboard', () => {
     await expect(page.getByRole('heading', { name: 'Bonded PositionsBonded Positions', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Explain Bonded Positions', exact: true })).toHaveCount(1);
 
+    const desktopTable = page.getByRole('table', { name: 'Bonded positions table', exact: true });
+    await expect(desktopTable).toBeVisible();
+    const desktopTableOverflow = await desktopTable.evaluate((table) => {
+      const scroller = table.parentElement;
+      return scroller
+        ? { clientWidth: scroller.clientWidth, scrollWidth: scroller.scrollWidth }
+        : null;
+    });
+    expect(desktopTableOverflow).not.toBeNull();
+    expect(desktopTableOverflow!.scrollWidth).toBeLessThanOrEqual(desktopTableOverflow!.clientWidth + 1);
+
     const duplicatedLabels = await page.evaluate(() => {
       const bodyText = document.body.textContent?.replace(/\s+/g, '') ?? '';
       return ['BondedPositionsBondedPositions', 'ShareBondShare', 'Est.APYEstimatedAPY'].filter((text) =>

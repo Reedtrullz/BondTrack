@@ -47,6 +47,8 @@ describe('PositionTable', () => {
           ...position,
           bondAmount: Number.NaN,
           bondSharePercent: Number.NEGATIVE_INFINITY,
+          operatorFee: Number.POSITIVE_INFINITY,
+          operatorFeeFormatted: 'Infinity%',
           netAPY: Number.POSITIVE_INFINITY,
         }]}
       />

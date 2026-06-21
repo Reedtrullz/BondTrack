@@ -195,7 +195,7 @@ interface MetricCardProps {
 
 function MetricCard({ label, value, detail, valueClassName = 'text-zinc-900 dark:text-zinc-100' }: MetricCardProps) {
   return (
-    <div className="min-w-0">
+    <div className="min-w-0" role="group" aria-label={`${label} metric`}>
       <p className="text-sm text-zinc-500 dark:text-zinc-400 truncate">{label}</p>
       <p className={`text-xl font-semibold font-display truncate ${valueClassName}`} title={value}>{value}</p>
       {detail ? <p className="mt-1 text-xs leading-snug text-zinc-500 dark:text-zinc-400 break-words" title={detail}>{detail}</p> : null}
