@@ -258,36 +258,36 @@ export function DashboardShell({
         <MobileMenuButton onClickAction={() => setSidebarOpen(true)} isOpen={sidebarOpen} />
             <div className="min-w-0">
               <Breadcrumbs />
-              {address && (
-                <>
-                  <p className="text-[10px] sm:text-xs md:text-sm text-zinc-500 font-mono mt-0.5 truncate" title={address}>
-                    {thorName || truncateAddress(address)}
-                  </p>
-                  {walletAddress && walletBalanceStatus !== 'idle' && (
-                    <span
-                      data-testid="wallet-balance-status"
-                      className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 block"
-                      aria-live="polite"
-                    >
-                      {walletBalanceStatus === 'loading' && 'Wallet balance checking'}
-                      {walletBalanceStatus === 'unavailable' && 'Wallet balance unavailable'}
-                      {walletBalanceStatus === 'available' && (
-                        <>
-                          Wallet balance: <span className="font-mono">{formatRuneFromNumber(balance ?? 0)}</span>
-                        </>
-                      )}
-                    </span>
+              {address ? (
+                <p className="text-[10px] sm:text-xs md:text-sm text-zinc-500 font-mono mt-0.5 truncate" title={address}>
+                  {thorName || truncateAddress(address)}
+                </p>
+              ) : null}
+              {walletAddress && walletBalanceStatus !== 'idle' ? (
+                <span
+                  data-testid="wallet-balance-status"
+                  className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 block"
+                  aria-live="polite"
+                >
+                  {walletBalanceStatus === 'loading' && 'Wallet balance checking'}
+                  {walletBalanceStatus === 'unavailable' && 'Wallet balance unavailable'}
+                  {walletBalanceStatus === 'available' && (
+                    <>
+                      Wallet balance: <span className="font-mono">{formatRuneFromNumber(balance ?? 0)}</span>
+                    </>
                   )}
-                  <span
-                    data-testid="source-freshness-compact"
-                    className="mt-0.5 flex items-center gap-1 text-[10px] text-zinc-500 dark:text-zinc-400 xl:hidden"
-                  >
-                    <Wifi className={`h-3 w-3 ${sourceIconClass}`} aria-hidden="true" />
-                    <Clock className="h-3 w-3" aria-hidden="true" />
-                    {getCompactFreshnessLabel(sourceFreshnessTone)}
-                  </span>
-                </>
-              )}
+                </span>
+              ) : null}
+              {address ? (
+                <span
+                  data-testid="source-freshness-compact"
+                  className="mt-0.5 flex items-center gap-1 text-[10px] text-zinc-500 dark:text-zinc-400 xl:hidden"
+                >
+                  <Wifi className={`h-3 w-3 ${sourceIconClass}`} aria-hidden="true" />
+                  <Clock className="h-3 w-3" aria-hidden="true" />
+                  {getCompactFreshnessLabel(sourceFreshnessTone)}
+                </span>
+              ) : null}
             </div>
           </div>
           <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">

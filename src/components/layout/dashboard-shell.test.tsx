@@ -7,7 +7,7 @@ import type { ApiHealthState } from '@/lib/hooks/use-api-health';
 import { DashboardShell, getSourceFreshnessLabel } from './dashboard-shell';
 
 const mocks = vi.hoisted(() => ({
-  address: 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz',
+  address: 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz' as string | null,
   reverseLookup: vi.fn(),
   walletAddress: null as string | null,
   walletBalance: null as number | null,
@@ -82,6 +82,7 @@ vi.mock('@/lib/api/midgard', () => ({
 describe('DashboardShell', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.address = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz';
     mocks.walletAddress = null;
     mocks.walletBalance = null;
     mocks.walletBalanceStatus = 'idle';
@@ -104,6 +105,10 @@ describe('DashboardShell', () => {
 
   it('silently treats optional THORName reverse lookup failures as no result', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const dashboardAddress = mocks.address;
+    if (!dashboardAddress) {
+      throw new Error('Dashboard address is required for this test');
+    }
     mocks.reverseLookup.mockRejectedValueOnce(new Error('optional lookup unavailable'));
 
     render(
@@ -113,9 +118,9 @@ describe('DashboardShell', () => {
     );
 
     await screen.findByText('Dashboard content');
-    await waitFor(() => expect(mocks.reverseLookup).toHaveBeenCalledWith(mocks.address));
+    await waitFor(() => expect(mocks.reverseLookup).toHaveBeenCalledWith(dashboardAddress));
     await waitFor(() => {
-      expect(sessionStorage.getItem(getThorNameReverseLookupStorageKey(mocks.address))).toBe('__none__');
+      expect(sessionStorage.getItem(getThorNameReverseLookupStorageKey(dashboardAddress))).toBe('__none__');
     });
 
     expect(screen.getByText('thor1qqq...eyjz')).toBeInTheDocument();
@@ -382,6 +387,26 @@ describe('DashboardShell', () => {
 
     expect(screen.getByTestId('wallet-balance-status')).toHaveTextContent('Wallet balance:');
     expect(screen.getByTestId('wallet-balance-status')).toHaveTextContent('ᚱ0.00');
+  });
+
+  it('keeps connected wallet balance visible on address-optional pages without a watched dashboard address', async () => {
+    mocks.address = null;
+    mocks.walletAddress = 'thor1addressoptionalwalletxxxxxxxxxxxxxxxxxx';
+    mocks.walletBalance = 4.2;
+    mocks.walletBalanceStatus = 'available';
+
+    render(
+      <DashboardShell requireAddress={false}>
+        <div>Transaction content</div>
+      </DashboardShell>
+    );
+
+    await screen.findByText('Transaction content');
+
+    expect(mocks.reverseLookup).not.toHaveBeenCalled();
+    expect(mocks.useWalletBalance).toHaveBeenCalledWith(mocks.walletAddress);
+    expect(screen.getByTestId('wallet-balance-status')).toHaveTextContent('Wallet balance:');
+    expect(screen.getByTestId('wallet-balance-status')).toHaveTextContent('ᚱ4.20');
   });
 
   it('surfaces unavailable connected wallet balance instead of silently hiding source failure', async () => {

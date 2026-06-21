@@ -42,6 +42,13 @@ describe('AddressRequiredState', () => {
     expect(screen.getByText('Freshness after lookup')).toBeInTheDocument();
     expect(screen.getByText('Wallet stays separate')).toBeInTheDocument();
     expect(screen.getByText(/wallet connection is only needed later for wallet-presented transaction review/i)).toBeInTheDocument();
+    expect(diagnosis).toHaveTextContent('node risk, rewards, LP exposure, and address-scoped source checks');
+    expect(diagnosis).not.toHaveTextContent('transactions, and source checks');
+    expect(screen.getByRole('link', { name: 'Prepare transaction memo' })).toHaveAttribute(
+      'href',
+      '/dashboard/transactions?action=bond'
+    );
+    expect(screen.getByRole('link', { name: 'Review changelogs' })).toHaveAttribute('href', '/dashboard/changelogs');
     expect(screen.queryByText(/transaction confirmation/i)).not.toBeInTheDocument();
     expect(lookup).not.toBeNull();
     expect(diagnosis.compareDocumentPosition(lookup!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

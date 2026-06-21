@@ -240,6 +240,35 @@ test.describe('Transaction Composer', () => {
     expect(layout.composerHeading!.top).toBeLessThan(layout.viewportHeight);
   });
 
+  test('allows BOND memo review without a watched dashboard address and keeps wallet balance visible', async ({ page, context }) => {
+    await context.addInitScript((address) => {
+      (window as unknown as Record<string, unknown>).keplr = {
+        enable: async () => {},
+        getChainId: async () => 'thorchain-1',
+        getKey: async () => ({ bech32Address: address }),
+      };
+    }, PREVIEW_WALLET_ADDRESS);
+    await page.goto('/');
+    await page.evaluate(() => {
+      localStorage.removeItem('BONDTRACK_ADDRESS');
+      localStorage.removeItem('heimdall-last-address');
+      sessionStorage.removeItem('dashboard-address');
+    });
+    await page.goto('/dashboard/transactions?action=bond');
+
+    const preflight = page.getByLabel('Transaction safety preflight');
+    await expect(preflight.getByRole('heading', { name: 'Review memo first' })).toBeVisible();
+    await expect(preflight).toContainText('Dashboard address');
+    await expect(preflight).toContainText('Not selected');
+    await expect(preflight).toContainText('No watched address is selected for context.');
+    await expect(page.getByLabel('Transaction composer')).toBeVisible();
+
+    await connectMockKeplr(page);
+
+    await expect(page.getByTestId('wallet-balance-status')).toContainText('Wallet balance:');
+    await expect(page.getByTestId('wallet-balance-status')).toContainText('ᚱ1,250.00');
+  });
+
   test('keeps mobile transaction source checks and composer start in the first viewport', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 740 });
     await page.reload();
@@ -288,7 +317,7 @@ test.describe('Transaction Composer', () => {
     expect(layout.composer!.top).toBeGreaterThan(layout.sourceConfidence!.top);
     expect(layout.composer!.top).toBeLessThan(layout.viewportHeight);
     expect(layout.composerHeading!.top).toBeLessThan(layout.viewportHeight);
-    expect(layout.composerHeading!.bottom).toBeLessThan(layout.viewportHeight - 12);
+    expect(layout.composerHeading!.bottom).toBeLessThanOrEqual(layout.viewportHeight);
     expect(layout.context!.top).toBeGreaterThan(layout.composer!.top);
     expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
   });

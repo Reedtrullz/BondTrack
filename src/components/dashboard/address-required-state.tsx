@@ -49,15 +49,23 @@ export function AddressRequiredState({
               <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-700 dark:text-zinc-300">
                 {invalidUrlAddress
                   ? 'Heimdall did not use the address in this URL and did not change the saved dashboard address. Enter a valid THORChain address or THORName to continue safely.'
-                  : 'Heimdall needs a bond provider, node operator, or LP address before it can rank node risk, rewards, transactions, and source checks.'}
+                  : 'Heimdall needs a bond provider, node operator, or LP address before it can rank node risk, rewards, LP exposure, and address-scoped source checks.'}
               </p>
             </div>
-            <Link
-              href="/dashboard/changelogs"
-              className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100 dark:border-amber-800 dark:bg-zinc-950 dark:text-amber-100 dark:hover:bg-amber-950"
-            >
-              Review changelogs
-            </Link>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Link
+                href="/dashboard/transactions?action=bond"
+                className="inline-flex h-10 items-center justify-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100 dark:border-amber-800 dark:bg-zinc-950 dark:text-amber-100 dark:hover:bg-amber-950"
+              >
+                Prepare transaction memo
+              </Link>
+              <Link
+                href="/dashboard/changelogs"
+                className="inline-flex h-10 items-center justify-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100 dark:border-amber-800 dark:bg-zinc-950 dark:text-amber-100 dark:hover:bg-amber-950"
+              >
+                Review changelogs
+              </Link>
+            </div>
           </div>
         </section>
 

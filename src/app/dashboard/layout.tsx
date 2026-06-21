@@ -43,8 +43,9 @@ function DashboardContentInner({ children }: { children: ReactNode }) {
   const [isAlertReviewOpen, setIsAlertReviewOpen] = useState(false);
   const effectiveAddress = invalidUrlAddress ? null : (urlAddress ?? savedAddress);
   const isChangelogsRoute = pathname?.startsWith('/dashboard/changelogs');
+  const isTransactionsRoute = pathname?.startsWith('/dashboard/transactions');
   const isNotificationSettingsRoute = pathname?.startsWith('/dashboard/settings/notifications');
-  const requiresAddress = !isChangelogsRoute;
+  const requiresAddress = !(isChangelogsRoute || isTransactionsRoute);
   const shouldLoadShellData = !requiresAddress || Boolean(effectiveAddress);
   const { currentVersion, latestVersion, hasUpgrade } = useProtocolVersion({
     enabled: shouldLoadShellData,
