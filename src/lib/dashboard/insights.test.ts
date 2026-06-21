@@ -459,8 +459,8 @@ describe('dashboard insights', () => {
     });
 
     expect(state.statusLabel).toBe('No Bond');
-    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Confirm the address, then wait for the THORNode source check to pass before opening BOND review.');
-    expect(state.diagnosis).not.toMatch(/fresh/i);
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Confirm the address, then wait until THORNode is responding before opening BOND review.');
+    expect(state.diagnosis).not.toMatch(/fresh|pass/i);
     expect(state.topRisk).toBe('No bonded positions detected');
     expect(state.primaryAction).toEqual({
       label: 'Review source checks',
@@ -491,8 +491,8 @@ describe('dashboard insights', () => {
     });
 
     expect(state.statusLabel).toBe('No Bond');
-    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Confirm the address, then wait for the THORNode source check to pass before opening BOND review.');
-    expect(state.diagnosis).not.toMatch(/fresh/i);
+    expect(state.diagnosis).toBe('No active bond-provider position was found for this address. Confirm the address, then wait until THORNode is responding before opening BOND review.');
+    expect(state.diagnosis).not.toMatch(/fresh|pass/i);
     expect(state.primaryAction).toEqual({
       label: 'Review source checks',
       href: '/dashboard?address=thor1provider#source-confidence',

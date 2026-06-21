@@ -197,8 +197,9 @@ describe('RewardsPage', () => {
     expect(screen.queryByRole('heading', { name: 'No bonded positions found' })).not.toBeInTheDocument();
     expect(screen.queryByText(/queried successfully/i)).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Bond position result needs source check' })).toBeVisible();
-    expect(screen.getByText(/do not treat the missing bond position as final/i)).toBeVisible();
-    expect(screen.getByText(/wait for the THORNode source check to pass/i)).toBeVisible();
+    expect(screen.getByText(/THORNode position evidence is degraded or unavailable/i)).toBeVisible();
+    expect(screen.getByText(/wait until THORNode positions are responding/i)).toBeVisible();
+    expect(screen.queryByText(/source check to pass/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Open BOND review' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Review source checks' }));
 

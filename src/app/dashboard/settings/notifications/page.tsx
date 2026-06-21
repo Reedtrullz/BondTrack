@@ -123,7 +123,7 @@ function buildAlertRiskHref(address: string | null, nodeAddress: string): string
   return `/dashboard/risk?${params.toString()}`;
 }
 
-type BackgroundDeliveryConfidence = 'none' | 'pending' | 'failed' | 'stale' | 'proven';
+type BackgroundDeliveryConfidence = 'none' | 'pending' | 'failed' | 'stale' | 'observed';
 
 function getBackgroundDeliveryConfidence(
   monitor: ReturnType<typeof useBackgroundNotifications>['monitor'],
@@ -143,7 +143,7 @@ function getBackgroundDeliveryConfidence(
     return 'stale';
   }
 
-  return 'proven';
+  return 'observed';
 }
 
 function backgroundStatusCopy(
@@ -207,7 +207,7 @@ function backgroundStatusCopy(
         case 'failed':
           return {
             title: 'Background delivery needs review.',
-            detail: 'This browser is subscribed, but the last server monitor check could not prove closed-tab delivery.',
+            detail: 'This browser is subscribed, but the last server monitor check reported a delivery failure.',
             tone: 'warn' as const,
           };
         case 'stale':
@@ -216,14 +216,14 @@ function backgroundStatusCopy(
             detail: 'This browser is subscribed, but the last server monitor check is no longer current.',
             tone: 'warn' as const,
           };
-        case 'proven':
+        case 'observed':
         case 'none':
           break;
       }
 
       return {
-        title: 'Background delivery active.',
-        detail: 'This browser is subscribed for closed-tab provider exposure alerts on the watched address.',
+        title: 'Background delivery monitored.',
+        detail: 'This browser is subscribed; the latest server monitor check completed without a stored delivery failure. Browser, OS, and push-provider behavior can still delay notifications.',
         tone: 'good' as const,
       };
     case 'ready':
@@ -263,7 +263,7 @@ function backgroundMonitorConfidenceCopy(
 
   if (!monitor || monitor.uncheckedSubscriptionCount > 0 || monitor.lastCheckedAt === null) {
     return {
-      detail: 'Awaiting first server monitor check. Closed-tab delivery is subscribed, but not proven yet.',
+      detail: 'Awaiting first server monitor check. Closed-tab delivery is subscribed, but not observed by the server monitor yet.',
       tone: 'warn',
     };
   }

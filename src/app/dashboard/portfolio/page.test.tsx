@@ -286,8 +286,8 @@ describe('PortfolioPage', () => {
       '/dashboard?address=thor1portfolioaddress#source-confidence'
     );
     const diagnosis = screen.getByLabelText('Portfolio diagnosis');
-    expect(diagnosis).toHaveTextContent('wait for the THORNode source check to pass before opening BOND review');
-    expect(diagnosis).not.toHaveTextContent(/fresh THORNode source confidence/i);
+    expect(diagnosis).toHaveTextContent('wait until THORNode is responding before opening BOND review');
+    expect(diagnosis).not.toHaveTextContent(/fresh THORNode source confidence|source check to pass/i);
     expect(screen.queryByRole('link', { name: 'Review UNBOND Memo' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Prepare UNBOND Memo' })).not.toBeInTheDocument();
   });

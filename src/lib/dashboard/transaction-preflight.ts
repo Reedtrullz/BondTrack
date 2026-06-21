@@ -324,10 +324,10 @@ export function buildTransactionPreflightModel({
             ? 'Confirm the node address before copying or signing.'
             : 'Current THORNode positions must respond before Heimdall allows BOND memo copy, preview, or broadcast.'
           : !source.canCopyUnbondMemo
-            ? 'THORNode positions must load before Heimdall can prove standby eligibility.'
-          : eligibleUnbondCount > 0
-            ? 'Only standby nodes can be selected for UNBOND.'
-            : 'No standby node is available from this watched address.',
+            ? 'THORNode positions must respond before Heimdall can check standby eligibility.'
+            : eligibleUnbondCount > 0
+              ? 'Only standby nodes can be selected for UNBOND.'
+              : 'No standby node is available from this watched address.',
         severity: action === 'bond'
           ? source.canPreview ? 'info' : source.itemSeverity
           : !source.canCopyUnbondMemo

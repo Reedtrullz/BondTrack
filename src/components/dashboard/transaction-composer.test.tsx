@@ -248,6 +248,25 @@ describe('TransactionComposer BOND advanced validation', () => {
     expect(screen.getByRole('button', { name: 'Copy Memo' })).toBeEnabled();
   });
 
+  it('allows local BOND memo copy without saying source checks passed when preview is gated', () => {
+    render(
+      <TransactionComposer
+        positions={[]}
+        sourceSafety={{
+          ...freshSourceSafety,
+          canPreview: false,
+          detail: 'THORNode positions are still loading. Memo copy stays local until source data responds.',
+        }}
+      />
+    );
+
+    changeInput('Node Address', NODE_ADDRESS);
+
+    expect(screen.getByRole('button', { name: 'Copy Memo' })).toBeEnabled();
+    expect(screen.getByText('Memo can be copied for wallet review. Preview and broadcast still wait until THORNode positions are responding.')).toBeInTheDocument();
+    expect(screen.queryByText(/source check to pass/i)).not.toBeInTheDocument();
+  });
+
   it('shows primary copy success feedback after copying a valid BOND memo', async () => {
     const user = userEvent.setup();
     const writeText = vi.fn().mockResolvedValue(undefined);
@@ -589,7 +608,7 @@ describe('TransactionComposer BOND advanced validation', () => {
     expect(transactionMocks.executeBondTransaction).not.toHaveBeenCalled();
   });
 
-  it('blocks UNBOND memo copy when source checks cannot prove standby eligibility', () => {
+  it('blocks UNBOND memo copy when source checks cannot confirm standby eligibility', () => {
     render(
       <TransactionComposer
         positions={[standbyPosition]}
@@ -602,7 +621,8 @@ describe('TransactionComposer BOND advanced validation', () => {
 
     expect(screen.getByRole('button', { name: 'UNBOND' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('THORNode positions must respond before copying an UNBOND memo.')).toBeInTheDocument();
-    expect(screen.getByText('UNBOND copy stays disabled until THORNode can prove standby eligibility.')).toBeInTheDocument();
+    expect(screen.getByText('UNBOND copy stays disabled until THORNode positions show standby eligibility.')).toBeInTheDocument();
+    expect(screen.queryByText(/prove standby eligibility/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/fresh/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy Memo' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Review Transaction' })).toBeDisabled();

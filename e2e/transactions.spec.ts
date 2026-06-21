@@ -1135,7 +1135,8 @@ test.describe('Transaction Composer', () => {
     await page.goto(`/dashboard/transactions?address=${MOCK_ADDRESS}&action=unbond&node=${MOCK_NODE}&amount=10`);
     const unbondComposer = page.getByLabel('Transaction composer');
     await expect(unbondComposer.locator('code')).toHaveText('THORNode positions must respond before copying an UNBOND memo.');
-    await expect(unbondComposer.getByText('UNBOND copy stays disabled until THORNode can prove standby eligibility.')).toBeVisible();
+    await expect(unbondComposer.getByText('UNBOND copy stays disabled until THORNode positions show standby eligibility.')).toBeVisible();
+    await expect(unbondComposer).not.toContainText('prove standby eligibility');
     await expect(unbondComposer).not.toContainText('source confidence must be fresh');
     await expect(unbondComposer.getByRole('button', { name: 'Copy Memo', exact: true })).toBeDisabled();
     await expect(unbondComposer.getByRole('button', { name: 'Review Transaction', exact: true })).toBeDisabled();

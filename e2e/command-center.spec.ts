@@ -192,8 +192,9 @@ test.describe('Dashboard command center', () => {
     const nextTransaction = page.getByRole('region', { name: 'Transaction review' });
 
     await expect(diagnosis.getByText('No Bond', { exact: true })).toBeVisible();
-    await expect(diagnosis).toContainText('wait for the THORNode source check to pass before opening BOND review');
+    await expect(diagnosis).toContainText('wait until THORNode is responding before opening BOND review');
     await expect(diagnosis).not.toContainText('wait for fresh THORNode source confidence');
+    await expect(diagnosis).not.toContainText('source check to pass');
     await expect(diagnosis.getByRole('link', { name: 'Review source checks' })).toHaveAttribute(
       'href',
       `/dashboard?address=${DEFAULT_DASHBOARD_ADDRESS}#source-confidence`
@@ -319,8 +320,9 @@ test.describe('Dashboard command center', () => {
 
     await expect(page.getByRole('heading', { level: 1, name: 'Rewards', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Bond position result needs source check', exact: true })).toBeVisible();
-    await expect(page.getByText('No active bond-provider position is visible yet, but THORNode confidence has not passed, so do not treat the missing bond position as final.')).toBeVisible();
-    await expect(page.getByText('Confirm the address, then wait for the THORNode source check to pass before opening BOND review.')).toBeVisible();
+    await expect(page.getByText('No active bond-provider position is visible yet, but THORNode position evidence is degraded or unavailable, so do not treat the missing bond position as final.')).toBeVisible();
+    await expect(page.getByText('Confirm the address, then wait until THORNode positions are responding before opening BOND review.')).toBeVisible();
+    await expect(page.getByText(/source check to pass/i)).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'No bonded positions found', exact: true })).toHaveCount(0);
     await expect(page.getByText(/queried successfully/i)).toHaveCount(0);
 
@@ -923,7 +925,7 @@ test.describe('Dashboard command center', () => {
     await expect(backgroundStatus.getByRole('button', { name: 'Enable background push' })).toBeEnabled();
   });
 
-  test('labels subscribed background push as unproven before the server monitor checks it', async ({ context, page }) => {
+  test('labels subscribed background push as unobserved before the server monitor checks it', async ({ context, page }) => {
     await context.addInitScript(() => {
       Object.defineProperty(window, 'Notification', {
         configurable: true,
@@ -995,8 +997,9 @@ test.describe('Dashboard command center', () => {
       'Awaiting first server monitor check'
     );
     await expect(backgroundStatus.getByTestId('background-monitor-confidence')).toContainText(
-      'Closed-tab delivery is subscribed, but not proven yet.'
+      'Closed-tab delivery is subscribed, but not observed by the server monitor yet.'
     );
+    await expect(backgroundStatus).not.toContainText(/proven|pass completed/i);
   });
 
   test('warns when closed-tab monitor confidence is stale', async ({ context, page }) => {

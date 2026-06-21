@@ -44,7 +44,7 @@ export async function sendProviderAlertPush(
 
   const payload = JSON.stringify({
     title: 'Heimdall provider alert',
-    body: `${event.message} Source check: THORNode and Midgard monitor pass completed. Review Heimdall before acting.`,
+    body: `${event.message} Source check: THORNode and Midgard monitor ran. Review Heimdall before acting.`,
     tag: event.fingerprint,
     icon: '/heimdall-icon.svg',
     badge: '/heimdall-icon.svg',

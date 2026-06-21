@@ -235,7 +235,7 @@ describe('NotificationPreferences', () => {
     expect(backgroundStatus.compareDocumentPosition(disconnectedChannels) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('shows background delivery as active when this browser is subscribed', async () => {
+  it('shows background delivery as monitored when this browser is subscribed and recently checked', async () => {
     const unsubscribe = vi.fn();
     mockUseAlertsContext.mockReturnValue(mockAlertContext() as ReturnType<typeof useAlertsContext>);
     mockUseBackgroundNotifications.mockReturnValue(mockBackgroundNotificationState({
@@ -256,8 +256,13 @@ describe('NotificationPreferences', () => {
 
     render(<NotificationPreferences />);
 
-    expect(await screen.findByTestId('background-notification-status')).toHaveTextContent('Background delivery active.');
-    expect(screen.getByTestId('background-notification-status')).toHaveTextContent('Server subscriptions for this address: 1');
+    const backgroundStatus = await screen.findByTestId('background-notification-status');
+    expect(backgroundStatus).toHaveTextContent('Background delivery monitored.');
+    expect(backgroundStatus).toHaveTextContent(
+      'This browser is subscribed; the latest server monitor check completed without a stored delivery failure.'
+    );
+    expect(backgroundStatus).toHaveTextContent('Server subscriptions for this address: 1');
+    expect(backgroundStatus).not.toHaveTextContent(/proven|guaranteed/i);
     fireEvent.click(screen.getByRole('button', { name: 'Disable background push' }));
     expect(unsubscribe).toHaveBeenCalled();
   });
@@ -286,7 +291,8 @@ describe('NotificationPreferences', () => {
     expect(backgroundStatus).not.toHaveTextContent('Background delivery active.');
     expect(backgroundStatus).toHaveTextContent('Monitor confidence');
     expect(backgroundStatus).toHaveTextContent('Awaiting first server monitor check');
-    expect(backgroundStatus).toHaveTextContent('Closed-tab delivery is subscribed, but not proven yet.');
+    expect(backgroundStatus).toHaveTextContent('Closed-tab delivery is subscribed, but not observed by the server monitor yet.');
+    expect(backgroundStatus).not.toHaveTextContent(/proven/i);
   });
 
   it('surfaces monitor failures before asking users to trust closed-tab delivery', async () => {
@@ -310,7 +316,11 @@ describe('NotificationPreferences', () => {
 
     const backgroundStatus = await screen.findByTestId('background-notification-status');
     expect(backgroundStatus).toHaveTextContent('Background delivery needs review.');
+    expect(backgroundStatus).toHaveTextContent(
+      'This browser is subscribed, but the last server monitor check reported a delivery failure.'
+    );
     expect(backgroundStatus).not.toHaveTextContent('Background delivery active.');
+    expect(backgroundStatus).not.toHaveTextContent(/prove|proven/i);
     expect(backgroundStatus).toHaveTextContent('Monitor confidence');
     expect(backgroundStatus).toHaveTextContent('Last server monitor check failed for 1 subscribed browser.');
     expect(backgroundStatus).not.toHaveTextContent('410 Gone');

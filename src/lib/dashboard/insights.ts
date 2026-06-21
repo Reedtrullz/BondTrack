@@ -355,7 +355,7 @@ function buildSourceActions(address: string | null, sources: SourceFreshness[], 
       severity: 'warning',
       source: source.source,
       title: `${source.source} is ${source.status}`,
-      detail: source.detail ?? 'Source check has not passed yet.',
+      detail: source.detail ?? 'Source is not responding yet.',
       impact: getSourceActionImpact(source),
       href: sourceConfidenceHref,
       lastSeen: now,
@@ -590,7 +590,7 @@ export function buildDashboardInsightState(input: BuildDashboardInsightStateInpu
           ? 'Review Needed'
           : 'No urgent review';
   const noBondDiagnosis = noBondAction.kind === 'source-confidence'
-    ? 'No active bond-provider position was found for this address. Confirm the address, then wait for the THORNode source check to pass before opening BOND review.'
+    ? 'No active bond-provider position was found for this address. Confirm the address, then wait until THORNode is responding before opening BOND review.'
     : 'No active bond-provider position was found for this address. Start by confirming the address or opening BOND review.';
   const demoDiagnosis = 'Local mock data is illustrative. Use live THORNode and Midgard source checks before concluding this provider has no live issues.';
   const diagnosis = hasDemoSource

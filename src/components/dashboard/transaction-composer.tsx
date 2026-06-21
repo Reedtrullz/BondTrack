@@ -433,14 +433,14 @@ export function TransactionComposer({
     ? mode === 'BOND'
       ? sourceAllowsPreview
         ? 'Memo can be copied for wallet review. Your wallet will present amount and fees before approval/broadcast.'
-        : 'Memo can be copied for wallet review. Preview and broadcast still wait for the THORNode source check to pass.'
+        : 'Memo can be copied for wallet review. Preview and broadcast still wait until THORNode positions are responding.'
       : 'UNBOND memo can be copied for wallet review; amount is encoded in 1e8 base units.'
     : mode === 'BOND'
       ? !sourceAllowsBondMemo
         ? 'BOND copy stays disabled until THORNode positions respond.'
         : 'Copy stays disabled until the node address and advanced memo fields are valid.'
       : !sourceAllowsUnbondMemo
-        ? 'UNBOND copy stays disabled until THORNode can prove standby eligibility.'
+        ? 'UNBOND copy stays disabled until THORNode positions show standby eligibility.'
       : 'Copy stays disabled until an eligible standby node and valid unbond amount are selected.';
 
   const inlineCopyState = copyFeedback.action === 'inline' ? copyFeedback.status : 'idle';

@@ -270,8 +270,8 @@ describe('DashboardPage', () => {
 
     const diagnosis = screen.getByLabelText('Command center diagnosis');
     expect(within(diagnosis).getByText('No Bond', { exact: true })).toBeVisible();
-    expect(within(diagnosis).getByText(/wait for the THORNode source check to pass before opening BOND review/)).toBeVisible();
-    expect(diagnosis).not.toHaveTextContent(/fresh THORNode source confidence/i);
+    expect(within(diagnosis).getByText(/wait until THORNode is responding before opening BOND review/)).toBeVisible();
+    expect(diagnosis).not.toHaveTextContent(/fresh THORNode source confidence|source check to pass/i);
     expect(within(diagnosis).getByRole('link', { name: 'Review source checks' })).toHaveAttribute(
       'href',
       '/dashboard?address=thor1commandaddress#source-confidence'

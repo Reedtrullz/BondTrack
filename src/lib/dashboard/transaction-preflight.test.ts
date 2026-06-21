@@ -359,7 +359,7 @@ describe('buildTransactionPreflightModel', () => {
         id: 'eligibility',
         label: 'UNBOND eligibility',
         value: 'Source unavailable',
-        detail: 'THORNode positions must load before Heimdall can prove standby eligibility.',
+        detail: 'THORNode positions must respond before Heimdall can check standby eligibility.',
         severity: 'warning',
       }),
     ]));

@@ -59,7 +59,7 @@ describe('sendProviderAlertPush', () => {
     delete process.env.WEB_PUSH_CONTACT;
   });
 
-  it('describes monitor source checks without claiming fresh or verified data', async () => {
+  it('describes monitor source checks without claiming fresh, verified, or passed data', async () => {
     await sendProviderAlertPush(subscription, event);
 
     expect(webPushMock.sendNotification).toHaveBeenCalledTimes(1);
@@ -67,7 +67,7 @@ describe('sendProviderAlertPush', () => {
     const body = JSON.parse(payload as string).body as string;
 
     expect(body).toContain(event.message);
-    expect(body).toContain('Source check: THORNode and Midgard monitor pass completed. Review Heimdall before acting.');
-    expect(body).not.toMatch(/fresh|verified|safe/i);
+    expect(body).toContain('Source check: THORNode and Midgard monitor ran. Review Heimdall before acting.');
+    expect(body).not.toMatch(/fresh|verified|safe|pass/i);
   });
 });

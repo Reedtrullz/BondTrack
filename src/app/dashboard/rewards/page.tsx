@@ -288,8 +288,8 @@ export default function RewardsPage() {
     ? {
         tone: 'warning' as const,
         title: 'Bond position result needs source check',
-        description: 'No active bond-provider position is visible yet, but THORNode confidence has not passed, so do not treat the missing bond position as final.',
-        detail: 'Confirm the address, then wait for the THORNode source check to pass before opening BOND review.',
+        description: 'No active bond-provider position is visible yet, but THORNode position evidence is degraded or unavailable, so do not treat the missing bond position as final.',
+        detail: 'Confirm the address, then wait until THORNode positions are responding before opening BOND review.',
       }
     : {
         tone: 'empty' as const,
