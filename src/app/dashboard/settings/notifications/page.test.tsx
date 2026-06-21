@@ -235,6 +235,17 @@ describe('NotificationPreferences', () => {
     expect(backgroundStatus.compareDocumentPosition(disconnectedChannels) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it('gives each alert-channel switch a unique accessible name', async () => {
+    mockUseAlertsContext.mockReturnValue(mockAlertContext() as ReturnType<typeof useAlertsContext>);
+
+    render(<NotificationPreferences />);
+
+    expect(await screen.findByRole('switch', { name: 'Slash Increase in-app/browser alerts' })).toBeEnabled();
+    expect(screen.getByRole('switch', { name: 'Jail Alert in-app/browser alerts' })).toBeEnabled();
+    expect(screen.getByRole('switch', { name: 'Churn Risk email alerts not active' })).toBeDisabled();
+    expect(screen.getByRole('switch', { name: 'Node Status Change Telegram alerts not active' })).toBeDisabled();
+  });
+
   it('shows background delivery as monitored when this browser is subscribed and recently checked', async () => {
     const unsubscribe = vi.fn();
     mockUseAlertsContext.mockReturnValue(mockAlertContext() as ReturnType<typeof useAlertsContext>);
@@ -387,6 +398,15 @@ describe('NotificationPreferences', () => {
     mockUseBackgroundNotifications.mockReturnValue(mockBackgroundNotificationState({
       capability: {
         configured: false,
+        monitor: {
+          checkedSubscriptionCount: 0,
+          expiredSubscriptionCount: 0,
+          failedSubscriptionCount: 0,
+          lastCheckedAt: null,
+          staleAfterMs: 300_000,
+          staleSubscriptionCount: 0,
+          uncheckedSubscriptionCount: 0,
+        },
         publicKey: null,
         reason: 'Web Push VAPID keys are not configured on this Heimdall runtime.',
         subscriptionCount: 0,

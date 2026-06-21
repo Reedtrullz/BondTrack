@@ -693,6 +693,7 @@ export default function NotificationPreferences() {
                 <div className="flex items-center gap-2">
                   <Switch
                     id={`${setting.id}-local`}
+                    aria-label={`${setting.label} in-app/browser alerts`}
                     checked={renderedPreferences[setting.id]}
                     onCheckedChange={(checked) => handleToggle(setting.id, checked)}
                     disabled={!isMounted}
@@ -702,13 +703,23 @@ export default function NotificationPreferences() {
                   </Label>
                 </div>
                 <div className="flex items-center gap-2 opacity-60">
-                  <Switch id={`${setting.id}-email`} checked={false} disabled />
+                  <Switch
+                    id={`${setting.id}-email`}
+                    aria-label={`${setting.label} email alerts not active`}
+                    checked={false}
+                    disabled
+                  />
                   <Label htmlFor={`${setting.id}-email`} className="text-sm text-zinc-500">
                     Email not active
                   </Label>
                 </div>
                 <div className="flex items-center gap-2 opacity-60">
-                  <Switch id={`${setting.id}-telegram`} checked={false} disabled />
+                  <Switch
+                    id={`${setting.id}-telegram`}
+                    aria-label={`${setting.label} Telegram alerts not active`}
+                    checked={false}
+                    disabled
+                  />
                   <Label htmlFor={`${setting.id}-telegram`} className="text-sm text-zinc-500">
                     Telegram not active
                   </Label>

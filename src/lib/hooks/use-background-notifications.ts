@@ -8,11 +8,18 @@ type BackgroundNotificationState = 'loading' | 'unsupported' | 'unconfigured' | 
 
 interface NotificationStatusResponse {
   configured: boolean;
-  monitor?: NotificationMonitorSummary;
+  monitor: NotificationMonitorSummary;
   publicKey: string | null;
   reason: string | null;
   subscriptionCount: number;
 }
+
+type NotificationStatusBody = unknown;
+type NotificationErrorBody = { error?: unknown };
+type NotificationSubscribeBody = {
+  error?: unknown;
+  lastCheckedAt?: unknown;
+};
 
 function emptyMonitorSummary(subscriptionCount: number): NotificationMonitorSummary {
   return {
@@ -26,20 +33,95 @@ function emptyMonitorSummary(subscriptionCount: number): NotificationMonitorSumm
   };
 }
 
+function isNonNegativeFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return Number.isInteger(value) && isNonNegativeFiniteNumber(value);
+}
+
+function hasCompleteMonitorSummary(
+  monitor: NotificationMonitorSummary | undefined
+): monitor is NotificationMonitorSummary {
+  return Boolean(
+    monitor &&
+      isNonNegativeFiniteNumber(monitor.checkedSubscriptionCount) &&
+      isNonNegativeFiniteNumber(monitor.expiredSubscriptionCount) &&
+      isNonNegativeFiniteNumber(monitor.failedSubscriptionCount) &&
+      (monitor.lastCheckedAt === null || isNonNegativeFiniteNumber(monitor.lastCheckedAt)) &&
+      isNonNegativeFiniteNumber(monitor.staleAfterMs) &&
+      monitor.staleAfterMs > 0 &&
+      isNonNegativeFiniteNumber(monitor.staleSubscriptionCount) &&
+      isNonNegativeFiniteNumber(monitor.uncheckedSubscriptionCount)
+  );
+}
+
+function notificationErrorMessage(body: unknown, fallback: string): string {
+  if (body && typeof body === 'object' && 'error' in body) {
+    const error = (body as NotificationErrorBody).error;
+    if (typeof error === 'string' && error.trim().length > 0) {
+      return error;
+    }
+  }
+
+  return fallback;
+}
+
+function normalizeStatusResponse(body: NotificationStatusBody): NotificationStatusResponse {
+  if (!body || typeof body !== 'object' || 'error' in body) {
+    throw new Error(notificationErrorMessage(body, 'Unable to read notification status'));
+  }
+
+  const candidate = body as Partial<NotificationStatusResponse>;
+  if (typeof candidate.configured !== 'boolean' || !isNonNegativeInteger(candidate.subscriptionCount)) {
+    throw new Error('Unable to read notification status');
+  }
+
+  const publicKey = typeof candidate.publicKey === 'string' && candidate.publicKey.length > 0
+    ? candidate.publicKey
+    : null;
+  const configured = candidate.configured && publicKey !== null;
+  const reason = typeof candidate.reason === 'string' && candidate.reason.length > 0
+    ? candidate.reason
+    : configured
+      ? null
+      : 'Background push is not configured on this Heimdall runtime.';
+
+  return {
+    configured,
+    monitor: normalizeMonitorSummary(candidate.monitor, candidate.subscriptionCount),
+    publicKey,
+    reason,
+    subscriptionCount: candidate.subscriptionCount,
+  };
+}
+
 function normalizeMonitorSummary(
   monitor: NotificationMonitorSummary | undefined,
   subscriptionCount: number
 ): NotificationMonitorSummary {
   const fallback = emptyMonitorSummary(subscriptionCount);
-  if (!monitor) return fallback;
+  if (!hasCompleteMonitorSummary(monitor)) return fallback;
+
+  const isInconsistentSummary =
+    monitor.checkedSubscriptionCount > subscriptionCount ||
+    monitor.uncheckedSubscriptionCount > subscriptionCount ||
+    monitor.failedSubscriptionCount > monitor.checkedSubscriptionCount ||
+    monitor.staleSubscriptionCount > monitor.checkedSubscriptionCount ||
+    monitor.checkedSubscriptionCount + monitor.uncheckedSubscriptionCount < subscriptionCount ||
+    (monitor.checkedSubscriptionCount > 0 && monitor.lastCheckedAt === null) ||
+    (monitor.checkedSubscriptionCount === 0 && monitor.lastCheckedAt !== null);
+
+  if (isInconsistentSummary) return fallback;
 
   return {
     checkedSubscriptionCount: monitor.checkedSubscriptionCount,
-    expiredSubscriptionCount: monitor.expiredSubscriptionCount ?? 0,
+    expiredSubscriptionCount: monitor.expiredSubscriptionCount,
     failedSubscriptionCount: monitor.failedSubscriptionCount,
     lastCheckedAt: monitor.lastCheckedAt,
-    staleAfterMs: monitor.staleAfterMs ?? fallback.staleAfterMs,
-    staleSubscriptionCount: monitor.staleSubscriptionCount ?? 0,
+    staleAfterMs: monitor.staleAfterMs,
+    staleSubscriptionCount: monitor.staleSubscriptionCount,
     uncheckedSubscriptionCount: monitor.uncheckedSubscriptionCount,
   };
 }
@@ -98,15 +180,11 @@ export function useBackgroundNotifications(
 
     try {
       const response = await fetch(statusUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' });
-      const body = await response.json() as NotificationStatusResponse | { error?: string };
+      const body = await response.json() as NotificationStatusBody;
       if (!response.ok) {
-        throw new Error('error' in body && body.error ? body.error : 'Unable to read notification status');
+        throw new Error(notificationErrorMessage(body, 'Unable to read notification status'));
       }
-      const statusBody = body as NotificationStatusResponse;
-      const normalizedStatusBody = {
-        ...statusBody,
-        monitor: normalizeMonitorSummary(statusBody.monitor, statusBody.subscriptionCount),
-      };
+      const normalizedStatusBody = normalizeStatusResponse(body);
 
       setCapability(normalizedStatusBody);
       const existing = await getExistingSubscription();
@@ -144,15 +222,11 @@ export function useBackgroundNotifications(
 
     const currentCapability = capability ?? await (async () => {
       const response = await fetch(statusUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' });
-      const body = await response.json() as NotificationStatusResponse | { error?: string };
+      const body = await response.json() as NotificationStatusBody;
       if (!response.ok) {
-        throw new Error('error' in body && body.error ? body.error : 'Unable to read notification status');
+        throw new Error(notificationErrorMessage(body, 'Unable to read notification status'));
       }
-      const statusBody = body as NotificationStatusResponse;
-      const normalizedStatusBody = {
-        ...statusBody,
-        monitor: normalizeMonitorSummary(statusBody.monitor, statusBody.subscriptionCount),
-      };
+      const normalizedStatusBody = normalizeStatusResponse(body);
       setCapability(normalizedStatusBody);
       return normalizedStatusBody;
     })();
@@ -190,11 +264,28 @@ export function useBackgroundNotifications(
         }),
       });
 
-      const body = await response.json() as { error?: string };
+      const body = await response.json() as NotificationSubscribeBody;
       if (!response.ok) {
-        throw new Error(body.error ?? 'Unable to save background notification subscription');
+        throw new Error(notificationErrorMessage(body, 'Unable to save background notification subscription'));
       }
 
+      const nextSubscriptionCount = Math.max(1, currentCapability.subscriptionCount);
+      const lastCheckedAt = isNonNegativeFiniteNumber(body.lastCheckedAt) ? body.lastCheckedAt : null;
+      const monitor: NotificationMonitorSummary = {
+        checkedSubscriptionCount: lastCheckedAt === null ? 0 : nextSubscriptionCount,
+        expiredSubscriptionCount: 0,
+        failedSubscriptionCount: 0,
+        lastCheckedAt,
+        staleAfterMs: currentCapability.monitor.staleAfterMs,
+        staleSubscriptionCount: 0,
+        uncheckedSubscriptionCount: lastCheckedAt === null ? nextSubscriptionCount : 0,
+      };
+
+      setCapability({
+        ...currentCapability,
+        monitor,
+        subscriptionCount: nextSubscriptionCount,
+      });
       setSubscription(nextSubscription);
       setStatus('subscribed');
       return true;
@@ -228,12 +319,20 @@ export function useBackgroundNotifications(
             endpoint: existing.endpoint,
           }),
         });
-        const body = await response.json() as { error?: string };
+        const body = await response.json() as NotificationErrorBody;
         if (!response.ok) {
-          throw new Error(body.error ?? 'Unable to remove background notification subscription');
+          throw new Error(notificationErrorMessage(body, 'Unable to remove background notification subscription'));
         }
       }
 
+      if (capability) {
+        const nextSubscriptionCount = Math.max(0, capability.subscriptionCount - 1);
+        setCapability({
+          ...capability,
+          monitor: emptyMonitorSummary(nextSubscriptionCount),
+          subscriptionCount: nextSubscriptionCount,
+        });
+      }
       setSubscription(null);
       setStatus(capability?.configured ? 'ready' : 'unconfigured');
       return true;
@@ -242,7 +341,7 @@ export function useBackgroundNotifications(
       setError(unsubscribeError instanceof Error ? unsubscribeError.message : 'Unable to disable background notifications');
       return false;
     }
-  }, [address, capability?.configured, subscription]);
+  }, [address, capability, subscription]);
 
   return {
     capability,
