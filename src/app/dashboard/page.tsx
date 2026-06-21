@@ -137,6 +137,7 @@ export default function DashboardPage() {
         metrics={insight.headerMetrics}
         primaryAction={insight.primaryAction}
         compactMobileMetrics
+        hideMetricsOnMobile
       />
 
       <div id="source-confidence" className="space-y-4 scroll-mt-4">

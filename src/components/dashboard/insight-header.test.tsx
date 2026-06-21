@@ -170,4 +170,18 @@ describe('InsightHeader', () => {
     expect(metricGrid).toHaveClass('grid-cols-2');
     expect(metricGrid).not.toHaveClass('grid-cols-3');
   });
+
+  it('can hide duplicate compact metrics on mobile while preserving the desktop grid', () => {
+    render(
+      <InsightHeader
+        {...defaultProps}
+        compactMobileMetrics
+        hideMetricsOnMobile
+        primaryAction={{ label: 'Inspect Risk', href: '/dashboard/risk?address=thor1abc' }}
+      />
+    );
+
+    const metricGrid = screen.getByText('Weighted APY').parentElement?.parentElement;
+    expect(metricGrid).toHaveClass('hidden', 'sm:grid');
+  });
 });

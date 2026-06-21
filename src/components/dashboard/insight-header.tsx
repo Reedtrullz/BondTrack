@@ -23,6 +23,7 @@ interface InsightHeaderProps {
   compactMobileMetrics?: boolean;
   compactMetricDetailMode?: 'hidden' | 'all';
   mobileMetricColumns?: 2 | 3;
+  hideMetricsOnMobile?: boolean;
 }
 
 const severityConfig: Record<InsightSeverity, {
@@ -74,6 +75,7 @@ export function InsightHeader({
   compactMobileMetrics = false,
   compactMetricDetailMode = 'hidden',
   mobileMetricColumns = 3,
+  hideMetricsOnMobile = false,
 }: InsightHeaderProps) {
   const presentationSeverity = severity === 'healthy' && statusLabel === 'No urgent review'
     ? 'info'
@@ -139,7 +141,8 @@ export function InsightHeader({
 
       <div
         className={cn(
-          'grid sm:mt-5 sm:grid-cols-3',
+          compactMobileMetrics && hideMetricsOnMobile ? 'hidden sm:grid' : 'grid',
+          'sm:mt-5 sm:grid-cols-3',
           compactMobileMetrics
             ? mobileMetricColumns === 2
               ? 'mt-3 grid-cols-2 gap-2 sm:gap-3'
