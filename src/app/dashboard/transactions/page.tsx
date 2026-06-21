@@ -51,7 +51,15 @@ export default function TransactionsPage() {
 
   const { positions, isLoading: positionsLoading, error: positionsError } = useBondPositions(address);
   const { addresses: watchlist } = useWatchlist();
-  const { isConnected, isNetworkMismatch, address: walletAddress, walletType, networkMismatch } = useWalletContext();
+  const {
+    canBroadcastTransactions,
+    isConnected,
+    isNetworkMismatch,
+    address: walletAddress,
+    walletBroadcastUnavailableReason,
+    walletType,
+    networkMismatch,
+  } = useWalletContext();
   const apiHealth = useApiHealthContext();
   useBondHistory(address);
 
@@ -66,9 +74,11 @@ export default function TransactionsPage() {
     },
     wallet: {
       address: walletAddress,
+      canBroadcastTransactions,
       isConnected,
       isNetworkMismatch,
       networkMismatch,
+      walletBroadcastUnavailableReason,
       walletType,
     },
   });

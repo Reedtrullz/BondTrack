@@ -419,8 +419,42 @@ describe('wallet adapter transaction payloads', () => {
     });
   });
 
-  it('rejects non-string browser-wallet transaction hashes', async () => {
-    const xdefiRequest = vi.fn().mockResolvedValue({ txHash: 'not-a-string' });
+  it('accepts structured browser-wallet transaction hash responses', async () => {
+    const xdefiRequest = vi.fn().mockResolvedValue({ txHash: 'xdefi-structured-hash' });
+    window.xfi = { thorchain: { request: xdefiRequest } };
+
+    await expect(executeBondTransaction({
+      type: 'BOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '3.25',
+      memo: generateBondMemo(NODE_ADDRESS),
+      walletType: 'xdefi',
+    }, SIGNER_ADDRESS)).resolves.toEqual({
+      success: true,
+      txHash: 'xdefi-structured-hash',
+    });
+
+    const vultisigRequest = vi.fn(async ({ method }: { method: string }) => {
+      if (method === 'get_accounts') return [SIGNER_ADDRESS];
+      if (method === 'deposit_transaction') return { transactionHash: 'vultisig-structured-hash' };
+      throw new Error(`Unexpected Vultisig method: ${method}`);
+    });
+    window.vultisig = { thorchain: { request: vultisigRequest } };
+
+    await expect(executeBondTransaction({
+      type: 'BOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '3.25',
+      memo: generateBondMemo(NODE_ADDRESS),
+      walletType: 'vultisig',
+    }, SIGNER_ADDRESS)).resolves.toEqual({
+      success: true,
+      txHash: 'vultisig-structured-hash',
+    });
+  });
+
+  it('rejects missing or malformed browser-wallet transaction hashes', async () => {
+    const xdefiRequest = vi.fn().mockResolvedValue({ txHash: 123 });
     window.xfi = { thorchain: { request: xdefiRequest } };
 
     await expect(executeBondTransaction({
@@ -434,7 +468,11 @@ describe('wallet adapter transaction payloads', () => {
       error: 'XDEFI returned an invalid transaction hash',
     });
 
-    const vultisigRequest = vi.fn().mockResolvedValue('');
+    const vultisigRequest = vi.fn(async ({ method }: { method: string }) => {
+      if (method === 'get_accounts') return [SIGNER_ADDRESS];
+      if (method === 'deposit_transaction') return { transactionHash: '' };
+      throw new Error(`Unexpected Vultisig method: ${method}`);
+    });
     window.vultisig = { thorchain: { request: vultisigRequest } };
 
     await expect(executeBondTransaction({
@@ -451,6 +489,7 @@ describe('wallet adapter transaction payloads', () => {
 
   it('sends Vultisig deposit payloads with signer address and zero-transfer UNBOND semantics', async () => {
     const request = vi.fn(async ({ method }: { method: string }) => {
+      if (method === 'get_accounts') return [SIGNER_ADDRESS];
       if (method === 'deposit_transaction') return 'vultisig-hash';
       throw new Error(`Unexpected Vultisig method: ${method}`);
     });
@@ -472,13 +511,61 @@ describe('wallet adapter transaction payloads', () => {
       walletType: 'vultisig',
     }, SIGNER_ADDRESS)).resolves.toEqual({ success: true, txHash: 'vultisig-hash' });
 
-    expect(request).toHaveBeenNthCalledWith(1, {
+    expect(request).toHaveBeenNthCalledWith(1, { method: 'get_accounts' });
+    expect(request).toHaveBeenNthCalledWith(2, {
       method: 'deposit_transaction',
       params: [{ type: 'BOND', to: NODE_ADDRESS, memo: `BOND:${NODE_ADDRESS}`, amount: '100000000', asset: 'rune', from_address: SIGNER_ADDRESS }],
     });
-    expect(request).toHaveBeenNthCalledWith(2, {
+    expect(request).toHaveBeenNthCalledWith(3, { method: 'get_accounts' });
+    expect(request).toHaveBeenNthCalledWith(4, {
       method: 'deposit_transaction',
       params: [{ type: 'UNBOND', to: NODE_ADDRESS, memo: `UNBOND:${NODE_ADDRESS}:1000000000`, amount: '0', asset: 'rune', from_address: SIGNER_ADDRESS }],
     });
+  });
+
+  it('rejects Vultisig signer drift before broadcast', async () => {
+    const request = vi.fn(async ({ method }: { method: string }) => {
+      if (method === 'get_accounts') return [NODE_ADDRESS];
+      if (method === 'deposit_transaction') return 'vultisig-hash';
+      throw new Error(`Unexpected Vultisig method: ${method}`);
+    });
+    window.vultisig = { thorchain: { request } };
+
+    await expect(executeBondTransaction({
+      type: 'BOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '1',
+      memo: generateBondMemo(NODE_ADDRESS),
+      walletType: 'vultisig',
+    }, SIGNER_ADDRESS)).resolves.toEqual({
+      success: false,
+      error: 'Vultisig signer changed before broadcast. Reconnect the wallet and review again.',
+    });
+
+    expect(request).toHaveBeenCalledWith({ method: 'get_accounts' });
+    expect(request).not.toHaveBeenCalledWith(expect.objectContaining({ method: 'deposit_transaction' }));
+  });
+
+  it('rejects Ledger BOND and UNBOND broadcasts until THORChain MsgDeposit signing is hardware-verified', async () => {
+    const expectedError = 'Ledger is connected for THORChain address and balance review only. Heimdall does not broadcast BOND or UNBOND with Ledger until THORChain MsgDeposit signing is hardware-verified.';
+
+    await expect(executeBondTransaction({
+      type: 'BOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '1',
+      memo: generateBondMemo(NODE_ADDRESS),
+      walletType: 'ledger',
+    }, SIGNER_ADDRESS)).resolves.toEqual({ success: false, error: expectedError });
+
+    await expect(executeUnbondTransaction({
+      type: 'UNBOND',
+      nodeAddress: NODE_ADDRESS,
+      amount: '10',
+      memo: generateUnbondMemo(NODE_ADDRESS, '10'),
+      walletType: 'ledger',
+    }, SIGNER_ADDRESS)).resolves.toEqual({ success: false, error: expectedError });
+
+    expect(stargateMocks.connectWithSigner).not.toHaveBeenCalled();
+    expect(stargateMocks.signAndBroadcast).not.toHaveBeenCalled();
   });
 });

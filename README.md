@@ -46,7 +46,7 @@ A professional investment command center for THORChain bond providers and liquid
 ### 🔧 Transaction Tools
 - BOND/UNBOND memo composer
 - Transaction history from Midgard using `type=` filter
-- Wallet connection (Keplr, XDEFI, Vultisig)
+- Wallet connection (Ledger address review, Vultisig, Keplr, XDEFI)
 - Watchlist management
 
 ### 🌊 LP Status Trust Rebuild
@@ -248,9 +248,10 @@ All API calls from frontend go through these proxies, bypassing browser CORS res
 
 ## Supported Wallets
 
+- **Ledger Hardware Wallet** — THORChain address and balance review over WebHID after the device is unlocked, the THORChain app is open, and the address is confirmed on device; BOND/UNBOND broadcast remains disabled until Ledger THORChain `MsgDeposit` signing is hardware-verified
+- **Vultisig Extension** — THORChain extension provider with BOND/UNBOND broadcast support
 - **Keplr Wallet** — Cosmos-based wallet with THORChain support
 - **XDEFI Wallet** — Cross-chain desktop wallet
-- **Vultisig** — Multi-chain hardware wallet
 
 ## E2E Testing
 

@@ -9,7 +9,8 @@ import type { TransactionSourceSafety } from '@/lib/dashboard/transaction-prefli
 const mocks = vi.hoisted(() => ({
   wallet: {
     address: 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4' as string | null,
-    walletType: 'keplr' as 'keplr' | 'xdefi' | 'vultisig' | null,
+    walletType: 'keplr' as 'keplr' | 'xdefi' | 'vultisig' | 'ledger' | null,
+    canBroadcastTransactions: true,
     chainId: 'thorchain-1',
     isConnected: true,
     isConnecting: false,
@@ -19,7 +20,9 @@ const mocks = vi.hoisted(() => ({
       expected: 'thorchain-1',
       actual: 'thorchain-1',
     },
-    availableWallets: 'keplr' as const,
+    availableWallets: ['keplr'] as ('keplr' | 'xdefi' | 'vultisig' | 'ledger')[],
+    walletBroadcastUnavailableReason: null as string | null,
+    walletOptions: [],
     connect: vi.fn(),
     disconnect: vi.fn(),
     isNetworkMismatch: false,
@@ -36,6 +39,8 @@ const PROVIDER_ADDRESS = 'thor158qequwhhnggm4ch4psv55yqpxsugf67n62dy2';
 const WALLET_ADDRESS = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
 const STALE_SIGNER_REFRESH_ERROR =
   'Keplr account changed, but Heimdall could not refresh the signer. Reconnect wallet before preview or broadcast.';
+const LEDGER_BROADCAST_UNAVAILABLE_MESSAGE =
+  'Ledger is connected for THORChain address and balance review only. Heimdall does not broadcast BOND or UNBOND with Ledger until THORChain MsgDeposit signing is hardware-verified.';
 const degradedSourceSafety: TransactionSourceSafety = {
   canCopyBondMemo: false,
   canCopyUnbondMemo: false,
@@ -92,6 +97,8 @@ function changeInput(label: string, value: string) {
 beforeEach(() => {
   mocks.wallet.address = WALLET_ADDRESS;
   mocks.wallet.walletType = 'keplr';
+  mocks.wallet.canBroadcastTransactions = true;
+  mocks.wallet.walletBroadcastUnavailableReason = null;
   mocks.wallet.isConnected = true;
   mocks.wallet.error = null;
   mocks.wallet.isNetworkMismatch = false;
@@ -429,6 +436,25 @@ describe('TransactionComposer BOND advanced validation', () => {
       'Connect a wallet for preview and broadcast. Memo copy stays local for manual wallet review.'
     );
     expect(screen.getByRole('status')).not.toHaveTextContent('Memo copy remains available');
+    expect(transactionMocks.executeBondTransaction).not.toHaveBeenCalled();
+  });
+
+  it('keeps Ledger connected address review copy-only until broadcast signing is verified', () => {
+    mocks.wallet.walletType = 'ledger';
+    mocks.wallet.canBroadcastTransactions = false;
+    mocks.wallet.walletBroadcastUnavailableReason = LEDGER_BROADCAST_UNAVAILABLE_MESSAGE;
+
+    render(<TransactionComposer positions={[]} sourceSafety={freshSourceSafety} />);
+
+    changeInput('Node Address', NODE_ADDRESS);
+    changeInput('Bond Amount', '2');
+
+    expect(screen.getByRole('button', { name: 'Copy Memo' })).toBeEnabled();
+    const broadcastUnavailable = screen.getByRole('button', { name: 'Broadcast unavailable' });
+    expect(broadcastUnavailable).toBeDisabled();
+    expect(broadcastUnavailable).toHaveAccessibleDescription(LEDGER_BROADCAST_UNAVAILABLE_MESSAGE);
+    expect(screen.getByRole('status')).toHaveTextContent(LEDGER_BROADCAST_UNAVAILABLE_MESSAGE);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(transactionMocks.executeBondTransaction).not.toHaveBeenCalled();
   });
 

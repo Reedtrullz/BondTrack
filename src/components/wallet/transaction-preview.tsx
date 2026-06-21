@@ -12,7 +12,7 @@ export interface TransactionPreviewData {
   memo: string;
   feeNote: string;
   walletAddress: string | null;
-  walletType: 'keplr' | 'xdefi' | 'vultisig' | null;
+  walletType: 'keplr' | 'xdefi' | 'vultisig' | 'ledger' | null;
 }
 
 interface TransactionPreviewProps {
@@ -44,7 +44,9 @@ export function TransactionPreview({
       ? 'XDEFI'
       : data.walletType === 'vultisig'
         ? 'Vultisig'
-        : null;
+        : data.walletType === 'ledger'
+          ? 'Ledger'
+          : null;
   const isUnbond = data.type === 'UNBOND';
   const walletTransferAmount = isUnbond ? '0' : data.amount;
   const shouldShowWalletAuthorization = Boolean(walletName && !confirmDisabled);

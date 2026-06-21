@@ -35,6 +35,17 @@ export interface XdefiThorchainInterface {
 
 export interface VultisigThorchainInterface {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+  on?: (event: string, handler: () => void) => void;
+  off?: (event: string, handler: () => void) => void;
+  removeListener?: (event: string, handler: () => void) => void;
+  addEventListener?: (event: string, handler: () => void) => void;
+  removeEventListener?: (event: string, handler: () => void) => void;
+}
+
+export interface LedgerThorchainConnection {
+  address: string;
+  appVersion: string;
+  compressedPublicKey: Uint8Array;
 }
 
 declare global {

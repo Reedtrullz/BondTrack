@@ -48,6 +48,7 @@ const DEFAULT_COPY_FEEDBACK: CopyFeedbackState = {
 const WRONG_NETWORK_MESSAGE = 'Wallet is connected to the wrong network. Switch to THORChain mainnet before preview or broadcast.';
 const CONNECT_WALLET_MESSAGE = 'Connect a wallet for preview and broadcast. Memo copy stays local for manual wallet review.';
 const WALLET_CHANGED_MESSAGE = 'Connected wallet changed after preview opened. Close and review the transaction with the current wallet before broadcasting.';
+const WALLET_CANNOT_BROADCAST_LABEL = 'Broadcast unavailable';
 const WALLET_REQUIRED_LABEL = 'Wallet required';
 const STALE_PREVIEW_MESSAGE = 'Transaction details changed after preview opened. Review the form again before broadcasting.';
 const DEFAULT_SOURCE_SAFETY: TransactionSourceSafety = {
@@ -118,6 +119,8 @@ export function TransactionComposer({
   const {
     address: walletAddress,
     walletType,
+    canBroadcastTransactions,
+    walletBroadcastUnavailableReason,
     isConnected,
     isNetworkMismatch,
     error: walletError,
@@ -316,9 +319,10 @@ export function TransactionComposer({
   const sourceAllowsPreview = sourceSafety.canPreview;
   const sourceAllowsBondMemo = sourceSafety.canCopyBondMemo;
   const sourceAllowsUnbondMemo = sourceSafety.canCopyUnbondMemo;
-  const walletUnavailableMessage = walletError ?? CONNECT_WALLET_MESSAGE;
+  const walletCannotBroadcast = isConnected && !canBroadcastTransactions;
+  const walletUnavailableMessage = walletBroadcastUnavailableReason ?? walletError ?? CONNECT_WALLET_MESSAGE;
 
-  const canSubmit = sourceAllowsPreview && isConnected && !isNetworkMismatch && nodeIsValid && (
+  const canSubmit = sourceAllowsPreview && isConnected && canBroadcastTransactions && !isNetworkMismatch && nodeIsValid && (
     mode === 'BOND'
       ? bondAmountIsValid && providerIsValid
       : hasSelectedPosition && canUnbond && unbondAmountIsValid
@@ -340,6 +344,8 @@ export function TransactionComposer({
         ? sourceSafety.detail
         : !isConnected || !walletAddress || !walletType
           ? walletUnavailableMessage
+          : walletCannotBroadcast
+            ? walletUnavailableMessage
           : previewWalletChanged
             ? WALLET_CHANGED_MESSAGE
             : previewDetailsChanged || !canSubmit
@@ -358,9 +364,11 @@ export function TransactionComposer({
       ? sourceSafety.detail
       : !isConnected
       ? walletUnavailableMessage
+      : walletCannotBroadcast
+      ? walletUnavailableMessage
       : undefined;
   const actionGuidanceId = actionGuidanceMessage ? 'transaction-action-guidance' : undefined;
-  const ActionGuidanceIcon = isNetworkMismatch || !sourceAllowsPreview ? AlertTriangle : Info;
+  const ActionGuidanceIcon = isNetworkMismatch || !sourceAllowsPreview || walletCannotBroadcast ? AlertTriangle : Info;
 
   const validationMessage = useMemo(() => {
     if (!nodeValidation.valid && shouldShowNodeError) return nodeValidation.error;
@@ -667,7 +675,7 @@ export function TransactionComposer({
               aria-describedby={actionGuidanceId}
               className="flex-1"
             >
-              Review Transaction
+              {walletCannotBroadcast ? WALLET_CANNOT_BROADCAST_LABEL : 'Review Transaction'}
             </Button>
           ) : (
             <Button disabled aria-describedby={actionGuidanceId} className="flex-1">{WALLET_REQUIRED_LABEL}</Button>

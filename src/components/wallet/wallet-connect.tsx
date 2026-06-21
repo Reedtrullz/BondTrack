@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useWalletContext } from '@/lib/hooks/use-wallet';
+import { useWalletContext, type SupportedWalletType, type WalletOptionState } from '@/lib/hooks/use-wallet';
 import { Button } from '@/components/ui/button';
-import { Wallet, ChevronDown, LogOut, AlertTriangle } from 'lucide-react';
+import { Wallet, ChevronDown, LogOut, AlertTriangle, Usb } from 'lucide-react';
 
 function truncateAddress(address: string): string {
   if (address.length <= 12) return address;
@@ -14,6 +14,7 @@ function formatWalletName(walletType: string | null): string {
   if (walletType === 'keplr') return 'Keplr';
   if (walletType === 'vultisig') return 'Vultisig';
   if (walletType === 'xdefi') return 'XDEFI';
+  if (walletType === 'ledger') return 'Ledger';
   return 'Wallet';
 }
 
@@ -60,6 +61,40 @@ function VultisigIcon({ className }: { className?: string }) {
   );
 }
 
+function LedgerIcon({ className }: { className?: string }) {
+  return (
+    <span className={`inline-flex items-center justify-center rounded-md bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 ${className ?? ''}`}>
+      <Usb className="h-3.5 w-3.5" aria-hidden="true" />
+    </span>
+  );
+}
+
+function getWalletIcon(walletType: SupportedWalletType, className = 'h-5 w-5') {
+  if (walletType === 'keplr') return <KeplrIcon className={className} />;
+  if (walletType === 'vultisig') return <VultisigIcon className={className} />;
+  if (walletType === 'ledger') return <LedgerIcon className={className} />;
+  return <XdefiIcon className={className} />;
+}
+
+function getWalletOptionName(walletType: SupportedWalletType): string {
+  if (walletType === 'ledger') return 'Ledger Hardware Wallet';
+  if (walletType === 'vultisig') return 'Vultisig Extension';
+  if (walletType === 'keplr') return 'Keplr Wallet';
+  return 'XDEFI Wallet';
+}
+
+function getWalletOptionDescription(option: WalletOptionState): string {
+  if (!option.connectable) {
+    return option.unavailableReason ?? 'Wallet provider unavailable.';
+  }
+
+  if (option.type === 'ledger') {
+    return 'Unlock Ledger, open the THORChain app, and confirm the address on device. Review only; broadcast stays disabled.';
+  }
+
+  return 'BOND and UNBOND broadcast support.';
+}
+
 function WalletOption({
   name,
   testId,
@@ -67,6 +102,8 @@ function WalletOption({
   onClick,
   disabled,
   describedBy,
+  description,
+  descriptionId,
 }: {
   name: string;
   testId: string;
@@ -74,6 +111,8 @@ function WalletOption({
   onClick: () => void;
   disabled?: boolean;
   describedBy?: string;
+  description: string;
+  descriptionId: string;
 }) {
   return (
     <button
@@ -81,12 +120,17 @@ function WalletOption({
       data-testid={testId}
       onClick={onClick}
       disabled={disabled}
-      aria-describedby={describedBy}
+      aria-describedby={describedBy ?? descriptionId}
       role="menuitem"
-      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      className="flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
     >
-      {icon}
-      <span className="font-medium">{name}</span>
+      <span className="mt-0.5 shrink-0">{icon}</span>
+      <span className="min-w-0">
+        <span className="block font-medium">{name}</span>
+        <span id={descriptionId} className="block text-xs leading-snug text-zinc-500 dark:text-zinc-400">
+          {description}
+        </span>
+      </span>
     </button>
   );
 }
@@ -99,6 +143,7 @@ export function WalletConnect() {
     walletType,
     error,
     availableWallets,
+    walletOptions,
     connect,
     disconnect,
     networkMismatch,
@@ -112,7 +157,8 @@ export function WalletConnect() {
   const menuId = isConnected ? 'wallet-account-menu' : 'wallet-connect-menu';
   const noWalletMessageId = 'wallet-no-provider-message';
   const walletErrorMessageId = error ? 'wallet-connect-error-message' : undefined;
-  const hasDetectedWallet = Boolean(availableWallets);
+  const hasConnectableWallet = walletOptions.some((option) => option.connectable);
+  void availableWallets;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -219,13 +265,7 @@ export function WalletConnect() {
           aria-expanded={dropdownOpen}
           aria-controls={menuId}
         >
-          {walletType === 'keplr' ? (
-            <KeplrIcon className="h-5 w-5" />
-          ) : walletType === 'vultisig' ? (
-            <VultisigIcon className="h-5 w-5" />
-          ) : (
-            <XdefiIcon className="h-5 w-5" />
-          )}
+          {walletType ? getWalletIcon(walletType, 'h-5 w-5') : <Wallet className="h-5 w-5" />}
           <span className="font-medium">{formatWalletName(walletType)}</span>
           <span className="font-mono">{truncateAddress(address)}</span>
           <ChevronDown className="h-4 w-4 text-zinc-400" />
@@ -312,59 +352,31 @@ export function WalletConnect() {
             Select wallet
           </div>
 
-          {!hasDetectedWallet && (
+          {!hasConnectableWallet && (
             <div
               id={noWalletMessageId}
               className="mx-3 mb-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
             >
-              No wallet provider was detected in this browser. Install or unlock Keplr, XDEFI, or Vultisig to enable connection.
+              No wallet connection path was detected in this browser. Install or unlock Vultisig, Keplr, or XDEFI, or use a Chromium browser with WebHID for Ledger.
             </div>
           )}
 
-          {availableWallets === 'keplr' || !availableWallets ? (
-            <div className="px-1">
+          {walletOptions.map((option) => (
+            <div key={option.type} className="px-1">
               <WalletOption
-                name="Keplr Wallet"
-                testId="wallet-option-keplr"
-                icon={<KeplrIcon className="h-5 w-5" />}
+                name={getWalletOptionName(option.type)}
+                testId={`wallet-option-${option.type}`}
+                icon={getWalletIcon(option.type)}
+                description={getWalletOptionDescription(option)}
+                descriptionId={`wallet-option-${option.type}-description`}
                 onClick={() => {
-                  connect('keplr');
+                  connect(option.type);
                 }}
-                disabled={isConnecting || !hasDetectedWallet}
-                describedBy={!hasDetectedWallet ? noWalletMessageId : undefined}
+                disabled={isConnecting || !option.connectable}
+                describedBy={!hasConnectableWallet ? noWalletMessageId : undefined}
               />
             </div>
-          ) : null}
-
-          {availableWallets === 'xdefi' || !availableWallets ? (
-            <div className="px-1">
-              <WalletOption
-                name="XDEFI Wallet"
-                testId="wallet-option-xdefi"
-                icon={<XdefiIcon className="h-5 w-5" />}
-                onClick={() => {
-                  connect('xdefi');
-                }}
-                disabled={isConnecting || !hasDetectedWallet}
-                describedBy={!hasDetectedWallet ? noWalletMessageId : undefined}
-              />
-            </div>
-          ) : null}
-
-          {availableWallets === 'vultisig' || !availableWallets ? (
-            <div className="px-1">
-              <WalletOption
-                name="Vultisig Wallet"
-                testId="wallet-option-vultisig"
-                icon={<VultisigIcon className="h-5 w-5" />}
-                onClick={() => {
-                  connect('vultisig');
-                }}
-                disabled={isConnecting || !hasDetectedWallet}
-                describedBy={!hasDetectedWallet ? noWalletMessageId : undefined}
-              />
-            </div>
-          ) : null}
+          ))}
         </div>
       )}
     </div>

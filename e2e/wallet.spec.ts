@@ -114,7 +114,7 @@ async function openWalletMenu(page: Page) {
   }).toPass({ timeout: 10_000 });
 }
 
-async function chooseWallet(page: Page, wallet: 'keplr' | 'xdefi' | 'vultisig') {
+async function chooseWallet(page: Page, wallet: 'keplr' | 'xdefi' | 'vultisig' | 'ledger') {
   await page.getByTestId(`wallet-option-${wallet}`).evaluate((element) => {
     (element as HTMLElement).click();
   });
@@ -145,13 +145,34 @@ test.describe('Wallet Connection', () => {
     await gotoWalletPage(page);
     await openWalletMenu(page);
 
-    await expect(page.getByText('No wallet provider was detected in this browser.')).toBeVisible();
-    await expect(page.getByTestId('wallet-option-keplr')).toHaveText('Keplr Wallet');
-    await expect(page.getByTestId('wallet-option-xdefi')).toHaveText('XDEFI Wallet');
-    await expect(page.getByTestId('wallet-option-vultisig')).toHaveText('Vultisig Wallet');
+    await expect(page.getByTestId('wallet-option-ledger')).toContainText('Ledger Hardware Wallet');
+    await expect(page.getByTestId('wallet-option-keplr')).toContainText('Keplr Wallet');
+    await expect(page.getByTestId('wallet-option-xdefi')).toContainText('XDEFI Wallet');
+    await expect(page.getByTestId('wallet-option-vultisig')).toContainText('Vultisig Extension');
     await expect(page.getByTestId('wallet-option-keplr')).toBeDisabled();
     await expect(page.getByTestId('wallet-option-xdefi')).toBeDisabled();
     await expect(page.getByTestId('wallet-option-vultisig')).toBeDisabled();
+  });
+
+  test('enables Ledger connection option when WebHID is available', async ({ page, context }) => {
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, 'hid', {
+        value: {
+          getDevices: async () => [],
+          requestDevice: async () => [],
+        },
+        configurable: true,
+      });
+    });
+
+    await gotoWalletPage(page);
+    await openWalletMenu(page);
+
+    await expect(page.getByText('No wallet connection path was detected in this browser.')).toHaveCount(0);
+    await expect(page.getByTestId('wallet-option-ledger')).toBeEnabled();
+    await expect(page.getByTestId('wallet-option-ledger')).toContainText(
+      'Unlock Ledger, open the THORChain app, and confirm the address on device. Review only; broadcast stays disabled.'
+    );
   });
 
   test('displays error message on connection failure', async ({ page, context }) => {

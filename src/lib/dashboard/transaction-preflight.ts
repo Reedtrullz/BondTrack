@@ -21,9 +21,11 @@ export interface TransactionPreflightPrimaryAction {
 
 export interface TransactionPreflightWalletState {
   address: string | null;
+  canBroadcastTransactions?: boolean;
   isConnected: boolean;
   isNetworkMismatch: boolean;
   networkMismatch: NetworkMismatch;
+  walletBroadcastUnavailableReason?: string | null;
   walletType: WalletType;
 }
 
@@ -77,18 +79,21 @@ export function formatShortAddress(value: string | null | undefined): string {
 function getPreflightSeverity({
   action,
   eligibleUnbondCount,
+  canBroadcastTransactions,
   isConnected,
   isNetworkMismatch,
   source,
 }: {
   action: TransactionAction;
   eligibleUnbondCount: number;
+  canBroadcastTransactions: boolean;
   isConnected: boolean;
   isNetworkMismatch: boolean;
   source: TransactionSourceSafety;
 }): TransactionPreflightSeverity {
   if (isNetworkMismatch) return 'critical';
   if (!source.canPreview) return source.itemSeverity;
+  if (isConnected && !canBroadcastTransactions) return 'warning';
   if (action === 'unbond' && eligibleUnbondCount === 0) return 'warning';
   if (isConnected) return 'info';
   return 'info';
@@ -97,18 +102,21 @@ function getPreflightSeverity({
 function getPreflightStatus({
   action,
   eligibleUnbondCount,
+  canBroadcastTransactions,
   isConnected,
   isNetworkMismatch,
   source,
 }: {
   action: TransactionAction;
   eligibleUnbondCount: number;
+  canBroadcastTransactions: boolean;
   isConnected: boolean;
   isNetworkMismatch: boolean;
   source: TransactionSourceSafety;
 }): string {
   if (isNetworkMismatch) return 'Wrong network';
   if (!source.canPreview) return source.status;
+  if (isConnected && !canBroadcastTransactions) return 'Wallet cannot broadcast';
   if (action === 'unbond' && eligibleUnbondCount === 0) return 'No eligible standby node';
   if (isConnected) return 'Review before broadcast';
   return 'Review memo first';
@@ -117,22 +125,29 @@ function getPreflightStatus({
 function getPreflightDetail({
   action,
   eligibleUnbondCount,
+  canBroadcastTransactions,
   isConnected,
   isNetworkMismatch,
   networkMismatch,
+  walletBroadcastUnavailableReason,
   source,
 }: {
   action: TransactionAction;
   eligibleUnbondCount: number;
+  canBroadcastTransactions: boolean;
   isConnected: boolean;
   isNetworkMismatch: boolean;
   networkMismatch: NetworkMismatch;
+  walletBroadcastUnavailableReason: string | null;
   source: TransactionSourceSafety;
 }): string {
   if (isNetworkMismatch) {
     return `Wallet reports ${networkMismatch.actual ?? 'unknown'}; THORChain mainnet expects ${networkMismatch.expected}.`;
   }
   if (!source.canPreview) return source.detail;
+  if (isConnected && !canBroadcastTransactions) {
+    return walletBroadcastUnavailableReason ?? 'Connected wallet cannot broadcast from Heimdall.';
+  }
   if (action === 'unbond' && eligibleUnbondCount === 0) {
     return 'UNBOND can only proceed from a standby node. Review node status before signing.';
   }
@@ -257,6 +272,8 @@ export function buildTransactionPreflightModel({
   const eligibleUnbondPositions = positions.filter((position) => canUnbondNode(position).canUnbond);
   const eligibleUnbondCount = eligibleUnbondPositions.length;
   const isManualBondWithoutDashboardAddress = action === 'bond' && !dashboardAddress;
+  const canBroadcastTransactions = wallet.canBroadcastTransactions ?? (wallet.walletType !== null && wallet.walletType !== 'ledger');
+  const walletBroadcastUnavailableReason = wallet.walletBroadcastUnavailableReason ?? null;
   const source = getTransactionSourceSafety({
     ...sourceInput,
     action,
@@ -265,6 +282,7 @@ export function buildTransactionPreflightModel({
   const severity = getPreflightSeverity({
     action,
     eligibleUnbondCount,
+    canBroadcastTransactions,
     isConnected: wallet.isConnected,
     isNetworkMismatch: wallet.isNetworkMismatch,
     source,
@@ -272,6 +290,7 @@ export function buildTransactionPreflightModel({
   const status = getPreflightStatus({
     action,
     eligibleUnbondCount,
+    canBroadcastTransactions,
     isConnected: wallet.isConnected,
     isNetworkMismatch: wallet.isNetworkMismatch,
     source,
@@ -279,9 +298,11 @@ export function buildTransactionPreflightModel({
   const detail = getPreflightDetail({
     action,
     eligibleUnbondCount,
+    canBroadcastTransactions,
     isConnected: wallet.isConnected,
     isNetworkMismatch: wallet.isNetworkMismatch,
     networkMismatch: wallet.networkMismatch,
+    walletBroadcastUnavailableReason,
     source,
   });
 
@@ -317,11 +338,17 @@ export function buildTransactionPreflightModel({
         detail: wallet.isNetworkMismatch
           ? `Switch to ${wallet.networkMismatch.expected} before broadcast.`
           : wallet.isConnected
-            ? `${wallet.walletType?.toUpperCase() ?? 'Wallet'} connected; wallet must present final payload before approval.`
+            ? canBroadcastTransactions
+              ? `${wallet.walletType?.toUpperCase() ?? 'Wallet'} connected; wallet must present final payload before approval.`
+              : walletBroadcastUnavailableReason ?? 'Connected wallet cannot broadcast from Heimdall.'
             : isManualBondWithoutDashboardAddress
               ? 'Required for preview and broadcast; memo copy stays local once THORNode source checks respond.'
               : 'Required for preview and broadcast; memo copy stays local once THORNode positions respond.',
-        severity: wallet.isNetworkMismatch ? 'critical' : wallet.isConnected ? 'checked' : 'info',
+        severity: wallet.isNetworkMismatch
+          ? 'critical'
+          : wallet.isConnected
+            ? canBroadcastTransactions ? 'checked' : 'warning'
+            : 'info',
       },
       {
         id: 'dashboard-address',

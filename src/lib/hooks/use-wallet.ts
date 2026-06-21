@@ -6,8 +6,23 @@ import '@/lib/types/wallet';
 import { readLocalStorageValue, removeLocalStorageValue, STORAGE_KEYS, writeLocalStorageValue } from '@/lib/storage/keys';
 import { THORCHAIN_MAINNET_CHAIN_ID } from '@/lib/thorchain';
 import { normalizeTHORChainMainnetAddress } from '@/lib/utils/address-validation';
+import {
+  LEDGER_BROADCAST_UNAVAILABLE_MESSAGE,
+  connectLedgerThorchainAddress,
+  getLedgerBrowserSupport,
+} from '@/lib/wallet/ledger-thorchain';
 
-export type WalletType = 'keplr' | 'xdefi' | 'vultisig' | null;
+export type WalletType = 'keplr' | 'xdefi' | 'vultisig' | 'ledger' | null;
+export type SupportedWalletType = Exclude<WalletType, null>;
+export type WalletBroadcastCapability = 'broadcast' | 'address-only';
+
+export interface WalletOptionState {
+  type: SupportedWalletType;
+  detected: boolean;
+  connectable: boolean;
+  capability: WalletBroadcastCapability;
+  unavailableReason: string | null;
+}
 
 export interface WalletState {
   address: string | null;
@@ -29,12 +44,18 @@ interface ConnectOptions {
 }
 
 const THORCHAIN_CHAIN_ID = THORCHAIN_MAINNET_CHAIN_ID;
+const SUPPORTED_WALLET_ORDER: SupportedWalletType[] = ['ledger', 'vultisig', 'keplr', 'xdefi'];
 const STALE_SIGNER_REFRESH_ERROR =
   'Keplr account changed, but Heimdall could not refresh the signer. Reconnect wallet before preview or broadcast.';
 
 interface VultisigWindow {
   thorchain?: {
     request(args: { method: string; params?: unknown[] }): Promise<unknown>;
+    on?: (event: string, handler: () => void) => void;
+    off?: (event: string, handler: () => void) => void;
+    removeListener?: (event: string, handler: () => void) => void;
+    addEventListener?: (event: string, handler: () => void) => void;
+    removeEventListener?: (event: string, handler: () => void) => void;
   };
 }
 
@@ -46,6 +67,16 @@ declare global {
 
 function extractWalletAddress(result: unknown): string {
   if (typeof result === 'string') return result;
+
+  if (Array.isArray(result) && result.length > 0) {
+    const [firstAccount] = result;
+    if (typeof firstAccount === 'string') return firstAccount;
+    if (firstAccount && typeof firstAccount === 'object') {
+      const accountRecord = firstAccount as Record<string, unknown>;
+      if (typeof accountRecord.address === 'string') return accountRecord.address;
+      if (typeof accountRecord.bech32Address === 'string') return accountRecord.bech32Address;
+    }
+  }
 
   if (result && typeof result === 'object') {
     const record = result as Record<string, unknown>;
@@ -67,12 +98,72 @@ function extractWalletAddress(result: unknown): string {
   throw new Error('Wallet did not return a THORChain address');
 }
 
+function tryExtractWalletAddress(result: unknown): string | null {
+  try {
+    return extractWalletAddress(result);
+  } catch {
+    return null;
+  }
+}
+
 function validateConnectedAddress(address: string, walletType: Exclude<WalletType, null>): string {
   const normalized = normalizeTHORChainMainnetAddress(address);
   if (!normalized) {
     throw new Error(`${walletType.toUpperCase()} returned an invalid THORChain mainnet address`);
   }
   return normalized;
+}
+
+export function walletCanBroadcastTransactions(walletType: WalletType): boolean {
+  return walletType !== null && walletType !== 'ledger';
+}
+
+export function getWalletBroadcastUnavailableReason(walletType: WalletType): string | null {
+  if (walletType === 'ledger') return LEDGER_BROADCAST_UNAVAILABLE_MESSAGE;
+  return null;
+}
+
+function isSupportedWalletType(value: string | null): value is SupportedWalletType {
+  return SUPPORTED_WALLET_ORDER.includes(value as SupportedWalletType);
+}
+
+function isUnsupportedProviderMethod(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+
+  const record = error as Record<string, unknown>;
+  if (record.code === 4200) return true;
+
+  const message = typeof record.message === 'string' ? record.message : '';
+  return /unsupported|unknown method|not supported|unexpected vultisig method/i.test(message);
+}
+
+function getVultisigProvider() {
+  return window.vultisig?.thorchain || window.thorchain;
+}
+
+function subscribeVultisigProviderEvent(
+  eventName: string,
+  handler: () => void
+): (() => void) | null {
+  const provider = getVultisigProvider();
+  if (!provider) return null;
+
+  if (typeof provider.on === 'function') {
+    provider.on(eventName, handler);
+    return () => {
+      if (typeof provider.off === 'function') provider.off(eventName, handler);
+      else if (typeof provider.removeListener === 'function') provider.removeListener(eventName, handler);
+    };
+  }
+
+  if (typeof provider.addEventListener === 'function') {
+    provider.addEventListener(eventName, handler);
+    return () => {
+      if (typeof provider.removeEventListener === 'function') provider.removeEventListener(eventName, handler);
+    };
+  }
+
+  return null;
 }
 
 export function useWallet() {
@@ -105,14 +196,50 @@ export function useWallet() {
     return hasMismatch;
   }, [getExpectedChainId]);
 
-  const detectWallet = useCallback((): WalletType => {
+  const detectWallets = useCallback((): SupportedWalletType[] => {
+    const detected: SupportedWalletType[] = [];
+
     if (typeof window !== 'undefined') {
-      if (window.keplr) return 'keplr';
-      if (window.xfi?.thorchain) return 'xdefi';
-      if (window.vultisig?.thorchain || window.thorchain) return 'vultisig';
+      if (getLedgerBrowserSupport().supported) detected.push('ledger');
+      if (window.vultisig?.thorchain || window.thorchain) detected.push('vultisig');
+      if (window.keplr) detected.push('keplr');
+      if (window.xfi?.thorchain) detected.push('xdefi');
     }
-    return null;
+
+    return detected;
   }, []);
+
+  const getWalletOptions = useCallback((): WalletOptionState[] => {
+    const detectedWallets = new Set(detectWallets());
+    const ledgerSupport = getLedgerBrowserSupport();
+
+    return SUPPORTED_WALLET_ORDER.map((type) => {
+      if (type === 'ledger') {
+        return {
+          type,
+          detected: ledgerSupport.supported,
+          connectable: ledgerSupport.supported,
+          capability: 'address-only',
+          unavailableReason: ledgerSupport.reason,
+        };
+      }
+
+      const detected = detectedWallets.has(type);
+      const walletName = type === 'vultisig'
+        ? 'Vultisig'
+        : type === 'keplr'
+          ? 'Keplr'
+          : 'XDEFI';
+
+      return {
+        type,
+        detected,
+        connectable: detected,
+        capability: 'broadcast',
+        unavailableReason: detected ? null : `Install or unlock ${walletName} to connect.`,
+      };
+    });
+  }, [detectWallets]);
 
   const connectKeplr = useCallback(async (): Promise<{ address: string; chainId: string }> => {
     if (!window.keplr) {
@@ -146,19 +273,48 @@ export function useWallet() {
   }, []);
 
   const connectVultisig = useCallback(async (): Promise<{ address: string; chainId: string }> => {
-    const vultisigProvider = window.vultisig?.thorchain || window.thorchain;
+    const vultisigProvider = getVultisigProvider();
     if (!vultisigProvider) {
       throw new Error('Vultisig wallet not installed');
     }
 
-    const result = await vultisigProvider.request({
-      method: 'connect',
-    });
+    let address: string | null = null;
+    try {
+      const result = await vultisigProvider.request({
+        method: 'request_accounts',
+      });
+      address = tryExtractWalletAddress(result);
+    } catch (error) {
+      if (!isUnsupportedProviderMethod(error)) throw error;
+      try {
+        const result = await vultisigProvider.request({
+          method: 'get_accounts',
+        });
+        address = tryExtractWalletAddress(result);
+      } catch (getAccountsError) {
+        if (!isUnsupportedProviderMethod(getAccountsError)) throw getAccountsError;
+      }
+    }
 
-    const address = extractWalletAddress(result);
+    if (!address) {
+      const result = await vultisigProvider.request({
+        method: 'connect',
+      });
+      address = extractWalletAddress(result);
+    }
+
     const chainId = THORCHAIN_CHAIN_ID;
 
     return { address, chainId };
+  }, []);
+
+  const connectLedger = useCallback(async (): Promise<{ address: string; chainId: string }> => {
+    const result = await connectLedgerThorchainAddress();
+
+    return {
+      address: result.address,
+      chainId: THORCHAIN_CHAIN_ID,
+    };
   }, []);
 
   const connect = useCallback(async (walletType: WalletType, options: ConnectOptions = {}) => {
@@ -178,6 +334,8 @@ export function useWallet() {
         result = await connectXdefi();
       } else if (walletType === 'vultisig') {
         result = await connectVultisig();
+      } else if (walletType === 'ledger') {
+        result = await connectLedger();
       } else {
         throw new Error('Unsupported wallet type');
       }
@@ -230,7 +388,7 @@ export function useWallet() {
         }));
       }
     }
-  }, [connectKeplr, connectXdefi, connectVultisig, checkNetworkMismatch, getExpectedChainId]);
+  }, [connectKeplr, connectXdefi, connectVultisig, connectLedger, checkNetworkMismatch, getExpectedChainId]);
 
   const disconnect = useCallback(() => {
     setState({
@@ -262,14 +420,14 @@ export function useWallet() {
     if (mountedRef.current) return;
     mountedRef.current = true;
 
-    const wallet = detectWallet();
-    if (wallet && !state.isConnected) {
+    const detectedWallets = detectWallets();
+    if (detectedWallets.length > 0 && !state.isConnected) {
       const stored = readLocalStorageValue(STORAGE_KEYS.walletConnected);
-      if (stored === wallet) {
-        connectRef.current(wallet);
+      if (stored !== 'ledger' && isSupportedWalletType(stored) && detectedWallets.includes(stored)) {
+        connectRef.current(stored);
       }
     }
-  }, [detectWallet, state.isConnected]);
+  }, [detectWallets, state.isConnected]);
 
   useEffect(() => {
     const handleKeplrKeyStoreChange = () => {
@@ -284,6 +442,37 @@ export function useWallet() {
   }, []);
 
   useEffect(() => {
+    if (state.walletType !== 'vultisig') return undefined;
+
+    const handleVultisigDisconnect = () => {
+      const current = stateRef.current;
+      if (!current.isConnected || current.walletType !== 'vultisig') return;
+
+      setState({
+        address: null,
+        walletType: null,
+        chainId: null,
+        isConnected: false,
+        isConnecting: false,
+        error: 'Vultisig disconnected. Reconnect before preview or broadcast.',
+      });
+      setNetworkMismatch({
+        hasMismatch: false,
+        expected: getExpectedChainId(),
+        actual: null,
+      });
+    };
+
+    const unsubscribers = ['DISCONNECT', 'disconnect']
+      .map((eventName) => subscribeVultisigProviderEvent(eventName, handleVultisigDisconnect))
+      .filter((unsubscribe): unsubscribe is () => void => Boolean(unsubscribe));
+
+    return () => {
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [getExpectedChainId, state.walletType]);
+
+  useEffect(() => {
     if (state.isConnected && state.walletType) {
       writeLocalStorageValue(STORAGE_KEYS.walletConnected, state.walletType);
     } else {
@@ -294,7 +483,12 @@ export function useWallet() {
   return {
     ...state,
     networkMismatch,
-    availableWallets: detectWallet(),
+    availableWallets: detectWallets(),
+    walletOptions: getWalletOptions(),
+    canBroadcastTransactions: state.isConnected && walletCanBroadcastTransactions(state.walletType),
+    walletBroadcastUnavailableReason: state.isConnected
+      ? getWalletBroadcastUnavailableReason(state.walletType)
+      : null,
     connect,
     disconnect,
     isNetworkMismatch: networkMismatch.hasMismatch,

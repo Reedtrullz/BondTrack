@@ -6,12 +6,28 @@ import { WalletConnect } from './wallet-connect';
 const STALE_SIGNER_REFRESH_ERROR =
   'Keplr account changed, but Heimdall could not refresh the signer. Reconnect wallet before preview or broadcast.';
 
+type MockWalletType = 'keplr' | 'xdefi' | 'vultisig' | 'ledger';
+
+function createWalletOptions(connectableWallets: MockWalletType[] = []) {
+  return (['ledger', 'vultisig', 'keplr', 'xdefi'] as MockWalletType[]).map((type) => {
+    const connectable = connectableWallets.includes(type);
+    return {
+      type,
+      detected: connectable,
+      connectable,
+      capability: type === 'ledger' ? 'address-only' as const : 'broadcast' as const,
+      unavailableReason: connectable ? null : `Install or unlock ${type} to connect.`,
+    };
+  });
+}
+
 const walletMocks = vi.hoisted(() => ({
   connect: vi.fn(),
   disconnect: vi.fn(),
   state: {
     address: null as string | null,
-    availableWallets: null as 'keplr' | 'xdefi' | 'vultisig' | null,
+    availableWallets: [] as MockWalletType[],
+    canBroadcastTransactions: false,
     chainId: null as string | null,
     connect: vi.fn(),
     disconnect: vi.fn(),
@@ -24,7 +40,9 @@ const walletMocks = vi.hoisted(() => ({
       expected: 'thorchain-1',
       hasMismatch: false,
     },
-    walletType: null as 'keplr' | 'xdefi' | 'vultisig' | null,
+    walletBroadcastUnavailableReason: null as string | null,
+    walletOptions: [] as ReturnType<typeof createWalletOptions>,
+    walletType: null as MockWalletType | null,
   },
 }));
 
@@ -38,7 +56,8 @@ describe('WalletConnect', () => {
     walletMocks.disconnect.mockReset();
     Object.assign(walletMocks.state, {
       address: null,
-      availableWallets: null,
+      availableWallets: [],
+      canBroadcastTransactions: false,
       chainId: null,
       connect: walletMocks.connect,
       disconnect: walletMocks.disconnect,
@@ -51,6 +70,8 @@ describe('WalletConnect', () => {
         expected: 'thorchain-1',
         hasMismatch: false,
       },
+      walletBroadcastUnavailableReason: null,
+      walletOptions: createWalletOptions(),
       walletType: null,
     });
   });
@@ -66,13 +87,15 @@ describe('WalletConnect', () => {
 
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('menu', { name: 'Wallet connection options' })).toBeVisible();
-    expect(screen.getByText(/No wallet provider was detected in this browser/)).toBeVisible();
+    expect(screen.getByText(/No wallet connection path was detected in this browser/)).toBeVisible();
 
-    const providerHelp = 'No wallet provider was detected in this browser. Install or unlock Keplr, XDEFI, or Vultisig to enable connection.';
-    const keplr = screen.getByRole('menuitem', { name: 'Keplr Wallet' });
-    const xdefi = screen.getByRole('menuitem', { name: 'XDEFI Wallet' });
-    const vultisig = screen.getByRole('menuitem', { name: 'Vultisig Wallet' });
+    const providerHelp = 'No wallet connection path was detected in this browser. Install or unlock Vultisig, Keplr, or XDEFI, or use a Chromium browser with WebHID for Ledger.';
+    const ledger = screen.getByRole('menuitem', { name: /Ledger Hardware Wallet/ });
+    const keplr = screen.getByRole('menuitem', { name: /Keplr Wallet/ });
+    const xdefi = screen.getByRole('menuitem', { name: /XDEFI Wallet/ });
+    const vultisig = screen.getByRole('menuitem', { name: /Vultisig Extension/ });
 
+    expect(ledger).toBeDisabled();
     expect(keplr).toBeDisabled();
     expect(xdefi).toBeDisabled();
     expect(vultisig).toBeDisabled();
@@ -83,23 +106,40 @@ describe('WalletConnect', () => {
   });
 
   it('enables the detected wallet option without no-provider guidance', async () => {
-    walletMocks.state.availableWallets = 'keplr';
+    walletMocks.state.availableWallets = ['keplr'];
+    walletMocks.state.walletOptions = createWalletOptions(['keplr']);
     const user = userEvent.setup();
     render(<WalletConnect />);
 
     await user.click(screen.getByTestId('wallet-connect-button'));
 
-    const keplr = screen.getByRole('menuitem', { name: 'Keplr Wallet' });
+    const keplr = screen.getByRole('menuitem', { name: /Keplr Wallet/ });
     expect(keplr).toBeEnabled();
     expect(keplr).not.toHaveAccessibleDescription(/No wallet provider was detected/);
-    expect(screen.queryByRole('menuitem', { name: 'XDEFI Wallet' })).not.toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /XDEFI Wallet/ })).toBeDisabled();
 
     await user.click(keplr);
     expect(walletMocks.connect).toHaveBeenCalledWith('keplr');
   });
 
+  it('sets Ledger expectations before the user starts a hardware connection', async () => {
+    walletMocks.state.availableWallets = ['ledger'];
+    walletMocks.state.walletOptions = createWalletOptions(['ledger']);
+    const user = userEvent.setup();
+    render(<WalletConnect />);
+
+    await user.click(screen.getByTestId('wallet-connect-button'));
+
+    const ledger = screen.getByRole('menuitem', { name: /Ledger Hardware Wallet/ });
+    expect(ledger).toBeEnabled();
+    expect(ledger).toHaveAccessibleDescription(
+      'Unlock Ledger, open the THORChain app, and confirm the address on device. Review only; broadcast stays disabled.'
+    );
+  });
+
   it('surfaces disconnected wallet errors before opening the menu', () => {
-    walletMocks.state.availableWallets = 'keplr';
+    walletMocks.state.availableWallets = ['keplr'];
+    walletMocks.state.walletOptions = createWalletOptions(['keplr']);
     walletMocks.state.error = STALE_SIGNER_REFRESH_ERROR;
 
     render(<WalletConnect />);
@@ -112,7 +152,8 @@ describe('WalletConnect', () => {
 
   it('makes wallet network mismatch actionable', async () => {
     walletMocks.state.address = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
-    walletMocks.state.availableWallets = 'keplr';
+    walletMocks.state.availableWallets = ['keplr'];
+    walletMocks.state.walletOptions = createWalletOptions(['keplr']);
     walletMocks.state.chainId = 'cosmoshub-4';
     walletMocks.state.error = 'Network mismatch: Expected thorchain-1, got cosmoshub-4';
     walletMocks.state.isConnected = false;
@@ -141,7 +182,8 @@ describe('WalletConnect', () => {
   });
 
   it('closes the wallet menu with Escape and returns focus to the trigger', async () => {
-    walletMocks.state.availableWallets = 'keplr';
+    walletMocks.state.availableWallets = ['keplr'];
+    walletMocks.state.walletOptions = createWalletOptions(['keplr']);
     const user = userEvent.setup();
     render(<WalletConnect />);
 

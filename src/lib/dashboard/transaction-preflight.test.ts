@@ -10,6 +10,8 @@ const healthySource: TransactionSourceInput = {
 };
 const dashboardAddress = 'thor1p5xs6rgdp5xs6rgdp5xs6rgdp5xs6rgd2gv5hv';
 const walletAddress = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4';
+const ledgerBroadcastUnavailable =
+  'Ledger is connected for THORChain address and balance review only. Heimdall does not broadcast BOND or UNBOND with Ledger until THORChain MsgDeposit signing is hardware-verified.';
 
 function position(overrides: Partial<BondPosition> = {}): BondPosition {
   return {
@@ -403,6 +405,36 @@ describe('buildTransactionPreflightModel', () => {
     ]));
     expect(model.items).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'eligibility', value: '0 standby' }),
+    ]));
+  });
+
+  it('warns when Ledger is connected for address review but cannot broadcast', () => {
+    const model = buildTransactionPreflightModel({
+      actionParam: 'bond',
+      dashboardAddress,
+      positions: [],
+      source: healthySource,
+      wallet: {
+        address: walletAddress,
+        canBroadcastTransactions: false,
+        isConnected: true,
+        isNetworkMismatch: false,
+        networkMismatch: { actual: 'thorchain-1', expected: 'thorchain-1', hasMismatch: false },
+        walletBroadcastUnavailableReason: ledgerBroadcastUnavailable,
+        walletType: 'ledger',
+      },
+    });
+
+    expect(model.severity).toBe('warning');
+    expect(model.status).toBe('Wallet cannot broadcast');
+    expect(model.detail).toBe(ledgerBroadcastUnavailable);
+    expect(model.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'wallet',
+        value: 'thor1qgpqy...9s7qn4',
+        detail: ledgerBroadcastUnavailable,
+        severity: 'warning',
+      }),
     ]));
   });
 });

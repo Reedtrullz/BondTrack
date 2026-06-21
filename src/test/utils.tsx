@@ -31,6 +31,27 @@ export function createMockXdefi() {
   };
 }
 
+export function createMockVultisig(address = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4') {
+  return {
+    thorchain: {
+      request: vi.fn(async ({ method }: { method: string }) => {
+        if (method === 'request_accounts') return [address];
+        if (method === 'connect') return address;
+        if (method === 'deposit_transaction') return 'vultisig-mock-tx';
+        throw new Error(`Unexpected Vultisig method: ${method}`);
+      }),
+    },
+  };
+}
+
+export function createMockLedgerConnection(address = 'thor1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz9s7qn4') {
+  return {
+    address,
+    appVersion: '2.0.0',
+    compressedPublicKey: new Uint8Array(33),
+  };
+}
+
 export function mockLocalStorage(data: Record<string, string> = {}) {
   Object.entries(data).forEach(([key, value]) => {
     localStorage.setItem(key, value);
