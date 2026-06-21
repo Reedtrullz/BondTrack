@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateBondRank, calculateNetworkSecurityState } from '../calculations';
+import { calculateBondRank, calculateBondShare, calculateNetworkSecurityState } from '../calculations';
 
 describe('calculateNetworkSecurityState', () => {
   it('marks ratios above 2.5x as high bond buffer without a safety verdict', () => {
@@ -57,5 +57,15 @@ describe('calculateBondRank', () => {
       total: 3,
       percentile: 0,
     });
+  });
+});
+
+describe('calculateBondShare', () => {
+  it('returns unknown instead of throwing when total bond source data is malformed', () => {
+    expect(calculateBondShare('1250000000000', 'not-a-number')).toBeNaN();
+  });
+
+  it('returns unknown instead of throwing when provider bond source data is malformed', () => {
+    expect(calculateBondShare('not-a-number', '2500000000000')).toBeNaN();
   });
 });

@@ -4,6 +4,8 @@ import { type BondPosition } from '@/lib/types/node';
 import type { NodeRaw } from '@/lib/api/thornode';
 import { rawRuneToPositiveDisplayNumber } from '@/lib/utils/formatters';
 
+export type RankUnavailableReason = 'unusable_active_bond_source';
+
 export interface NodeRanking {
   nodeAddress: string;
   rank: number;
@@ -12,6 +14,7 @@ export interface NodeRanking {
   isAtRisk: boolean;
   bondRank: number;
   excludedActiveNodeCount?: number;
+  rankUnavailableReason?: RankUnavailableReason;
 }
 
 /**
@@ -41,6 +44,19 @@ export function useNodeRankings(positions: BondPosition[]): NodeRanking[] {
 
     const totalNodes = activeNodes.length;
     if (totalNodes === 0) {
+      if (allActiveNodes.length > 0) {
+        return positions.map((position) => ({
+          nodeAddress: position.nodeAddress,
+          rank: 0,
+          totalNodes: 0,
+          percentile: 0,
+          isAtRisk: false,
+          bondRank: 0,
+          excludedActiveNodeCount: allActiveNodes.length,
+          rankUnavailableReason: 'unusable_active_bond_source' as const,
+        }));
+      }
+
       return [];
     }
 

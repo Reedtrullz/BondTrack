@@ -32,12 +32,20 @@ function parseCurrentAward(currentAward: string): ParsedCurrentAward {
   return { unit: 'unknown', value: Number.NaN };
 }
 
+function parseRawAmount(raw: string): bigint | null {
+  const trimmed = raw.trim();
+  if (trimmed === '') return 0n;
+  if (!/^\d+$/.test(trimmed)) return null;
+  return BigInt(trimmed);
+}
+
 /**
  * Calculate a bond provider's share of a node's total bond.
  */
 export function calculateBondShare(providerBond: string, totalBond: string): number {
-  const provider = BigInt(providerBond || '0');
-  const total = BigInt(totalBond || '0');
+  const provider = parseRawAmount(providerBond);
+  const total = parseRawAmount(totalBond);
+  if (provider === null || total === null) return Number.NaN;
   if (total === 0n) return 0;
   return Number((provider * 10000n) / total) / 100; // 2 decimal precision
 }
@@ -118,16 +126,25 @@ export function calculateBondRank(
   nodeTotalBond: string,
   allActiveNodes: { node_address: string; total_bond: string }[]
 ): { rank: number; total: number; percentile: number } {
-  const sorted = [...allActiveNodes].sort((a, b) => {
-    const bondA = BigInt(a.total_bond || '0');
-    const bondB = BigInt(b.total_bond || '0');
+  const usableActiveNodes = allActiveNodes
+    .map((node) => ({ node, totalBond: parseRawAmount(node.total_bond) }))
+    .filter((entry): entry is { node: { node_address: string; total_bond: string }; totalBond: bigint } => (
+      entry.totalBond !== null
+    ));
+  const sorted = usableActiveNodes.sort((a, b) => {
+    const bondA = a.totalBond;
+    const bondB = b.totalBond;
     return bondA > bondB ? -1 : bondA < bondB ? 1 : 0;
   });
 
-  const targetBond = BigInt(nodeTotalBond || '0');
-  const rank = sorted.filter((n) => BigInt(n.total_bond || '0') > targetBond).length + 1;
+  const targetBond = parseRawAmount(nodeTotalBond);
   const total = sorted.length;
-  const nodesWithLessBond = sorted.filter((n) => BigInt(n.total_bond || '0') < targetBond).length;
+  if (targetBond === null) {
+    return { rank: 0, total, percentile: 0 };
+  }
+
+  const rank = sorted.filter((entry) => entry.totalBond > targetBond).length + 1;
+  const nodesWithLessBond = sorted.filter((entry) => entry.totalBond < targetBond).length;
   const percentile = total > 1 ? (nodesWithLessBond / (total - 1)) * 100 : total === 1 ? 100 : 0;
 
   return { rank: total > 0 ? rank : 0, total, percentile };

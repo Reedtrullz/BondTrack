@@ -1,6 +1,6 @@
 import { NodeRaw } from '@/lib/api/thornode';
 export type { NodeRaw } from '@/lib/api/thornode';
-import { runeToNumber, formatBasisPoints } from '@/lib/utils/formatters';
+import { runeToNumber, formatBasisPoints, rawRuneToPositiveDisplayNumber } from '@/lib/utils/formatters';
 import { calculateAPY, calculateBondShare } from '@/lib/utils/calculations';
 
 export type YieldGuardFlag = 'highest_slash' | 'lowest_bond' | 'oldest' | 'leaving';
@@ -84,6 +84,8 @@ export function extractBondPositions(
         };
       }
 
+      const totalBond = rawRuneToPositiveDisplayNumber(node.total_bond);
+
       return {
         nodeAddress: node.node_address,
         nodeOperatorAddress: node.node_operator_address,
@@ -93,7 +95,7 @@ export function extractBondPositions(
         operatorFee,
         operatorFeeFormatted: formatBasisPoints(node.bond_providers.node_operator_fee),
         netAPY,
-        totalBond: runeToNumber(node.total_bond),
+        totalBond: totalBond ?? Number.NaN,
         slashPoints: node.slash_points,
         isJailed,
         jailReleaseHeight,

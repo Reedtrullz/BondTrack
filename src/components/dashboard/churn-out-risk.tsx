@@ -19,6 +19,10 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
   const rankings = useNodeRankings(positions);
   const [error, setError] = useState<string | null>(null);
   const [showError, setShowError] = useState(false);
+  const hasActivePositions = positions.some((position) => position.status === 'Active');
+  const rankUnavailable = hasActivePositions && rankings.some(
+    (ranking) => ranking.rankUnavailableReason === 'unusable_active_bond_source'
+  );
 
   // Timeout for loading state to prevent endless loading
   useEffect(() => {
@@ -30,6 +34,12 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
       return () => clearTimeout(timer);
     }
   }, [rankings, positions]);
+
+  useEffect(() => {
+    if (showError && (rankings.length > 0 || positions.length === 0)) {
+      setShowError(false);
+    }
+  }, [positions.length, rankings.length, showError]);
 
   const nodesWithRank: NodeWithRank[] = useMemo(() => {
     if (rankings.length === 0) {
@@ -61,8 +71,15 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
     ...rankings.map((ranking) => ranking.excludedActiveNodeCount ?? 0)
   );
   const excludedNodeNoun = excludedActiveNodeCount === 1 ? 'node' : 'nodes';
+  const rankUnavailableExcludedActiveNodeCount = Math.max(
+    0,
+    ...rankings
+      .filter((ranking) => ranking.rankUnavailableReason === 'unusable_active_bond_source')
+      .map((ranking) => ranking.excludedActiveNodeCount ?? 0)
+  );
+  const rankUnavailableNodeNoun = rankUnavailableExcludedActiveNodeCount === 1 ? 'node' : 'nodes';
 
-  if (error || showError) {
+  if ((error || showError) && !rankUnavailable) {
     return (
       <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
         <div className="flex items-center justify-between mb-4">
@@ -86,6 +103,30 @@ export function ChurnOutRisk({ positions }: ChurnOutRiskProps) {
             className="mt-4 px-3 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded text-sm hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
             Retry
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (rankUnavailable) {
+    return (
+      <div className="p-4 rounded-lg border border-amber-200 bg-amber-50 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Churn-Out Risk</h3>
+          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-300" />
+        </div>
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <AlertTriangle className="mb-3 h-8 w-8 text-amber-600 dark:text-amber-300" />
+          <p className="text-sm font-medium text-amber-900 dark:text-amber-100">Churn rank unavailable</p>
+          <p className="mt-2 max-w-sm text-xs text-amber-800 dark:text-amber-200">
+            THORNode returned active nodes, but every active-node total-bond row was unusable. Heimdall is not ranking churn risk from this sample.
+          </p>
+          <p className="mt-2 max-w-sm text-xs text-amber-800 dark:text-amber-200">
+            {rankUnavailableExcludedActiveNodeCount} active {rankUnavailableNodeNoun} {rankUnavailableExcludedActiveNodeCount === 1 ? 'was' : 'were'} excluded from churn-risk rank.
+          </p>
+          <p className="mt-2 max-w-sm text-xs text-zinc-600 dark:text-zinc-400">
+            Refresh source checks before deciding whether to add bond, hold, or unbond.
+          </p>
         </div>
       </div>
     );

@@ -20,6 +20,7 @@ interface NodeRanking {
   totalNodes: number;
   bondRank: number;
   excludedActiveNodeCount?: number;
+  rankUnavailableReason?: 'unusable_active_bond_source';
 }
 
 const mockRankings: NodeRanking[] = [
@@ -259,6 +260,38 @@ describe('ChurnOutRisk', () => {
 
       expect(screen.getByText('1 active node had unusable bond source data and was excluded from churn-risk rank.')).toBeInTheDocument();
       expect(screen.getByText('#50/2')).toBeInTheDocument();
+    });
+
+    it('shows source-unavailable copy instead of a loading or connection error when every active-node bond row is unusable', async () => {
+      mockUseNodeRankings.mockReturnValue([
+        {
+          nodeAddress: 'thor1abc123',
+          rank: 0,
+          percentile: 0,
+          isAtRisk: false,
+          totalNodes: 0,
+          bondRank: 0,
+          excludedActiveNodeCount: 2,
+          rankUnavailableReason: 'unusable_active_bond_source',
+        },
+      ]);
+
+      render(<ChurnOutRisk positions={[mockPositions[0]]} />);
+
+      expect(screen.getByText('Churn rank unavailable')).toBeInTheDocument();
+      expect(screen.getByText('THORNode returned active nodes, but every active-node total-bond row was unusable. Heimdall is not ranking churn risk from this sample.')).toBeInTheDocument();
+      expect(screen.getByText('2 active nodes were excluded from churn-risk rank.')).toBeInTheDocument();
+      expect(screen.queryByText('Loading node rankings...')).not.toBeInTheDocument();
+      expect(screen.queryByText('Unable to load churn risk data')).not.toBeInTheDocument();
+      expect(screen.queryByText('#0/0')).not.toBeInTheDocument();
+      expect(screen.queryByText(/safe/i)).not.toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+      });
+
+      expect(screen.getByText('Churn rank unavailable')).toBeInTheDocument();
+      expect(screen.queryByText('Unable to load churn risk data')).not.toBeInTheDocument();
     });
   });
 

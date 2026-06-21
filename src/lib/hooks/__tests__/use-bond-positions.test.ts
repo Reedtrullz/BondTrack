@@ -182,6 +182,29 @@ describe('useBondPositions', () => {
     expect(lowestUsableBondPosition?.yieldGuardFlags).toContain('lowest_bond');
   });
 
+  it('keeps a provider bond visible when the watched node total bond source row is malformed', async () => {
+    vi.mocked(thornode.getAllNodes).mockResolvedValueOnce([
+      {
+        ...mockNodes[0],
+        total_bond: 'not-a-number',
+      },
+    ] as unknown as thornode.NodeRaw[]);
+    vi.mocked(midgard.getHealth).mockResolvedValueOnce({ lastThorNode: { height: 12345678 } });
+
+    const { result } = renderHook(() => useBondPositions('thor1user123456789abcdef'), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.positions).toHaveLength(1);
+    expect(result.current.positions[0]).toMatchObject({
+      nodeAddress: 'thor1abc123def456',
+      bondAmount: 12537.38138904,
+      status: 'Active',
+    });
+    expect(result.current.positions[0].bondSharePercent).toBeNaN();
+    expect(result.current.positions[0].totalBond).toBeNaN();
+    expect(result.current.positions[0].netAPY).toBeNaN();
+  });
+
   it('handles error state', async () => {
     vi.mocked(thornode.getAllNodes).mockRejectedValueOnce(new Error('API error'));
     vi.mocked(midgard.getHealth).mockResolvedValueOnce({ lastThorNode: { height: 12345678 } });

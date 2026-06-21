@@ -103,4 +103,37 @@ describe('useNodeRankings', () => {
       }),
     ]);
   });
+
+  it('marks churn rank unavailable when every active-node bond row is unusable', () => {
+    mockUseAllNodes.mockReturnValue({
+      data: [
+        node({
+          node_address: 'thor1watchedlowbond',
+          total_bond: 'not-a-number',
+        }),
+        node({
+          node_address: 'thor1zerobond',
+          total_bond: '0',
+        }),
+      ],
+      isLoading: false,
+      error: undefined,
+      mutate: vi.fn(),
+    });
+
+    const { result } = renderHook(() => useNodeRankings([position()]));
+
+    expect(result.current).toEqual([
+      expect.objectContaining({
+        nodeAddress: 'thor1watchedlowbond',
+        rank: 0,
+        totalNodes: 0,
+        percentile: 0,
+        isAtRisk: false,
+        bondRank: 0,
+        excludedActiveNodeCount: 2,
+        rankUnavailableReason: 'unusable_active_bond_source',
+      }),
+    ]);
+  });
 });
