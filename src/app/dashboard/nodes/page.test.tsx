@@ -1,4 +1,5 @@
 import { render, screen, within } from '@/test/utils';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import NodesPage from './page';
 import type { BondPosition } from '@/lib/types/node';
@@ -140,6 +141,27 @@ describe('NodesPage', () => {
     expect(screen.getByText('Non-active')).toBeInTheDocument();
     expect(screen.getAllByText('--').length).toBeGreaterThanOrEqual(7);
     expect(container).not.toHaveTextContent(/NaN|Infinity/);
+  });
+
+  it('toggles the active review-state sort control', async () => {
+    const user = userEvent.setup();
+    mockUseBondPositions.mockReturnValue({
+      positions: [minorSlashPosition, routinePosition],
+      isLoading: false,
+    });
+
+    render(<NodesPage />);
+
+    const headerLabels = screen.getAllByRole('columnheader').map((header) => header.textContent?.trim());
+    expect(headerLabels.slice(0, 3)).toEqual(['Node Address', 'Review State', 'Status']);
+
+    const reviewSortButton = screen.getByRole('button', { name: 'Sort by Review State ascending' });
+    expect(reviewSortButton.closest('th')).toHaveAttribute('aria-sort', 'descending');
+
+    await user.click(reviewSortButton);
+
+    const toggledReviewSortButton = screen.getByRole('button', { name: 'Sort by Review State descending' });
+    expect(toggledReviewSortButton.closest('th')).toHaveAttribute('aria-sort', 'ascending');
   });
 
   it('routes node card BOND prep through source review when THORNode confidence is degraded', () => {

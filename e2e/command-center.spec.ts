@@ -461,7 +461,7 @@ test.describe('Dashboard command center', () => {
   });
 
   test('labels an address with no bonded nodes as no bond rather than healthy', async ({ page }) => {
-    await mockDashboardApis(page, DEFAULT_DASHBOARD_ADDRESS, { withBondPosition: false });
+    await mockDashboardApis(page, DEFAULT_DASHBOARD_ADDRESS, { withBondPosition: false, withLpPosition: false });
     await page.goto(`/dashboard?address=${DEFAULT_DASHBOARD_ADDRESS}`);
 
     const diagnosis = page.getByLabel('Command center diagnosis');
@@ -470,6 +470,13 @@ test.describe('Dashboard command center', () => {
     await expect(diagnosis.getByText('Healthy')).toHaveCount(0);
     await expect(diagnosis.getByText('100/100')).toHaveCount(0);
     await expect(diagnosis.getByText('No bonded positions tracked')).toBeVisible();
+
+    const actionQueue = page.getByLabel('Provider review queue');
+    await expect(actionQueue).toContainText('No provider position loaded');
+    await expect(actionQueue).toContainText(
+      'Heimdall did not load a bonded node or LP position for this address. Confirm the address before treating the queue as clear.'
+    );
+    await expect(actionQueue).not.toContainText('No urgent provider review visible');
   });
 
   test('labels standby bonded nodes as needing attention rather than healthy', async ({ page }) => {

@@ -236,6 +236,7 @@ function buildMockBondActions(count: number, address: string) {
 interface MockDashboardApisOptions {
   extraNodes?: Partial<(typeof mockNodes)[number]>[];
   withBondPosition?: boolean;
+  withLpPosition?: boolean;
   primaryNodeOverrides?: Partial<(typeof mockNodes)[number]>;
   partialBondActions?: boolean;
   cappedBondActions?: boolean;
@@ -262,6 +263,7 @@ export async function mockDashboardApis(
   options: MockDashboardApisOptions = {}
 ) {
   const withBondPosition = options.withBondPosition ?? true;
+  const withLpPosition = options.withLpPosition ?? true;
   const primaryNode = {
     ...mockNodes[0],
     ...options.primaryNodeOverrides,
@@ -430,7 +432,7 @@ export async function mockDashboardApis(
       await delaySupportFeed();
       await route.fulfill({
         json: {
-          pools: [
+          pools: withLpPosition ? [
             {
               pool: 'BTC.BTC',
               runeAddress: address,
@@ -447,7 +449,7 @@ export async function mockDashboardApis(
               dateFirstAdded: '1700000000000000000',
               dateLastAdded: '1700500000000000000',
             },
-          ],
+          ] : [],
         },
       });
       return;

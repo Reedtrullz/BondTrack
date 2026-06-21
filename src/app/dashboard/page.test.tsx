@@ -180,6 +180,31 @@ describe('DashboardPage', () => {
     expect(reviewQueue).not.toHaveTextContent('No provider review needed');
   });
 
+  it('labels a no-position provider queue as not loaded instead of clear', () => {
+    mockUseRunePriceHistory.mockReturnValue({
+      price: 1.5,
+      isStale: false,
+      updatedAt: new Date(),
+      isLoading: false,
+    });
+
+    render(<DashboardPage />);
+
+    const diagnosis = screen.getByLabelText('Command center diagnosis');
+    expect(within(diagnosis).getByText('No Bond', { exact: true })).toBeVisible();
+    expect(diagnosis).toHaveTextContent('No active bond-provider position was found for this address.');
+
+    const reviewQueue = screen.getByRole('region', { name: 'Provider review queue' });
+    expect(reviewQueue).toHaveTextContent('No provider position loaded');
+    expect(reviewQueue).toHaveTextContent(
+      'Heimdall did not load a bonded node or LP position for this address. Confirm the address before treating the queue as clear.'
+    );
+    expect(reviewQueue).not.toHaveTextContent('No urgent provider review visible');
+    expect(reviewQueue).not.toHaveTextContent(
+      'Current source responses do not show a node, source, or LP issue that needs provider review.'
+    );
+  });
+
   it('uses conservative empty-state copy when current source responses show no action items', () => {
     mockUseBondPositions.mockReturnValue({
       positions: [mockBondPosition],

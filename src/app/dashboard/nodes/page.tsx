@@ -94,15 +94,11 @@ export default function NodesPage() {
   const [sortDirection, setSortDirection] = React.useState<NodesSortDirection>('desc');
 
   const handleSort = React.useCallback((field: NodesSortField) => {
-    setSortField((prev) => {
-      if (prev === field) {
-        setSortDirection((dir) => (dir === 'asc' ? 'desc' : 'asc'));
-        return prev;
-      }
-      setSortDirection('asc');
-      return field;
-    });
-  }, []);
+    setSortDirection((currentDirection) => (
+      sortField === field && currentDirection === 'asc' ? 'desc' : 'asc'
+    ));
+    setSortField(field);
+  }, [sortField]);
 
   const nodesModel = React.useMemo(() => buildNodesPageModel({
     positions,
@@ -226,12 +222,12 @@ export default function NodesPage() {
             <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-950/60">
               <tr>
                 <SortHeader label="Node Address" field="nodeAddress" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
+                <SortHeader label="Review State" field="riskScore" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
                 <SortHeader label="Status" field="status" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
                 <SortHeader label="Bond Amount" field="bondAmount" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
                 <SortHeader label="APY" field="netAPY" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
                 <SortHeader label="Slash Points" field="slashPoints" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
                 <SortHeader label="Operator Fee" field="operatorFee" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
-                <SortHeader label="Review State" field="riskScore" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-900/50">
@@ -246,6 +242,24 @@ export default function NodesPage() {
                   >
                     <td className="px-4 py-3 font-mono text-sm text-zinc-900 dark:text-zinc-100">
                       {position.nodeAddress.slice(0, 8)}...{position.nodeAddress.slice(-4)}
+                    </td>
+                    <td
+                      aria-label={`${reviewState.label} ${reviewState.detail}`}
+                      className="px-4 py-3 text-left text-sm text-zinc-900 dark:text-zinc-100"
+                    >
+                      <div className="flex min-w-44 flex-col items-start gap-1">
+                        <span
+                          className={cn(
+                            'inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold',
+                            nodeReviewStateClass[reviewState.severity]
+                          )}
+                        >
+                          {reviewState.label}
+                        </span>
+                        <span className="max-w-52 text-xs leading-4 text-zinc-500 dark:text-zinc-400">
+                          {reviewState.detail}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100">
                       {position.status}
@@ -266,24 +280,6 @@ export default function NodesPage() {
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-sm text-zinc-900 dark:text-zinc-100">
                       {isUsableNodeMetric(position.operatorFee) ? formatBasisPoints(position.operatorFee) : '--'}
-                    </td>
-                    <td
-                      aria-label={`${reviewState.label} ${reviewState.detail}`}
-                      className="px-4 py-3 text-left text-sm text-zinc-900 dark:text-zinc-100"
-                    >
-                      <div className="flex min-w-44 flex-col items-start gap-1">
-                        <span
-                          className={cn(
-                            'inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold',
-                            nodeReviewStateClass[reviewState.severity]
-                          )}
-                        >
-                          {reviewState.label}
-                        </span>
-                        <span className="max-w-52 text-xs leading-4 text-zinc-500 dark:text-zinc-400">
-                          {reviewState.detail}
-                        </span>
-                      </div>
                     </td>
                   </tr>
                 );

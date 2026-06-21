@@ -41,7 +41,7 @@ export default function DashboardPage() {
   const searchParams = useSearchParams();
   const address = searchParams.get('address');
   const { positions, isLoading: positionsLoading } = useBondPositions(address);
-  const { positions: lpPositions } = useLpPositions(address);
+  const { positions: lpPositions, isLoading: lpPositionsLoading } = useLpPositions(address);
   const { data: network } = useNetworkMetrics();
   const {
     price: runePrice,
@@ -111,6 +111,21 @@ export default function DashboardPage() {
   const hasUnbondEligiblePosition = positions.some((position) => canUnbondNode(position).canUnbond);
   const canOfferUnbondEntry = bondEntryAction.kind === 'bond-ready' && hasUnbondEligiblePosition;
   const hasDemoSource = insight.sources.some((source) => source.status === 'demo');
+  const hasNoLoadedProviderExposure =
+    positions.length === 0 &&
+    lpPositions.length === 0 &&
+    !lpPositionsLoading &&
+    !hasDemoSource;
+  const emptyQueueTitle = hasDemoSource
+    ? 'Demo data only'
+    : hasNoLoadedProviderExposure
+      ? 'No provider position loaded'
+      : undefined;
+  const emptyQueueDetail = hasDemoSource
+    ? 'Local fixtures can show the interface, but they cannot prove this provider has no live issues.'
+    : hasNoLoadedProviderExposure
+      ? 'Heimdall did not load a bonded node or LP position for this address. Confirm the address before treating the queue as clear.'
+      : undefined;
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6">
@@ -133,10 +148,8 @@ export default function DashboardPage() {
           <ActionQueue
             items={insight.actions}
             mobileCompact
-            emptyTitle={hasDemoSource ? 'Demo data only' : undefined}
-            emptyDetail={hasDemoSource
-              ? 'Local fixtures can show the interface, but they cannot prove this provider has no live issues.'
-              : undefined}
+            emptyTitle={emptyQueueTitle}
+            emptyDetail={emptyQueueDetail}
           />
           <div className="hidden lg:block">
             <SourceFreshnessPanel sources={insight.sources} />
