@@ -59,6 +59,14 @@ describe('SourceFreshnessPanel', () => {
     }
   });
 
+  it('keeps standard mobile source checks in one compact row before actions', () => {
+    render(<SourceFreshnessPanel sources={sources()} now={NOW} compact />);
+
+    const grid = screen.getByTestId('source-check-grid');
+    expect(grid).toHaveClass('min-[360px]:grid-cols-3');
+    expect(grid).not.toHaveClass('min-[360px]:grid-cols-2');
+  });
+
   it('summarizes stale and degraded source states without relying on color alone', () => {
     render(
       <SourceFreshnessPanel

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { ThemeProvider } from "next-themes";
 import { AlertRuntime } from "@/components/alerts/alert-runtime";
 import { AlertProvider } from "@/lib/hooks/use-alerts";
@@ -33,7 +34,9 @@ export default function RootLayout({
         </a>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AlertProvider>
-            <AlertRuntime />
+            <Suspense fallback={null}>
+              <AlertRuntime />
+            </Suspense>
             {children}
           </AlertProvider>
         </ThemeProvider>

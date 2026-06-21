@@ -72,6 +72,100 @@ test.describe('Dashboard redirects', () => {
     await expect(page).toHaveURL(`/dashboard/transactions?action=unbond&address=${MOCK_ADDRESS}`);
   });
 
+  test('rejects malformed dashboard URL addresses without replacing sticky local state', async ({ page }) => {
+    const apiRequestsBeforeValidLookup: string[] = [];
+
+    await page.route('**/api/**', async (route) => {
+      apiRequestsBeforeValidLookup.push(new URL(route.request().url()).pathname);
+      await route.abort('failed');
+    });
+
+    await page.addInitScript((address) => {
+      localStorage.setItem('BONDTRACK_ADDRESS', address);
+    }, MOCK_ADDRESS);
+
+    await page.goto('/dashboard?address=not-a-thor-address');
+
+    await expect(page).toHaveURL('/dashboard?address=not-a-thor-address');
+    const diagnosis = page.getByLabel('Address required diagnosis');
+    await expect(diagnosis).toContainText('Address rejected');
+    await expect(diagnosis).toContainText('Malformed address ignored before loading dashboard data');
+    await expect(diagnosis).toContainText('did not change the saved dashboard address');
+    await page.waitForTimeout(300);
+    expect(apiRequestsBeforeValidLookup).toEqual([]);
+    await expect.poll(async () => (
+      page.evaluate(() => localStorage.getItem('BONDTRACK_ADDRESS'))
+    )).toBe(MOCK_ADDRESS);
+  });
+
+  test('clears malformed sticky dashboard addresses instead of restoring them', async ({ page }) => {
+    const apiRequestsBeforeValidLookup: string[] = [];
+
+    await page.route('**/api/**', async (route) => {
+      apiRequestsBeforeValidLookup.push(new URL(route.request().url()).pathname);
+      await route.abort('failed');
+    });
+
+    await page.addInitScript(() => {
+      localStorage.setItem('BONDTRACK_ADDRESS', 'not-a-thor-address');
+    });
+
+    await page.goto('/dashboard');
+
+    await expect(page).toHaveURL('/dashboard');
+    const diagnosis = page.getByLabel('Address required diagnosis');
+    await expect(diagnosis).toContainText('Address required');
+    await expect(diagnosis).toContainText('Choose a watched THORChain address to start triage');
+    await page.waitForTimeout(300);
+    expect(apiRequestsBeforeValidLookup).toEqual([]);
+    await expect.poll(async () => (
+      page.evaluate(() => localStorage.getItem('BONDTRACK_ADDRESS'))
+    )).toBeNull();
+  });
+
+  test('keeps malformed-address recovery controls in the first mobile viewport', async ({ page }) => {
+    const apiRequestsBeforeValidLookup: string[] = [];
+
+    await page.route('**/api/**', async (route) => {
+      apiRequestsBeforeValidLookup.push(new URL(route.request().url()).pathname);
+      await route.abort('failed');
+    });
+
+    await page.setViewportSize({ width: 390, height: 740 });
+    await page.goto('/dashboard?address=not-a-thor-address');
+
+    await expect(page.getByRole('heading', { name: 'Malformed address ignored before loading dashboard data' })).toBeVisible();
+    await expect(page.getByLabel('THORChain address or THORName')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Lookup' })).toBeVisible();
+
+    const layout = await page.evaluate(() => {
+      const box = (element: Element | null) => {
+        const rect = element?.getBoundingClientRect();
+        return rect
+          ? { top: rect.top, bottom: rect.bottom, height: rect.height, width: rect.width }
+          : null;
+      };
+
+      return {
+        viewportHeight: window.innerHeight,
+        documentWidth: document.documentElement.scrollWidth,
+        viewportWidth: window.innerWidth,
+        diagnosis: box(document.querySelector('section[aria-label="Address required diagnosis"]')),
+        input: box(document.querySelector('#address-input')),
+        lookup: box(document.querySelector('button[type="submit"]')),
+      };
+    });
+
+    expect(layout.diagnosis).not.toBeNull();
+    expect(layout.input).not.toBeNull();
+    expect(layout.lookup).not.toBeNull();
+    expect(layout.input!.top).toBeGreaterThan(layout.diagnosis!.top);
+    expect(layout.lookup!.bottom).toBeLessThanOrEqual(layout.viewportHeight);
+    expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
+    await page.waitForTimeout(300);
+    expect(apiRequestsBeforeValidLookup).toEqual([]);
+  });
+
   test('adds direct dashboard address URLs to recent addresses', async ({ page }) => {
     await mockDashboardApis(page, MOCK_ADDRESS);
 

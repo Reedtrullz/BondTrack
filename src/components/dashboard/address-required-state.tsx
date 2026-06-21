@@ -52,20 +52,22 @@ export function AddressRequiredState({
                   : 'Heimdall needs a bond provider, node operator, or LP address before it can rank node risk, rewards, LP exposure, and address-scoped source checks.'}
               </p>
             </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
-              <Link
-                href="/dashboard/transactions?action=bond"
-                className="inline-flex h-10 items-center justify-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100 dark:border-amber-800 dark:bg-zinc-950 dark:text-amber-100 dark:hover:bg-amber-950"
-              >
-                Prepare transaction memo
-              </Link>
-              <Link
-                href="/dashboard/changelogs"
-                className="inline-flex h-10 items-center justify-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100 dark:border-amber-800 dark:bg-zinc-950 dark:text-amber-100 dark:hover:bg-amber-950"
-              >
-                Review changelogs
-              </Link>
-            </div>
+            {!invalidUrlAddress ? (
+              <div className="flex shrink-0 flex-wrap gap-2">
+                <Link
+                  href="/dashboard/transactions?action=bond"
+                  className="inline-flex h-10 items-center justify-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100 dark:border-amber-800 dark:bg-zinc-950 dark:text-amber-100 dark:hover:bg-amber-950"
+                >
+                  Prepare transaction memo
+                </Link>
+                <Link
+                  href="/dashboard/changelogs"
+                  className="inline-flex h-10 items-center justify-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100 dark:border-amber-800 dark:bg-zinc-950 dark:text-amber-100 dark:hover:bg-amber-950"
+                >
+                  Review changelogs
+                </Link>
+              </div>
+            ) : null}
           </div>
         </section>
 

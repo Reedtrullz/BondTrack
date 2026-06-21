@@ -1,4 +1,4 @@
-import { isValidTHORChainAddress } from '@/lib/utils/address-validation';
+import { isValidTHORChainAddress, validateTHORChainAddress } from '@/lib/utils/address-validation';
 
 export const STORAGE_KEYS = {
   dashboardAddress: 'BONDTRACK_ADDRESS',
@@ -138,8 +138,14 @@ export function removeLocalStorageValue(key: string): void {
 }
 
 export function writeDashboardAddress(address: string): void {
-  writeLocalStorageValue(STORAGE_KEYS.dashboardAddress, address);
-  dispatchDashboardAddressChanged(address);
+  const result = validateTHORChainAddress(address);
+  if (!result.valid || !result.normalized) {
+    removeDashboardAddress();
+    return;
+  }
+
+  writeLocalStorageValue(STORAGE_KEYS.dashboardAddress, result.normalized);
+  dispatchDashboardAddressChanged(result.normalized);
 }
 
 export function removeDashboardAddress(): void {

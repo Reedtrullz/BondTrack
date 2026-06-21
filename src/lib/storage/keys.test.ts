@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   clearLegacyDashboardAddressKeys,
+  DASHBOARD_ADDRESS_CHANGED_EVENT,
   getEntryPriceStorageKey,
   getInitialBondStorageKey,
   getThorNameReverseLookupStorageKey,
@@ -113,6 +114,26 @@ describe('storage key registry and migrations', () => {
 
     expect(local.getItem('heimdall-last-address')).toBeNull();
     expect(session.getItem('dashboard-address')).toBeNull();
+  });
+
+  it('validates and trims direct dashboard address writes before persisting sticky state', () => {
+    const observedEvents: Array<string | null> = [];
+    const listener = (event: Event) => {
+      observedEvents.push((event as CustomEvent<{ address: string | null }>).detail.address);
+    };
+    window.addEventListener(DASHBOARD_ADDRESS_CHANGED_EVENT, listener);
+
+    try {
+      writeDashboardAddress(` ${validCanonicalAddress} `);
+      expect(localStorage.getItem(STORAGE_KEYS.dashboardAddress)).toBe(validCanonicalAddress);
+
+      writeDashboardAddress('not-a-thor-address');
+      expect(localStorage.getItem(STORAGE_KEYS.dashboardAddress)).toBeNull();
+      expect(observedEvents).toEqual([validCanonicalAddress, null]);
+    } finally {
+      window.removeEventListener(DASHBOARD_ADDRESS_CHANGED_EVENT, listener);
+      localStorage.removeItem(STORAGE_KEYS.dashboardAddress);
+    }
   });
 
   it('does not throw when browser localStorage is unavailable', () => {

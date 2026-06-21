@@ -13,7 +13,18 @@ vi.mock('@/lib/hooks/use-bond-position-alerts', () => ({
   useBondPositionAlerts: vi.fn(),
 }));
 
+const navigation = vi.hoisted(() => ({
+  pathname: '/',
+  searchParams: new URLSearchParams(),
+}));
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => navigation.pathname,
+  useSearchParams: () => navigation.searchParams,
+}));
+
 const VALID_ADDRESS = 'thor1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4yeyjz';
+const OTHER_VALID_ADDRESS = 'thor12mpnw4stg9fw8yngs3rpzzc6zdprepev3e0346';
 
 function mockAlertContext() {
   return {
@@ -41,6 +52,8 @@ function mockAlertContext() {
 describe('AlertRuntime', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    navigation.pathname = '/';
+    navigation.searchParams = new URLSearchParams();
     vi.mocked(useAlertsContext).mockReturnValue(mockAlertContext() as ReturnType<typeof useAlertsContext>);
   });
 
@@ -103,5 +116,47 @@ describe('AlertRuntime', () => {
     });
 
     expect(useBondPositionAlerts).toHaveBeenLastCalledWith(VALID_ADDRESS, expect.any(Object));
+  });
+
+  it('suppresses sticky address alert polling while a dashboard URL address is malformed', async () => {
+    localStorage.setItem(STORAGE_KEYS.dashboardAddress, VALID_ADDRESS);
+    navigation.pathname = '/dashboard';
+    navigation.searchParams = new URLSearchParams('address=not-a-thor-address');
+
+    render(<AlertRuntime />);
+
+    await waitFor(() => {
+      expect(useBondPositionAlerts).toHaveBeenLastCalledWith(null, expect.any(Object));
+    });
+
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: STORAGE_KEYS.dashboardAddress,
+        newValue: VALID_ADDRESS,
+      }));
+    });
+
+    expect(useBondPositionAlerts).toHaveBeenLastCalledWith(null, expect.any(Object));
+  });
+
+  it('uses a valid dashboard URL address before any older sticky address for alert polling', async () => {
+    localStorage.setItem(STORAGE_KEYS.dashboardAddress, VALID_ADDRESS);
+    navigation.pathname = '/dashboard/risk';
+    navigation.searchParams = new URLSearchParams(`address=${OTHER_VALID_ADDRESS}`);
+
+    render(<AlertRuntime />);
+
+    await waitFor(() => {
+      expect(useBondPositionAlerts).toHaveBeenLastCalledWith(OTHER_VALID_ADDRESS, expect.any(Object));
+    });
+
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: STORAGE_KEYS.dashboardAddress,
+        newValue: VALID_ADDRESS,
+      }));
+    });
+
+    expect(useBondPositionAlerts).toHaveBeenLastCalledWith(OTHER_VALID_ADDRESS, expect.any(Object));
   });
 });

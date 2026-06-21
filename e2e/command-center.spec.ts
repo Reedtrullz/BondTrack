@@ -1362,6 +1362,7 @@ test.describe('Dashboard command center', () => {
     expect(layout.sourceSummary!.top).toBeLessThan(layout.viewportHeight);
     expect(layout.actions!.top).toBeGreaterThan(layout.sourceSummary!.top);
     expect(layout.actions!.top).toBeLessThan(layout.viewportHeight);
+    expect(layout.firstAction!.bottom).toBeLessThanOrEqual(layout.viewportHeight);
     expect(layout.firstAction!.height).toBeLessThan(130);
     expect(layout.secondAction!.top).toBeGreaterThan(layout.firstAction!.top);
     expect(layout.actions!.top).toBeLessThan(layout.metrics!.top);

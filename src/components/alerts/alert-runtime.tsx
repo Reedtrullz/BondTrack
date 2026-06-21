@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useAlertsContext } from '@/lib/hooks/use-alerts';
 import { useBondPositionAlerts } from '@/lib/hooks/use-bond-position-alerts';
 import {
@@ -9,6 +10,7 @@ import {
   readDashboardAddress,
   STORAGE_KEYS,
 } from '@/lib/storage/keys';
+import { validateTHORChainAddress } from '@/lib/utils/address-validation';
 
 function readWatchedAddress(): string | null {
   if (typeof window === 'undefined') {
@@ -29,6 +31,17 @@ function isDashboardAddressStorageKey(key: string | null): boolean {
 }
 
 export function AlertRuntime() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const urlAddress = searchParams.get('address');
+  const dashboardRouteAddress = useMemo((): string | null | undefined => {
+    if (!pathname?.startsWith('/dashboard') || !urlAddress) {
+      return undefined;
+    }
+
+    const result = validateTHORChainAddress(urlAddress);
+    return result.valid ? result.normalized ?? urlAddress.trim().toLowerCase() : null;
+  }, [pathname, urlAddress]);
   const [watchedAddress, setWatchedAddress] = useState<string | null>(null);
   const {
     triggerAlert,
@@ -38,10 +51,14 @@ export function AlertRuntime() {
   } = useAlertsContext();
 
   useEffect(() => {
-    setWatchedAddress(readWatchedAddress());
+    const getActiveWatchedAddress = () => (
+      dashboardRouteAddress !== undefined ? dashboardRouteAddress : readWatchedAddress()
+    );
+
+    setWatchedAddress(getActiveWatchedAddress());
 
     const syncWatchedAddress = () => {
-      setWatchedAddress(readWatchedAddress());
+      setWatchedAddress(getActiveWatchedAddress());
     };
 
     const handleStorage = (event: StorageEvent) => {
@@ -59,7 +76,7 @@ export function AlertRuntime() {
       window.removeEventListener(DASHBOARD_ADDRESS_CHANGED_EVENT, syncWatchedAddress);
       window.removeEventListener('focus', syncWatchedAddress);
     };
-  }, []);
+  }, [dashboardRouteAddress]);
 
   const alertChecks = useMemo(() => ({
     triggerAlert,

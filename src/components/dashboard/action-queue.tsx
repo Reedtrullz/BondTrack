@@ -78,11 +78,11 @@ export function ActionQueue({
     <section
       className={cn(
         'rounded-2xl border border-zinc-200 bg-white/90 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80',
-        mobileCompact ? 'p-2.5 sm:p-5' : 'p-5'
+        mobileCompact ? 'p-2 sm:p-5' : 'p-5'
       )}
       aria-label={title}
     >
-      <div className={cn('flex items-start justify-between gap-3', mobileCompact ? 'mb-1.5 sm:mb-4' : 'mb-4')}>
+      <div className={cn('flex items-start justify-between gap-3', mobileCompact ? 'mb-1 sm:mb-4' : 'mb-4')}>
         <div>
           <h2 className="text-lg font-bold text-zinc-950 dark:text-zinc-50">{title}</h2>
           <p className={cn('text-sm text-zinc-500 dark:text-zinc-400', mobileCompact ? 'sr-only sm:not-sr-only' : '')}>
@@ -103,11 +103,11 @@ export function ActionQueue({
           <p className={cn('mt-1 text-sm', emptyDetailClass)}>{emptyDetail}</p>
         </div>
       ) : (
-        <div className={cn(mobileCompact ? 'space-y-3 sm:space-y-4' : 'space-y-4')}>
+        <div className={cn(mobileCompact ? 'space-y-2.5 sm:space-y-4' : 'space-y-4')}>
           {groupItems(items).map(([severity, entries]) => {
             const config = severityConfig[severity];
             return (
-              <div key={severity} className={cn(mobileCompact ? 'space-y-1.5 sm:space-y-2' : 'space-y-2')}>
+              <div key={severity} className={cn(mobileCompact ? 'space-y-1 sm:space-y-2' : 'space-y-2')}>
                 <div className="flex items-center gap-2 text-xs font-bold uppercase text-zinc-500 dark:text-zinc-400">
                   {config.icon}
                   {config.label}
@@ -120,7 +120,7 @@ export function ActionQueue({
                       key={item.id}
                       className={cn(
                         'rounded-xl border',
-                        mobileCompact ? 'p-1.5 sm:p-3' : 'p-3',
+                        mobileCompact ? 'p-1 sm:p-3' : 'p-3',
                         compact ? 'space-y-2' : mobileCompact ? 'space-y-2 sm:space-y-3' : 'space-y-3',
                         config.row
                       )}
