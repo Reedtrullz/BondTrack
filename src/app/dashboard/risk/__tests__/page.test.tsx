@@ -383,6 +383,43 @@ describe('RiskPage', () => {
     expect(focusedRow).toHaveTextContent('Focused');
   });
 
+  it('keeps clean focused alert drilldowns in neutral review instead of green ready state', () => {
+    mocks.searchParams.current = new URLSearchParams(
+      `address=thor1mocknode000000000000000000000000000000&node=${mockPosition.nodeAddress}`
+    );
+    mockUseBondPositions.mockReturnValue({
+      positions: [{
+        ...mockPosition,
+        slashPoints: 0,
+        isJailed: false,
+        yieldGuardFlags: [],
+      }],
+      isLoading: false,
+      error: undefined,
+      mutate: vi.fn(),
+    });
+
+    render(<RiskPage />);
+
+    const focusedContext = screen.getByLabelText('Focused node risk context');
+    const primaryAction = within(focusedContext).getByTestId('focused-bonded-primary-action');
+    const primaryButton = within(focusedContext).getByTestId('focused-bonded-primary-button');
+    const inlineEvidence = within(focusedContext).getByTestId('focused-bonded-inline-evidence');
+    const nodeContextLabel = within(focusedContext).getByText('Node context');
+
+    expect(primaryAction).toHaveTextContent('Review node evidence');
+    expect(primaryAction).toHaveTextContent('No current slash, jail, or blocking churn flag is visible');
+    expect(primaryAction).not.toHaveTextContent('No immediate bonded-node action is required');
+    expect(primaryAction).not.toHaveClass('border-emerald-200');
+    expect(primaryAction).toHaveClass('border-sky-200');
+    expect(primaryButton).not.toHaveClass('bg-emerald-600');
+    expect(primaryButton).toHaveClass('bg-sky-600');
+    expect(inlineEvidence).toHaveTextContent('no current blocking risk flags visible');
+    expect(inlineEvidence).not.toHaveTextContent('no risk flags');
+    expect(nodeContextLabel).toHaveClass('text-sky-700');
+    expect(nodeContextLabel).not.toHaveClass('text-emerald-700');
+  });
+
   it('opens detailed risk panels from the focused bonded node action', async () => {
     const user = userEvent.setup();
     mocks.searchParams.current = new URLSearchParams(

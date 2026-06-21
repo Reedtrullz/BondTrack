@@ -205,6 +205,29 @@ test.describe('Risk dashboard empty queue', () => {
     await expect(riskQueue).not.toContainText('Risk queue is clear');
     await expect(riskQueue).not.toContainText('No jail, slash exposure, churn-risk, or source-check issue is visible now.');
   });
+
+  test('keeps clean focused alert drilldowns neutral instead of green-ready', async ({ page }) => {
+    await page.goto(`/dashboard/risk?address=${MOCK_ADDRESS}&node=thor1noderisk123456789abcdef`);
+
+    const focusedContext = page.getByLabel('Focused node risk context');
+    const primaryAction = focusedContext.getByTestId('focused-bonded-primary-action');
+    const primaryButton = focusedContext.getByTestId('focused-bonded-primary-button');
+    const inlineEvidence = focusedContext.getByTestId('focused-bonded-inline-evidence');
+    const nodeContext = focusedContext.getByText('Node context');
+
+    await expect(focusedContext).toBeVisible();
+    await expect(primaryAction).toContainText('Review node evidence');
+    await expect(primaryAction).toContainText('No current slash, jail, or blocking churn flag is visible');
+    await expect(primaryAction).not.toContainText('No immediate bonded-node action is required');
+    await expect(primaryAction).toHaveClass(/border-sky-200/);
+    await expect(primaryAction).not.toHaveClass(/border-emerald-200/);
+    await expect(primaryButton).toHaveClass(/bg-sky-600/);
+    await expect(primaryButton).not.toHaveClass(/bg-emerald-600/);
+    await expect(inlineEvidence).toContainText('flags Oldest');
+    await expect(inlineEvidence).not.toContainText('no risk flags');
+    await expect(nodeContext).toHaveClass(/text-sky-700/);
+    await expect(nodeContext).not.toHaveClass(/text-emerald-700/);
+  });
 });
 
 test.describe('Risk dashboard network security details', () => {

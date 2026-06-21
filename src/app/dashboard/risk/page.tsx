@@ -237,9 +237,9 @@ function getFocusedBondedRiskDecision(position: BondPosition, severity: number) 
   }
 
   return {
-    detail: 'No immediate bonded-node action is required. Review evidence if this alert came from an older queue item.',
+    detail: 'No current slash, jail, or blocking churn flag is visible. Review the listed evidence and source freshness before treating this alert as stale.',
     label: 'Review node evidence',
-    tone: 'ready' as const,
+    tone: 'review' as const,
   };
 }
 
@@ -754,7 +754,7 @@ function FocusedNodeContext({
     ? 'text-red-700 dark:text-red-300'
     : focusedPosition.slashPoints > 0
       ? 'text-amber-700 dark:text-amber-300'
-      : 'text-emerald-700 dark:text-emerald-300';
+      : 'text-sky-700 dark:text-sky-300';
   const flags = focusedPosition.yieldGuardFlags ?? [];
   const flagLabels = flags.map((flag) => YIELD_GUARD_CONFIG[flag].label);
   const decision = getFocusedBondedRiskDecision(focusedPosition, severity);
@@ -762,12 +762,12 @@ function FocusedNodeContext({
     ? 'border-red-200 bg-red-50 text-red-950 dark:border-red-900/60 dark:bg-red-950/25 dark:text-red-100'
     : decision.tone === 'warning'
       ? 'border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100'
-      : 'border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100';
+      : 'border-sky-200 bg-sky-50 text-sky-950 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-100';
   const primaryButtonClass = decision.tone === 'critical'
     ? 'border-red-300 bg-white text-red-800 hover:bg-red-50 dark:border-red-800 dark:bg-zinc-950 dark:text-red-100 dark:hover:bg-red-950'
     : decision.tone === 'warning'
       ? 'border-amber-300 bg-white text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-zinc-950 dark:text-amber-100 dark:hover:bg-amber-950'
-      : 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 dark:border-emerald-500 dark:bg-emerald-500 dark:text-zinc-950 dark:hover:bg-emerald-400';
+      : 'border-sky-600 bg-sky-600 text-white hover:bg-sky-700 dark:border-sky-500 dark:bg-sky-500 dark:text-zinc-950 dark:hover:bg-sky-400';
   const metricSummary = [
     focusedPosition.status,
     `Slash ${formatRiskNumber(focusedPosition.slashPoints)}`,
@@ -777,7 +777,7 @@ function FocusedNodeContext({
     `status ${focusedPosition.status}`,
     focusedPosition.isJailed ? 'jailed' : null,
     `slash ${formatRiskNumber(focusedPosition.slashPoints)}`,
-    flagLabels.length > 0 ? `flags ${flagLabels.join(', ')}` : 'no risk flags',
+    flagLabels.length > 0 ? `flags ${flagLabels.join(', ')}` : 'no current blocking risk flags visible',
   ].filter(Boolean).join(' · ');
 
   return (
