@@ -62,8 +62,65 @@ describe('NetworkSecurityMetrics', () => {
     render(<NetworkSecurityMetrics />);
 
     expect(screen.getByText('Incentive Pendulum')).toBeInTheDocument();
-    expect(screen.getByText('Effective Security')).toBeInTheDocument();
+    expect(screen.getByText('Effective Security Sample')).toBeInTheDocument();
     expect(screen.queryByText(/NaN|Infinity/)).not.toBeInTheDocument();
+  });
+
+  it('discloses active nodes excluded from effective security because bond source data is unusable', () => {
+    render(<NetworkSecurityMetrics />);
+
+    expect(
+      screen.getByText('1 active node had unusable bond source data and was excluded from effective security.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Effective security sample = bottom 2\/3 active nodes with usable bond data/)
+    ).toBeInTheDocument();
+  });
+
+  it('withholds effective security when every active-node bond row is unusable', () => {
+    mockUseAllNodes.mockReturnValue({
+      data: [
+        {
+          node_address: 'thor1malformed',
+          status: 'Active',
+          total_bond: 'not-a-number',
+        },
+        {
+          node_address: 'thor1zero',
+          status: 'Active',
+          total_bond: '0',
+        },
+      ],
+    });
+
+    render(<NetworkSecurityMetrics />);
+
+    expect(screen.getByText('Effective Security Sample')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'THORNode returned active nodes, but every active-node total-bond row was unusable. Heimdall is not calculating effective security from this sample.'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('2 active nodes had unusable bond source data and were excluded from effective security.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('0.00 RUNE')).not.toBeInTheDocument();
+  });
+
+  it('calculates effective security from the bottom two-thirds of usable active-node bonds', () => {
+    mockUseAllNodes.mockReturnValue({
+      data: [600, 500, 400, 300, 200, 100].map((bond) => ({
+        node_address: `thor1${bond}`,
+        status: 'Active',
+        total_bond: String(bond * 100_000_000),
+      })),
+    });
+
+    render(<NetworkSecurityMetrics />);
+
+    const effectiveSecurityRow = screen.getByText('Effective Security').closest('div')?.parentElement;
+    expect(effectiveSecurityRow).toHaveTextContent('1.0K RUNE');
+    expect(effectiveSecurityRow).not.toHaveTextContent('300.00 RUNE');
   });
 
   it('frames bond-to-pool status as incentive context instead of a safety verdict', () => {

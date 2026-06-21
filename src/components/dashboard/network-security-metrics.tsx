@@ -3,7 +3,7 @@
 import { useNetworkMetrics } from '@/lib/hooks/use-network-metrics';
 import { useNetworkConstants } from '@/lib/hooks/use-network-constants';
 import { useAllNodes } from '@/lib/hooks/use-all-nodes';
-import { runeToNumber, formatCompactNumber } from '@/lib/utils/formatters';
+import { runeToNumber, formatCompactNumber, rawRuneToPositiveDisplayNumber } from '@/lib/utils/formatters';
 import type { BondPosition } from '@/lib/types/node';
 import { Shield, Lock, Activity, TrendingUp, TrendingDown, Minus, Wallet, Users, Zap, Coins, Clock } from 'lucide-react';
 import { getIncentivePendulumModel, type IncentivePendulumLevel } from '@/lib/dashboard/risk-context';
@@ -42,19 +42,6 @@ function getPendulumIcon(level: IncentivePendulumLevel): React.ReactNode {
   }
 }
 
-function parseRawRuneBond(raw: string | number | undefined): bigint {
-  try {
-    if (typeof raw === 'number') {
-      return Number.isFinite(raw) && raw > 0 ? BigInt(Math.round(raw)) : 0n;
-    }
-
-    if (!raw) return 0n;
-    return BigInt(raw);
-  } catch {
-    return 0n;
-  }
-}
-
 export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition[] }) {
   const { data: network, error, isLoading: networkLoading } = useNetworkMetrics();
   const { isLoading: constantsLoading } = useNetworkConstants();
@@ -83,17 +70,32 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
   const userTotalBond = positions?.reduce((sum, pos) => sum + pos.bondAmount, 0) ?? 0;
   const userSharePercent = totalBonds > 0 ? (userTotalBond / totalBonds) * 100 : 0;
 
-  // Get effective security bond (bottom 2/3 of active nodes)
+  // Get effective security bond (bottom 2/3 of active nodes with usable bond source rows).
   const activeNodes = nodes?.filter(n => n.status === 'Active') ?? [];
-  const sortedByBond = [...activeNodes].sort((a, b) => {
-    const bondA = parseRawRuneBond(a.total_bond);
-    const bondB = parseRawRuneBond(b.total_bond);
-    return bondA > bondB ? -1 : bondA < bondB ? 1 : 0;
+  const activeBondRows = activeNodes.flatMap((node) => {
+    const totalBond = rawRuneToPositiveDisplayNumber(node.total_bond);
+    return totalBond === null ? [] : [{ totalBond }];
   });
-  const effectiveCount = Math.floor(sortedByBond.length * 0.667);
-  const effectiveSecurityBond = sortedByBond.slice(effectiveCount).reduce((sum, n) => {
-    return sum + runeToNumber(n.total_bond);
-  }, 0);
+  const excludedEffectiveSecurityNodeCount = activeNodes.length - activeBondRows.length;
+  const excludedEffectiveSecurityNodeNoun = excludedEffectiveSecurityNodeCount === 1 ? 'node' : 'nodes';
+  const excludedEffectiveSecurityVerb = excludedEffectiveSecurityNodeCount === 1 ? 'was' : 'were';
+  const sortedByBond = [...activeBondRows].sort((a, b) => b.totalBond - a.totalBond);
+  const topThirdCount = Math.floor(sortedByBond.length / 3);
+  const effectiveSecurityRows = sortedByBond.slice(topThirdCount);
+  const effectiveSecurityBond = effectiveSecurityRows.length > 0
+    ? effectiveSecurityRows.reduce((sum, row) => sum + row.totalBond, 0)
+    : null;
+  const effectiveSecurityLabel = excludedEffectiveSecurityNodeCount > 0
+    ? 'Effective Security Sample'
+    : 'Effective Security';
+  const effectiveSecurityValue = effectiveSecurityBond === null
+    ? '--'
+    : `${formatCompactNumber(effectiveSecurityBond)} RUNE`;
+  const effectiveSecurityExplanation = effectiveSecurityBond === null
+    ? 'Effective security unavailable until active-node bond source rows are usable. Higher increases network-level bond coverage, not a provider safety verdict.'
+    : excludedEffectiveSecurityNodeCount > 0
+      ? 'Effective security sample = bottom 2/3 active nodes with usable bond data. Higher increases network-level bond coverage, not a provider safety verdict.'
+      : 'Effective security = bottom 2/3 active nodes. Higher increases network-level bond coverage, not a provider safety verdict.';
 
   const nodeSharePercent = incentivePendulum.nodeShare;
 
@@ -171,15 +173,25 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
         </div>
 
         {/* Effective Security */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between" role="group" aria-label={effectiveSecurityLabel}>
           <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
             <Users className="w-4 h-4" />
-            <span>Effective Security</span>
+            <span>{effectiveSecurityLabel}</span>
           </div>
           <span className="font-medium text-zinc-900 dark:text-zinc-100">
-            {formatCompactNumber(effectiveSecurityBond)} RUNE
+            {effectiveSecurityValue}
           </span>
         </div>
+        {activeNodes.length > 0 && activeBondRows.length === 0 && (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+            THORNode returned active nodes, but every active-node total-bond row was unusable. Heimdall is not calculating effective security from this sample.
+          </p>
+        )}
+        {excludedEffectiveSecurityNodeCount > 0 && (
+          <p className="text-xs text-amber-700 dark:text-amber-300">
+            {excludedEffectiveSecurityNodeCount} active {excludedEffectiveSecurityNodeNoun} had unusable bond source data and {excludedEffectiveSecurityVerb} excluded from effective security.
+          </p>
+        )}
 
         {/* Total Bonds */}
         <div className="flex items-center justify-between">
@@ -269,7 +281,7 @@ export function NetworkSecurityMetrics({ positions }: { positions?: BondPosition
       </div>
 
       <div className="mt-3 text-xs text-zinc-500">
-        Effective security = bottom 2/3 active nodes. Higher increases network-level bond coverage, not a provider safety verdict.
+        {effectiveSecurityExplanation}
       </div>
     </div>
   );

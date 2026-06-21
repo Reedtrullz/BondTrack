@@ -207,6 +207,40 @@ test.describe('Risk dashboard empty queue', () => {
   });
 });
 
+test.describe('Risk dashboard network security details', () => {
+  test('discloses unusable active-node bond rows in effective security', async ({ page }) => {
+    await setupMocks(page, {
+      nodes: [
+        mockCleanProviderNode,
+        {
+          ...mockLowerBondReferenceNode,
+          node_address: 'thor1malformedbondreference123456789',
+          total_bond: 'not-a-number',
+        },
+      ],
+    });
+    await page.goto(`/dashboard/risk?address=${MOCK_ADDRESS}&node=thor1noderisk123456789abcdef`);
+
+    await page
+      .getByLabel('Focused node risk context')
+      .getByTestId('focused-bonded-primary-button')
+      .click();
+
+    const riskDetails = page.locator('#risk-details');
+    await expect(riskDetails.getByRole('heading', { name: 'Incentive Pendulum' })).toBeVisible();
+    await expect(riskDetails).toContainText('Effective Security Sample');
+    await expect(riskDetails).toContainText(
+      '1 active node had unusable bond source data and was excluded from effective security.'
+    );
+    await expect(riskDetails).toContainText(
+      'Effective security sample = bottom 2/3 active nodes with usable bond data.'
+    );
+    const effectiveSecurityMetric = riskDetails.getByRole('group', { name: 'Effective Security Sample' });
+    await expect(effectiveSecurityMetric).toContainText('25.0K RUNE');
+    await expect(effectiveSecurityMetric).not.toContainText('0.00 RUNE');
+  });
+});
+
 test.describe('Risk dashboard', () => {
   test.beforeEach(async ({ page }) => {
     await setupMocks(page);
