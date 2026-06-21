@@ -39,6 +39,8 @@ export interface TransactionPreflightModel {
 }
 
 export interface TransactionSourceInput {
+  action?: TransactionAction;
+  dashboardAddress?: string | null;
   positionsError: boolean;
   positionsLoading: boolean;
   thornodeStatus: ApiHealthStatus;
@@ -155,16 +157,22 @@ function getPreflightPrimaryAction(source: TransactionSourceSafety): Transaction
 }
 
 export function getTransactionSourceSafety({
+  action,
+  dashboardAddress,
   positionsError,
   positionsLoading,
   thornodeStatus,
 }: TransactionSourceInput): TransactionSourceSafety {
+  const isManualBondWithoutDashboardAddress = action === 'bond' && !dashboardAddress;
+
   if (positionsLoading) {
     return {
       canCopyBondMemo: false,
       canCopyUnbondMemo: false,
       canPreview: false,
-      detail: 'Waiting for THORNode positions before copying, previewing, or broadcasting a transaction.',
+      detail: isManualBondWithoutDashboardAddress
+        ? 'Waiting for THORNode source checks before copying, previewing, or broadcasting a manual BOND memo.'
+        : 'Waiting for THORNode positions before copying, previewing, or broadcasting a transaction.',
       itemSeverity: 'info',
       status: 'Checking source',
       value: 'THORNode pending',
@@ -176,7 +184,9 @@ export function getTransactionSourceSafety({
       canCopyBondMemo: false,
       canCopyUnbondMemo: false,
       canPreview: false,
-      detail: 'THORNode positions failed to load. Do not copy, preview, or broadcast until THORNode positions respond again.',
+      detail: isManualBondWithoutDashboardAddress
+        ? 'THORNode source checks failed. Do not copy, preview, or broadcast a manual BOND memo until THORNode responds again.'
+        : 'THORNode positions failed to load. Do not copy, preview, or broadcast until THORNode positions respond again.',
       itemSeverity: 'warning',
       status: 'Eligibility unavailable',
       value: 'THORNode failed',
@@ -188,7 +198,9 @@ export function getTransactionSourceSafety({
       canCopyBondMemo: false,
       canCopyUnbondMemo: false,
       canPreview: false,
-      detail: 'THORNode source check is degraded. Do not copy, preview, or broadcast until THORNode positions respond again.',
+      detail: isManualBondWithoutDashboardAddress
+        ? 'THORNode source check is degraded. Do not copy, preview, or broadcast a manual BOND memo until THORNode responds again.'
+        : 'THORNode source check is degraded. Do not copy, preview, or broadcast until THORNode positions respond again.',
       itemSeverity: 'warning',
       status: 'Source check degraded',
       value: `THORNode ${thornodeStatus}`,
@@ -200,7 +212,9 @@ export function getTransactionSourceSafety({
       canCopyBondMemo: false,
       canCopyUnbondMemo: false,
       canPreview: false,
-      detail: 'THORNode source check has not completed yet. Wait for current THORNode positions before copying, preview, or broadcast.',
+      detail: isManualBondWithoutDashboardAddress
+        ? 'THORNode source check has not completed yet. Wait for THORNode source checks before copying, previewing, or broadcasting a manual BOND memo.'
+        : 'THORNode source check has not completed yet. Wait for current THORNode positions before copying, preview, or broadcast.',
       itemSeverity: 'info',
       status: 'Source check pending',
       value: 'THORNode pending',
@@ -223,7 +237,9 @@ export function getTransactionSourceSafety({
     canCopyBondMemo: true,
     canCopyUnbondMemo: true,
     canPreview: true,
-    detail: 'THORNode positions responded for node status and unbond eligibility. Source availability is not transaction approval; wallet still presents the final payload and fee.',
+    detail: isManualBondWithoutDashboardAddress
+      ? 'THORNode source checks are responding for manual BOND memo review. Source availability is not transaction approval; wallet still presents the final payload and fee.'
+      : 'THORNode positions responded for node status and unbond eligibility. Source availability is not transaction approval; wallet still presents the final payload and fee.',
     itemSeverity: 'checked',
     status: 'Source responding',
     value: 'THORNode responding',
@@ -240,7 +256,12 @@ export function buildTransactionPreflightModel({
   const action = parseTransactionAction(actionParam);
   const eligibleUnbondPositions = positions.filter((position) => canUnbondNode(position).canUnbond);
   const eligibleUnbondCount = eligibleUnbondPositions.length;
-  const source = getTransactionSourceSafety(sourceInput);
+  const isManualBondWithoutDashboardAddress = action === 'bond' && !dashboardAddress;
+  const source = getTransactionSourceSafety({
+    ...sourceInput,
+    action,
+    dashboardAddress,
+  });
   const severity = getPreflightSeverity({
     action,
     eligibleUnbondCount,
@@ -297,7 +318,9 @@ export function buildTransactionPreflightModel({
           ? `Switch to ${wallet.networkMismatch.expected} before broadcast.`
           : wallet.isConnected
             ? `${wallet.walletType?.toUpperCase() ?? 'Wallet'} connected; wallet must present final payload before approval.`
-            : 'Required for preview and broadcast; memo copy stays local once THORNode positions respond.',
+            : isManualBondWithoutDashboardAddress
+              ? 'Required for preview and broadcast; memo copy stays local once THORNode source checks respond.'
+              : 'Required for preview and broadcast; memo copy stays local once THORNode positions respond.',
         severity: wallet.isNetworkMismatch ? 'critical' : wallet.isConnected ? 'checked' : 'info',
       },
       {
@@ -322,7 +345,9 @@ export function buildTransactionPreflightModel({
         detail: action === 'bond'
           ? source.canCopyBondMemo
             ? 'Confirm the node address before copying or signing.'
-            : 'Current THORNode positions must respond before Heimdall allows BOND memo copy, preview, or broadcast.'
+            : isManualBondWithoutDashboardAddress
+              ? 'THORNode source checks must respond before Heimdall allows manual BOND memo copy, preview, or broadcast.'
+              : 'Current THORNode positions must respond before Heimdall allows BOND memo copy, preview, or broadcast.'
           : !source.canCopyUnbondMemo
             ? 'THORNode positions must respond before Heimdall can check standby eligibility.'
             : eligibleUnbondCount > 0

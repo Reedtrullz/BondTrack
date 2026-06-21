@@ -261,6 +261,9 @@ test.describe('Transaction Composer', () => {
     await expect(preflight).toContainText('Dashboard address');
     await expect(preflight).toContainText('Not selected');
     await expect(preflight).toContainText('No watched address is selected for context.');
+    await expect(preflight).toContainText('manual BOND memo review');
+    await expect(preflight).not.toContainText('unbond eligibility');
+    await expect(preflight).not.toContainText('positions responded');
     await expect(page.getByLabel('Transaction composer')).toBeVisible();
 
     await connectMockKeplr(page);

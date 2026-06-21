@@ -70,18 +70,20 @@ describe('buildTransactionPreflightModel', () => {
       expect.objectContaining({
         id: 'source',
         value: 'THORNode responding',
-        detail: 'THORNode positions responded for node status and unbond eligibility. Source availability is not transaction approval; wallet still presents the final payload and fee.',
+        detail: 'THORNode source checks are responding for manual BOND memo review. Source availability is not transaction approval; wallet still presents the final payload and fee.',
         severity: 'checked',
       }),
       expect.objectContaining({
         id: 'wallet',
         value: 'Not connected',
-        detail: 'Required for preview and broadcast; memo copy stays local once THORNode positions respond.',
+        detail: 'Required for preview and broadcast; memo copy stays local once THORNode source checks respond.',
         severity: 'info',
       }),
       expect.objectContaining({ id: 'dashboard-address', value: 'Not selected', detail: 'No watched address is selected for context.', severity: 'warning' }),
       expect.objectContaining({ id: 'eligibility', label: 'Node target', value: 'Manual node entry', severity: 'info' }),
     ]));
+    expect(model.source.detail).not.toContain('unbond eligibility');
+    expect(model.source.detail).not.toContain('positions responded');
   });
 
   it('uses checked or informational severity instead of ready states for successful prerequisites', () => {
@@ -260,6 +262,42 @@ describe('buildTransactionPreflightModel', () => {
         severity: 'warning',
       }),
     ]));
+  });
+
+  it('keeps manual no-address BOND source failures scoped to source checks instead of watched positions', () => {
+    const model = buildTransactionPreflightModel({
+      actionParam: 'bond',
+      dashboardAddress: null,
+      positions: [],
+      source: {
+        positionsError: false,
+        positionsLoading: false,
+        thornodeStatus: 'degraded',
+      },
+      wallet: {
+        address: null,
+        isConnected: false,
+        isNetworkMismatch: false,
+        networkMismatch: { actual: null, expected: 'thorchain-1', hasMismatch: false },
+        walletType: null,
+      },
+    });
+
+    expect(model.status).toBe('Source check degraded');
+    expect(model.detail).toBe('THORNode source check is degraded. Do not copy, preview, or broadcast a manual BOND memo until THORNode responds again.');
+    expect(model.source.canCopyBondMemo).toBe(false);
+    expect(model.source.canPreview).toBe(false);
+    expect(model.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'eligibility',
+        label: 'Node target',
+        value: 'Source unavailable',
+        detail: 'THORNode source checks must respond before Heimdall allows manual BOND memo copy, preview, or broadcast.',
+        severity: 'warning',
+      }),
+    ]));
+    expect(model.detail).not.toContain('positions');
+    expect(model.items.find((item) => item.id === 'eligibility')?.detail).not.toContain('positions');
   });
 
   it.each([
