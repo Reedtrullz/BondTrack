@@ -101,7 +101,7 @@
         return_content: yes
         timeout: 5
       register: readiness_check
-      until: readiness_check is succeeded and readiness_check.json.status == "ready"
+      until: readiness_check is succeeded and ((readiness_check.json | default({})).status | default('')) == "ready"
       retries: 10
       delay: 5
       failed_when: false
@@ -110,7 +110,7 @@
       fail:
         msg: "Heimdall readiness check failed: {{ readiness_check }}"
       when:
-        - readiness_check is not succeeded or readiness_check.json.status != "ready"
+        - readiness_check is not succeeded or ((readiness_check.json | default({})).status | default('')) != "ready"
         - previous_image == "none"
 
     - name: Rollback to previous image on failure
@@ -171,7 +171,7 @@
         return_content: yes
         timeout: 5
       register: rollback_readiness_check
-      until: rollback_readiness_check is succeeded and rollback_readiness_check.json.status == "ready"
+      until: rollback_readiness_check is succeeded and ((rollback_readiness_check.json | default({})).status | default('')) == "ready"
       retries: 10
       delay: 5
       failed_when: false
@@ -185,7 +185,7 @@
       when:
         - rollback is defined
         - rollback.changed
-        - rollback_readiness_check is not succeeded or (rollback_readiness_check.json.status | default('degraded')) != "ready"
+        - rollback_readiness_check is not succeeded or ((rollback_readiness_check.json | default({})).status | default('degraded')) != "ready"
 
     - name: Fail with rollback message
       fail:
