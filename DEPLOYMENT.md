@@ -22,6 +22,7 @@ images on it. CI builds, GHCR stores, Ansible deploys.
 ### Local (control node)
 - Ansible: `brew install ansible`
 - SSH key at `~/.ssh/id_rsa_racknerd`
+- `inventory/hosts.yml` forces that key with `IdentitiesOnly=yes` so the local SSH agent cannot offer other identities first
 - Vault password at `~/.vault_pass.txt` (gitignored)
 
 ### VPS (managed node)
@@ -93,7 +94,7 @@ IMAGE_SHA=490cac0 scripts/compose-production.sh up -d
 
 ```bash
 # Container status
-ssh deploy@198.23.137.16 "docker ps --filter name=heimdall --format '{{.Status}} {{.Image}}'"
+ssh -i ~/.ssh/id_rsa_racknerd -o IdentitiesOnly=yes deploy@198.23.137.16 "docker ps --filter name=heimdall --format '{{.Status}} {{.Image}}'"
 
 # Liveness endpoint
 curl -s https://bond.thorchain.no/api/health | jq
@@ -102,7 +103,7 @@ curl -s https://bond.thorchain.no/api/health | jq
 curl -s https://bond.thorchain.no/api/ready | jq
 
 # Exact deployed image/version check; image tag and health/ready versions should match.
-ssh deploy@198.23.137.16 "docker ps --filter name=heimdall --format '{{.Image}}'"
+ssh -i ~/.ssh/id_rsa_racknerd -o IdentitiesOnly=yes deploy@198.23.137.16 "docker ps --filter name=heimdall --format '{{.Image}}'"
 curl -s https://bond.thorchain.no/api/health | jq -r .version
 curl -s https://bond.thorchain.no/api/ready | jq -r .version
 
@@ -117,7 +118,7 @@ swapping and restores it if the readiness check fails.
 
 Manual:
 ```bash
-ssh deploy@198.23.137.16
+ssh -i ~/.ssh/id_rsa_racknerd -o IdentitiesOnly=yes deploy@198.23.137.16
 docker stop heimdall && docker rm heimdall
 docker run -d --name heimdall --restart unless-stopped \
   -p 127.0.0.1:3001:3000 \
@@ -154,13 +155,13 @@ ansible-vault edit group_vars/vps/vault.yml
 
 **Container unhealthy:**
 ```bash
-ssh deploy@198.23.137.16 "docker logs --tail 100 heimdall"
-ssh deploy@198.23.137.16 "docker exec heimdall node -e \"require('http').get('http://127.0.0.1:3000/api/health', r => { process.exitCode = r.statusCode === 200 ? 0 : 1; r.resume(); }).on('error', () => process.exit(1))\""
+ssh -i ~/.ssh/id_rsa_racknerd -o IdentitiesOnly=yes deploy@198.23.137.16 "docker logs --tail 100 heimdall"
+ssh -i ~/.ssh/id_rsa_racknerd -o IdentitiesOnly=yes deploy@198.23.137.16 "docker exec heimdall node -e \"require('http').get('http://127.0.0.1:3000/api/health', r => { process.exitCode = r.statusCode === 200 ? 0 : 1; r.resume(); }).on('error', () => process.exit(1))\""
 ```
 
 **GHCR auth on VPS:**
 ```bash
-ssh deploy@198.23.137.16
+ssh -i ~/.ssh/id_rsa_racknerd -o IdentitiesOnly=yes deploy@198.23.137.16
 echo "$GHCR_PAT" | docker login ghcr.io -u Reedtrullz --password-stdin
 ```
 
