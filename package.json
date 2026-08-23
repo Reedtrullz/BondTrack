@@ -8,6 +8,7 @@
     "@typescript-eslint/typescript-estree": {
       "brace-expansion": "^5.0.9"
     },
+    "@scure/base": "2.2.0",
     "js-yaml": "^4.3.1",
     "undici": "^7.29.0"
   },
