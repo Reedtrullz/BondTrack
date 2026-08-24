@@ -60,22 +60,22 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
-    "@tailwindcss/postcss": "^4.3.1",
-    "@testing-library/jest-dom": "^6.9.1",
+    "@playwright/test": "^1.62.1",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.1",
-    "@types/node": "^22.20.0",
+    "@testing-library/user-event": "^14.6.5",
+    "@types/node": "^22.20.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
-    "@vitest/coverage-v8": "^4.1.9",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "~9.39.4",
-    "eslint-config-next": "^16.2.9",
-    "jsdom": "^29.0.1",
-    "msw": "^2.12.14",
+    "eslint-config-next": "^16.3.1",
+    "jsdom": "^30.0.1",
+    "msw": "^2.15.0",
     "tailwindcss": "^4.3.1",
-    "typescript": "^6",
+    "typescript": "^7",
     "vitest": "^4.1.9"
   }
 }
