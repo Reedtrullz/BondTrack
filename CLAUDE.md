@@ -78,8 +78,8 @@ Single `Dockerfile`, two stages:
    `@tailwindcss/oxide-linux-x64-gnu@4.3.1`,
    `@rolldown/binding-linux-x64-gnu@1.0.3`,
    `@unrs/resolver-binding-linux-x64-gnu@1.12.2`,
-   `@img/sharp-linux-x64@0.34.5`,
-   `@img/sharp-libvips-linux-x64@1.2.4`). Build args include every declared
+   `@img/sharp-linux-x64@0.35.3`,
+   `@img/sharp-libvips-linux-x64@1.3.2`). Build args include every declared
    public `NEXT_PUBLIC_*` value plus `VERSION`.
 2. `runner` — copies only `.next/standalone`, `.next/static`, `public/`. Runs
    as non-root `node`. Includes an explicit-error `HEALTHCHECK` hitting
