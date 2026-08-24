@@ -75,11 +75,11 @@ Single `Dockerfile`, two stages:
 1. `builder` — `npm ci` (npm includes optional dependencies by default), then exact-version installs of the
    linux/x64 native prebuilts Tailwind v4 / Turbopack / Vitest / Sharp need
    (`lightningcss-linux-x64-gnu@1.32.0`,
-   `@tailwindcss/oxide-linux-x64-gnu@4.3.0`,
+   `@tailwindcss/oxide-linux-x64-gnu@4.3.1`,
    `@rolldown/binding-linux-x64-gnu@1.0.3`,
-   `@unrs/resolver-binding-linux-x64-gnu@1.11.1`,
-   `@img/sharp-linux-x64@0.34.5`,
-   `@img/sharp-libvips-linux-x64@1.2.4`). Build args include every declared
+   `@unrs/resolver-binding-linux-x64-gnu@1.12.2`,
+   `@img/sharp-linux-x64@0.35.3`,
+   `@img/sharp-libvips-linux-x64@1.3.2`). Build args include every declared
    public `NEXT_PUBLIC_*` value plus `VERSION`.
 2. `runner` — copies only `.next/standalone`, `.next/static`, `public/`. Runs
    as non-root `node`. Includes an explicit-error `HEALTHCHECK` hitting
